@@ -1,6 +1,7 @@
 import { addBuff, hasBuff } from './buffs';
 import { emit } from './bus';
-import { computeMods, computeRates, earnCash } from './economy';
+import { computeMods, computeRates } from './economy';
+import { earnCash } from './wallet';
 import type { GameState } from './types';
 
 export const HYPE_MAX = 100;

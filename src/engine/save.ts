@@ -1,5 +1,9 @@
 import LZString from 'lz-string';
-import { SAVE_VERSION, createNewGame } from './state';
+import { GAMES } from '../data/games';
+import { createFounder } from './players';
+import { Rng } from './rng';
+import { SAVE_VERSION, createBaseState, setupNewRun } from './state';
+import { createTeam } from './teams';
 import type { GameState } from './types';
 
 export const SAVE_KEY = 'esportsidle.save';
@@ -17,7 +21,11 @@ export interface StorageLike {
 type Json = Record<string, unknown>;
 
 /** Migrations keyed by the version they upgrade FROM. */
-const MIGRATIONS: Record<number, (raw: Json) => void> = {};
+const MIGRATIONS: Record<number, (raw: Json) => void> = {
+  // v1 -> v2 added players, teams and games. Static fields come from defaults; the founder and
+  // starting team are created by repairState.
+  1: () => {},
+};
 
 function isPlainObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -65,7 +73,26 @@ export function decodeSave(text: string): GameState {
   if (!isPlainObject(raw)) throw new Error('The save data is corrupted.');
   const migrated = migrate(raw, Number(match[1]));
   const createdAt = typeof migrated.createdAt === 'number' ? migrated.createdAt : Date.now();
-  return mergeDefaults(createNewGame(createdAt), migrated) as GameState;
+  const state = mergeDefaults(createBaseState(createdAt), migrated) as GameState;
+  repairState(state);
+  return state;
+}
+
+/** Fills defaults inside dynamic records and restores invariants (founder, starting team). */
+export function repairState(s: GameState): void {
+  if (!s.players.founder && !s.teams.smash) {
+    setupNewRun(s);
+    return;
+  }
+  const template = createFounder(new Rng({ rng: 1 }), 'Template');
+  for (const [id, p] of Object.entries(s.players)) {
+    s.players[id] = mergeDefaults(template, p) as GameState['players'][string];
+  }
+  for (const game of GAMES) {
+    const team = s.teams[game.id];
+    if (team) s.teams[game.id] = mergeDefaults(createTeam(game.id), team) as GameState['teams'][string];
+    else if (s.games[game.id]?.unlocked) s.teams[game.id] = createTeam(game.id);
+  }
 }
 
 /** Writes the save, rotating backups at most every 10 minutes. */

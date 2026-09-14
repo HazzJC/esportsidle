@@ -2,7 +2,17 @@ import { fmt } from '../engine/format';
 import type { GameState, Rates } from '../engine/types';
 import { OPERATIONS, OP_ACH_THRESHOLDS } from './operations';
 
-export type AchievementGroup = 'earnings' | 'income' | 'clicks' | 'operations' | 'upgrades' | 'fans' | 'hype' | 'misc';
+export type AchievementGroup =
+  | 'earnings'
+  | 'income'
+  | 'clicks'
+  | 'operations'
+  | 'upgrades'
+  | 'fans'
+  | 'hype'
+  | 'teams'
+  | 'players'
+  | 'misc';
 
 export interface AchievementDef {
   id: string;
@@ -238,6 +248,186 @@ for (const [n, name] of CROWDS) {
     check: (s) => s.stats.crowdsTotal >= n,
   });
 }
+
+// Teams ----------------------------------------------------------------------
+const bestTier = (s: GameState): number => Object.values(s.teams).reduce((m, t) => Math.max(m, t.bestTier), 0);
+const unlockedGames = (s: GameState): number => Object.values(s.games).filter((g) => g.unlocked).length;
+const players = (s: GameState) => Object.values(s.players);
+
+const WINS: [number, string][] = [
+  [1, 'First Blood'],
+  [25, 'Scrim Regulars'],
+  [100, 'Tournament Grinders'],
+  [500, 'Veteran Squad'],
+  [2_500, 'Winning Machine'],
+  [10_000, 'Dynasty'],
+  [50_000, 'Unbeatable'],
+];
+for (const [n, name] of WINS) {
+  add({
+    id: `wins_${n}`,
+    name,
+    desc: () => `Win ${fmt(n)} match${n === 1 ? '' : 'es'}.`,
+    icon: 'swords',
+    group: 'teams',
+    check: (s) => s.stats.matchesWon >= n,
+  });
+}
+const TIERS: [number, string][] = [
+  [1, 'Qualified'],
+  [3, 'Collegiate Contenders'],
+  [5, 'Challengers'],
+  [7, 'Going Pro'],
+  [9, 'World Champions'],
+  [11, 'Orbital Elite'],
+  [13, 'Multiversal'],
+  [16, 'Beyond the Multiverse'],
+];
+for (const [n, name] of TIERS) {
+  add({
+    id: `tier_${n}`,
+    name,
+    desc: () => `Reach league tier ${n + 1} with any team.`,
+    icon: 'trending-up',
+    group: 'teams',
+    check: (s) => bestTier(s) >= n,
+  });
+}
+const TITLES: [number, string][] = [
+  [1, 'Season Champions'],
+  [10, 'Serial Winners'],
+  [50, 'Trophy Hoarders'],
+  [200, 'Silverware Collectors'],
+];
+for (const [n, name] of TITLES) {
+  add({
+    id: `titles_${n}`,
+    name,
+    desc: () => `Win ${n} season title${n === 1 ? '' : 's'} (9+ wins in a season).`,
+    icon: 'trophy',
+    group: 'teams',
+    check: (s) => s.stats.seasonTitles >= n,
+  });
+}
+const GAME_COUNTS: [number, string][] = [
+  [2, 'Branching Out'],
+  [4, 'Multi-Title Org'],
+  [8, 'Esports Conglomerate'],
+  [12, 'Every Game Ever'],
+];
+for (const [n, name] of GAME_COUNTS) {
+  add({
+    id: `games_${n}`,
+    name,
+    desc: () => `Field teams in ${n} games.`,
+    icon: 'gamepad-2',
+    group: 'teams',
+    check: (s) => unlockedGames(s) >= n,
+  });
+}
+
+// Players --------------------------------------------------------------------
+const SIGNED: [number, string][] = [
+  [1, 'First Signing'],
+  [10, 'Talent Magnet'],
+  [40, 'Scouting Legend'],
+  [150, 'Transfer Window Addict'],
+];
+for (const [n, name] of SIGNED) {
+  add({
+    id: `signed_${n}`,
+    name,
+    desc: () => `Sign ${n} player${n === 1 ? '' : 's'}.`,
+    icon: 'user-plus',
+    group: 'players',
+    check: (s) => s.stats.playersSigned >= n,
+  });
+}
+add({
+  id: 'sign_legend',
+  name: 'Legendary Signing',
+  desc: () => 'Have a Legend-rarity player on your roster.',
+  icon: 'crown',
+  group: 'players',
+  check: (s) => players(s).some((p) => p.rarity === 'legend'),
+});
+const LEVELS: [number, string][] = [
+  [10, 'Levelling Up'],
+  [25, 'Seasoned Pro'],
+  [50, 'Elite Talent'],
+  [100, 'Maximum Level'],
+];
+for (const [n, name] of LEVELS) {
+  add({
+    id: `level_${n}`,
+    name,
+    desc: () => `Get a player to level ${n}.`,
+    icon: 'sparkles',
+    group: 'players',
+    check: (s) => players(s).some((p) => p.level >= n),
+  });
+}
+const GEAR_COUNTS: [number, string][] = [
+  [1, 'Upgrade Path'],
+  [50, 'Hardware Enthusiast'],
+  [250, 'Gear Head'],
+  [1_000, 'Silicon Valley'],
+];
+for (const [n, name] of GEAR_COUNTS) {
+  add({
+    id: `gear_${n}`,
+    name,
+    desc: () => `Buy ${fmt(n)} gear upgrade${n === 1 ? '' : 's'}.`,
+    icon: 'cpu',
+    group: 'players',
+    check: (s) => s.stats.gearBought >= n,
+  });
+}
+add({
+  id: 'fully_kitted',
+  name: 'Fully Kitted',
+  desc: () => 'Get every gear slot on one player to tier 5 or higher.',
+  icon: 'shield',
+  group: 'players',
+  check: (s) => players(s).some((p) => Object.values(p.gear).every((t) => t >= 5)),
+});
+add({
+  id: 'sneakerhead',
+  name: 'Sneakerhead',
+  desc: () => 'Get a pair of shoes to tier 10.',
+  icon: 'footprints',
+  group: 'players',
+  check: (s) => players(s).some((p) => p.gear.shoes >= 10),
+});
+add({
+  id: 'maxed_slot',
+  name: 'Maxed Out',
+  desc: () => 'Upgrade any gear slot to the maximum tier.',
+  icon: 'gem',
+  group: 'players',
+  check: (s) => players(s).some((p) => Object.values(p.gear).some((t) => t >= 15)),
+});
+add({
+  id: 'potato',
+  name: 'Potato Warrior',
+  desc: () => 'Reach tier 4 with a team whose starters all still use their starting PCs.',
+  icon: 'cpu',
+  group: 'players',
+  secret: true,
+  check: (s) =>
+    Object.values(s.teams).some(
+      (t) => t.tier >= 3 && t.lineup.every((id) => id !== null && (s.players[id]?.gear.pc ?? 1) === 0),
+    ),
+});
+add({
+  id: 'makeover',
+  name: 'Makeover',
+  desc: () => "Change a player's look.",
+  icon: 'palette',
+  group: 'players',
+  shadow: true,
+  check: (s) => s.stats.looksChanged >= 1,
+});
 
 // Misc & shadow ----------------------------------------------------------------
 add({

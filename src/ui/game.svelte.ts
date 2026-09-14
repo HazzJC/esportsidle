@@ -5,13 +5,20 @@ import { computeMods, computeRates } from '../engine/economy';
 import { money, setNumberFormat, type NumberFormat } from '../engine/format';
 import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport } from '../engine/game';
 import { pickNews } from '../engine/news';
+import type { GearSlot } from '../data/gear';
+import { getGame } from '../data/games';
+import { refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing } from '../engine/market';
 import { buyOperation, sellOperation } from '../engine/operations';
+import { buyGear } from '../engine/players';
+import { Rng } from '../engine/rng';
+import { assignSlot, benchPlayer, changeTier, unlockGame } from '../engine/teams';
+import type { Appearance } from '../engine/types';
 import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, writeSave, type StorageLike } from '../engine/save';
 import { createNewGame } from '../engine/state';
 import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
 
-export type TabId = 'hq' | 'achievements' | 'stats' | 'options';
+export type TabId = 'hq' | 'teams' | 'roster' | 'market' | 'achievements' | 'stats' | 'options';
 export type MobileView = 'clicker' | 'center' | 'store';
 
 export interface Toast {
@@ -308,6 +315,103 @@ class GameStore {
       this.toast({ title: `Bought ${n} upgrade${n === 1 ? '' : 's'}`, icon: 'sparkles', tone: 'good' }, 2500);
     }
     return n;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Teams & players
+  // ---------------------------------------------------------------------------
+  /** Player whose detail panel is open. */
+  selectedPlayer = $state<string | null>(null);
+  /** Game filter for the transfer market. */
+  marketFilter = $state<string | null>(null);
+
+  unlockGame(gameId: string): boolean {
+    if (!unlockGame(this.state, gameId)) return false;
+    const mods = computeMods(this.state);
+    seedMarketForGame(this.state, new Rng(this.state), gameId, 4, mods);
+    const game = getGame(gameId);
+    this.toast({ title: `${game.name} team founded!`, body: 'Sign players from the transfer market to fill your lineup.', icon: game.icon, tone: 'gold' });
+    this.refresh();
+    return true;
+  }
+
+  signPlayer(playerId: string): boolean {
+    const result = signListing(this.state, playerId, computeMods(this.state));
+    if (!result.ok) {
+      this.toast({ title: 'Signing failed', body: result.reason, icon: 'user-plus', tone: 'bad' }, 3500);
+      return false;
+    }
+    const p = result.player;
+    this.toast({ title: `Signed ${p.tag}!`, body: `${p.first} ${p.last} joins your ${getGame(p.gameId).name} roster.`, icon: 'user-plus', tone: 'good' }, 3500);
+    this.refresh();
+    return true;
+  }
+
+  sellPlayer(playerId: string): number {
+    const p = this.state.players[playerId];
+    const value = sellPlayer(this.state, playerId);
+    if (value > 0 && p) {
+      if (this.selectedPlayer === playerId) this.selectedPlayer = null;
+      this.toast({ title: `Sold ${p.tag}`, body: `A rival org paid ${money(value)}.`, icon: 'handshake', tone: 'info' }, 3500);
+      this.refresh();
+    }
+    return value;
+  }
+
+  rerollMarket(): boolean {
+    const ok = rerollMarket(this.state, new Rng(this.state), computeMods(this.state), this.view.r.cpsNoBuffs);
+    if (ok) this.refresh();
+    return ok;
+  }
+
+  forceRefreshMarket(): void {
+    refreshMarket(this.state, new Rng(this.state), computeMods(this.state));
+    this.refresh();
+  }
+
+  buyGear(playerId: string, slot: GearSlot): boolean {
+    const ok = buyGear(this.state, playerId, slot, computeMods(this.state));
+    if (ok) this.refresh();
+    return ok;
+  }
+
+  assignSlot(gameId: string, playerId: string, slot: number): void {
+    if (assignSlot(this.state, gameId, playerId, slot)) this.refresh();
+  }
+
+  benchPlayer(gameId: string, playerId: string): void {
+    if (benchPlayer(this.state, gameId, playerId, computeMods(this.state))) this.refresh();
+    else this.toast({ title: 'Bench is full', body: 'Buy bench upgrades to hold more substitutes.', icon: 'users', tone: 'bad' }, 3000);
+  }
+
+  changeTier(gameId: string, delta: number): void {
+    const winChance = this.view.r.teams[gameId]?.winChance ?? 0;
+    if (changeTier(this.state, gameId, delta, winChance)) this.refresh();
+  }
+
+  setTeamOption(gameId: string, key: 'autoPromote' | 'autoSub', value: boolean): void {
+    const team = this.state.teams[gameId];
+    if (!team) return;
+    team[key] = value;
+    this.refresh();
+  }
+
+  updateLook(playerId: string, patch: Partial<Appearance>): void {
+    const p = this.state.players[playerId];
+    if (!p) return;
+    Object.assign(p.look, patch);
+    this.state.stats.looksChanged++;
+    this.refresh();
+  }
+
+  renamePlayer(playerId: string, fields: { tag?: string; first?: string; last?: string; jersey?: number }): void {
+    const p = this.state.players[playerId];
+    if (!p) return;
+    if (fields.tag !== undefined && fields.tag.trim()) p.tag = fields.tag.trim().slice(0, 16);
+    if (fields.first !== undefined && fields.first.trim()) p.first = fields.first.trim().slice(0, 16);
+    if (fields.last !== undefined) p.last = fields.last.trim().slice(0, 20);
+    if (fields.jersey !== undefined && Number.isFinite(fields.jersey)) p.jersey = Math.max(0, Math.min(99, Math.floor(fields.jersey)));
+    this.refresh();
   }
 
   rename(name: string): void {

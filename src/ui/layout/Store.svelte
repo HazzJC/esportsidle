@@ -20,6 +20,9 @@
     snack: 'Team snacks',
     fame: 'Fame upgrade',
     superfan: 'Superfans',
+    team: 'Team upgrade',
+    roster: 'Roster upgrade',
+    gear: 'Gear upgrade',
   };
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },

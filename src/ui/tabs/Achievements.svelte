@@ -14,6 +14,8 @@
     { id: 'upgrades', label: 'Upgrades' },
     { id: 'fans', label: 'Fans' },
     { id: 'hype', label: 'Hype' },
+    { id: 'teams', label: 'Teams & Leagues' },
+    { id: 'players', label: 'Players & Gear' },
     { id: 'misc', label: 'Miscellaneous' },
   ];
 

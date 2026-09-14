@@ -1,6 +1,12 @@
+import type { GearSlot } from '../data/gear';
 import type { NumberFormat } from './format';
 
 export type Tone = 'good' | 'bad' | 'info' | 'gold';
+
+export type StatKey = 'mechanics' | 'gameSense' | 'teamwork' | 'composure' | 'charisma' | 'stamina';
+export type PlayerStats = Record<StatKey, number>;
+export type Rarity = 'rookie' | 'talent' | 'pro' | 'star' | 'superstar' | 'legend';
+export type HealthKind = 'healthy' | 'sick' | 'injured' | 'burnout';
 
 export interface OperationState {
   owned: number;
@@ -44,7 +50,16 @@ export type Effect =
   | { kind: 'opCostMult'; mult: number }
   | { kind: 'upgradeCostMult'; mult: number }
   | { kind: 'offlineRate'; add: number }
-  | { kind: 'offlineCap'; hours: number };
+  | { kind: 'offlineCap'; hours: number }
+  | { kind: 'prizeMult'; mult: number }
+  | { kind: 'benchSlots'; add: number }
+  | { kind: 'xpMult'; mult: number }
+  | { kind: 'matchSpeed'; mult: number }
+  | { kind: 'teamRating'; mult: number }
+  | { kind: 'scoutLuck'; add: number }
+  | { kind: 'marketSize'; add: number }
+  | { kind: 'playerFans'; mult: number }
+  | { kind: 'gearCostMult'; mult: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -64,24 +79,60 @@ export interface Mods {
   upgradeCostMult: number;
   offlineRate: number;
   offlineCapHours: number;
+  prizeMult: number;
+  benchSlots: number;
+  xpMult: number;
+  matchSpeed: number;
+  teamRatingMult: number;
+  scoutLuck: number;
+  marketSize: number;
+  playerFansMult: number;
+  gearCostMult: number;
+}
+
+export interface TeamEval {
+  gameId: string;
+  rating: number;
+  opponent: number;
+  winChance: number;
+  winPrize: number;
+  lossPrize: number;
+  fansWin: number;
+  cut: number;
+  filled: number;
+  available: number;
+  active: boolean;
+  /** Seconds between matches. */
+  interval: number;
+  cps: number;
+  fansPerSec: number;
 }
 
 export interface Rates {
-  /** Cash per second including temporary buffs. */
+  /** Operations cash per second including temporary buffs. */
   cps: number;
-  /** Cash per second without temporary buffs. */
+  /** Operations cash per second without temporary buffs. */
   cpsNoBuffs: number;
   baseCps: number;
   opCps: Record<string, number>;
   opUnit: Record<string, number>;
   click: number;
+  /** Continuous fans per second (operations + player charisma). */
   fansPerSec: number;
+  opsFansPerSec: number;
+  playerFansPerSec: number;
   globalMult: number;
   fameMult: number;
   superfanMult: number;
   buffIncomeMult: number;
   buffClickMult: number;
   cabinet: number;
+  teams: Record<string, TeamEval>;
+  /** Expected cash per second from matches. */
+  matchCps: number;
+  matchFansPerSec: number;
+  /** Operations + expected match income. */
+  totalCps: number;
 }
 
 export interface OrgState {
@@ -89,6 +140,107 @@ export interface OrgState {
   logo: string | null;
   primary: string;
   secondary: string;
+}
+
+export interface Appearance {
+  body: number;
+  skin: number;
+  hair: number;
+  hairColor: number;
+  eyes: number;
+  brows: number;
+  mouth: number;
+  facial: number;
+  glasses: number;
+  hat: number;
+  jersey: number;
+  pants: number;
+  shoeColor: number;
+  accessory: number;
+}
+
+export interface PlayerStatus {
+  kind: HealthKind;
+  until: number;
+  reason: string;
+}
+
+export interface Player {
+  id: string;
+  first: string;
+  last: string;
+  tag: string;
+  nation: string;
+  age: number;
+  gameId: string;
+  role: number;
+  rarity: Rarity;
+  stats: PlayerStats;
+  potential: number;
+  traits: string[];
+  level: number;
+  xp: number;
+  morale: number;
+  energy: number;
+  status: PlayerStatus;
+  gear: Record<GearSlot, number>;
+  look: Appearance;
+  cut: number;
+  fee: number;
+  jersey: number;
+  signedAt: number;
+  matches: number;
+  wins: number;
+  founder: boolean;
+}
+
+export interface MatchRecord {
+  win: boolean;
+  score: string;
+  opponent: string;
+  prize: number;
+  fans: number;
+  tier: number;
+  time: number;
+}
+
+export interface TeamState {
+  gameId: string;
+  lineup: (string | null)[];
+  bench: string[];
+  tier: number;
+  bestTier: number;
+  seasonNumber: number;
+  seasonPlayed: number;
+  seasonWins: number;
+  progress: number;
+  autoPromote: boolean;
+  autoSub: boolean;
+  chemistry: number;
+  history: MatchRecord[];
+  wins: number;
+  losses: number;
+  streak: number;
+  titles: number;
+  earnings: number;
+}
+
+export interface GameProgress {
+  unlocked: boolean;
+  popularity: number;
+  target: number;
+  history: number[];
+}
+
+export interface MarketListing {
+  player: Player;
+  price: number;
+}
+
+export interface MarketState {
+  listings: MarketListing[];
+  nextRefresh: number;
+  rerolls: number;
 }
 
 export interface Settings {
@@ -103,6 +255,7 @@ export interface Settings {
   muted: boolean;
   confirmPrestige: boolean;
   buyAmount: number;
+  matchToasts: boolean;
 }
 
 export interface Stats {
@@ -121,6 +274,16 @@ export interface Stats {
   playtimeTotal: number;
   offlineSecondsTotal: number;
   renames: number;
+  matchesWon: number;
+  matchesLost: number;
+  prizeMoneyTotal: number;
+  seasonTitles: number;
+  promotions: number;
+  playersSigned: number;
+  playersSold: number;
+  gearBought: number;
+  looksChanged: number;
+  trophiesTotal: number;
 }
 
 export interface GameState {
@@ -133,6 +296,7 @@ export interface GameState {
   /** Real timestamps (ms). */
   createdAt: number;
   lastSaved: number;
+  /** Simulated time of the last logo click. */
   lastClickTime: number;
   org: OrgState;
   cash: number;
@@ -151,6 +315,12 @@ export interface GameState {
   /** Achievement id -> real timestamp unlocked. */
   achievements: Record<string, number>;
   buffs: Buff[];
+  games: Record<string, GameProgress>;
+  teams: Record<string, TeamState>;
+  players: Record<string, Player>;
+  market: MarketState;
+  nextId: number;
+  popularityClock: number;
   stats: Stats;
   settings: Settings;
 }

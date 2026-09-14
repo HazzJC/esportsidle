@@ -2,9 +2,14 @@ import { OPERATIONS } from '../data/operations';
 import { checkAchievements } from './achievements';
 import { expireBuffs } from './buffs';
 import { decayHype } from './clicker';
-import { computeMods, computeRates, earnCash, gainFans } from './economy';
+import { computeMods, computeRates } from './economy';
+import { updateMarket } from './market';
+import { updatePopularity } from './popularity';
+import { Rng } from './rng';
+import { updatePlayers, updateTeams } from './teams';
 import type { GameState, Mods, Rates } from './types';
 import { refreshUpgradeUnlocks } from './upgrades';
+import { earnCash, gainFans } from './wallet';
 
 export const TICK_SECONDS = 0.1;
 
@@ -20,7 +25,10 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
   s.stats.playtimeTotal += dt;
   if (offline) s.stats.offlineSecondsTotal += dt;
 
+  const rng = new Rng(s);
   expireBuffs(s);
+  updatePopularity(s, dt, rng);
+
   const mods = computeMods(s);
   const rates = computeRates(s, mods);
   const factor = offline ? mods.offlineRate : 1;
@@ -29,7 +37,11 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
   for (const op of OPERATIONS) s.ops[op.id].produced += rates.opCps[op.id] * dt * factor;
   gainFans(s, rates.fansPerSec * dt * factor);
 
+  updateTeams(s, dt, offline, factor, mods, rates.teams, rng);
+  updatePlayers(s, dt);
+
   if (!offline) {
+    updateMarket(s, rng, mods);
     decayHype(s, dt);
     if (rates.cpsNoBuffs > s.stats.bestCps) s.stats.bestCps = rates.cpsNoBuffs;
   }

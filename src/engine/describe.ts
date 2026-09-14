@@ -57,5 +57,23 @@ export function describeEffect(e: Effect): string {
       return `Earn +${pct(e.add)} more while offline.`;
     case 'offlineCap':
       return `Offline earnings accumulate for ${e.hours} more hours.`;
+    case 'prizeMult':
+      return `Match prize money ×${fmt(e.mult, 2)}.`;
+    case 'benchSlots':
+      return `+${e.add} bench slot${e.add === 1 ? '' : 's'} on every team.`;
+    case 'xpMult':
+      return `Players gain ${pct(e.mult - 1)} more XP.`;
+    case 'matchSpeed':
+      return `Matches are played ${pct(e.mult - 1)} faster.`;
+    case 'teamRating':
+      return `All team ratings ×${fmt(e.mult, 2)}.`;
+    case 'scoutLuck':
+      return `Scouts find rare talent more often (+${pct(e.add)} luck).`;
+    case 'marketSize':
+      return `+${e.add} transfer market listing${e.add === 1 ? '' : 's'}.`;
+    case 'playerFans':
+      return `Players attract ${pct(e.mult - 1)} more fans.`;
+    case 'gearCostMult':
+      return `Gear is ${pct(1 - e.mult)} cheaper.`;
   }
 }

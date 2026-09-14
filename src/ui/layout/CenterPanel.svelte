@@ -1,13 +1,20 @@
 <script lang="ts">
   import Icon from '../components/Icon.svelte';
+  import PlayerDetail from '../components/PlayerDetail.svelte';
   import { game, type TabId } from '../game.svelte';
   import Achievements from '../tabs/Achievements.svelte';
   import HQ from '../tabs/HQ.svelte';
+  import Market from '../tabs/Market.svelte';
   import Options from '../tabs/Options.svelte';
+  import Roster from '../tabs/Roster.svelte';
   import Stats from '../tabs/Stats.svelte';
+  import Teams from '../tabs/Teams.svelte';
 
   const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'hq', label: 'HQ', icon: 'house' },
+    { id: 'teams', label: 'Teams', icon: 'swords' },
+    { id: 'roster', label: 'Roster', icon: 'users' },
+    { id: 'market', label: 'Market', icon: 'user-plus' },
     { id: 'achievements', label: 'Trophies', icon: 'trophy' },
     { id: 'stats', label: 'Stats', icon: 'chart-column' },
     { id: 'options', label: 'Options', icon: 'settings' },
@@ -26,6 +33,12 @@
   <div class="body">
     {#if game.tab === 'hq'}
       <HQ />
+    {:else if game.tab === 'teams'}
+      <Teams />
+    {:else if game.tab === 'roster'}
+      <Roster />
+    {:else if game.tab === 'market'}
+      <Market />
     {:else if game.tab === 'achievements'}
       <Achievements />
     {:else if game.tab === 'stats'}
@@ -35,6 +48,10 @@
     {/if}
   </div>
 </div>
+
+{#if game.selectedPlayer}
+  <PlayerDetail />
+{/if}
 
 <style>
   .center {
@@ -50,12 +67,13 @@
     border-bottom: 1px solid var(--line);
     overflow-x: auto;
     flex: none;
+    scrollbar-width: none;
   }
   .tab {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 12px;
+    padding: 7px 11px;
     border: 1px solid transparent;
     border-bottom: none;
     border-radius: 8px 8px 0 0;
@@ -81,5 +99,13 @@
     min-height: 0;
     overflow-y: auto;
     padding: 12px;
+  }
+  @media (max-width: 1280px) {
+    .tab span {
+      display: none;
+    }
+    .tab.active span {
+      display: inline;
+    }
   }
 </style>

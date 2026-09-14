@@ -1,13 +1,17 @@
 import { ACHIEVEMENT_MAP } from '../data/achievements';
+import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
 import { buffTotals } from './buffs';
-import type { Effect, GameState, Mods, Rates } from './types';
+import { passiveFans } from './players';
+import { evaluateTeam, teamPlayerIds } from './teams';
+import type { Effect, GameState, Mods, Rates, TeamEval } from './types';
 
 export const BASE_FAME_EXP = 0.08;
 export const CABINET_PER_ACHIEVEMENT = 0.04;
 export const BASE_OFFLINE_RATE = 0.2;
 export const BASE_OFFLINE_CAP_HOURS = 12;
+export const BASE_BENCH_SLOTS = 1;
 
 export function emptyMods(): Mods {
   return {
@@ -28,6 +32,15 @@ export function emptyMods(): Mods {
     upgradeCostMult: 1,
     offlineRate: BASE_OFFLINE_RATE,
     offlineCapHours: BASE_OFFLINE_CAP_HOURS,
+    prizeMult: 1,
+    benchSlots: BASE_BENCH_SLOTS,
+    xpMult: 1,
+    matchSpeed: 1,
+    teamRatingMult: 1,
+    scoutLuck: 0,
+    marketSize: 0,
+    playerFansMult: 1,
+    gearCostMult: 1,
   };
 }
 
@@ -84,6 +97,33 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'offlineCap':
       m.offlineCapHours += e.hours;
       break;
+    case 'prizeMult':
+      m.prizeMult *= e.mult;
+      break;
+    case 'benchSlots':
+      m.benchSlots += e.add;
+      break;
+    case 'xpMult':
+      m.xpMult *= e.mult;
+      break;
+    case 'matchSpeed':
+      m.matchSpeed *= e.mult;
+      break;
+    case 'teamRating':
+      m.teamRatingMult *= e.mult;
+      break;
+    case 'scoutLuck':
+      m.scoutLuck += e.add;
+      break;
+    case 'marketSize':
+      m.marketSize += e.add;
+      break;
+    case 'playerFans':
+      m.playerFansMult *= e.mult;
+      break;
+    case 'gearCostMult':
+      m.gearCostMult *= e.mult;
+      break;
   }
 }
 
@@ -121,7 +161,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   const opUnit: Record<string, number> = {};
   const opCps: Record<string, number> = {};
   let base = 0;
-  let fans = 0;
+  let opsFans = 0;
 
   for (const op of OPERATIONS) {
     const st = s.ops[op.id];
@@ -133,7 +173,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     opUnit[op.id] = unit;
     opCps[op.id] = unit * st.owned;
     base += unit * st.owned;
-    fans += op.fansPerSec * st.owned;
+    opsFans += op.fansPerSec * st.owned;
   }
 
   const fameMult = fameMultiplier(s.fans, mods.fameExp);
@@ -154,6 +194,26 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   const clickBase = (1 * doubling + grindBonus) * mods.clickMult;
   const click = (clickBase + cps * mods.clickCpsPct) * buffs.click;
 
+  const fansMult = mods.fansMult * buffs.fans;
+  const teams: Record<string, TeamEval> = {};
+  let matchCps = 0;
+  let matchFans = 0;
+  let playerFans = 0;
+  for (const game of GAMES) {
+    const team = s.teams[game.id];
+    if (!team || !s.games[game.id]?.unlocked) continue;
+    const ev = evaluateTeam(s, team, mods, { cpsNoBuffs, incomeBuff: buffs.income, fansMult });
+    teams[game.id] = ev;
+    matchCps += ev.cps;
+    matchFans += ev.fansPerSec;
+    for (const id of teamPlayerIds(team)) {
+      const p = s.players[id];
+      if (p) playerFans += passiveFans(p, team.tier);
+    }
+  }
+  const opsFansPerSec = opsFans * fansMult;
+  const playerFansPerSec = playerFans * mods.playerFansMult * fansMult;
+
   return {
     cps,
     cpsNoBuffs,
@@ -161,26 +221,18 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     opCps,
     opUnit,
     click,
-    fansPerSec: fans * mods.fansMult * buffs.fans,
+    fansPerSec: opsFansPerSec + playerFansPerSec,
+    opsFansPerSec,
+    playerFansPerSec,
     globalMult,
     fameMult,
     superfanMult,
     buffIncomeMult: buffs.income,
     buffClickMult: buffs.click,
     cabinet,
+    teams,
+    matchCps,
+    matchFansPerSec: matchFans,
+    totalCps: cps + matchCps,
   };
-}
-
-export function earnCash(s: GameState, amount: number): void {
-  if (!(amount > 0)) return;
-  s.cash += amount;
-  s.earnedRun += amount;
-  s.earnedTotal += amount;
-}
-
-export function gainFans(s: GameState, amount: number): void {
-  if (!(amount > 0)) return;
-  s.fans += amount;
-  s.fansRun += amount;
-  s.fansTotal += amount;
 }

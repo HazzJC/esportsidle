@@ -42,7 +42,8 @@ describe('save encoding', () => {
     const s = createNewGame(1000, 42);
     const text = encodeSave(s);
     const spaced = `  ${text.slice(0, 20)}\n${text.slice(20)}  `;
-    expect(decodeSave(spaced).rng).toBe(42);
+    // New games consume RNG while generating the founder and market, so compare to the saved value.
+    expect(decodeSave(spaced).rng).toBe(s.rng);
   });
 
   it('rejects garbage', () => {
@@ -95,6 +96,8 @@ describe('progress over time', () => {
     const s = createNewGame(0, 1);
     // Grinders generate no fans, so income stays constant over the interval.
     s.ops.grinder.owned = 10;
+    // Bench the founder so match prize money doesn't add to operations income.
+    s.teams.smash.lineup = [null];
     const cps = computeRates(s).cps;
     advance(s, 60);
     expect(s.cash).toBeCloseTo(cps * 60, 0);

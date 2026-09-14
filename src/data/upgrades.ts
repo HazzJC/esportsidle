@@ -1,7 +1,19 @@
 import type { Effect, GameState } from '../engine/types';
 import { OPERATIONS, getOp } from './operations';
 
-export type UpgradeGroup = 'grind' | 'op' | 'collab' | 'synergy' | 'click' | 'hype' | 'snack' | 'fame' | 'superfan';
+export type UpgradeGroup =
+  | 'grind'
+  | 'op'
+  | 'collab'
+  | 'synergy'
+  | 'click'
+  | 'hype'
+  | 'snack'
+  | 'fame'
+  | 'superfan'
+  | 'team'
+  | 'roster'
+  | 'gear';
 
 export interface UpgradeDef {
   id: string;
@@ -336,6 +348,158 @@ SUPERFANS.forEach(([name, need, cost, factor, flavor], i) => {
     flavor,
     requirement: `Unlock ${need} achievements`,
     unlock: (s) => Object.keys(s.achievements).length >= need,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Teams, roster and gear
+// ---------------------------------------------------------------------------
+const matchesPlayed = (s: GameState): number => s.stats.matchesWon + s.stats.matchesLost;
+
+const PRIZE_LINE: [string, number, number, string][] = [
+  ['Prize Pool Analyst', 10, 5_000, 'Knows exactly which tournaments actually pay out.'],
+  ['Bracket Lawyer', 60, 500_000, 'Finds a loophole in every rulebook.'],
+  ['Appearance Fees', 250, 5e7, 'Paid just for turning up.'],
+  ['Broadcast Revenue Share', 800, 5e9, 'A slice of every ad break.'],
+  ['Crowdfunded Prize Pools', 2_500, 5e11, 'The fans chip in. A lot.'],
+  ['Franchise Revenue', 7_000, 5e13, 'Guaranteed money, guaranteed drama.'],
+  ['Orbital Tax Loophole', 20_000, 5e15, "Prize money isn't taxed in low orbit."],
+  ['Multiversal Purse', 60_000, 5e18, 'Winnings from every timeline, deposited here.'],
+];
+PRIZE_LINE.forEach(([name, wins, cost, flavor], i) => {
+  add({
+    id: `prize_${i}`,
+    name,
+    group: 'team',
+    icon: 'trophy',
+    tier: i + 1,
+    cost,
+    effects: [{ kind: 'prizeMult', mult: 2 }],
+    flavor,
+    requirement: `Win ${wins.toLocaleString('en-US')} matches`,
+    unlock: (s) => s.stats.matchesWon >= wins,
+  });
+});
+
+const XP_LINE: [string, number, number, number, string][] = [
+  ['VOD Review Sessions', 25, 20_000, 1.5, 'Pause. Rewind. "Why did you peek there?"'],
+  ['Pro Coaching Clips', 300, 5e7, 1.5, 'Ten-minute lessons from people who hit Challenger once.'],
+  ['Replay Analysis AI', 2_000, 5e11, 2, 'It watched every match ever played. It has notes.'],
+  ['Hive-Mind Training', 10_000, 5e16, 2, 'What one player learns, all players know.'],
+];
+XP_LINE.forEach(([name, matches, cost, mult, flavor], i) => {
+  add({
+    id: `xp_${i}`,
+    name,
+    group: 'team',
+    icon: 'dumbbell',
+    tier: i * 2 + 1,
+    cost,
+    effects: [{ kind: 'xpMult', mult }],
+    flavor,
+    requirement: `Play ${matches.toLocaleString('en-US')} matches`,
+    unlock: (s) => matchesPlayed(s) >= matches,
+  });
+});
+
+const TEMPO_LINE: [string, number, number, number, string][] = [
+  ['Tight Match Schedule', 100, 2e6, 1.15, 'Less downtime, more game time.'],
+  ['Back-to-Back Series', 1_500, 2e10, 1.15, 'Finish one bracket, start the next.'],
+  ['Parallel Matches', 8_000, 2e14, 1.2, 'Playing two matches at once is technically allowed.'],
+];
+TEMPO_LINE.forEach(([name, matches, cost, mult, flavor], i) => {
+  add({
+    id: `tempo_${i}`,
+    name,
+    group: 'team',
+    icon: 'clock',
+    tier: i * 3 + 2,
+    cost,
+    effects: [{ kind: 'matchSpeed', mult }],
+    flavor,
+    requirement: `Play ${matches.toLocaleString('en-US')} matches`,
+    unlock: (s) => matchesPlayed(s) >= matches,
+  });
+});
+
+const ROSTER_LINE: { name: string; signed: number; cost: number; effects: Effect[]; flavor: string }[] = [
+  { name: 'Folding Chairs', signed: 2, cost: 2_000, effects: [{ kind: 'benchSlots', add: 1 }], flavor: 'The bench is literally a bench.' },
+  { name: 'Scouting Notebook', signed: 3, cost: 15_000, effects: [{ kind: 'scoutLuck', add: 0.1 }], flavor: 'Names, ranks and suspicious win rates.' },
+  { name: "Substitutes' Lounge", signed: 8, cost: 2e6, effects: [{ kind: 'benchSlots', add: 1 }], flavor: 'Beanbags, snacks and a view of the stage.' },
+  {
+    name: 'Talent Database',
+    signed: 15,
+    cost: 5e7,
+    effects: [
+      { kind: 'scoutLuck', add: 0.15 },
+      { kind: 'marketSize', add: 2 },
+    ],
+    flavor: 'Every ranked ladder, scraped nightly.',
+  },
+  { name: 'Academy Pipeline', signed: 25, cost: 2e10, effects: [{ kind: 'benchSlots', add: 1 }], flavor: "Today's academy kid is tomorrow's MVP." },
+  {
+    name: 'Global Scouting Network',
+    signed: 40,
+    cost: 5e11,
+    effects: [
+      { kind: 'scoutLuck', add: 0.25 },
+      { kind: 'marketSize', add: 2 },
+    ],
+    flavor: 'Scouts in every internet café on Earth.',
+  },
+];
+ROSTER_LINE.forEach((u, i) => {
+  add({
+    id: `roster_${i}`,
+    name: u.name,
+    group: 'roster',
+    icon: u.effects[0].kind === 'benchSlots' ? 'users' : 'search',
+    tier: i + 1,
+    cost: u.cost,
+    effects: u.effects,
+    flavor: u.flavor,
+    requirement: `Sign ${u.signed} players`,
+    unlock: (s) => s.stats.playersSigned >= u.signed,
+  });
+});
+
+const FANCAM_LINE: [string, number, number, number, string][] = [
+  ['Player Cams', 30, 200_000, 2, 'Fans love watching people panic in real time.'],
+  ['Personal Brand Coaching', 500, 2e9, 2, 'Lesson one: never read the replies.'],
+  ['Documentary Series', 3_000, 2e13, 3, 'Twelve episodes of dramatic slow motion.'],
+];
+FANCAM_LINE.forEach(([name, wins, cost, mult, flavor], i) => {
+  add({
+    id: `fancam_${i}`,
+    name,
+    group: 'roster',
+    icon: 'video',
+    tier: i * 3 + 3,
+    cost,
+    effects: [{ kind: 'playerFans', mult }],
+    flavor,
+    requirement: `Win ${wins.toLocaleString('en-US')} matches`,
+    unlock: (s) => s.stats.matchesWon >= wins,
+  });
+});
+
+const GEAR_LINE: [string, number, number, number, string][] = [
+  ['Bulk Hardware Deals', 20, 50_000, 0.9, 'Buy ten mice, get one mouse pad free.'],
+  ['Manufacturer Partnership', 120, 5e8, 0.85, 'Prototypes arrive before the press embargo lifts.'],
+  ['In-House Hardware Lab', 500, 5e13, 0.8, 'Why buy the best gear when you can invent it?'],
+];
+GEAR_LINE.forEach(([name, bought, cost, mult, flavor], i) => {
+  add({
+    id: `gearcost_${i}`,
+    name,
+    group: 'gear',
+    icon: 'cpu',
+    tier: i * 3 + 2,
+    cost,
+    effects: [{ kind: 'gearCostMult', mult }],
+    flavor,
+    requirement: `Buy ${bought} gear upgrades`,
+    unlock: (s) => s.stats.gearBought >= bought,
   });
 });
 

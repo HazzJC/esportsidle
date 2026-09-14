@@ -33,6 +33,26 @@
   const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
   const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
   const activeBuffs = $derived(s.buffs.filter((b) => b.endsAt > s.time));
+  const recent = $derived(
+    Object.values(s.teams)
+      .flatMap((t) => t.history.slice(0, 3).map((m) => ({ m, gameId: t.gameId })))
+      .sort((a, b) => b.m.time - a.m.time)
+      .slice(0, 3),
+  );
+
+  const incomeTip = (): TipContent => {
+    const { r } = game.view;
+    return {
+      title: 'Income per second',
+      icon: 'trending-up',
+      iconColor: 'var(--cyan)',
+      lines: [
+        `Operations: ${money(r.cps, 1)}/s`,
+        `Matches (average): ${money(r.matchCps, 1)}/s`,
+        ...(r.buffIncomeMult > 1 ? [{ text: `Buffs: ×${fmt(r.buffIncomeMult, 2)}`, tone: 'gold' as const }] : []),
+      ],
+    };
+  };
 
   function onClick(e: MouseEvent) {
     const result = game.click();
@@ -120,8 +140,8 @@
 <div class="clicker panel">
   <div class="head">
     <div class="cash num" use:tooltip={cashTip}>{money(s.cash)}</div>
-    <div class="cps num" class:buffed={r.buffIncomeMult > 1}>
-      {money(r.cps, 1)} <span>per second</span>
+    <div class="cps num" class:buffed={r.buffIncomeMult > 1} use:tooltip={incomeTip}>
+      {money(r.totalCps, 1)} <span>per second</span>
     </div>
     <div class="fans num" use:tooltip={fansTip}>
       <Icon name="heart" size={14} />
@@ -181,6 +201,18 @@
           <Icon name={b.icon} size={18} />
           <span class="buff-bar"><i style="width:{frac * 100}%"></i></span>
         </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if recent.length > 0}
+    <div class="recent">
+      {#each recent as { m, gameId } (`${gameId}-${m.time}`)}
+        <button class="match" class:win={m.win} onclick={() => (game.tab = 'teams', game.mobileView = 'center')}>
+          <span class="wl">{m.win ? 'W' : 'L'}</span>
+          <span class="vs">{m.score} vs {m.opponent}</span>
+          <span class="prize num">+{money(m.prize)}</span>
+        </button>
       {/each}
     </div>
   {/if}
@@ -387,8 +419,50 @@
     background: currentColor;
   }
   .footer {
-    margin-top: auto;
     font-size: 12px;
+  }
+  .recent {
+    margin-top: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .match {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: rgba(255, 77, 109, 0.06);
+    font-size: 12px;
+    text-align: left;
+  }
+  .match.win {
+    background: rgba(61, 255, 154, 0.06);
+  }
+  .wl {
+    font-weight: 800;
+    color: var(--red);
+  }
+  .match.win .wl {
+    color: var(--green);
+  }
+  .vs {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--muted);
+  }
+  .prize {
+    color: var(--gold);
+  }
+  .ring {
+    overflow: visible;
   }
   @keyframes float-up {
     from {
