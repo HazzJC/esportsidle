@@ -1,71 +1,79 @@
 <script lang="ts">
-  let cash = $state(0);
+  import { onMount } from 'svelte';
+  import { money } from './engine/format';
+  import Toasts from './ui/components/Toasts.svelte';
+  import Tooltip from './ui/components/Tooltip.svelte';
+  import WelcomeBack from './ui/components/WelcomeBack.svelte';
+  import { game } from './ui/game.svelte';
+  import CenterPanel from './ui/layout/CenterPanel.svelte';
+  import ClickerPanel from './ui/layout/ClickerPanel.svelte';
+  import MobileNav from './ui/layout/MobileNav.svelte';
+  import Store from './ui/layout/Store.svelte';
+  import TopBar from './ui/layout/TopBar.svelte';
+
+  onMount(() => {
+    game.start();
+    return () => game.stop();
+  });
+
+  const s = $derived(game.view.s);
+
+  $effect(() => {
+    document.title = `${money(s.cash)} · Esports Idle`;
+  });
 </script>
 
-<div class="shell">
-  <header class="top panel">
-    <span class="brand">ESPORTS<b>IDLE</b></span>
-    <span class="muted">Build your org from a garage to the Multiverse Finals.</span>
-  </header>
-  <main class="cols">
-    <section class="panel col left">
-      <button class="logo" onclick={() => (cash += 1)} aria-label="Grind">🎮</button>
-      <div class="cash num">${cash}</div>
-    </section>
-    <section class="panel col mid"><h2 class="section-title">Gaming House</h2></section>
-    <section class="panel col right"><h2 class="section-title">Store</h2></section>
-  </main>
+<div class="app" class:reduced-motion={s.settings.reducedMotion} data-view={game.mobileView}>
+  <TopBar />
+  <div class="columns">
+    <aside class="col col-left"><ClickerPanel /></aside>
+    <main class="col col-center"><CenterPanel /></main>
+    <aside class="col col-right"><Store /></aside>
+  </div>
+  <MobileNav />
+  <Toasts />
+  <Tooltip />
+  {#if game.offlineReport}<WelcomeBack />{/if}
 </div>
 
 <style>
-  .shell {
+  .app {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    padding: 10px;
-    gap: 10px;
+    gap: 8px;
+    padding: 8px;
   }
-  .top {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 8px 14px;
-  }
-  .brand {
-    font-family: var(--font-display);
-    font-weight: 900;
-    letter-spacing: 0.1em;
-  }
-  .brand b {
-    color: var(--cyan);
-  }
-  .cols {
+  .columns {
     flex: 1;
-    display: grid;
-    grid-template-columns: 340px 1fr 380px;
-    gap: 10px;
     min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(270px, 320px) minmax(0, 1fr) minmax(310px, 380px);
+    gap: 8px;
   }
   .col {
-    padding: 12px;
-    overflow: auto;
+    min-height: 0;
+    min-width: 0;
   }
-  .left {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+  @media (max-width: 1100px) {
+    .columns {
+      grid-template-columns: 270px minmax(0, 1fr) 320px;
+    }
   }
-  .logo {
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    border: 2px solid var(--cyan);
-    background: var(--panel-3);
-    font-size: 80px;
-  }
-  .cash {
-    font-family: var(--font-display);
-    font-size: 28px;
+  @media (max-width: 860px) {
+    .app {
+      padding-bottom: 72px;
+    }
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .col {
+      display: none;
+    }
+    .app[data-view='clicker'] .col-left,
+    .app[data-view='center'] .col-center,
+    .app[data-view='store'] .col-right {
+      display: block;
+    }
   }
 </style>

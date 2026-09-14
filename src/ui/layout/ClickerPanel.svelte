@@ -1,0 +1,452 @@
+<script lang="ts">
+  import { CROWD_BUFF_ID, HYPE_MAX } from '../../engine/clicker';
+  import { fmt, fmtTime, money } from '../../engine/format';
+  import Icon from '../components/Icon.svelte';
+  import OrgLogo from '../components/OrgLogo.svelte';
+  import { game } from '../game.svelte';
+  import { tooltip, type TipContent } from '../tooltip.svelte';
+
+  interface Floater {
+    id: number;
+    x: number;
+    y: number;
+    text: string;
+  }
+  interface Particle {
+    id: number;
+    x: number;
+    y: number;
+    dx: number;
+    dy: number;
+    hue: number;
+  }
+
+  let floaters = $state<Floater[]>([]);
+  let particles = $state<Particle[]>([]);
+  let stage: HTMLDivElement | undefined = $state();
+  let nextId = 0;
+
+  const v = $derived(game.view);
+  const s = $derived(v.s);
+  const r = $derived(v.r);
+
+  const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
+  const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
+  const activeBuffs = $derived(s.buffs.filter((b) => b.endsAt > s.time));
+
+  function onClick(e: MouseEvent) {
+    const result = game.click();
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const keyboard = e.detail === 0;
+    const x = keyboard ? rect.width / 2 : e.clientX - rect.left;
+    const y = keyboard ? rect.height / 2 : e.clientY - rect.top;
+
+    if (s.settings.floatingText) {
+      const id = nextId++;
+      floaters.push({ id, x: x + (Math.random() * 30 - 15), y, text: `+${money(result.gain, 1)}` });
+      if (floaters.length > 24) floaters.splice(0, floaters.length - 24);
+      setTimeout(() => {
+        floaters = floaters.filter((f) => f.id !== id);
+      }, 1000);
+    }
+    if (s.settings.particles && !s.settings.reducedMotion) {
+      const burst: Particle[] = [];
+      for (let i = 0; i < (result.crowd ? 24 : 5); i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * (result.crowd ? 140 : 70);
+        burst.push({
+          id: nextId++,
+          x,
+          y,
+          dx: Math.cos(angle) * dist,
+          dy: Math.sin(angle) * dist,
+          hue: Math.random() < 0.5 ? 188 : 312,
+        });
+      }
+      particles.push(...burst);
+      if (particles.length > 80) particles.splice(0, particles.length - 80);
+      const ids = new Set(burst.map((p) => p.id));
+      setTimeout(() => {
+        particles = particles.filter((p) => !ids.has(p.id));
+      }, 700);
+    }
+  }
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.repeat) e.preventDefault();
+  }
+
+  const cashTip = (): TipContent => {
+    const { s, r } = game.view;
+    return {
+      title: 'Cash',
+      icon: 'dollar-sign',
+      iconColor: 'var(--gold)',
+      lines: [
+        `Earning ${money(r.cps, 1)} per second.`,
+        { text: `${money(s.earnedRun)} earned this run.`, tone: 'muted' },
+        { text: `Clicks are worth ${money(r.click, 1)}.`, tone: 'muted' },
+      ],
+    };
+  };
+
+  const fansTip = (): TipContent => {
+    const { s, r, m } = game.view;
+    return {
+      title: 'Fans',
+      icon: 'heart',
+      iconColor: 'var(--magenta)',
+      lines: [
+        `${fmt(s.fans)} fans, gaining ${fmt(r.fansPerSec, 1)} per second.`,
+        { text: `Fame multiplies all income by ×${r.fameMult.toFixed(3)}.`, tone: 'good' },
+        { text: `Fame power: ${m.fameExp.toFixed(3)} (more fans and Fame upgrades raise this bonus).`, tone: 'muted' },
+      ],
+    };
+  };
+
+  const hypeTip = (): TipContent => ({
+    title: 'Hype Meter',
+    icon: 'megaphone',
+    iconColor: 'var(--magenta)',
+    lines: [
+      'Clicking your logo fills the hype meter.',
+      'When it is full, the crowd goes wild: income ×2 for 30 seconds.',
+      { text: 'Hype drains if you stop clicking.', tone: 'muted' },
+    ],
+  });
+</script>
+
+<div class="clicker panel">
+  <div class="head">
+    <div class="cash num" use:tooltip={cashTip}>{money(s.cash)}</div>
+    <div class="cps num" class:buffed={r.buffIncomeMult > 1}>
+      {money(r.cps, 1)} <span>per second</span>
+    </div>
+    <div class="fans num" use:tooltip={fansTip}>
+      <Icon name="heart" size={14} />
+      {fmt(s.fans)} fans
+      <span class="muted">+{fmt(r.fansPerSec, 1)}/s</span>
+    </div>
+  </div>
+
+  <div class="stage" bind:this={stage}>
+    <div class="spotlight" class:crowd={!!crowd}></div>
+    <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="track" cx="50" cy="50" r="47" pathLength="100" />
+      <circle
+        class="fill"
+        class:crowd={!!crowd}
+        cx="50"
+        cy="50"
+        r="47"
+        pathLength="100"
+        stroke-dasharray="{Math.max(0, Math.min(1, ringPct)) * 100} 100"
+      />
+    </svg>
+    <button class="logo" class:crowd={!!crowd} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} />
+    </button>
+    {#each particles as p (p.id)}
+      <i class="particle" style="left:{p.x}px; top:{p.y}px; --dx:{p.dx}px; --dy:{p.dy}px; --h:{p.hue}"></i>
+    {/each}
+    {#each floaters as f (f.id)}
+      <span class="floater num" style="left:{f.x}px; top:{f.y}px">{f.text}</span>
+    {/each}
+  </div>
+
+  <div class="hype" use:tooltip={hypeTip}>
+    {#if crowd}
+      <span class="crowd-text">CROWD GOES WILD · ×2 income · {fmtTime(crowd.endsAt - s.time)}</span>
+    {:else}
+      <span class="muted">Hype</span>
+      <span class="bar"><i style="width:{(s.hype / HYPE_MAX) * 100}%"></i></span>
+      <span class="num muted">{Math.floor(s.hype)}%</span>
+    {/if}
+  </div>
+
+  {#if activeBuffs.length > 0}
+    <div class="buffs">
+      {#each activeBuffs as b (b.id)}
+        {@const frac = (b.endsAt - s.time) / Math.max(0.001, b.endsAt - b.startedAt)}
+        <div
+          class="buff {b.tone}"
+          use:tooltip={() => ({
+            title: b.name,
+            icon: b.icon,
+            iconColor: b.tone === 'bad' ? 'var(--red)' : 'var(--green)',
+            lines: [b.desc, { text: `${fmtTime(b.endsAt - game.view.s.time)} remaining`, tone: 'muted' }],
+          })}
+        >
+          <Icon name={b.icon} size={18} />
+          <span class="buff-bar"><i style="width:{frac * 100}%"></i></span>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  <div class="footer muted">Click value <span class="num">{money(r.click, 1)}</span></div>
+</div>
+
+<style>
+  .clicker {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 12px;
+    gap: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  .head {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cash {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(22px, 2.3vw, 30px);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 18px rgba(34, 228, 255, 0.35);
+  }
+  .cps {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--cyan);
+  }
+  .cps span {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .cps.buffed {
+    color: var(--gold);
+  }
+  .fans {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--magenta);
+  }
+  .stage {
+    position: relative;
+    width: 250px;
+    height: 250px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    margin: 6px 0;
+  }
+  .spotlight {
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(34, 228, 255, 0.18), transparent 65%);
+    animation: breathe 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .spotlight.crowd {
+    background: radial-gradient(circle, rgba(255, 200, 61, 0.3), transparent 65%);
+    animation-duration: 0.8s;
+  }
+  .ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .ring circle {
+    fill: none;
+    stroke-width: 3;
+  }
+  .ring .track {
+    stroke: rgba(255, 255, 255, 0.07);
+  }
+  .ring .fill {
+    stroke: var(--magenta);
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 3px var(--magenta));
+    transition: stroke-dasharray 0.15s linear;
+  }
+  .ring .fill.crowd {
+    stroke: var(--gold);
+    filter: drop-shadow(0 0 4px var(--gold));
+  }
+  .logo {
+    position: relative;
+    border: none;
+    background: transparent;
+    padding: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    transition: transform 0.08s ease-out;
+    animation: bob 5s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .logo:hover {
+    transform: scale(1.03);
+  }
+  .logo:active {
+    transform: scale(0.94);
+  }
+  .logo:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 6px;
+  }
+  .logo.crowd {
+    animation: bob 0.6s ease-in-out infinite;
+  }
+  .floater {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 17px;
+    color: #fff;
+    text-shadow:
+      0 0 8px rgba(34, 228, 255, 0.9),
+      0 2px 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    white-space: nowrap;
+    animation: float-up 1s ease-out forwards;
+  }
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    background: hsl(var(--h) 100% 60%);
+    box-shadow: 0 0 6px hsl(var(--h) 100% 60%);
+    pointer-events: none;
+    animation: burst 0.7s ease-out forwards;
+  }
+  .hype {
+    width: 100%;
+    max-width: 260px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    min-height: 20px;
+  }
+  .hype .bar {
+    flex: 1;
+  }
+  .hype .bar i {
+    background: linear-gradient(90deg, var(--violet), var(--magenta));
+  }
+  .crowd-text {
+    width: 100%;
+    text-align: center;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+  .buffs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+  .buff {
+    width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 4px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--green);
+    background: rgba(61, 255, 154, 0.1);
+    color: var(--green);
+  }
+  .buff.bad {
+    border-color: var(--red);
+    background: rgba(255, 77, 109, 0.1);
+    color: var(--red);
+  }
+  .buff-bar {
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+  .buff-bar i {
+    display: block;
+    height: 100%;
+    background: currentColor;
+  }
+  .footer {
+    margin-top: auto;
+    font-size: 12px;
+  }
+  @keyframes float-up {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -140%);
+    }
+  }
+  @keyframes burst {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.3);
+    }
+  }
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.7;
+      transform: scale(0.96);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+  @keyframes bob {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -4px;
+    }
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.65;
+    }
+  }
+  @media (max-height: 700px) {
+    .stage {
+      width: 210px;
+      height: 210px;
+    }
+    .logo :global(svg) {
+      width: 160px;
+      height: 160px;
+    }
+  }
+</style>
