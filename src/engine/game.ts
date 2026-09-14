@@ -38,7 +38,7 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
   gainFans(s, rates.fansPerSec * dt * factor);
 
   updateTeams(s, dt, offline, factor, mods, rates.teams, rng);
-  updatePlayers(s, dt);
+  updatePlayers(s, dt, mods);
 
   if (!offline) {
     updateMarket(s, rng, mods);

@@ -1,5 +1,6 @@
 import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
+import { STAFF } from '../data/staff';
 import { refreshMarket } from './market';
 import { createFounder } from './players';
 import { createGameProgress } from './popularity';
@@ -8,7 +9,7 @@ import { addToTeam, createTeam } from './teams';
 import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 2;
-export const GAME_VERSION = '0.3.0';
+export const GAME_VERSION = '0.4.0';
 
 export function createSettings(): Settings {
   return {
@@ -54,6 +55,12 @@ export function createStats(): Stats {
     gearBought: 0,
     looksChanged: 0,
     trophiesTotal: 0,
+    staffHired: 0,
+    illnesses: 0,
+    injuries: 0,
+    burnouts: 0,
+    decorBought: 0,
+    mostUnavailable: 0,
   };
 }
 
@@ -67,6 +74,12 @@ export function createGames(): Record<string, GameProgress> {
   const games: Record<string, GameProgress> = {};
   for (const g of GAMES) games[g.id] = createGameProgress(g.index === 0, g.basePopularity);
   return games;
+}
+
+export function createStaff(): Record<string, number> {
+  const staff: Record<string, number> = {};
+  for (const def of STAFF) staff[def.id] = 0;
+  return staff;
 }
 
 /** A state with every static field filled in but no players or teams. Used as save defaults. */
@@ -102,6 +115,8 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     teams: {},
     players: {},
     market: { listings: [], nextRefresh: 0, rerolls: 0 },
+    staff: createStaff(),
+    decor: {},
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

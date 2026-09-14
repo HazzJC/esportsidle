@@ -1,5 +1,6 @@
 import type { Effect, GameState } from '../engine/types';
 import { OPERATIONS, getOp } from './operations';
+import { STAFF } from './staff';
 
 export type UpgradeGroup =
   | 'grind'
@@ -13,7 +14,8 @@ export type UpgradeGroup =
   | 'superfan'
   | 'team'
   | 'roster'
-  | 'gear';
+  | 'gear'
+  | 'staff';
 
 export interface UpgradeDef {
   id: string;
@@ -500,6 +502,50 @@ GEAR_LINE.forEach(([name, bought, cost, mult, flavor], i) => {
     flavor,
     requirement: `Buy ${bought} gear upgrades`,
     unlock: (s) => s.stats.gearBought >= bought,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Staff
+// ---------------------------------------------------------------------------
+const STAFF_TIER_NEED = [10, 50, 150];
+const STAFF_TIER_COST = [50, 5e4, 5e8];
+
+for (const staff of STAFF) {
+  staff.upgradeNames.forEach((name, i) => {
+    const need = STAFF_TIER_NEED[i];
+    add({
+      id: `staff_${staff.id}_${i}`,
+      name,
+      group: 'staff',
+      icon: staff.icon,
+      tier: i * 3 + 2,
+      cost: staff.baseCost * STAFF_TIER_COST[i],
+      effects: [{ kind: 'staffMult', staff: staff.id, mult: 2 }],
+      requirement: `Hire ${need} ${staff.plural}`,
+      unlock: (s) => (s.staff[staff.id] ?? 0) >= need,
+    });
+  });
+}
+
+const totalStaffHired = (s: GameState): number => STAFF.reduce((n, d) => n + (s.staff[d.id] ?? 0), 0);
+const HR_LINE: [string, number, number, number, string][] = [
+  ['HR Department', 25, 1e6, 0.9, 'Someone finally reads the job applications.'],
+  ['Recruitment Agency', 150, 1e10, 0.85, 'Headhunters with actual heads.'],
+  ['Employer of the Year', 600, 1e15, 0.8, 'Everyone wants to work for you. Some will even do it for less.'],
+];
+HR_LINE.forEach(([name, need, cost, mult, flavor], i) => {
+  add({
+    id: `hr_${i}`,
+    name,
+    group: 'staff',
+    icon: 'briefcase',
+    tier: i * 3 + 3,
+    cost,
+    effects: [{ kind: 'staffCostMult', mult }],
+    flavor,
+    requirement: `Employ ${need} staff`,
+    unlock: (s) => totalStaffHired(s) >= need,
   });
 });
 

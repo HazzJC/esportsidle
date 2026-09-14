@@ -292,14 +292,14 @@ export function playerXpMult(p: Player): number {
   return m;
 }
 
-export function moraleBase(p: Player): number {
-  let base = 65;
+export function moraleBase(p: Player, mods?: Pick<Mods, 'moraleBaseAdd'>): number {
+  let base = 65 + (mods?.moraleBaseAdd ?? 0);
   for (const t of traitsOf(p)) base += t.moraleBase ?? 0;
   return Math.max(10, Math.min(95, base));
 }
 
-export function moraleSwing(p: Player): number {
-  let m = 1;
+export function moraleSwing(p: Player, mods?: Pick<Mods, 'moraleSwingMult'>): number {
+  let m = mods?.moraleSwingMult ?? 1;
   for (const t of traitsOf(p)) m *= t.moraleSwingMult ?? 1;
   return m;
 }
@@ -310,13 +310,13 @@ export function energyDrainMult(p: Player): number {
   return m;
 }
 
-export function applyMorale(p: Player, delta: number): void {
-  p.morale = Math.max(0, Math.min(100, p.morale + delta * moraleSwing(p)));
+export function applyMorale(p: Player, delta: number, mods?: Pick<Mods, 'moraleSwingMult'>): void {
+  p.morale = Math.max(0, Math.min(100, p.morale + delta * moraleSwing(p, mods)));
 }
 
-export function drainEnergy(p: Player): void {
+export function drainEnergy(p: Player, mods?: Pick<Mods, 'energyDrainMult'>): void {
   const stamina = effectiveStat(p, 'stamina');
-  const drain = 5 * Math.max(0.35, 1.3 - stamina / 200) * energyDrainMult(p);
+  const drain = 5 * Math.max(0.35, 1.3 - stamina / 200) * energyDrainMult(p) * (mods?.energyDrainMult ?? 1);
   p.energy = Math.max(0, p.energy - drain);
 }
 

@@ -1,36 +1,30 @@
 import { OPERATIONS, getOp, type OperationDef } from '../data/operations';
 import { computeMods } from './economy';
+import { PRICE_GROWTH, geometricMax, geometricPrice } from './pricing';
 import type { GameState } from './types';
 
-export const PRICE_GROWTH = 1.15;
+export { PRICE_GROWTH };
 export const SELL_REFUND = 0.25;
 
 /** Price of buying `amount` units when `owned` are already owned. */
-export function bulkPrice(def: OperationDef, owned: number, amount: number, costMult = 1): number {
-  if (amount <= 0) return 0;
-  const first = def.baseCost * Math.pow(PRICE_GROWTH, owned);
-  return Math.ceil((first * (Math.pow(PRICE_GROWTH, amount) - 1)) / (PRICE_GROWTH - 1) * costMult);
+export function bulkPrice(def: Pick<OperationDef, 'baseCost'>, owned: number, amount: number, costMult = 1): number {
+  return geometricPrice(def.baseCost, owned, amount, costMult);
 }
 
-export function unitPrice(def: OperationDef, owned: number, costMult = 1): number {
-  return bulkPrice(def, owned, 1, costMult);
+export function unitPrice(def: Pick<OperationDef, 'baseCost'>, owned: number, costMult = 1): number {
+  return geometricPrice(def.baseCost, owned, 1, costMult);
 }
 
 /** Largest number of units purchasable with `cash`. */
-export function maxAffordable(def: OperationDef, owned: number, cash: number, costMult = 1): number {
-  const first = def.baseCost * Math.pow(PRICE_GROWTH, owned) * costMult;
-  if (cash < Math.ceil(first)) return 0;
-  let n = Math.floor(Math.log((cash * (PRICE_GROWTH - 1)) / first + 1) / Math.log(PRICE_GROWTH));
-  while (n > 0 && bulkPrice(def, owned, n, costMult) > cash) n--;
-  while (bulkPrice(def, owned, n + 1, costMult) <= cash) n++;
-  return n;
+export function maxAffordable(def: Pick<OperationDef, 'baseCost'>, owned: number, cash: number, costMult = 1): number {
+  return geometricMax(def.baseCost, owned, cash, costMult);
 }
 
 /** Cash refunded for selling `amount` of the `owned` units. */
-export function sellRefund(def: OperationDef, owned: number, amount: number, costMult = 1): number {
+export function sellRefund(def: Pick<OperationDef, 'baseCost'>, owned: number, amount: number, costMult = 1): number {
   const n = Math.min(amount, owned);
   if (n <= 0) return 0;
-  return Math.floor(bulkPrice(def, owned - n, n, costMult) * SELL_REFUND);
+  return Math.floor(geometricPrice(def.baseCost, owned - n, n, costMult) * SELL_REFUND);
 }
 
 /**

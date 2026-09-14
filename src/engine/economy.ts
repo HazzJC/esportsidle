@@ -4,6 +4,7 @@ import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
 import { buffTotals } from './buffs';
 import { passiveFans } from './players';
+import { applyStaffAndDecor } from './staff';
 import { evaluateTeam, teamPlayerIds } from './teams';
 import type { Effect, GameState, Mods, Rates, TeamEval } from './types';
 
@@ -41,6 +42,17 @@ export function emptyMods(): Mods {
     marketSize: 0,
     playerFansMult: 1,
     gearCostMult: 1,
+    opponentMult: 1,
+    energyRecoveryMult: 1,
+    energyDrainMult: 1,
+    sickMult: 1,
+    injuryMult: 1,
+    burnoutMult: 1,
+    recoveryMult: 1,
+    moraleBaseAdd: 0,
+    moraleSwingMult: 1,
+    staffMult: {},
+    staffCostMult: 1,
   };
 }
 
@@ -124,15 +136,23 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'gearCostMult':
       m.gearCostMult *= e.mult;
       break;
+    case 'staffMult':
+      m.staffMult[e.staff] = (m.staffMult[e.staff] ?? 1) * e.mult;
+      break;
+    case 'staffCostMult':
+      m.staffCostMult *= e.mult;
+      break;
   }
 }
 
+/** Upgrades first (they can boost staff), then staff and decor. */
 export function computeMods(s: GameState): Mods {
   const m = emptyMods();
   for (const id in s.upgrades) {
     const def = UPGRADE_MAP.get(id);
     if (def) for (const e of def.effects) applyEffect(m, e);
   }
+  applyStaffAndDecor(m, s);
   return m;
 }
 

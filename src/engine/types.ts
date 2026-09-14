@@ -59,7 +59,9 @@ export type Effect =
   | { kind: 'scoutLuck'; add: number }
   | { kind: 'marketSize'; add: number }
   | { kind: 'playerFans'; mult: number }
-  | { kind: 'gearCostMult'; mult: number };
+  | { kind: 'gearCostMult'; mult: number }
+  | { kind: 'staffMult'; staff: string; mult: number }
+  | { kind: 'staffCostMult'; mult: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -88,6 +90,18 @@ export interface Mods {
   marketSize: number;
   playerFansMult: number;
   gearCostMult: number;
+  opponentMult: number;
+  energyRecoveryMult: number;
+  energyDrainMult: number;
+  sickMult: number;
+  injuryMult: number;
+  burnoutMult: number;
+  /** Multiplies illness/injury durations. */
+  recoveryMult: number;
+  moraleBaseAdd: number;
+  moraleSwingMult: number;
+  staffMult: Record<string, number>;
+  staffCostMult: number;
 }
 
 export interface TeamEval {
@@ -284,6 +298,12 @@ export interface Stats {
   gearBought: number;
   looksChanged: number;
   trophiesTotal: number;
+  staffHired: number;
+  illnesses: number;
+  injuries: number;
+  burnouts: number;
+  decorBought: number;
+  mostUnavailable: number;
 }
 
 export interface GameState {
@@ -319,6 +339,8 @@ export interface GameState {
   teams: Record<string, TeamState>;
   players: Record<string, Player>;
   market: MarketState;
+  staff: Record<string, number>;
+  decor: Record<string, boolean>;
   nextId: number;
   popularityClock: number;
   stats: Stats;

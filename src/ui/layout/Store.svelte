@@ -23,6 +23,7 @@
     team: 'Team upgrade',
     roster: 'Roster upgrade',
     gear: 'Gear upgrade',
+    staff: 'Staff upgrade',
   };
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },

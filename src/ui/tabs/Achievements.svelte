@@ -16,6 +16,7 @@
     { id: 'hype', label: 'Hype' },
     { id: 'teams', label: 'Teams & Leagues' },
     { id: 'players', label: 'Players & Gear' },
+    { id: 'staff', label: 'Staff & House' },
     { id: 'misc', label: 'Miscellaneous' },
   ];
 

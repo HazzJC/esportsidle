@@ -1,6 +1,8 @@
 import { fmt } from '../engine/format';
 import type { GameState, Rates } from '../engine/types';
+import { DECOR, ROOMS } from './decor';
 import { OPERATIONS, OP_ACH_THRESHOLDS } from './operations';
+import { STAFF } from './staff';
 
 export type AchievementGroup =
   | 'earnings'
@@ -12,6 +14,7 @@ export type AchievementGroup =
   | 'hype'
   | 'teams'
   | 'players'
+  | 'staff'
   | 'misc';
 
 export interface AchievementDef {
@@ -428,6 +431,93 @@ add({
   shadow: true,
   check: (s) => s.stats.looksChanged >= 1,
 });
+
+// Staff & house --------------------------------------------------------------
+const staffTotal = (s: GameState): number => STAFF.reduce((n, d) => n + (s.staff[d.id] ?? 0), 0);
+const HIRES: [number, string][] = [
+  [1, 'First Hire'],
+  [25, 'Growing Staff'],
+  [100, 'Full Department'],
+  [500, 'Corporate Machine'],
+  [1_500, 'Mega Employer'],
+];
+for (const [n, name] of HIRES) {
+  add({
+    id: `staff_${n}`,
+    name,
+    desc: () => `Employ ${fmt(n)} staff in total.`,
+    icon: 'briefcase',
+    group: 'staff',
+    check: (s) => staffTotal(s) >= n,
+  });
+}
+const STAFF_SPECIALS: [string, number, string, string][] = [
+  ['coach', 50, 'Coaching Tree', 'clipboard-list'],
+  ['chef', 25, 'Well Fed', 'chef-hat'],
+  ['physio', 25, 'Injury Prevention', 'stethoscope'],
+  ['psych', 25, 'Zen Masters', 'brain-circuit'],
+  ['ai', 10, 'Skynet Scrims', 'bot'],
+];
+for (const [id, n, name, icon] of STAFF_SPECIALS) {
+  const def = STAFF.find((d) => d.id === id)!;
+  add({
+    id: `staff_${id}_${n}`,
+    name,
+    desc: () => `Employ ${n} ${def.plural}.`,
+    icon,
+    group: 'staff',
+    check: (s) => (s.staff[id] ?? 0) >= n,
+  });
+}
+add({
+  id: 'sick_day',
+  name: 'Sick Day',
+  desc: () => 'Have 3 players unavailable at the same time.',
+  icon: 'thermometer',
+  group: 'staff',
+  secret: true,
+  check: (s) => s.stats.mostUnavailable >= 3,
+});
+add({
+  id: 'walk_it_off',
+  name: 'Walk It Off',
+  desc: () => 'Have a player recover from an injury.',
+  icon: 'bandage',
+  group: 'staff',
+  check: (s) => s.stats.injuries >= 1 && !Object.values(s.players).some((p) => p.status.kind === 'injured' && p.status.until > s.time),
+});
+add({
+  id: 'decor_1',
+  name: 'Home Sweet Home',
+  desc: () => 'Buy your first piece of decor.',
+  icon: 'image',
+  group: 'staff',
+  check: (s) => s.stats.decorBought >= 1,
+});
+add({
+  id: 'decor_all',
+  name: 'Interior Designer',
+  desc: () => 'Buy every piece of decor.',
+  icon: 'sofa',
+  group: 'staff',
+  check: (s) => DECOR.every((d) => s.decor[d.id]),
+});
+const ROOM_ACHIEVEMENTS: [number, string][] = [
+  [1, 'Moving Up'],
+  [2, 'The Gaming House'],
+  [4, 'Campus Life'],
+  [5, 'Orbital Headquarters'],
+];
+for (const [level, name] of ROOM_ACHIEVEMENTS) {
+  add({
+    id: `room_${level}`,
+    name,
+    desc: () => `Move into the ${ROOMS[level].name}.`,
+    icon: 'house',
+    group: 'staff',
+    check: (s) => s.earnedRun >= ROOMS[level].threshold,
+  });
+}
 
 // Misc & shadow ----------------------------------------------------------------
 add({

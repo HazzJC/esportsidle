@@ -17,6 +17,7 @@ import {
 import { RIVAL_ORGS } from '../data/names';
 import { emit } from './bus';
 import { money } from './format';
+import { rollHealth } from './health';
 import {
   STAND_IN_RATING,
   applyMorale,
@@ -36,6 +37,8 @@ import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
 export const MAX_MATCHES_PER_TICK = 20;
+/** Win chance needed to challenge into a tier the team has never reached. */
+export const CHALLENGE_WIN_CHANCE = 0.75;
 
 export function createTeam(gameId: string): TeamState {
   const game = getGame(gameId);
@@ -204,7 +207,7 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const average = ratings.reduce((a, b) => a + b, 0) / Math.max(1, ratings.length);
   const chemistry = game.teamSize > 1 ? 1 + 0.2 * team.chemistry : 1;
   const rating = average * teamMult * chemistry * mods.teamRatingMult;
-  const opponent = opponentRating(team.tier);
+  const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
   const popularity = s.games[team.gameId]?.popularity ?? 1;
   const cut = available > 0 ? cutSum / available : 0;
@@ -297,14 +300,16 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   if (win) team.seasonWins++;
   if (game.teamSize > 1) team.chemistry = Math.min(1, team.chemistry + 0.01);
 
+  const hasBench = team.bench.length > 0;
   for (const id of team.lineup) {
     const p = id ? s.players[id] : undefined;
     if (!p || !isAvailable(p, s.time)) continue;
     p.matches++;
     if (win) p.wins++;
     grantXp(p, (win ? 15 : 10) * mods.xpMult * playerXpMult(p), rng);
-    applyMorale(p, win ? 3 : -4);
-    drainEnergy(p);
+    applyMorale(p, win ? 3 : -4, mods);
+    drainEnergy(p, mods);
+    rollHealth(s, p, mods, rng, hasBench);
   }
 
   if (team.seasonPlayed >= SEASON_LENGTH) endSeason(s, team, ev);
@@ -343,9 +348,6 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval): void {
   team.seasonWins = 0;
 }
 
-/** Win chance needed to challenge into a tier the team has never reached. */
-export const CHALLENGE_WIN_CHANCE = 0.75;
-
 /**
  * Manually move a team down, back up to a tier it already reached, or one tier higher when it is
  * dominating its current tier. Resets the current season.
@@ -378,15 +380,15 @@ export function updateTeams(s: GameState, dt: number, offline: boolean, factor: 
     }
     if (!ev.active) {
       team.progress = 0;
-      if (team.bench.length > 0 && autoSubstitute(s, team)) team.progress = 0;
+      if (team.bench.length > 0) autoSubstitute(s, team);
       continue;
     }
     team.progress += dt;
     let played = 0;
     while (team.progress >= ev.interval && played < MAX_MATCHES_PER_TICK) {
       team.progress -= ev.interval;
-      playMatch(s, team, ev, mods, rng);
       autoSubstitute(s, team);
+      playMatch(s, team, ev, mods, rng);
       played++;
     }
     if (played >= MAX_MATCHES_PER_TICK) team.progress = 0;
@@ -394,20 +396,27 @@ export function updateTeams(s: GameState, dt: number, offline: boolean, factor: 
 }
 
 /** Energy recovery, morale drift and recovery from illness. */
-export function updatePlayers(s: GameState, dt: number): void {
+export function updatePlayers(s: GameState, dt: number, mods: Mods): void {
   const starters = new Set<string>();
   for (const team of Object.values(s.teams)) for (const id of team.lineup) if (id) starters.add(id);
+  let unavailable = 0;
   for (const p of Object.values(s.players)) {
     const resting = !starters.has(p.id);
     // Recovery scales with missing energy, so starters settle at an equilibrium instead of burning out.
-    const rate = resting ? 0.04 : 0.01;
+    const rate = (resting ? 0.04 : 0.01) * mods.energyRecoveryMult;
     p.energy = Math.min(100, p.energy + (100 - p.energy) * Math.min(1, rate * dt));
-    const base = moraleBase(p);
+    const base = moraleBase(p, mods);
     p.morale += (base - p.morale) * Math.min(1, 0.01 * dt);
-    if (p.status.kind !== 'healthy' && p.status.until <= s.time) {
-      p.status = { kind: 'healthy', until: 0, reason: '' };
+    if (p.status.kind !== 'healthy') {
+      if (p.status.until <= s.time) {
+        p.status = { kind: 'healthy', until: 0, reason: '' };
+        emit({ type: 'toast', title: `${p.tag} is back`, body: 'Recovered and ready to compete.', icon: 'heart-pulse', tone: 'good' });
+      } else {
+        unavailable++;
+      }
     }
   }
+  if (unavailable > s.stats.mostUnavailable) s.stats.mostUnavailable = unavailable;
 }
 
 // ---------------------------------------------------------------------------

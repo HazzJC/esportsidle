@@ -1,4 +1,5 @@
 import { OP_MAP } from '../data/operations';
+import { STAFF_MAP } from '../data/staff';
 import { fmt } from './format';
 import type { Effect } from './types';
 
@@ -75,5 +76,11 @@ export function describeEffect(e: Effect): string {
       return `Players attract ${pct(e.mult - 1)} more fans.`;
     case 'gearCostMult':
       return `Gear is ${pct(1 - e.mult)} cheaper.`;
+    case 'staffMult': {
+      const plural = STAFF_MAP.get(e.staff)?.plural ?? e.staff;
+      return e.mult === 2 ? `${plural} are twice as effective.` : `${plural} are ×${fmt(e.mult, 2)} as effective.`;
+    }
+    case 'staffCostMult':
+      return `Hiring staff is ${pct(1 - e.mult)} cheaper.`;
   }
 }

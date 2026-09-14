@@ -7,14 +7,18 @@
   import Market from '../tabs/Market.svelte';
   import Options from '../tabs/Options.svelte';
   import Roster from '../tabs/Roster.svelte';
+  import House from '../tabs/House.svelte';
+  import Staff from '../tabs/Staff.svelte';
   import Stats from '../tabs/Stats.svelte';
   import Teams from '../tabs/Teams.svelte';
 
   const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'hq', label: 'HQ', icon: 'house' },
+    { id: 'hq', label: 'HQ', icon: 'building' },
+    { id: 'house', label: 'House', icon: 'house' },
     { id: 'teams', label: 'Teams', icon: 'swords' },
     { id: 'roster', label: 'Roster', icon: 'users' },
     { id: 'market', label: 'Market', icon: 'user-plus' },
+    { id: 'staff', label: 'Staff', icon: 'briefcase' },
     { id: 'achievements', label: 'Trophies', icon: 'trophy' },
     { id: 'stats', label: 'Stats', icon: 'chart-column' },
     { id: 'options', label: 'Options', icon: 'settings' },
@@ -33,6 +37,10 @@
   <div class="body">
     {#if game.tab === 'hq'}
       <HQ />
+    {:else if game.tab === 'house'}
+      <House />
+    {:else if game.tab === 'staff'}
+      <Staff />
     {:else if game.tab === 'teams'}
       <Teams />
     {:else if game.tab === 'roster'}

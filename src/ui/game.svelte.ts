@@ -9,7 +9,9 @@ import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
 import { refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing } from '../engine/market';
 import { buyOperation, sellOperation } from '../engine/operations';
+import { DECOR_MAP } from '../data/decor';
 import { buyGear } from '../engine/players';
+import { buyDecor, hireStaff } from '../engine/staff';
 import { Rng } from '../engine/rng';
 import { assignSlot, benchPlayer, changeTier, unlockGame } from '../engine/teams';
 import type { Appearance } from '../engine/types';
@@ -18,7 +20,7 @@ import { createNewGame } from '../engine/state';
 import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
 
-export type TabId = 'hq' | 'teams' | 'roster' | 'market' | 'achievements' | 'stats' | 'options';
+export type TabId = 'hq' | 'house' | 'teams' | 'roster' | 'market' | 'staff' | 'achievements' | 'stats' | 'options';
 export type MobileView = 'clicker' | 'center' | 'store';
 
 export interface Toast {
@@ -394,6 +396,25 @@ class GameStore {
     if (!team) return;
     team[key] = value;
     this.refresh();
+  }
+
+  hireStaff(id: string, amount: number): number {
+    const n = hireStaff(this.state, id, amount, computeMods(this.state).staffCostMult);
+    if (n > 0) {
+      refreshUpgradeUnlocks(this.state);
+      this.refresh();
+    }
+    return n;
+  }
+
+  buyDecor(id: string): boolean {
+    const ok = buyDecor(this.state, id);
+    if (ok) {
+      const def = DECOR_MAP.get(id);
+      this.toast({ title: `${def?.name ?? 'Decor'} installed`, body: 'The house is looking better already.', icon: def?.icon ?? 'house', tone: 'good' }, 2500);
+      this.refresh();
+    }
+    return ok;
   }
 
   updateLook(playerId: string, patch: Partial<Appearance>): void {
