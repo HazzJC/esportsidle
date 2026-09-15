@@ -52,6 +52,12 @@ export function applyStat(m: Mods, stat: StaffStat, amount: number): void {
     case 'matchSpeed':
       m.matchSpeed *= 1 + amount;
       break;
+    case 'merch':
+      m.merchMult *= 1 + amount;
+      break;
+    case 'sponsor':
+      m.sponsorIncomeMult *= 1 + amount;
+      break;
   }
 }
 

@@ -1,0 +1,391 @@
+<script lang="ts">
+  import { PRODUCTS, TREND_MAP } from '../../data/merch';
+  import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
+  import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
+  import { MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, optimalPrice } from '../../engine/merch';
+  import type { Design } from '../../engine/types';
+  import DesignImage from '../components/DesignImage.svelte';
+  import Icon from '../components/Icon.svelte';
+  import Modal from '../components/Modal.svelte';
+  import PixelEditor from '../components/PixelEditor.svelte';
+  import { game } from '../game.svelte';
+  import { tooltip, type TipContent } from '../tooltip.svelte';
+
+  let editing = $state<{ id: string | null } | null>(null);
+  let confirmDelete = $state<string | null>(null);
+
+  const v = $derived(game.view);
+  const s = $derived(v.s);
+  const designs = $derived(Object.values(s.designs).sort((a, b) => b.createdAt - a.createdAt));
+  const full = $derived(designs.length >= MAX_DESIGNS);
+  const trend = $derived(TREND_MAP.get(s.merch.trend));
+  const merchOpen = $derived(isMerchUnlocked(s));
+  const editingDesign = $derived(editing?.id ? (s.designs[editing.id] ?? null) : null);
+
+  function save(draft: DesignDraft) {
+    if (game.saveDesign(editing?.id ?? null, draft)) editing = null;
+  }
+
+  function usage(id: string): string[] {
+    const out: string[] = [];
+    if (s.org.logo === id) out.push('Logo');
+    if (s.org.jersey === id) out.push('Jersey');
+    for (const p of PRODUCTS) if (s.merch.lines[p.id]?.designId === id) out.push(p.name);
+    return out;
+  }
+
+  function appealTip(d: Design): TipContent {
+    const a = analyzeDesign(d, game.view.s.merch.trend);
+    return {
+      title: `${Math.round(a.total * 100)}% merch appeal`,
+      subtitle: d.handmade ? 'Hand-drawn (+15%)' : 'Auto-generated',
+      icon: 'palette',
+      iconColor: 'var(--gold)',
+      lines: [
+        `Colours ${fmtPct(a.colors)} · Coverage ${fmtPct(a.coverage)} · Symmetry ${fmtPct(a.symmetry)}`,
+        `Contrast ${fmtPct(a.contrast)} · Trend match ${fmtPct(a.trend)}`,
+        ...a.hints.map((h) => ({ text: h, tone: 'cyan' as const })),
+      ],
+    };
+  }
+</script>
+
+<div class="studio">
+  <header class="head">
+    <div>
+      <h2 class="section-title">Design Studio</h2>
+      <p class="muted small">Draw pixel-art designs for your logo, team jerseys and merch. Good designs sell more merch.</p>
+    </div>
+    {#if merchOpen && trend}
+      <div class="trend" use:tooltip={() => ({ title: `Trend: ${trend.name}`, icon: trend.icon, lines: [trend.desc, 'Designs that match the trend sell 25% more and fans are less fussy about price.'] })}>
+        <Icon name={trend.icon} size={18} />
+        <span>Trend: <b>{trend.name}</b></span>
+        <span class="dim small num">{fmtTime(s.merch.trendEndsAt - s.time)} left</span>
+      </div>
+    {/if}
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h3 class="section-title">Your designs <span class="dim">{designs.length}/{MAX_DESIGNS}</span></h3>
+      <div class="row">
+        <button class="btn small primary" disabled={full} onclick={() => (editing = { id: null })}><Icon name="pencil" size={13} /> New design</button>
+        <button class="btn small" disabled={full} onclick={() => game.generateDesign()}><Icon name="wand-sparkles" size={13} /> Auto-generate</button>
+      </div>
+    </div>
+    {#if designs.length === 0}
+      <div class="empty">
+        <Icon name="palette" size={40} />
+        <p class="muted">No designs yet. Draw a logo for {s.org.name}. It will replace the initials on your clicker shield and appear on every jersey.</p>
+      </div>
+    {:else}
+      <div class="designs">
+        {#each designs as d (d.id)}
+          {@const a = analyzeDesign(d, s.merch.trend)}
+          {@const uses = usage(d.id)}
+          <div class="design">
+            <button class="thumb" onclick={() => (editing = { id: d.id })} title="Edit {d.name}">
+              <DesignImage design={d} size={92} alt={d.name} />
+            </button>
+            <div class="dname">{d.name}</div>
+            <div class="dmeta">
+              <span class="appeal num" use:tooltip={() => appealTip(d)}>{Math.round(a.total * 100)}% appeal</span>
+              {#if !d.handmade}<span class="dim">auto</span>{/if}
+            </div>
+            {#if uses.length > 0}<div class="uses">{uses.join(' · ')}</div>{/if}
+            <div class="dactions">
+              <button class="btn small" class:primary={s.org.logo === d.id} onclick={() => game.setLogo(s.org.logo === d.id ? null : d.id)}>Logo</button>
+              <button class="btn small" class:primary={s.org.jersey === d.id} onclick={() => game.setJersey(s.org.jersey === d.id ? null : d.id)}>Jersey</button>
+              {#if confirmDelete === d.id}
+                <button class="btn small danger" onclick={() => (game.deleteDesign(d.id), (confirmDelete = null))}>Delete?</button>
+              {:else}
+                <button class="btn small" onclick={() => (confirmDelete = d.id)} aria-label="Delete {d.name}"><Icon name="trash" size={13} /></button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
+
+  <section>
+    <h3 class="section-title">Merch store</h3>
+    {#if !merchOpen}
+      <div class="locked">
+        <Icon name="lock" size={22} />
+        <div>
+          <b>Merch unlocks at {fmt(MERCH_UNLOCK_FANS)} fans</b>
+          <span class="bar"><i style="width:{Math.min(100, (s.fansRun / MERCH_UNLOCK_FANS) * 100)}%"></i></span>
+        </div>
+      </div>
+    {:else}
+      <div class="products">
+        {#each PRODUCTS as p (p.id)}
+          {#if s.merch.unlocked[p.id] && s.merch.lines[p.id]}
+            {@const line = s.merch.lines[p.id]}
+            {@const rate = v.r.merchLines[p.id]}
+            {@const d = line.designId ? s.designs[line.designId] : undefined}
+            <div class="product" class:live={!!rate}>
+              <div class="phead">
+                <Icon name={p.icon} size={16} />
+                <b>{p.name}</b>
+                {#if rate?.trending}<span class="chip trending">Trending</span>{/if}
+                <span class="pcps num">{money(rate?.cps ?? 0, 1)}/s</span>
+              </div>
+              <div class="pbody">
+                <DesignImage design={d} size={64} />
+                <div class="controls">
+                  <select value={line.designId ?? ''} onchange={(e) => game.setLineDesign(p.id, e.currentTarget.value || null)} aria-label="{p.name} design">
+                    <option value="">No design (not selling)</option>
+                    {#each designs as dd (dd.id)}
+                      <option value={dd.id}>{dd.name} · {Math.round(analyzeDesign(dd, s.merch.trend).total * 100)}%</option>
+                    {/each}
+                  </select>
+                  <label class="price">
+                    <span class="small">Price {money(p.basePrice * line.price, 2)} <span class="dim">(×{line.price.toFixed(2)})</span></span>
+                    <input
+                      type="range"
+                      min={PRICE_MIN}
+                      max={PRICE_MAX}
+                      step="0.05"
+                      value={line.price}
+                      oninput={(e) => game.setLinePrice(p.id, Number(e.currentTarget.value))}
+                    />
+                  </label>
+                  <span class="dim small">Sweet spot ≈ ×{optimalPrice(rate?.trending ?? false).toFixed(2)}</span>
+                </div>
+              </div>
+              {#if rate}
+                <div class="pstats small">
+                  <span use:tooltip={() => ({ title: 'Appeal', lines: ['How much fans like the design (squared in sales).'] })}>Appeal <b>{fmtPct(rate.appeal)}</b></span>
+                  <span use:tooltip={() => ({ title: 'Freshness', lines: ['New designs sell best. Freshness fades over time; swap designs to relaunch.'] })}>Fresh <b>{fmtPct(rate.novelty)}</b></span>
+                  <span use:tooltip={() => ({ title: 'Price efficiency', lines: ['Profit compared with the ideal price.'] })}>Price <b>{fmtPct(rate.priceFactor)}</b></span>
+                  <span>Sold <b class="num">{fmt(line.sold)}</b></span>
+                </div>
+              {/if}
+            </div>
+          {:else}
+            {@const canUnlock = s.fansRun >= p.unlockFans}
+            <div class="product locked-product">
+              <div class="phead"><Icon name={canUnlock ? p.icon : 'lock'} size={16} /> <b>{canUnlock ? p.name : '???'}</b></div>
+              <p class="muted small">{canUnlock ? p.desc : `Unlocks at ${fmt(p.unlockFans)} fans.`}</p>
+              {#if canUnlock}
+                <button class="btn small gold" disabled={s.cash < p.unlockCost} onclick={() => game.unlockProduct(p.id)}>
+                  Launch · {money(p.unlockCost)}
+                </button>
+              {/if}
+            </div>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+  </section>
+</div>
+
+{#if editing}
+  <Modal title={editing.id ? 'Edit design' : 'New design'} onclose={() => (editing = null)} width={1000}>
+    {#key editing.id ?? 'new'}
+      <PixelEditor initial={editingDesign} trend={s.merch.trend} onsave={save} oncancel={() => (editing = null)} />
+    {/key}
+  </Modal>
+{/if}
+
+<style>
+  .studio {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .small {
+    font-size: 12px;
+    margin: 0;
+  }
+  .trend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 43, 214, 0.45);
+    background: rgba(255, 43, 214, 0.1);
+    color: var(--magenta);
+  }
+  .trend b {
+    color: var(--text);
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .section-head .section-title {
+    margin: 0;
+  }
+  .row {
+    display: flex;
+    gap: 6px;
+  }
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: 24px;
+    color: var(--dim);
+  }
+  .empty p {
+    max-width: 420px;
+    margin: 0;
+  }
+  .designs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .design {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .thumb {
+    padding: 0;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: transparent;
+    overflow: hidden;
+  }
+  .thumb:hover {
+    border-color: var(--cyan);
+  }
+  .dname {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dmeta {
+    display: flex;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .appeal {
+    color: var(--gold);
+  }
+  .uses {
+    font-size: 10.5px;
+    color: var(--cyan);
+    text-align: center;
+  }
+  .dactions {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .locked {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--line-2);
+    color: var(--muted);
+  }
+  .locked div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .products {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 8px;
+  }
+  .product {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .product.live {
+    border-color: rgba(61, 255, 154, 0.35);
+  }
+  .locked-product {
+    border-style: dashed;
+  }
+  .phead {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+  }
+  .pcps {
+    margin-left: auto;
+    color: var(--green);
+    font-weight: 700;
+  }
+  .trending {
+    color: var(--magenta);
+    border-color: var(--magenta);
+  }
+  .pbody {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  select {
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line-2);
+    background: var(--panel);
+    font-size: 12.5px;
+  }
+  .price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .price input {
+    width: 100%;
+    accent-color: var(--cyan);
+  }
+  .pstats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    color: var(--muted);
+  }
+  .pstats b {
+    color: var(--text);
+  }
+</style>

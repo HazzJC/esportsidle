@@ -5,7 +5,9 @@ import { addBuff } from './buffs';
 import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
 import { inflict } from './health';
+import { TREND_MAP } from '../data/merch';
 import { refreshMarket } from './market';
+import { isMerchUnlocked, rotateTrend } from './merch';
 import { addModifier, expireModifiers } from './modifiers';
 import { applyMorale, isAvailable, sellValue } from './players';
 import { shockPopularity } from './popularity';
@@ -392,6 +394,28 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     },
   },
 ];
+
+WORLD_EVENTS.push(
+  {
+    id: 'trend_shift',
+    category: 'market',
+    weight: (s) => (isMerchUnlocked(s) ? 2 : 0),
+    fire: (s, ctx) => {
+      rotateTrend(s, ctx.rng, false);
+      const trend = TREND_MAP.get(s.merch.trend);
+      logEvent(s, { title: `Fashion shock: ${trend?.name} is in`, body: trend?.desc ?? '', icon: trend?.icon ?? 'shirt', tone: 'info' });
+    },
+  },
+  {
+    id: 'sponsor_boom',
+    category: 'market',
+    weight: (s) => (s.sponsors.active.length > 0 ? 2 : 0),
+    fire: (s) => {
+      addModifier(s, { id: 'sponsor_boom', kind: 'sponsor', mult: 1.5, duration: 300, name: 'Advertising boom', desc: 'Sponsor income ×1.5', icon: 'handshake', tone: 'good' });
+      logEvent(s, { title: 'Advertising boom', body: `Brands are throwing money around. Sponsor income ×1.5 for ${fmtTime(300)}.`, icon: 'handshake', tone: 'good' });
+    },
+  },
+);
 
 export const WORLD_EVENT_MAP: Map<string, WorldEventDef> = new Map(WORLD_EVENTS.map((e) => [e.id, e]));
 

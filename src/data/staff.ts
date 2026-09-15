@@ -16,7 +16,9 @@ export type StaffStat =
   | 'scoutLuck'
   | 'fans'
   | 'playerFans'
-  | 'matchSpeed';
+  | 'matchSpeed'
+  | 'merch'
+  | 'sponsor';
 
 export interface StatAmount {
   stat: StaffStat;
@@ -186,6 +188,32 @@ const RAW: RawStaff[] = [
     unlock: (s) => games(s) >= 4 && matches(s) >= 3_000,
     upgradeNames: ['Neural Coaching Models', 'Self-Play Engines', 'Superhuman Training Data'],
   },
+  {
+    id: 'designer',
+    name: 'Merch Designer',
+    plural: 'Merch Designers',
+    icon: 'palette',
+    baseCost: 50_000,
+    desc: 'Turns your doodles into bestsellers. Boosts merch sales.',
+    flavor: 'Owns 40 black hoodies and has opinions about kerning.',
+    effects: [{ stat: 'merch', amount: 0.05 }],
+    requirement: 'Unlock a merch product',
+    unlock: (s) => Object.keys(s.merch.unlocked).length > 0,
+    upgradeNames: ['Screen-Printing Workshop', 'Design Collective', 'Fashion Week Runway'],
+  },
+  {
+    id: 'agent',
+    name: 'Talent Agent',
+    plural: 'Talent Agents',
+    icon: 'handshake',
+    baseCost: 150_000,
+    desc: 'Negotiates better sponsor deals. Boosts sponsor income.',
+    flavor: '"My client will wear the hat, but only for 20% more."',
+    effects: [{ stat: 'sponsor', amount: 0.03 }],
+    requirement: 'Sign a sponsor',
+    unlock: (s) => s.stats.sponsorsSigned >= 1,
+    upgradeNames: ['Contract Templates', 'Hardball Negotiators', 'Legendary Super-Agent'],
+  },
 ];
 
 export const STAFF: StaffDef[] = RAW.map((d, index) => ({ ...d, index }));
@@ -207,6 +235,8 @@ export const STAT_DESCRIPTIONS: Record<StaffStat, (amount: number) => string> = 
   fans: (a) => `+${pct(a)} fans`,
   playerFans: (a) => `+${pct(a)} player fans`,
   matchSpeed: (a) => `+${pct(a)} match speed`,
+  merch: (a) => `+${pct(a)} merch sales`,
+  sponsor: (a) => `+${pct(a)} sponsor income`,
 };
 
 function pct(v: number): string {

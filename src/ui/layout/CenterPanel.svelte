@@ -8,7 +8,9 @@
   import Options from '../tabs/Options.svelte';
   import Roster from '../tabs/Roster.svelte';
   import House from '../tabs/House.svelte';
+  import Sponsors from '../tabs/Sponsors.svelte';
   import Staff from '../tabs/Staff.svelte';
+  import Studio from '../tabs/Studio.svelte';
   import Stats from '../tabs/Stats.svelte';
   import Teams from '../tabs/Teams.svelte';
 
@@ -19,6 +21,8 @@
     { id: 'roster', label: 'Roster', icon: 'users' },
     { id: 'market', label: 'Market', icon: 'user-plus' },
     { id: 'staff', label: 'Staff', icon: 'briefcase' },
+    { id: 'studio', label: 'Studio', icon: 'palette' },
+    { id: 'sponsors', label: 'Sponsors', icon: 'handshake' },
     { id: 'achievements', label: 'Trophies', icon: 'trophy' },
     { id: 'stats', label: 'Stats', icon: 'chart-column' },
     { id: 'options', label: 'Options', icon: 'settings' },
@@ -41,6 +45,10 @@
       <House />
     {:else if game.tab === 'staff'}
       <Staff />
+    {:else if game.tab === 'studio'}
+      <Studio />
+    {:else if game.tab === 'sponsors'}
+      <Sponsors />
     {:else if game.tab === 'teams'}
       <Teams />
     {:else if game.tab === 'roster'}

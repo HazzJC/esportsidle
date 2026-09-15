@@ -18,6 +18,7 @@
     { id: 'players', label: 'Players & Gear' },
     { id: 'staff', label: 'Staff & House' },
     { id: 'events', label: 'Events & Tournaments' },
+    { id: 'business', label: 'Sponsors & Merch' },
     { id: 'misc', label: 'Miscellaneous' },
   ];
 

@@ -1,5 +1,6 @@
 import LZString from 'lz-string';
 import { GAMES } from '../data/games';
+import { sanitizeDesign } from './designs';
 import { createFounder } from './players';
 import { Rng } from './rng';
 import { SAVE_VERSION, createBaseState, setupNewRun } from './state';
@@ -84,6 +85,11 @@ export function repairState(s: GameState): void {
     setupNewRun(s);
     return;
   }
+  for (const [id, design] of Object.entries(s.designs)) {
+    s.designs[id] = sanitizeDesign({ ...design, id });
+  }
+  if (s.org.logo && !s.designs[s.org.logo]) s.org.logo = null;
+  if (s.org.jersey && !s.designs[s.org.jersey]) s.org.jersey = null;
   const template = createFounder(new Rng({ rng: 1 }), 'Template');
   for (const [id, p] of Object.entries(s.players)) {
     s.players[id] = mergeDefaults(template, p) as GameState['players'][string];

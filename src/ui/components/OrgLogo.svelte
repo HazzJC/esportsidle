@@ -4,7 +4,8 @@
     primary = '#22e4ff',
     secondary = '#ff2bd6',
     size = 160,
-  }: { name: string; primary?: string; secondary?: string; size?: number } = $props();
+    logoUrl,
+  }: { name: string; primary?: string; secondary?: string; size?: number; logoUrl?: string } = $props();
 
   const uid = $props.id();
 
@@ -34,6 +35,9 @@
       <feGaussianBlur stdDeviation="6" result="b" />
       <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
     </filter>
+    <clipPath id="{uid}-clip">
+      <path d="M100 26 L160 48 V96 C160 132 136 158 100 174 C64 158 40 132 40 96 V48 Z" />
+    </clipPath>
   </defs>
   <path
     d="M100 12 L172 38 V96 C172 140 142 172 100 190 C58 172 28 140 28 96 V38 Z"
@@ -41,16 +45,20 @@
     filter="url(#{uid}-glow)"
   />
   <path d="M100 26 L160 48 V96 C160 132 136 158 100 174 C64 158 40 132 40 96 V48 Z" fill="url(#{uid}-inner)" />
-  <path d="M52 62 L100 44 L148 62" stroke="url(#{uid}-fill)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7" />
-  <text
-    x="100"
-    y="118"
-    text-anchor="middle"
-    font-family="Orbitron, Rajdhani, sans-serif"
-    font-weight="900"
-    font-size={initials.length > 2 ? 40 : 52}
-    fill="url(#{uid}-fill)"
-    letter-spacing="2">{initials}</text
-  >
-  <path d="M70 142 H130" stroke="url(#{uid}-fill)" stroke-width="4" stroke-linecap="round" opacity="0.6" />
+  {#if logoUrl}
+    <image href={logoUrl} x="46" y="46" width="108" height="108" clip-path="url(#{uid}-clip)" style="image-rendering: pixelated" />
+  {:else}
+    <path d="M52 62 L100 44 L148 62" stroke="url(#{uid}-fill)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7" />
+    <text
+      x="100"
+      y="118"
+      text-anchor="middle"
+      font-family="Orbitron, Rajdhani, sans-serif"
+      font-weight="900"
+      font-size={initials.length > 2 ? 40 : 52}
+      fill="url(#{uid}-fill)"
+      letter-spacing="2">{initials}</text
+    >
+    <path d="M70 142 H130" stroke="url(#{uid}-fill)" stroke-width="4" stroke-linecap="round" opacity="0.6" />
+  {/if}
 </svg>

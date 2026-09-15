@@ -98,5 +98,13 @@ export function describeEffect(e: Effect): string {
       return `Drama +${e.add}: more Hype Drops become risky Drama Drops.`;
     case 'dramaShare':
       return `Drama Drops are ${pct(1 - e.mult)} less common.`;
+    case 'sponsorSlots':
+      return `+${e.add} sponsor slot${e.add === 1 ? '' : 's'}.`;
+    case 'sponsorIncome':
+      return `Sponsor income bonuses ×${fmt(e.mult, 2)}.`;
+    case 'merchMult':
+      return `Merch sales ×${fmt(e.mult, 2)}.`;
+    case 'noveltyMult':
+      return e.mult === 2 ? 'Merch designs stay fresh twice as long.' : `Merch designs stay fresh ${pct(e.mult - 1)} longer.`;
   }
 }

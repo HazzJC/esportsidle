@@ -1,6 +1,7 @@
 import { fmt } from '../engine/format';
 import type { GameState, Rates } from '../engine/types';
 import { DECOR, ROOMS } from './decor';
+import { PRODUCTS } from './merch';
 import { OPERATIONS, OP_ACH_THRESHOLDS } from './operations';
 import { STAFF } from './staff';
 
@@ -16,6 +17,7 @@ export type AchievementGroup =
   | 'players'
   | 'staff'
   | 'events'
+  | 'business'
   | 'misc';
 
 export interface AchievementDef {
@@ -642,6 +644,121 @@ add({
   group: 'events',
   shadow: true,
   check: (s) => s.stats.dropsMissed >= 1,
+});
+
+// Sponsors & merch -------------------------------------------------------------
+add({
+  id: 'design_1',
+  name: 'Artist',
+  desc: () => 'Draw your first design.',
+  icon: 'palette',
+  group: 'business',
+  check: (s) => s.stats.designsCreated >= 1,
+});
+add({
+  id: 'design_10',
+  name: 'Prolific Designer',
+  desc: () => 'Draw 10 designs.',
+  icon: 'palette',
+  group: 'business',
+  check: (s) => s.stats.designsCreated >= 10,
+});
+add({
+  id: 'logo_set',
+  name: 'Brand Identity',
+  desc: () => 'Use one of your designs as the org logo.',
+  icon: 'image',
+  group: 'business',
+  check: (s) => s.org.logo !== null,
+});
+add({
+  id: 'jersey_set',
+  name: 'Custom Kit',
+  desc: () => 'Print one of your designs on the team jerseys.',
+  icon: 'shirt',
+  group: 'business',
+  check: (s) => s.org.jersey !== null,
+});
+const MERCH_REVENUE: [number, string][] = [
+  [3, 'First Sale'],
+  [6, 'Merch Machine'],
+  [9, 'Merch Mogul'],
+  [12, 'Fashion Empire'],
+  [15, 'Merchverse'],
+];
+for (const [exp, name] of MERCH_REVENUE) {
+  const n = Math.pow(10, exp);
+  add({
+    id: `merch_${exp}`,
+    name,
+    desc: () => `Earn ${fmt(n)} from merch.`,
+    icon: 'shirt',
+    group: 'business',
+    check: (s) => s.stats.merchRevenue >= n,
+  });
+}
+add({
+  id: 'merch_units',
+  name: 'Million Units',
+  desc: () => 'Sell a million pieces of merch.',
+  icon: 'package',
+  group: 'business',
+  check: (s) => s.stats.merchSold >= 1e6,
+});
+add({
+  id: 'merch_all',
+  name: 'Full Catalogue',
+  desc: () => 'Unlock every merch product.',
+  icon: 'store',
+  group: 'business',
+  check: (s) => PRODUCTS.every((p) => s.merch.unlocked[p.id]),
+});
+const SIGNED_SPONSORS: [number, string][] = [
+  [1, 'Sponsored'],
+  [10, 'Brand Friendly'],
+  [50, 'Billboard on Legs'],
+];
+for (const [n, name] of SIGNED_SPONSORS) {
+  add({
+    id: `sponsors_${n}`,
+    name,
+    desc: () => `Sign ${n} sponsor${n === 1 ? '' : 's'}.`,
+    icon: 'handshake',
+    group: 'business',
+    check: (s) => s.stats.sponsorsSigned >= n,
+  });
+}
+const SPONSOR_GOALS: [number, string][] = [
+  [1, 'Deliverables Met'],
+  [10, 'Reliable Partner'],
+  [50, 'Brand Darling'],
+];
+for (const [n, name] of SPONSOR_GOALS) {
+  add({
+    id: `sponsorgoals_${n}`,
+    name,
+    desc: () => `Complete ${n} sponsor goal${n === 1 ? '' : 's'}.`,
+    icon: 'badge-check',
+    group: 'business',
+    check: (s) => s.stats.sponsorGoals >= n,
+  });
+}
+add({
+  id: 'logo_soup',
+  name: 'Logo Soup',
+  desc: () => 'Have 4 sponsors at once.',
+  icon: 'layers',
+  group: 'business',
+  check: (s) => s.sponsors.active.length >= 4,
+});
+add({
+  id: 'rug_pulled',
+  name: 'Rug Pulled',
+  desc: () => 'Have a crypto sponsor collapse.',
+  icon: 'trending-down',
+  group: 'business',
+  secret: true,
+  check: (s) => s.stats.cryptoCrashes >= 1,
 });
 
 // Misc & shadow ----------------------------------------------------------------

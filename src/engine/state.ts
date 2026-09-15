@@ -9,7 +9,7 @@ import { addToTeam, createTeam } from './teams';
 import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 2;
-export const GAME_VERSION = '0.5.0';
+export const GAME_VERSION = '0.6.0';
 
 export function createSettings(): Settings {
   return {
@@ -70,6 +70,12 @@ export function createStats(): Stats {
     choicesMade: 0,
     opLevels: 0,
     hypeTrainBest: 0,
+    designsCreated: 0,
+    merchSold: 0,
+    merchRevenue: 0,
+    sponsorsSigned: 0,
+    sponsorGoals: 0,
+    cryptoCrashes: 0,
   };
 }
 
@@ -104,6 +110,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     org: {
       name: 'Garage Gamers',
       logo: null,
+      jersey: null,
       primary: '#22e4ff',
       secondary: '#ff2bd6',
     },
@@ -128,6 +135,9 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     decor: {},
     drops: { nextAt: 0, active: [] },
     events: { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, lastTournament: null },
+    designs: {},
+    merch: { trend: 'neon', trendEndsAt: 0, unlocked: {}, lines: {} },
+    sponsors: { offers: [], active: [], nextRefresh: 0, history: [] },
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

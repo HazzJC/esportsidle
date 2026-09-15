@@ -1,4 +1,6 @@
 import type { GearSlot } from '../data/gear';
+import type { TrendId } from '../data/merch';
+import type { SponsorGoalKind } from '../data/sponsors';
 import type { NumberFormat } from './format';
 
 export type Tone = 'good' | 'bad' | 'info' | 'gold';
@@ -69,7 +71,11 @@ export type Effect =
   | { kind: 'tournamentEase'; mult: number }
   | { kind: 'tournamentWeight'; mult: number }
   | { kind: 'dramaLevel'; add: number }
-  | { kind: 'dramaShare'; mult: number };
+  | { kind: 'dramaShare'; mult: number }
+  | { kind: 'sponsorSlots'; add: number }
+  | { kind: 'sponsorIncome'; mult: number }
+  | { kind: 'merchMult'; mult: number }
+  | { kind: 'noveltyMult'; mult: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -121,6 +127,12 @@ export interface Mods {
   dramaShareMult: number;
   gamePrizeMult: Record<string, number>;
   genreRatingMult: Record<string, number>;
+  sponsorSlots: number;
+  sponsorIncomeMult: number;
+  /** Total income bonus from active sponsors (after sponsorIncomeMult). */
+  sponsorIncomePct: number;
+  merchMult: number;
+  noveltyMult: number;
 }
 
 export interface TeamEval {
@@ -139,6 +151,16 @@ export interface TeamEval {
   interval: number;
   cps: number;
   fansPerSec: number;
+}
+
+export interface MerchLineRate {
+  productId: string;
+  cps: number;
+  unitsPerSec: number;
+  appeal: number;
+  trending: boolean;
+  novelty: number;
+  priceFactor: number;
 }
 
 export interface Rates {
@@ -164,13 +186,18 @@ export interface Rates {
   /** Expected cash per second from matches. */
   matchCps: number;
   matchFansPerSec: number;
-  /** Operations + expected match income. */
+  merchCps: number;
+  merchLines: Record<string, MerchLineRate>;
+  /** Operations + expected match income + merch. */
   totalCps: number;
 }
 
 export interface OrgState {
   name: string;
+  /** Design id used as the org logo. */
   logo: string | null;
+  /** Design id printed on jerseys. */
+  jersey: string | null;
   primary: string;
   secondary: string;
 }
@@ -295,7 +322,7 @@ export interface DropsState {
   active: ActiveDrop[];
 }
 
-export type ModifierKind = 'gearCost' | 'gamePrize' | 'genreRating' | 'fans' | 'xp';
+export type ModifierKind = 'gearCost' | 'gamePrize' | 'genreRating' | 'fans' | 'xp' | 'sponsor';
 
 export interface EventModifier {
   id: string;
@@ -367,6 +394,65 @@ export interface EventsState {
   lastTournament: TournamentResult | null;
 }
 
+export interface Design {
+  id: string;
+  name: string;
+  size: number;
+  /** Up to 35 hex colours; pixel value n refers to palette[n - 1]. */
+  palette: string[];
+  /** One character per pixel from PIXEL_ALPHABET ('0' = transparent). */
+  pixels: string;
+  handmade: boolean;
+  createdAt: number;
+  version: number;
+}
+
+export interface MerchLine {
+  designId: string | null;
+  /** Price as a multiple of the product's base price. */
+  price: number;
+  launchedAt: number;
+  sold: number;
+  revenue: number;
+}
+
+export interface MerchState {
+  trend: TrendId;
+  trendEndsAt: number;
+  unlocked: Record<string, boolean>;
+  lines: Record<string, MerchLine>;
+}
+
+export interface SponsorOffer {
+  id: number;
+  brandId: string;
+  tier: number;
+  duration: number;
+  incomePct: number;
+  goal: { kind: SponsorGoalKind; target: number; rewardSeconds: number };
+}
+
+export interface SponsorContract extends SponsorOffer {
+  signedAt: number;
+  endsAt: number;
+  baseline: number;
+  completed: boolean;
+}
+
+export interface SponsorHistoryEntry {
+  brandId: string;
+  completed: boolean;
+  reason: 'expired' | 'cancelled' | 'crashed';
+  endedAt: number;
+}
+
+export interface SponsorsState {
+  offers: SponsorOffer[];
+  active: SponsorContract[];
+  nextRefresh: number;
+  history: SponsorHistoryEntry[];
+}
+
 export interface Settings {
   numberFormat: NumberFormat;
   autosaveSeconds: number;
@@ -423,6 +509,12 @@ export interface Stats {
   choicesMade: number;
   opLevels: number;
   hypeTrainBest: number;
+  designsCreated: number;
+  merchSold: number;
+  merchRevenue: number;
+  sponsorsSigned: number;
+  sponsorGoals: number;
+  cryptoCrashes: number;
 }
 
 export interface GameState {
@@ -462,6 +554,9 @@ export interface GameState {
   decor: Record<string, boolean>;
   drops: DropsState;
   events: EventsState;
+  designs: Record<string, Design>;
+  merch: MerchState;
+  sponsors: SponsorsState;
   nextId: number;
   popularityClock: number;
   stats: Stats;

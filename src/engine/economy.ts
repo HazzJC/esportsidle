@@ -3,9 +3,11 @@ import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
 import { buffTotals } from './buffs';
+import { evaluateMerch } from './merch';
 import { applyEventModifiers } from './modifiers';
 import { passiveFans } from './players';
-import { applyStaffAndDecor } from './staff';
+import { sponsorBonuses } from './sponsors';
+import { applyStat, applyStaffAndDecor } from './staff';
 import { evaluateTeam, teamPlayerIds } from './teams';
 import type { Effect, GameState, Mods, Rates, TeamEval } from './types';
 
@@ -14,6 +16,7 @@ export const CABINET_PER_ACHIEVEMENT = 0.04;
 export const BASE_OFFLINE_RATE = 0.2;
 export const BASE_OFFLINE_CAP_HOURS = 12;
 export const BASE_BENCH_SLOTS = 1;
+export const BASE_SPONSOR_SLOTS = 2;
 
 export function emptyMods(): Mods {
   return {
@@ -64,6 +67,11 @@ export function emptyMods(): Mods {
     dramaShareMult: 1,
     gamePrizeMult: {},
     genreRatingMult: {},
+    sponsorSlots: BASE_SPONSOR_SLOTS,
+    sponsorIncomeMult: 1,
+    sponsorIncomePct: 0,
+    merchMult: 1,
+    noveltyMult: 1,
   };
 }
 
@@ -177,10 +185,22 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'dramaShare':
       m.dramaShareMult *= e.mult;
       break;
+    case 'sponsorSlots':
+      m.sponsorSlots += e.add;
+      break;
+    case 'sponsorIncome':
+      m.sponsorIncomeMult *= e.mult;
+      break;
+    case 'merchMult':
+      m.merchMult *= e.mult;
+      break;
+    case 'noveltyMult':
+      m.noveltyMult *= e.mult;
+      break;
   }
 }
 
-/** Upgrades first (they can boost staff), then staff and decor. */
+/** Upgrades first (they can boost staff), then staff and decor, event modifiers and finally sponsors. */
 export function computeMods(s: GameState): Mods {
   const m = emptyMods();
   for (const id in s.upgrades) {
@@ -189,6 +209,11 @@ export function computeMods(s: GameState): Mods {
   }
   applyStaffAndDecor(m, s);
   applyEventModifiers(m, s);
+  const sponsors = sponsorBonuses(s);
+  for (const st of sponsors.stats) applyStat(m, st.stat, st.amount);
+  for (const e of sponsors.effects) applyEffect(m, e);
+  m.sponsorIncomePct = sponsors.incomePct * m.sponsorIncomeMult;
+  m.globalMult *= 1 + m.sponsorIncomePct;
   return m;
 }
 
@@ -269,6 +294,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   }
   const opsFansPerSec = opsFans * fansMult;
   const playerFansPerSec = playerFans * mods.playerFansMult * fansMult;
+  const merch = evaluateMerch(s, mods, cpsNoBuffs, buffs.income);
 
   return {
     cps,
@@ -289,6 +315,8 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     teams,
     matchCps,
     matchFansPerSec: matchFans,
-    totalCps: cps + matchCps,
+    merchCps: merch.cps,
+    merchLines: merch.lines,
+    totalCps: cps + matchCps + merch.cps,
   };
 }

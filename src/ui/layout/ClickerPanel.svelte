@@ -3,6 +3,7 @@
   import { fmt, fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import OrgLogo from '../components/OrgLogo.svelte';
+  import { designUrl } from '../designImage';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
@@ -32,6 +33,8 @@
 
   const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
   const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
+  const logoDesign = $derived(s.org.logo ? s.designs[s.org.logo] : undefined);
+  const logoUrl = $derived(logoDesign ? designUrl(logoDesign) : undefined);
   const activeBuffs = $derived(s.buffs.filter((b) => b.endsAt > s.time));
   const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
   const recent = $derived(
@@ -182,7 +185,7 @@
       />
     </svg>
     <button class="logo" class:crowd={!!crowd} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
-      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} />
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} {logoUrl} />
     </button>
     {#each particles as p (p.id)}
       <i class="particle" style="left:{p.x}px; top:{p.y}px; --dx:{p.dx}px; --dy:{p.dy}px; --h:{p.hue}"></i>

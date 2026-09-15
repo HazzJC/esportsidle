@@ -2,7 +2,10 @@
   import { HAIR_COLORS, PANTS_COLORS, SHOE_COLORS, SKIN_TONES } from '../../data/cosmetics';
   import type { GearSlot } from '../../data/gear';
   import type { Appearance } from '../../engine/types';
+  import { BRAND_MAP } from '../../data/sponsors';
   import { shade } from '../color';
+  import { designUrl } from '../designImage';
+  import { game } from '../game.svelte';
 
   let {
     look,
@@ -35,6 +38,13 @@
   const full = $derived(mode === 'full');
   const hatCovers = $derived(look.hat >= 1 && look.hat <= 3);
   const torso = $derived(`M${32 - w} 86 Q60 74 ${88 + w} 86 L${91 + w} 125 Q60 131 ${29 - w} 125 Z`);
+  const org = $derived(game.view.s.org);
+  const crestDesign = $derived(org.jersey ? game.view.s.designs[org.jersey] : undefined);
+  const crestUrl = $derived(crestDesign ? designUrl(crestDesign) : undefined);
+  const sponsor = $derived.by(() => {
+    const first = game.view.s.sponsors.active[0];
+    return first ? BRAND_MAP.get(first.brandId) : undefined;
+  });
   const line = '#1a1a22';
   const lip = '#5a2a22';
 </script>
@@ -160,14 +170,22 @@
     <path d={torso} fill="none" stroke="#22e4ff" stroke-width="1.2" filter="url(#{uid}-glow)" />
   {/if}
   <path d="M51 80 Q60 89 69 80" fill="none" stroke={shade(primary, -0.4)} stroke-width="3" />
+  {#if crestUrl}
+    <image href={crestUrl} x="52" y="88" width="16" height="16" style="image-rendering: pixelated" />
+  {/if}
+  {#if sponsor && full}
+    <text x="60" y="124" text-anchor="middle" font-family="Rajdhani, sans-serif" font-weight="700" font-size="6" fill={sponsor.color} letter-spacing="0.5"
+      >{sponsor.name.toUpperCase().slice(0, 16)}</text
+    >
+  {/if}
   {#if number !== undefined && full}
     <text
       x="60"
-      y="113"
+      y={crestUrl ? 117 : 113}
       text-anchor="middle"
       font-family="Orbitron, Rajdhani, sans-serif"
       font-weight="900"
-      font-size="13"
+      font-size={crestUrl ? 9 : 13}
       fill="#fff"
       stroke="rgba(0,0,0,0.45)"
       stroke-width="1"

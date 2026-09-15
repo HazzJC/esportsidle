@@ -18,7 +18,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<div class="backdrop" transition:fade={{ duration: 150 }} onclick={onclose} role="presentation">
+<div class="backdrop" in:fade={{ duration: 150 }} onclick={onclose} role="presentation">
   <div
     class="modal panel"
     style="--w:{width}px"
@@ -28,7 +28,7 @@
     tabindex="-1"
     onclick={(e) => e.stopPropagation()}
     onkeydown={(e) => e.stopPropagation()}
-    transition:scale={{ start: 0.95, duration: 160 }}
+    in:scale={{ start: 0.95, duration: 160 }}
   >
     <header>
       <h2>{title}</h2>

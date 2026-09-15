@@ -19,7 +19,9 @@ export type UpgradeGroup =
   | 'drops'
   | 'tournament'
   | 'drama'
-  | 'trophy';
+  | 'trophy'
+  | 'sponsor'
+  | 'merch';
 
 export interface UpgradeDef {
   id: string;
@@ -696,6 +698,52 @@ TROPHY_LINE.forEach((u, i) => {
     flavor: u.flavor,
     requirement: `Win ${u.cost} trophies in total`,
     unlock: (s) => s.stats.trophiesTotal >= u.cost,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sponsors & merch
+// ---------------------------------------------------------------------------
+const SPONSOR_LINE: { name: string; need: (s: GameState) => boolean; req: string; cost: number; effect: Effect; flavor: string }[] = [
+  { name: 'Sponsorship Manager', need: (s) => s.stats.sponsorsSigned >= 2, req: 'Sign 2 sponsors', cost: 5e5, effect: { kind: 'sponsorSlots', add: 1 }, flavor: 'Handles the logo placement arguments.' },
+  { name: 'Brand Partnerships Team', need: (s) => s.stats.sponsorsSigned >= 10, req: 'Sign 10 sponsors', cost: 5e9, effect: { kind: 'sponsorSlots', add: 1 }, flavor: 'A whole floor of people saying "synergy".' },
+  { name: 'Premium Logo Placement', need: (s) => s.stats.sponsorGoals >= 5, req: 'Complete 5 sponsor goals', cost: 5e11, effect: { kind: 'sponsorIncome', mult: 1.25 }, flavor: 'Front of the jersey. Above the heart.' },
+  { name: 'Global Brand Ambassador', need: (s) => s.stats.sponsorsSigned >= 25, req: 'Sign 25 sponsors', cost: 5e13, effect: { kind: 'sponsorIncome', mult: 1.5 }, flavor: 'Your founder now appears on cereal boxes.' },
+];
+SPONSOR_LINE.forEach((u, i) => {
+  add({
+    id: `sponsor_${i}`,
+    name: u.name,
+    group: 'sponsor',
+    icon: 'handshake',
+    tier: i * 2 + 3,
+    cost: u.cost,
+    effects: [u.effect],
+    flavor: u.flavor,
+    requirement: u.req,
+    unlock: u.need,
+  });
+});
+
+const MERCH_LINE: [string, number, number, Effect, string][] = [
+  ['Screen Printer', 1e4, 2.5e5, { kind: 'merchMult', mult: 1.5 }, 'Smells like ink and ambition.'],
+  ['Online Store', 1e7, 2.5e9, { kind: 'merchMult', mult: 2 }, 'Free shipping on orders over one hoodie.'],
+  ['Limited Edition Drops', 1e10, 2.5e12, { kind: 'noveltyMult', mult: 2 }, 'Only 500 made. Each week. Forever.'],
+  ['Global Distribution', 1e13, 2.5e15, { kind: 'merchMult', mult: 2 }, 'Your hoodies are in every airport on Earth.'],
+  ['Collab Collections', 1e16, 2.5e18, { kind: 'merchMult', mult: 3 }, 'Designed with a fashion house nobody can pronounce.'],
+];
+MERCH_LINE.forEach(([name, revenue, cost, effect, flavor], i) => {
+  add({
+    id: `merch_${i}`,
+    name,
+    group: 'merch',
+    icon: 'shirt',
+    tier: i * 2 + 2,
+    cost,
+    effects: [effect],
+    flavor,
+    requirement: `Earn ${revenue.toExponential(0).replace('e+', 'e')} from merch`,
+    unlock: (s) => s.stats.merchRevenue >= revenue,
   });
 });
 

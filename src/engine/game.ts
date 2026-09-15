@@ -6,6 +6,8 @@ import { updateDrops } from './drops';
 import { updateWorldEvents } from './worldEvents';
 import { computeMods, computeRates } from './economy';
 import { updateMarket } from './market';
+import { updateMerch } from './merch';
+import { updateSponsors } from './sponsors';
 import { updatePopularity } from './popularity';
 import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
@@ -39,8 +41,11 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
   for (const op of OPERATIONS) s.ops[op.id].produced += rates.opCps[op.id] * dt * factor;
   gainFans(s, rates.fansPerSec * dt * factor);
 
+  earnCash(s, rates.merchCps * dt * factor);
+  updateMerch(s, dt, factor, rates, rng, offline);
   updateTeams(s, dt, offline, factor, mods, rates.teams, rng);
   updatePlayers(s, dt, mods);
+  updateSponsors(s, { rng, mods, rates }, dt, offline);
 
   if (!offline) {
     updateMarket(s, rng, mods);

@@ -9,6 +9,19 @@ import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
 import { refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing } from '../engine/market';
 import { calmDrama, clickDrop } from '../engine/drops';
+import {
+  addDesign,
+  deleteDesign,
+  generateDesign,
+  setJerseyDesign,
+  setOrgLogo,
+  updateDesign,
+  type DesignDraft,
+} from '../engine/designs';
+import { setLineDesign, setLinePrice, unlockProduct } from '../engine/merch';
+import { cancelContract, signOffer } from '../engine/sponsors';
+import { BRAND_MAP } from '../data/sponsors';
+import { PRODUCT_MAP } from '../data/merch';
 import { buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
 import { resolveChoice } from '../engine/worldEvents';
 import { DECOR_MAP } from '../data/decor';
@@ -22,7 +35,18 @@ import { createNewGame } from '../engine/state';
 import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
 
-export type TabId = 'hq' | 'house' | 'teams' | 'roster' | 'market' | 'staff' | 'achievements' | 'stats' | 'options';
+export type TabId =
+  | 'hq'
+  | 'house'
+  | 'teams'
+  | 'roster'
+  | 'market'
+  | 'staff'
+  | 'studio'
+  | 'sponsors'
+  | 'achievements'
+  | 'stats'
+  | 'options';
 export type MobileView = 'clicker' | 'center' | 'store';
 
 export interface Toast {
@@ -435,6 +459,84 @@ class GameStore {
       this.toast({ title: 'PR team deployed', body: 'No Drama Drops for the next 30 minutes.', icon: 'shield', tone: 'good' }, 3000);
       this.refresh();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Designs, merch & sponsors
+  // ---------------------------------------------------------------------------
+  saveDesign(id: string | null, draft: DesignDraft): string | null {
+    if (id) {
+      if (!updateDesign(this.state, id, { name: draft.name, pixels: draft.pixels, palette: draft.palette })) return null;
+      this.toast({ title: 'Design saved', body: draft.name, icon: 'palette', tone: 'good' }, 2000);
+      this.refresh();
+      return id;
+    }
+    const newId = addDesign(this.state, draft);
+    if (!newId) {
+      this.toast({ title: 'Design library full', body: 'Delete a design to make room.', icon: 'palette', tone: 'bad' }, 3000);
+      return null;
+    }
+    if (!this.state.org.logo) setOrgLogo(this.state, newId);
+    this.toast({
+      title: 'Design saved',
+      body: this.state.org.logo === newId ? `${draft.name} is now your org logo.` : draft.name,
+      icon: 'palette',
+      tone: 'good',
+    });
+    this.refresh();
+    return newId;
+  }
+
+  generateDesign(size = 32): void {
+    const count = Object.values(this.state.designs).filter((d) => !d.handmade).length + 1;
+    const id = addDesign(this.state, generateDesign(new Rng(this.state), size, `Auto design ${count}`));
+    if (!id) this.toast({ title: 'Design library full', icon: 'palette', tone: 'bad' }, 2500);
+    this.refresh();
+  }
+
+  deleteDesign(id: string): void {
+    if (deleteDesign(this.state, id)) this.refresh();
+  }
+
+  setLogo(id: string | null): void {
+    if (setOrgLogo(this.state, id)) this.refresh();
+  }
+
+  setJersey(id: string | null): void {
+    if (setJerseyDesign(this.state, id)) this.refresh();
+  }
+
+  unlockProduct(id: string): void {
+    if (unlockProduct(this.state, id)) {
+      const p = PRODUCT_MAP.get(id);
+      this.toast({ title: `${p?.name ?? 'Product'} launched`, body: 'Pick a design so it starts selling.', icon: p?.icon ?? 'shirt', tone: 'good' }, 3000);
+      refreshUpgradeUnlocks(this.state);
+      this.refresh();
+    }
+  }
+
+  setLineDesign(productId: string, designId: string | null): void {
+    if (setLineDesign(this.state, productId, designId)) this.refresh();
+  }
+
+  setLinePrice(productId: string, price: number): void {
+    if (setLinePrice(this.state, productId, price)) this.refresh();
+  }
+
+  signSponsor(offerId: number): void {
+    const result = signOffer(this.state, offerId, computeMods(this.state));
+    if (!result.ok) {
+      this.toast({ title: 'Could not sign', body: result.reason, icon: 'handshake', tone: 'bad' }, 3000);
+      return;
+    }
+    const brand = BRAND_MAP.get(result.contract.brandId);
+    this.toast({ title: `${brand?.name ?? 'Sponsor'} signed!`, body: brand?.slogan, icon: 'handshake', tone: 'gold' });
+    refreshUpgradeUnlocks(this.state);
+    this.refresh();
+  }
+
+  cancelSponsor(contractId: number): void {
+    if (cancelContract(this.state, contractId)) this.refresh();
   }
 
   hireStaff(id: string, amount: number): number {

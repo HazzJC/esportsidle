@@ -24,6 +24,9 @@ export function applyEventModifiers(m: Mods, s: GameState): void {
       case 'xp':
         m.xpMult *= mod.mult;
         break;
+      case 'sponsor':
+        m.sponsorIncomeMult *= mod.mult;
+        break;
     }
   }
 }

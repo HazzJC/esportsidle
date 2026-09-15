@@ -28,6 +28,8 @@
     tournament: 'Tournament upgrade',
     drama: 'Drama upgrade',
     trophy: 'Trophy upgrade',
+    sponsor: 'Sponsor upgrade',
+    merch: 'Merch upgrade',
   };
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },
