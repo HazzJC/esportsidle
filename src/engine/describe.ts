@@ -82,5 +82,21 @@ export function describeEffect(e: Effect): string {
     }
     case 'staffCostMult':
       return `Hiring staff is ${pct(1 - e.mult)} cheaper.`;
+    case 'dropInterval':
+      return e.mult === 0.5 ? 'Hype Drops appear twice as often.' : `Hype Drops appear ${pct(1 / e.mult - 1)} more often.`;
+    case 'dropLife':
+      return e.mult === 2 ? 'Hype Drops stay on screen twice as long.' : `Hype Drops stay on screen ${pct(e.mult - 1)} longer.`;
+    case 'buffDuration':
+      return e.mult === 2 ? 'Drop and tournament buffs last twice as long.' : `Drop and tournament buffs last ${pct(e.mult - 1)} longer.`;
+    case 'tournamentReward':
+      return `Tournament prize money ×${fmt(e.mult, 2)}.`;
+    case 'tournamentEase':
+      return `Tournament opponents are ${pct(1 - e.mult)} weaker.`;
+    case 'tournamentWeight':
+      return e.mult === 2 ? 'Tournament Invites turn up twice as often.' : `Tournament Invites turn up ${pct(e.mult - 1)} more often.`;
+    case 'dramaLevel':
+      return `Drama +${e.add}: more Hype Drops become risky Drama Drops.`;
+    case 'dramaShare':
+      return `Drama Drops are ${pct(1 - e.mult)} less common.`;
   }
 }

@@ -24,6 +24,10 @@
     roster: 'Roster upgrade',
     gear: 'Gear upgrade',
     staff: 'Staff upgrade',
+    drops: 'Hype Drop upgrade',
+    tournament: 'Tournament upgrade',
+    drama: 'Drama upgrade',
+    trophy: 'Trophy upgrade',
   };
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },

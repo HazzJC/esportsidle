@@ -61,7 +61,15 @@ export type Effect =
   | { kind: 'playerFans'; mult: number }
   | { kind: 'gearCostMult'; mult: number }
   | { kind: 'staffMult'; staff: string; mult: number }
-  | { kind: 'staffCostMult'; mult: number };
+  | { kind: 'staffCostMult'; mult: number }
+  | { kind: 'dropInterval'; mult: number }
+  | { kind: 'dropLife'; mult: number }
+  | { kind: 'buffDuration'; mult: number }
+  | { kind: 'tournamentReward'; mult: number }
+  | { kind: 'tournamentEase'; mult: number }
+  | { kind: 'tournamentWeight'; mult: number }
+  | { kind: 'dramaLevel'; add: number }
+  | { kind: 'dramaShare'; mult: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -102,6 +110,17 @@ export interface Mods {
   moraleSwingMult: number;
   staffMult: Record<string, number>;
   staffCostMult: number;
+  /** Multiplies the time between Hype Drops (lower = more often). */
+  dropIntervalMult: number;
+  dropLifeMult: number;
+  buffDurationMult: number;
+  tournamentRewardMult: number;
+  tournamentOpponentMult: number;
+  tournamentWeightMult: number;
+  dramaLevel: number;
+  dramaShareMult: number;
+  gamePrizeMult: Record<string, number>;
+  genreRatingMult: Record<string, number>;
 }
 
 export interface TeamEval {
@@ -257,6 +276,97 @@ export interface MarketState {
   rerolls: number;
 }
 
+export type DropKind = 'hype' | 'drama';
+
+export interface ActiveDrop {
+  id: number;
+  kind: DropKind;
+  /** Screen position as fractions of the viewport. */
+  x: number;
+  y: number;
+  spawnedAt: number;
+  expiresAt: number;
+  /** Hype Train carriage number (0 for normal drops). */
+  chain: number;
+}
+
+export interface DropsState {
+  nextAt: number;
+  active: ActiveDrop[];
+}
+
+export type ModifierKind = 'gearCost' | 'gamePrize' | 'genreRating' | 'fans' | 'xp';
+
+export interface EventModifier {
+  id: string;
+  kind: ModifierKind;
+  target?: string;
+  mult: number;
+  name: string;
+  desc: string;
+  icon: string;
+  tone: Tone;
+  startedAt: number;
+  endsAt: number;
+}
+
+export interface ChoiceOption {
+  label: string;
+  desc: string;
+  tone: Tone;
+}
+
+export interface PendingChoice {
+  id: number;
+  eventId: string;
+  title: string;
+  body: string;
+  icon: string;
+  options: ChoiceOption[];
+  defaultOption: number;
+  data: Record<string, string | number>;
+  expiresAt: number;
+}
+
+export interface EventLogEntry {
+  time: number;
+  title: string;
+  body: string;
+  icon: string;
+  tone: Tone;
+}
+
+export interface TournamentRound {
+  name: string;
+  opponent: string;
+  win: boolean;
+  score: string;
+  prize: number;
+  chance: number;
+}
+
+export interface TournamentResult {
+  id: number;
+  gameId: string;
+  tier: number;
+  rounds: TournamentRound[];
+  champion: boolean;
+  trophies: number;
+  fans: number;
+  totalPrize: number;
+  seen: boolean;
+}
+
+export interface EventsState {
+  nextAt: number;
+  pending: PendingChoice[];
+  modifiers: EventModifier[];
+  log: EventLogEntry[];
+  /** Drama Drops are suppressed until this simulated time. */
+  calmUntil: number;
+  lastTournament: TournamentResult | null;
+}
+
 export interface Settings {
   numberFormat: NumberFormat;
   autosaveSeconds: number;
@@ -304,6 +414,15 @@ export interface Stats {
   burnouts: number;
   decorBought: number;
   mostUnavailable: number;
+  dropsClicked: number;
+  dramaClicked: number;
+  dropsMissed: number;
+  tournamentsPlayed: number;
+  tournamentsWon: number;
+  eventsSeen: number;
+  choicesMade: number;
+  opLevels: number;
+  hypeTrainBest: number;
 }
 
 export interface GameState {
@@ -341,6 +460,8 @@ export interface GameState {
   market: MarketState;
   staff: Record<string, number>;
   decor: Record<string, boolean>;
+  drops: DropsState;
+  events: EventsState;
   nextId: number;
   popularityClock: number;
   stats: Stats;

@@ -8,7 +8,9 @@ import { pickNews } from '../engine/news';
 import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
 import { refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing } from '../engine/market';
-import { buyOperation, sellOperation } from '../engine/operations';
+import { calmDrama, clickDrop } from '../engine/drops';
+import { buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
+import { resolveChoice } from '../engine/worldEvents';
 import { DECOR_MAP } from '../data/decor';
 import { buyGear } from '../engine/players';
 import { buyDecor, hireStaff } from '../engine/staff';
@@ -396,6 +398,43 @@ class GameStore {
     if (!team) return;
     team[key] = value;
     this.refresh();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Events
+  // ---------------------------------------------------------------------------
+  private eventContext() {
+    const mods = computeMods(this.state);
+    return { rng: new Rng(this.state), mods, rates: computeRates(this.state, mods) };
+  }
+
+  clickDrop(id: number): void {
+    const result = clickDrop(this.state, id, this.eventContext());
+    if (result) {
+      refreshUpgradeUnlocks(this.state);
+      this.refresh();
+    }
+  }
+
+  resolveChoice(choiceId: number, option: number): void {
+    if (resolveChoice(this.state, choiceId, option, this.eventContext())) this.refresh();
+  }
+
+  dismissTournament(): void {
+    const t = this.state.events.lastTournament;
+    if (t) t.seen = true;
+    this.refresh();
+  }
+
+  levelUpOperation(id: string): void {
+    if (levelUpOperation(this.state, id)) this.refresh();
+  }
+
+  calmDrama(): void {
+    if (calmDrama(this.state, this.view.r.cpsNoBuffs)) {
+      this.toast({ title: 'PR team deployed', body: 'No Drama Drops for the next 30 minutes.', icon: 'shield', tone: 'good' }, 3000);
+      this.refresh();
+    }
   }
 
   hireStaff(id: string, amount: number): number {

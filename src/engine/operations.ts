@@ -66,6 +66,22 @@ export function isOperationRevealed(s: GameState, def: OperationDef): boolean {
   return st.owned > 0 || st.highest > 0 || s.earnedRun >= def.baseCost * 0.4 || s.cash >= def.baseCost;
 }
 
+/** Trophies needed to raise an operation from `level` to `level + 1`. Each level adds +1% production. */
+export function operationLevelCost(level: number): number {
+  return level + 1;
+}
+
+export function levelUpOperation(s: GameState, id: string): boolean {
+  const st = s.ops[id];
+  if (!st || st.owned < 1) return false;
+  const cost = operationLevelCost(st.level);
+  if (s.trophies < cost) return false;
+  s.trophies -= cost;
+  st.level++;
+  s.stats.opLevels++;
+  return true;
+}
+
 export function totalOperationsOwned(s: GameState): number {
   let n = 0;
   for (const op of OPERATIONS) n += s.ops[op.id].owned;

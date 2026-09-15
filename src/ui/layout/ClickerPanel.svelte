@@ -33,6 +33,7 @@
   const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
   const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
   const activeBuffs = $derived(s.buffs.filter((b) => b.endsAt > s.time));
+  const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
   const recent = $derived(
     Object.values(s.teams)
       .flatMap((t) => t.history.slice(0, 3).map((m) => ({ m, gameId: t.gameId })))
@@ -143,10 +144,26 @@
     <div class="cps num" class:buffed={r.buffIncomeMult > 1} use:tooltip={incomeTip}>
       {money(r.totalCps, 1)} <span>per second</span>
     </div>
-    <div class="fans num" use:tooltip={fansTip}>
-      <Icon name="heart" size={14} />
-      {fmt(s.fans)} fans
-      <span class="muted">+{fmt(r.fansPerSec, 1)}/s</span>
+    <div class="subline">
+      <span class="fans num" use:tooltip={fansTip}>
+        <Icon name="heart" size={14} />
+        {fmt(s.fans)} fans
+        <span class="muted">+{fmt(r.fansPerSec, 1)}/s</span>
+      </span>
+      {#if s.stats.trophiesTotal > 0}
+        <span
+          class="trophies num"
+          use:tooltip={() => ({
+            title: 'Trophies',
+            icon: 'trophy',
+            iconColor: 'var(--gold)',
+            lines: ['Won from season titles and tournaments.', { text: 'Spend them on operation levels (HQ) and trophy upgrades.', tone: 'muted' }],
+          })}
+        >
+          <Icon name="trophy" size={14} />
+          {fmt(s.trophies)}
+        </span>
+      {/if}
     </div>
   </div>
 
@@ -185,8 +202,23 @@
     {/if}
   </div>
 
-  {#if activeBuffs.length > 0}
+  {#if activeBuffs.length > 0 || modifiers.length > 0}
     <div class="buffs">
+      {#each modifiers as m (m.id)}
+        {@const frac = (m.endsAt - s.time) / Math.max(0.001, m.endsAt - m.startedAt)}
+        <div
+          class="buff mod {m.tone}"
+          use:tooltip={() => ({
+            title: m.name,
+            icon: m.icon,
+            iconColor: m.tone === 'bad' ? 'var(--red)' : 'var(--cyan)',
+            lines: [m.desc, { text: `${fmtTime(m.endsAt - game.view.s.time)} remaining`, tone: 'muted' }],
+          })}
+        >
+          <Icon name={m.icon} size={18} />
+          <span class="buff-bar"><i style="width:{frac * 100}%"></i></span>
+        </div>
+      {/each}
       {#each activeBuffs as b (b.id)}
         {@const frac = (b.endsAt - s.time) / Math.max(0.001, b.endsAt - b.startedAt)}
         <div
@@ -257,13 +289,36 @@
   .cps.buffed {
     color: var(--gold);
   }
-  .fans {
+  .subline {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .fans,
+  .trophies {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
     font-size: 13px;
     color: var(--magenta);
+  }
+  .trophies {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .buff.mod {
+    border-color: var(--cyan);
+    background: rgba(34, 228, 255, 0.1);
+    color: var(--cyan);
+    border-style: dashed;
+  }
+  .buff.mod.bad {
+    border-color: var(--red);
+    background: rgba(255, 77, 109, 0.1);
+    color: var(--red);
   }
   .stage {
     position: relative;

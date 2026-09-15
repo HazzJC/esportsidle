@@ -15,6 +15,7 @@ export type AchievementGroup =
   | 'teams'
   | 'players'
   | 'staff'
+  | 'events'
   | 'misc';
 
 export interface AchievementDef {
@@ -518,6 +519,130 @@ for (const [level, name] of ROOM_ACHIEVEMENTS) {
     check: (s) => s.earnedRun >= ROOMS[level].threshold,
   });
 }
+
+// Events ---------------------------------------------------------------------
+const DROPS: [number, string][] = [
+  [1, 'Hype Beast'],
+  [7, 'Drop Hunter'],
+  [27, 'Notification Addict'],
+  [77, 'Always Refreshing'],
+  [277, 'Seven Seven Seven'],
+];
+for (const [n, name] of DROPS) {
+  add({
+    id: `drops_${n}`,
+    name,
+    desc: () => `Click ${n} Hype Drop${n === 1 ? '' : 's'}.`,
+    icon: 'zap',
+    group: 'events',
+    check: (s) => s.stats.dropsClicked >= n,
+  });
+}
+add({
+  id: 'drama_1',
+  name: 'Stirring the Pot',
+  desc: () => 'Click a Drama Drop.',
+  icon: 'flame',
+  group: 'events',
+  check: (s) => s.stats.dramaClicked >= 1,
+});
+add({
+  id: 'drama_27',
+  name: 'Drama Channel',
+  desc: () => 'Click 27 Drama Drops.',
+  icon: 'flame',
+  group: 'events',
+  check: (s) => s.stats.dramaClicked >= 27,
+});
+add({
+  id: 'tourney_played',
+  name: 'Invited',
+  desc: () => 'Play in a tournament.',
+  icon: 'swords',
+  group: 'events',
+  check: (s) => s.stats.tournamentsPlayed >= 1,
+});
+const TOURNEY_WINS: [number, string][] = [
+  [1, 'Tournament Champions'],
+  [5, 'Bracket Busters'],
+  [25, 'Invitational Kings'],
+  [100, 'Tournament Dynasty'],
+];
+for (const [n, name] of TOURNEY_WINS) {
+  add({
+    id: `tourney_${n}`,
+    name,
+    desc: () => `Win ${n} tournament${n === 1 ? '' : 's'}.`,
+    icon: 'trophy',
+    group: 'events',
+    check: (s) => s.stats.tournamentsWon >= n,
+  });
+}
+add({
+  id: 'train_5',
+  name: 'All Aboard',
+  desc: () => 'Reach carriage 5 of a Hype Train.',
+  icon: 'rocket',
+  group: 'events',
+  check: (s) => s.stats.hypeTrainBest >= 5,
+});
+add({
+  id: 'train_12',
+  name: 'Hype Express',
+  desc: () => 'Reach carriage 12 of a Hype Train.',
+  icon: 'rocket',
+  group: 'events',
+  check: (s) => s.stats.hypeTrainBest >= 12,
+});
+add({
+  id: 'oplevel_1',
+  name: 'Business Upgrade',
+  desc: () => 'Level up an operation with trophies.',
+  icon: 'trophy',
+  group: 'events',
+  check: (s) => s.stats.opLevels >= 1,
+});
+add({
+  id: 'oplevel_25',
+  name: 'Trophy Investor',
+  desc: () => 'Buy 25 operation levels.',
+  icon: 'trophy',
+  group: 'events',
+  check: (s) => s.stats.opLevels >= 25,
+});
+add({
+  id: 'events_10',
+  name: 'Keeping Up',
+  desc: () => 'Witness 10 world events.',
+  icon: 'newspaper',
+  group: 'events',
+  check: (s) => s.stats.eventsSeen >= 10,
+});
+add({
+  id: 'events_100',
+  name: 'News Junkie',
+  desc: () => 'Witness 100 world events.',
+  icon: 'newspaper',
+  group: 'events',
+  check: (s) => s.stats.eventsSeen >= 100,
+});
+add({
+  id: 'choices_10',
+  name: 'Decision Maker',
+  desc: () => 'Make 10 decisions on world events.',
+  icon: 'briefcase',
+  group: 'events',
+  check: (s) => s.stats.choicesMade >= 10,
+});
+add({
+  id: 'too_slow',
+  name: 'Too Slow',
+  desc: () => 'Let a Hype Drop disappear.',
+  icon: 'clock',
+  group: 'events',
+  shadow: true,
+  check: (s) => s.stats.dropsMissed >= 1,
+});
 
 // Misc & shadow ----------------------------------------------------------------
 add({

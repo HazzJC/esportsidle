@@ -12,7 +12,33 @@ import { game } from './ui/game.svelte';
 const app = mount(App, { target: document.getElementById('app')! });
 
 if (import.meta.env.DEV) {
-  (window as unknown as Record<string, unknown>).__esi = game;
+  const w = window as unknown as Record<string, unknown>;
+  w.__esi = game;
+  // Dev-only hooks for forcing events while testing.
+  void Promise.all([import('./engine/drops'), import('./engine/worldEvents'), import('./engine/economy'), import('./engine/rng')]).then(
+    ([drops, events, economy, rng]) => {
+      const ctx = () => {
+        const mods = economy.computeMods(game.state);
+        return { rng: new rng.Rng(game.state), mods, rates: economy.computeRates(game.state, mods) };
+      };
+      w.__esiDev = {
+        outcome: (id: string) => {
+          const r = drops.applyDropOutcome(game.state, id, ctx());
+          game.refresh();
+          return r;
+        },
+        event: (id: string) => {
+          const ok = events.fireEvent(game.state, id, ctx());
+          game.refresh();
+          return ok;
+        },
+        spawnDrop: () => {
+          drops.spawnDrop(game.state, ctx());
+          game.refresh();
+        },
+      };
+    },
+  );
 }
 
 export default app;

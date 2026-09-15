@@ -3,6 +3,7 @@ import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
 import { buffTotals } from './buffs';
+import { applyEventModifiers } from './modifiers';
 import { passiveFans } from './players';
 import { applyStaffAndDecor } from './staff';
 import { evaluateTeam, teamPlayerIds } from './teams';
@@ -53,6 +54,16 @@ export function emptyMods(): Mods {
     moraleSwingMult: 1,
     staffMult: {},
     staffCostMult: 1,
+    dropIntervalMult: 1,
+    dropLifeMult: 1,
+    buffDurationMult: 1,
+    tournamentRewardMult: 1,
+    tournamentOpponentMult: 1,
+    tournamentWeightMult: 1,
+    dramaLevel: 0,
+    dramaShareMult: 1,
+    gamePrizeMult: {},
+    genreRatingMult: {},
   };
 }
 
@@ -142,6 +153,30 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'staffCostMult':
       m.staffCostMult *= e.mult;
       break;
+    case 'dropInterval':
+      m.dropIntervalMult *= e.mult;
+      break;
+    case 'dropLife':
+      m.dropLifeMult *= e.mult;
+      break;
+    case 'buffDuration':
+      m.buffDurationMult *= e.mult;
+      break;
+    case 'tournamentReward':
+      m.tournamentRewardMult *= e.mult;
+      break;
+    case 'tournamentEase':
+      m.tournamentOpponentMult *= e.mult;
+      break;
+    case 'tournamentWeight':
+      m.tournamentWeightMult *= e.mult;
+      break;
+    case 'dramaLevel':
+      m.dramaLevel += e.add;
+      break;
+    case 'dramaShare':
+      m.dramaShareMult *= e.mult;
+      break;
   }
 }
 
@@ -153,6 +188,7 @@ export function computeMods(s: GameState): Mods {
     if (def) for (const e of def.effects) applyEffect(m, e);
   }
   applyStaffAndDecor(m, s);
+  applyEventModifiers(m, s);
   return m;
 }
 

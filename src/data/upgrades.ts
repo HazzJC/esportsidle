@@ -15,7 +15,11 @@ export type UpgradeGroup =
   | 'team'
   | 'roster'
   | 'gear'
-  | 'staff';
+  | 'staff'
+  | 'drops'
+  | 'tournament'
+  | 'drama'
+  | 'trophy';
 
 export interface UpgradeDef {
   id: string;
@@ -546,6 +550,152 @@ HR_LINE.forEach(([name, need, cost, mult, flavor], i) => {
     flavor,
     requirement: `Employ ${need} staff`,
     unlock: (s) => totalStaffHired(s) >= need,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hype Drops, tournaments, drama and trophy upgrades
+// ---------------------------------------------------------------------------
+const DROP_LINE: { name: string; clicked: number; cost: number; effects: Effect[]; flavor: string }[] = [
+  {
+    name: 'Hype Notifications',
+    clicked: 7,
+    cost: 7.77e6,
+    effects: [
+      { kind: 'dropInterval', mult: 0.5 },
+      { kind: 'dropLife', mult: 2 },
+    ],
+    flavor: 'Smash that bell icon.',
+  },
+  {
+    name: 'Push Alerts',
+    clicked: 27,
+    cost: 7.77e10,
+    effects: [
+      { kind: 'dropInterval', mult: 0.5 },
+      { kind: 'dropLife', mult: 2 },
+    ],
+    flavor: 'Your phone buzzes before the drop even happens.',
+  },
+  { name: 'Always Online', clicked: 77, cost: 7.77e13, effects: [{ kind: 'buffDuration', mult: 2 }], flavor: 'Sleep is a buff that lasts too long.' },
+];
+DROP_LINE.forEach((u, i) => {
+  add({
+    id: `drops_${i}`,
+    name: u.name,
+    group: 'drops',
+    icon: 'zap',
+    tier: i * 3 + 3,
+    cost: u.cost,
+    effects: u.effects,
+    flavor: u.flavor,
+    requirement: `Click ${u.clicked} Hype Drops`,
+    unlock: (s) => s.stats.dropsClicked >= u.clicked,
+  });
+});
+
+const TOURNAMENT_LINE: { name: string; need: (s: GameState) => boolean; req: string; cost: number; effect: Effect; flavor: string }[] = [
+  { name: 'Tournament Circuit Pass', need: (s) => s.stats.tournamentsPlayed >= 3, req: 'Play 3 tournaments', cost: 5e7, effect: { kind: 'tournamentReward', mult: 2 }, flavor: 'All-access lanyard included.' },
+  { name: 'Seeding Lawyer', need: (s) => s.stats.tournamentsWon >= 5, req: 'Win 5 tournaments', cost: 5e10, effect: { kind: 'tournamentEase', mult: 0.9 }, flavor: 'Somehow you always get the easy side of the bracket.' },
+  { name: 'Invitational Status', need: (s) => s.stats.tournamentsWon >= 15, req: 'Win 15 tournaments', cost: 5e13, effect: { kind: 'tournamentWeight', mult: 2 }, flavor: 'Organisers call you first.' },
+];
+TOURNAMENT_LINE.forEach((u, i) => {
+  add({
+    id: `tourney_${i}`,
+    name: u.name,
+    group: 'tournament',
+    icon: 'swords',
+    tier: i * 3 + 4,
+    cost: u.cost,
+    effects: [u.effect],
+    flavor: u.flavor,
+    requirement: u.req,
+    unlock: u.need,
+  });
+});
+
+add({
+  id: 'drama_0',
+  name: 'Rage-bait Marketing',
+  group: 'drama',
+  icon: 'flame',
+  tier: 6,
+  cost: 5e9,
+  effects: [
+    { kind: 'fansMult', mult: 1.5 },
+    { kind: 'globalPct', pct: 0.1 },
+    { kind: 'dramaLevel', add: 1 },
+  ],
+  flavor: '"You won\'t BELIEVE what our jungler said about your mum."',
+  requirement: 'Reach 50,000 fans this run',
+  unlock: (s) => s.fansRun >= 50_000,
+});
+add({
+  id: 'drama_1',
+  name: 'Controversial Takes',
+  group: 'drama',
+  icon: 'flame',
+  tier: 7,
+  cost: 5e12,
+  effects: [
+    { kind: 'fansMult', mult: 1.5 },
+    { kind: 'globalPct', pct: 0.15 },
+    { kind: 'dramaLevel', add: 1 },
+  ],
+  flavor: 'Hot take: every other team is washed.',
+  requirement: 'Own Rage-bait Marketing and reach 5 million fans',
+  unlock: (s) => s.upgrades.drama_0 !== undefined && s.fansRun >= 5e6,
+});
+add({
+  id: 'drama_2',
+  name: 'Manufactured Beef',
+  group: 'drama',
+  icon: 'flame',
+  tier: 9,
+  cost: 5e15,
+  effects: [
+    { kind: 'fansMult', mult: 2 },
+    { kind: 'globalPct', pct: 0.25 },
+    { kind: 'dramaLevel', add: 1 },
+  ],
+  flavor: 'Scripted rivalries, real ratings.',
+  requirement: 'Own Controversial Takes and reach 500 million fans',
+  unlock: (s) => s.upgrades.drama_1 !== undefined && s.fansRun >= 5e8,
+});
+add({
+  id: 'drama_pr',
+  name: 'Crisis PR Team',
+  group: 'drama',
+  icon: 'shield',
+  tier: 8,
+  cost: 5e14,
+  effects: [{ kind: 'dramaShare', mult: 0.5 }],
+  flavor: 'They have an apology template for every occasion.',
+  requirement: 'Own Controversial Takes',
+  unlock: (s) => s.upgrades.drama_1 !== undefined,
+});
+
+const TROPHY_LINE: { name: string; cost: number; effect: Effect; flavor: string }[] = [
+  { name: 'Trophy Case Lighting', cost: 3, effect: { kind: 'globalPct', pct: 0.05 }, flavor: 'Spotlights make everything look more expensive.' },
+  { name: 'Golden Controller', cost: 8, effect: { kind: 'clickMult', mult: 2 }, flavor: 'Heavy, impractical, magnificent.' },
+  { name: 'Hall of Champions', cost: 20, effect: { kind: 'prizeMult', mult: 1.5 }, flavor: 'Opponents walk past it on the way to lose.' },
+  { name: 'Retired Jerseys', cost: 40, effect: { kind: 'fansMult', mult: 1.5 }, flavor: 'Hanging from the rafters of the gaming house.' },
+  { name: 'Dynasty Banner', cost: 80, effect: { kind: 'globalPct', pct: 0.25 }, flavor: 'Visible from orbit. Probably.' },
+  { name: 'Trophy Vault', cost: 150, effect: { kind: 'tournamentReward', mult: 2 }, flavor: 'Laser grid. Tiny, dramatic laser grid.' },
+];
+TROPHY_LINE.forEach((u, i) => {
+  add({
+    id: `trophy_${i}`,
+    name: u.name,
+    group: 'trophy',
+    icon: 'trophy',
+    tier: i * 2 + 3,
+    cost: u.cost,
+    currency: 'trophies',
+    effects: [u.effect],
+    flavor: u.flavor,
+    requirement: `Win ${u.cost} trophies in total`,
+    unlock: (s) => s.stats.trophiesTotal >= u.cost,
   });
 });
 

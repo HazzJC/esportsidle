@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { money } from './engine/format';
+  import ChoicePanel from './ui/components/ChoicePanel.svelte';
+  import DropLayer from './ui/components/DropLayer.svelte';
   import Toasts from './ui/components/Toasts.svelte';
+  import TournamentModal from './ui/components/TournamentModal.svelte';
   import Tooltip from './ui/components/Tooltip.svelte';
   import WelcomeBack from './ui/components/WelcomeBack.svelte';
   import { game } from './ui/game.svelte';
@@ -31,6 +34,9 @@
     <aside class="col col-right"><Store /></aside>
   </div>
   <MobileNav />
+  <DropLayer />
+  <ChoicePanel />
+  <TournamentModal />
   <Toasts />
   <Tooltip />
   {#if game.offlineReport}<WelcomeBack />{/if}

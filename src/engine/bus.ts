@@ -5,7 +5,9 @@ export type GameEvent =
   | { type: 'achievement'; id: string }
   | { type: 'buffStart'; buff: Buff }
   | { type: 'buffEnd'; buff: Buff }
-  | { type: 'crowd' };
+  | { type: 'crowd' }
+  | { type: 'drop'; kind: 'hype' | 'drama' }
+  | { type: 'choice' };
 
 type Listener = (event: GameEvent) => void;
 

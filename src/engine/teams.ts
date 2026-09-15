@@ -206,7 +206,7 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const active = available > 0;
   const average = ratings.reduce((a, b) => a + b, 0) / Math.max(1, ratings.length);
   const chemistry = game.teamSize > 1 ? 1 + 0.2 * team.chemistry : 1;
-  const rating = average * teamMult * chemistry * mods.teamRatingMult;
+  const rating = average * teamMult * chemistry * mods.teamRatingMult * (mods.genreRatingMult[game.genre] ?? 1);
   const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
   const popularity = s.games[team.gameId]?.popularity ?? 1;
@@ -215,6 +215,7 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
     (game.basePrize * Math.pow(PRIZE_GROWTH, team.tier) + ctx.cpsNoBuffs * prizeSeconds(team.tier)) *
     popularity *
     mods.prizeMult *
+    (mods.gamePrizeMult[game.id] ?? 1) *
     ctx.incomeBuff;
   const winPrize = gross * (1 - cut);
   const lossPrize = winPrize * LOSS_PRIZE_RATIO;

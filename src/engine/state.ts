@@ -9,7 +9,7 @@ import { addToTeam, createTeam } from './teams';
 import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 2;
-export const GAME_VERSION = '0.4.0';
+export const GAME_VERSION = '0.5.0';
 
 export function createSettings(): Settings {
   return {
@@ -61,6 +61,15 @@ export function createStats(): Stats {
     burnouts: 0,
     decorBought: 0,
     mostUnavailable: 0,
+    dropsClicked: 0,
+    dramaClicked: 0,
+    dropsMissed: 0,
+    tournamentsPlayed: 0,
+    tournamentsWon: 0,
+    eventsSeen: 0,
+    choicesMade: 0,
+    opLevels: 0,
+    hypeTrainBest: 0,
   };
 }
 
@@ -117,6 +126,8 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     market: { listings: [], nextRefresh: 0, rerolls: 0 },
     staff: createStaff(),
     decor: {},
+    drops: { nextAt: 0, active: [] },
+    events: { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, lastTournament: null },
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

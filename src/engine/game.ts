@@ -2,6 +2,8 @@ import { OPERATIONS } from '../data/operations';
 import { checkAchievements } from './achievements';
 import { expireBuffs } from './buffs';
 import { decayHype } from './clicker';
+import { updateDrops } from './drops';
+import { updateWorldEvents } from './worldEvents';
 import { computeMods, computeRates } from './economy';
 import { updateMarket } from './market';
 import { updatePopularity } from './popularity';
@@ -42,6 +44,9 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
 
   if (!offline) {
     updateMarket(s, rng, mods);
+    const ctx = { rng, mods, rates };
+    updateDrops(s, ctx);
+    updateWorldEvents(s, ctx);
     decayHype(s, dt);
     if (rates.cpsNoBuffs > s.stats.bestCps) s.stats.bestCps = rates.cpsNoBuffs;
   }

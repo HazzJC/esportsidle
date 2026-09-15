@@ -1,4 +1,6 @@
 import {
+  PartyPopper,
+  Wifi,
   Bed,
   Binoculars,
   Bot,
@@ -116,6 +118,8 @@ import {
 } from '@lucide/svelte';
 
 export const ICONS: Record<string, typeof Sparkles> = {
+  'party-popper': PartyPopper,
+  wifi: Wifi,
   bed: Bed,
   binoculars: Binoculars,
   bot: Bot,
