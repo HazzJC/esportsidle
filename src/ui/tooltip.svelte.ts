@@ -57,6 +57,8 @@ const LONG_PRESS_MS = 380;
  * (and suppresses the click that follows the long-press).
  */
 export const tooltip: Action<TipAnchor, TipSource> = (node, initial) => {
+  // SVG and HTML elements share the same pointer events; one cast keeps listener types precise.
+  const el = node as HTMLElement;
   let source = initial;
   let pressTimer: ReturnType<typeof setTimeout> | undefined;
   let suppressClick = false;
@@ -96,14 +98,14 @@ export const tooltip: Action<TipAnchor, TipSource> = (node, initial) => {
     if (suppressClick) e.preventDefault();
   };
 
-  node.addEventListener('pointerenter', onEnter);
-  node.addEventListener('pointermove', onMove);
-  node.addEventListener('pointerleave', onLeave);
-  node.addEventListener('pointerdown', onDown);
-  node.addEventListener('pointerup', onUp);
-  node.addEventListener('pointercancel', onUp);
-  node.addEventListener('click', onClickCapture, true);
-  node.addEventListener('contextmenu', onContextMenu);
+  el.addEventListener('pointerenter', onEnter);
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerleave', onLeave);
+  el.addEventListener('pointerdown', onDown);
+  el.addEventListener('pointerup', onUp);
+  el.addEventListener('pointercancel', onUp);
+  el.addEventListener('click', onClickCapture, true);
+  el.addEventListener('contextmenu', onContextMenu);
 
   return {
     update(next: TipSource) {
@@ -112,14 +114,14 @@ export const tooltip: Action<TipAnchor, TipSource> = (node, initial) => {
     },
     destroy() {
       clearTimeout(pressTimer);
-      node.removeEventListener('pointerenter', onEnter);
-      node.removeEventListener('pointermove', onMove);
-      node.removeEventListener('pointerleave', onLeave);
-      node.removeEventListener('pointerdown', onDown);
-      node.removeEventListener('pointerup', onUp);
-      node.removeEventListener('pointercancel', onUp);
-      node.removeEventListener('click', onClickCapture, true);
-      node.removeEventListener('contextmenu', onContextMenu);
+      el.removeEventListener('pointerenter', onEnter);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('click', onClickCapture, true);
+      el.removeEventListener('contextmenu', onContextMenu);
       tip.hide(node);
     },
   };
