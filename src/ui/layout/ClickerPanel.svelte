@@ -4,6 +4,7 @@
   import Icon from '../components/Icon.svelte';
   import OrgLogo from '../components/OrgLogo.svelte';
   import { designUrl } from '../designImage';
+  import { pendingLegacy } from '../../engine/prestige';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
@@ -33,6 +34,7 @@
 
   const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
   const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
+  const pending = $derived(pendingLegacy(s));
   const logoDesign = $derived(s.org.logo ? s.designs[s.org.logo] : undefined);
   const logoUrl = $derived(logoDesign ? designUrl(logoDesign) : undefined);
   const activeBuffs = $derived(s.buffs.filter((b) => b.endsAt > s.time));
@@ -153,6 +155,20 @@
         {fmt(s.fans)} fans
         <span class="muted">+{fmt(r.fansPerSec, 1)}/s</span>
       </span>
+      {#if pending >= 1}
+        <button
+          class="legacy-chip num"
+          onclick={() => ((game.tab = 'legacy'), (game.mobileView = 'center'))}
+          use:tooltip={() => ({
+            title: 'Sell the Org',
+            icon: 'crown',
+            iconColor: 'var(--gold)',
+            lines: [`Selling now earns ${fmt(pendingLegacy(game.view.s))} legacy: +1% income forever each.`, { text: 'Open the Legacy tab to sell.', tone: 'muted' }],
+          })}
+        >
+          <Icon name="crown" size={13} /> +{fmt(pending)} legacy
+        </button>
+      {/if}
       {#if s.stats.trophiesTotal > 0}
         <span
           class="trophies num"
@@ -311,6 +327,20 @@
   .trophies {
     color: var(--gold);
     font-weight: 700;
+  }
+  .legacy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--gold);
+    background: rgba(255, 200, 61, 0.14);
+    color: var(--gold);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    animation: pulse 1.6s ease-in-out infinite;
   }
   .buff.mod {
     border-color: var(--cyan);

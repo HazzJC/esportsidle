@@ -9,6 +9,7 @@ import { updateMarket } from './market';
 import { updateMerch } from './merch';
 import { updateSponsors } from './sponsors';
 import { updatePopularity } from './popularity';
+import { checkChallenge } from './prestige';
 import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
 import type { GameState, Mods, Rates } from './types';
@@ -59,6 +60,7 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
   // Unlock checks twice per simulated second (and every coarse offline step).
   if (Math.floor(s.time * 2) !== Math.floor(prevTime * 2)) {
     refreshUpgradeUnlocks(s);
+    checkChallenge(s);
     checkAchievements(s, rates);
   }
   return { mods, rates };

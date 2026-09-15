@@ -40,6 +40,13 @@
     ['Total play time', fmtTime(s.stats.playtimeTotal)],
     ['Time away (offline)', fmtTime(s.stats.offlineSecondsTotal)],
     ['Org founded', new Date(s.createdAt).toLocaleDateString()],
+    ['Legacy level', `${fmt(s.prestige.level)} (+${fmtPct(s.prestige.level * m.legacyLevelPct)} income)`],
+    ['Legacy points', `${fmt(s.prestige.points)} unspent · ${fmt(s.prestige.spent)} spent`],
+    ['Orgs sold', fmt(s.stats.orgsSold)],
+    ['Tournaments', `${fmt(s.stats.tournamentsWon)} won of ${fmt(s.stats.tournamentsPlayed)}`],
+    ['Hype Drops clicked', `${fmt(s.stats.dropsClicked)} (${fmt(s.stats.dramaClicked)} drama, ${fmt(s.stats.dropsMissed)} missed)`],
+    ['Merch revenue', `${money(s.stats.merchRevenue)} · ${fmt(s.stats.merchSold)} items sold`],
+    ['Sponsors', `${fmt(s.stats.sponsorsSigned)} signed · ${fmt(s.stats.sponsorGoals)} goals met`],
   ]);
 
   const multipliers = $derived<[string, string][]>([

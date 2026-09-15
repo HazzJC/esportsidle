@@ -1,0 +1,575 @@
+<script lang="ts">
+  import { GAME_MAP } from '../../data/games';
+  import { CHALLENGES, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
+  import { tierName } from '../../data/leagues';
+  import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
+  import {
+    LEGACY_DIVISOR,
+    activeChallenge,
+    canSell,
+    hasSpecial,
+    legacyFor,
+    nextLegacyThreshold,
+    nodeState,
+    pendingLegacy,
+  } from '../../engine/prestige';
+  import Avatar from '../components/Avatar.svelte';
+  import DesignImage from '../components/DesignImage.svelte';
+  import Icon from '../components/Icon.svelte';
+  import Modal from '../components/Modal.svelte';
+  import { game } from '../game.svelte';
+  import { tooltip, type TipContent } from '../tooltip.svelte';
+
+  const CELL_X = 96;
+  const CELL_Y = 92;
+  const PAD = 44;
+  const COLS = Math.max(...LEGACY_NODES.map((n) => n.x)) + 1;
+  const ROWS = Math.max(...LEGACY_NODES.map((n) => n.y)) + 1;
+  const WIDTH = PAD * 2 + (COLS - 1) * CELL_X;
+  const HEIGHT = PAD * 2 + (ROWS - 1) * CELL_Y + 16;
+  const pos = (n: LegacyNodeDef) => ({ x: PAD + n.x * CELL_X, y: PAD + n.y * CELL_Y });
+  const EDGES = LEGACY_NODES.flatMap((n) => n.requires.map((r) => ({ from: LEGACY_NODE_MAP.get(r)!, to: n })));
+
+  let selling = $state(false);
+  let keepId = $state('');
+  let retireId = $state('');
+  let challengeId = $state('');
+
+  const v = $derived(game.view);
+  const s = $derived(v.s);
+  const p = $derived(s.prestige);
+  const pending = $derived(pendingLegacy(s));
+  const progress = $derived.by(() => {
+    const current = Math.max(p.level, legacyFor(s.earnedTotal));
+    const lo = Math.pow(current, 3) * LEGACY_DIVISOR;
+    const hi = nextLegacyThreshold(s);
+    return Math.max(0, Math.min(1, (s.earnedTotal - lo) / Math.max(1, hi - lo)));
+  });
+  const tradable = $derived(Object.values(s.players).filter((pl) => !pl.founder).sort((a, b) => b.level - a.level));
+  const active = $derived(activeChallenge(s));
+
+  function nodeTip(n: LegacyNodeDef): TipContent {
+    const state = nodeState(game.view.s, n.id);
+    const parents = n.requires.map((r) => LEGACY_NODE_MAP.get(r)?.name ?? r);
+    return {
+      title: n.name,
+      subtitle: state === 'owned' ? 'Owned' : state === 'available' ? 'Available' : 'Locked',
+      icon: n.icon,
+      iconColor: state === 'owned' ? 'var(--gold)' : 'var(--cyan)',
+      cost: state === 'owned' ? undefined : `${fmt(n.cost)} legacy`,
+      costOk: game.view.s.prestige.points >= n.cost,
+      lines: [n.desc, ...(parents.length && state === 'locked' ? [{ text: `Requires ${parents.join(', ')}`, tone: 'muted' as const }] : [])],
+    };
+  }
+
+  function onNodeKey(e: KeyboardEvent, id: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      game.buyLegacyNode(id);
+    }
+  }
+
+  function openSell() {
+    keepId = '';
+    retireId = '';
+    challengeId = '';
+    selling = true;
+  }
+
+  function confirmSell() {
+    if (game.sellOrg({ keepPlayerId: keepId || null, retirePlayerId: retireId || null, challenge: challengeId || null })) selling = false;
+  }
+</script>
+
+<div class="legacy">
+  <section class="hero">
+    <div class="level">
+      <Icon name="crown" size={34} color="var(--gold)" />
+      <div>
+        <div class="big num">Legacy {fmt(p.level)}</div>
+        <div class="muted small">+{fmtPct(p.level * v.m.legacyLevelPct)} income forever · {fmt(p.points)} points to spend · {p.runs} org{p.runs === 1 ? '' : 's'} sold</div>
+      </div>
+    </div>
+    <div class="sell">
+      <div class="pending">
+        <span class="muted small">Selling now earns</span>
+        <span class="gain num">+{fmt(pending)} legacy</span>
+      </div>
+      <span class="bar"><i style="width:{progress * 100}%"></i></span>
+      <span class="dim small">Next point at {money(nextLegacyThreshold(s))} earned all time (currently {money(s.earnedTotal)})</span>
+      <button class="btn gold" disabled={!canSell(s)} onclick={openSell}><Icon name="crown" size={15} /> Sell the Org</button>
+    </div>
+  </section>
+
+  {#if active}
+    <div class="challenge-banner">
+      <Icon name={active.icon} size={18} />
+      <span><b>Challenge: {active.name}</b> · {active.desc} Goal: {active.goal}. Reward: {active.reward}.</span>
+    </div>
+  {/if}
+
+  <section>
+    <h3 class="section-title">Legacy tree</h3>
+    <p class="muted small">Spend legacy points on permanent upgrades. Unlock a node to reveal the nodes below it.</p>
+    <div class="tree-wrap">
+      <svg class="tree" viewBox="0 0 {WIDTH} {HEIGHT}" width={WIDTH} height={HEIGHT} role="group" aria-label="Legacy tree">
+        {#each EDGES as e (`${e.from.id}-${e.to.id}`)}
+          {@const a = pos(e.from)}
+          {@const b = pos(e.to)}
+          <path
+            class="edge"
+            class:lit={p.nodes[e.from.id] !== undefined}
+            class:done={p.nodes[e.to.id] !== undefined}
+            d="M{a.x} {a.y} C{a.x} {(a.y + b.y) / 2} {b.x} {(a.y + b.y) / 2} {b.x} {b.y}"
+          />
+        {/each}
+        {#each LEGACY_NODES as n (n.id)}
+          {@const state = nodeState(s, n.id)}
+          {@const c = pos(n)}
+          {@const affordable = state === 'available' && p.points >= n.cost}
+          <g
+            class="node {state}"
+            class:affordable
+            transform="translate({c.x} {c.y})"
+            role="button"
+            tabindex={state === 'available' ? 0 : -1}
+            aria-label="{n.name}, {state}, costs {n.cost}"
+            onclick={() => game.buyLegacyNode(n.id)}
+            onkeydown={(e) => onNodeKey(e, n.id)}
+            use:tooltip={() => nodeTip(n)}
+          >
+            <circle r="25" />
+            <g transform="translate(-11 -11)"><Icon name={state === 'locked' ? 'lock' : n.icon} size={22} /></g>
+            {#if state !== 'owned'}
+              <text y="42" text-anchor="middle" class="cost">{fmt(n.cost)}</text>
+            {/if}
+          </g>
+        {/each}
+      </svg>
+    </div>
+  </section>
+
+  {#if hasSpecial(s, 'challenges')}
+    <section>
+      <h3 class="section-title">Challenges</h3>
+      <p class="muted small">Pick a challenge when you sell the org. Beat its goal during that run for a permanent reward.</p>
+      <div class="challenges">
+        {#each CHALLENGES as c (c.id)}
+          {@const done = p.challengesDone[c.id] !== undefined}
+          <div class="challenge" class:done class:active={p.challenge === c.id}>
+            <div class="chead"><Icon name={c.icon} size={18} /> <b>{c.name}</b> {#if done}<span class="chip good">Completed</span>{:else if p.challenge === c.id}<span class="chip gold-text">Active</span>{/if}</div>
+            <p class="small">{c.desc}</p>
+            <p class="small muted">Goal: {c.goal}</p>
+            <p class="small good">Reward: {c.reward}</p>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
+  {#if p.legends.length > 0}
+    <section>
+      <h3 class="section-title">Legend coaches</h3>
+      <div class="legends">
+        {#each p.legends as legend, i (`${legend.tag}-${i}`)}
+          <div class="legend" use:tooltip={() => ({ title: legend.tag, subtitle: `${legend.first} ${legend.last}`, icon: 'medal', iconColor: 'var(--gold)', lines: [`Retired after run ${legend.run}.`, `+5% team rating in ${GAME_MAP.get(legend.gameId)?.name ?? legend.gameId}, +2% fans.`] })}>
+            <Avatar look={legend.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 8, chair: 0, desk: 0, shoes: 0, jersey: 9, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={52} mode="bust" />
+            <span class="ltag">{legend.tag}</span>
+            <span class="dim small">{GAME_MAP.get(legend.gameId)?.name}</span>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
+  <section>
+    <h3 class="section-title">Hall of Fame</h3>
+    {#if p.hallOfFame.length === 0}
+      <p class="muted small">Your past orgs will be remembered here.</p>
+    {:else}
+      <div class="hof">
+        {#each p.hallOfFame as h (h.run)}
+          <div class="entry">
+            <div class="org">
+              {#if h.logo && s.designs[h.logo]}
+                <DesignImage design={s.designs[h.logo]} size={40} />
+              {:else}
+                <span class="runno num">#{h.run}</span>
+              {/if}
+              <div>
+                <div class="oname">{h.orgName}</div>
+                <div class="dim small">Run {h.run} · {fmtTime(h.duration)} · {new Date(h.endedAt).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div class="facts small">
+              <span>Earned <b class="num">{money(h.earned)}</b></span>
+              <span>Legacy <b class="num gold-text">+{fmt(h.legacyGained)}</b></span>
+              <span>Best <b>{h.bestGame ? `${GAME_MAP.get(h.bestGame)?.name}, ${tierName(h.bestTier)}` : '—'}</b></span>
+              <span>Titles <b class="num">{h.titles}</b> · Tournaments <b class="num">{h.tournamentsWon}</b></span>
+              {#if h.challenge}<span class="gold-text">Challenge: {CHALLENGES.find((c) => c.id === h.challenge)?.name}</span>{/if}
+            </div>
+            {#if h.mvp}
+              <div class="mvp">
+                <Avatar look={h.mvp.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 4, chair: 0, desk: 0, shoes: 0, jersey: 5, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={40} mode="bust" />
+                <div class="small">
+                  <div class="dim">MVP</div>
+                  <b>{h.mvp.tag}</b>
+                  {#if h.retired === h.mvp.tag}<span class="gold-text"> · retired</span>{/if}
+                  {#if h.kept === h.mvp.tag}<span class="cyan-text"> · kept</span>{/if}
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
+</div>
+
+{#if selling}
+  <Modal title="Sell the Org" onclose={() => (selling = false)} width={560}>
+    <div class="sell-modal">
+      <p>
+        Sell <b>{s.org.name}</b> and start again from the garage with <b class="gold-text">+{fmt(pending)} legacy</b>
+        (+{fmtPct(pending * v.m.legacyLevelPct)} income forever and {fmt(pending)} points to spend).
+      </p>
+      <div class="lists">
+        <div>
+          <h4>You keep</h4>
+          <ul class="small">
+            <li>Org name, logo, jersey and all designs</li>
+            <li>Achievements and all-time stats</li>
+            <li>Trophies, operation levels and trophy upgrades</li>
+            <li>Your founder's look and tag</li>
+            {#if hasSpecial(s, 'keepDecor')}<li>Gaming House decor</li>{/if}
+            {#if hasSpecial(s, 'keepMerch')}<li>Unlocked merch products</li>{/if}
+          </ul>
+        </div>
+        <div>
+          <h4>You lose</h4>
+          <ul class="small">
+            <li>Cash, fans and operations</li>
+            <li>Upgrades (except trophy upgrades)</li>
+            <li>Teams, players, staff and sponsors</li>
+          </ul>
+        </div>
+      </div>
+
+      {#if hasSpecial(s, 'keepPlayer')}
+        <label class="field">
+          <span>Franchise player to keep</span>
+          <select bind:value={keepId}>
+            <option value="">Nobody</option>
+            {#each tradable as pl (pl.id)}
+              <option value={pl.id}>{pl.tag} · Lv {pl.level} · {GAME_MAP.get(pl.gameId)?.name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+      {#if hasSpecial(s, 'legends')}
+        <label class="field">
+          <span>Player to retire as a legend coach</span>
+          <select bind:value={retireId}>
+            <option value="">Nobody</option>
+            {#each tradable.filter((pl) => pl.id !== keepId) as pl (pl.id)}
+              <option value={pl.id}>{pl.tag} · Lv {pl.level} · {GAME_MAP.get(pl.gameId)?.name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+      {#if hasSpecial(s, 'challenges')}
+        <label class="field">
+          <span>Challenge for the next run</span>
+          <select bind:value={challengeId}>
+            <option value="">No challenge</option>
+            {#each CHALLENGES.filter((c) => p.challengesDone[c.id] === undefined) as c (c.id)}
+              <option value={c.id}>{c.name}: {c.goal} ({c.reward})</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+    </div>
+    {#snippet footer()}
+      <button class="btn" onclick={() => (selling = false)}>Not yet</button>
+      <button class="btn gold" disabled={!canSell(s)} onclick={confirmSell}><Icon name="crown" size={14} /> Sell for +{fmt(pending)} legacy</button>
+    {/snippet}
+  </Modal>
+{/if}
+
+<style>
+  .legacy {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .small {
+    font-size: 12px;
+    margin: 0;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr minmax(240px, 320px);
+    gap: 14px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 200, 61, 0.35);
+    background: linear-gradient(135deg, rgba(255, 200, 61, 0.12), transparent 60%), var(--bg-2);
+  }
+  .level {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .big {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 24px;
+    color: var(--gold);
+  }
+  .sell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .pending {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .gain {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--gold);
+  }
+  .sell .bar i {
+    background: linear-gradient(90deg, #b8862f, var(--gold));
+  }
+  .challenge-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    border: 1px solid var(--gold);
+    background: rgba(255, 200, 61, 0.1);
+    color: var(--gold);
+    font-size: 13px;
+  }
+  .challenge-banner span {
+    color: var(--text);
+  }
+  .tree-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 200, 61, 0.08), transparent 60%),
+      var(--bg-2);
+  }
+  .tree {
+    display: block;
+    margin: 0 auto;
+    max-width: none;
+  }
+  .edge {
+    fill: none;
+    stroke: var(--line-2);
+    stroke-width: 2;
+  }
+  .edge.lit {
+    stroke: rgba(34, 228, 255, 0.5);
+  }
+  .edge.done {
+    stroke: var(--gold);
+  }
+  .node {
+    cursor: default;
+    outline: none;
+  }
+  .node circle {
+    fill: var(--panel);
+    stroke: var(--line-2);
+    stroke-width: 2;
+  }
+  .node :global(svg) {
+    color: var(--dim);
+  }
+  .node.available circle {
+    stroke: var(--cyan);
+  }
+  .node.available :global(svg) {
+    color: var(--cyan);
+  }
+  .node.available.affordable {
+    cursor: pointer;
+  }
+  .node.available.affordable circle {
+    fill: rgba(34, 228, 255, 0.12);
+    filter: drop-shadow(0 0 6px rgba(34, 228, 255, 0.6));
+  }
+  .node.owned circle {
+    fill: rgba(255, 200, 61, 0.2);
+    stroke: var(--gold);
+  }
+  .node.owned :global(svg) {
+    color: var(--gold);
+  }
+  .node:focus-visible circle {
+    stroke-width: 4;
+  }
+  .cost {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 13px;
+    fill: var(--muted);
+  }
+  .node.affordable .cost {
+    fill: var(--cyan);
+  }
+  .challenges {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+  .challenge {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .challenge.done {
+    border-color: rgba(61, 255, 154, 0.45);
+  }
+  .challenge.active {
+    border-color: var(--gold);
+  }
+  .chead {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+  }
+  .chip.good {
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .legends {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .legend {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 200, 61, 0.4);
+    background: var(--bg-2);
+    min-width: 96px;
+  }
+  .ltag {
+    font-family: var(--font-ui);
+    font-weight: 700;
+  }
+  .hof {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .entry {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 2fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .org {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .runno {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(255, 200, 61, 0.12);
+    color: var(--gold);
+    font-family: var(--font-display);
+  }
+  .oname {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    color: var(--muted);
+  }
+  .facts b {
+    color: var(--text);
+  }
+  .mvp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mvp :global(svg) {
+    border-radius: 6px;
+  }
+  .sell-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sell-modal p {
+    margin: 0;
+  }
+  .lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .lists h4 {
+    margin: 0 0 4px;
+    font-family: var(--font-ui);
+  }
+  .lists ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .field select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line-2);
+    background: var(--panel);
+    color: var(--text);
+  }
+  @media (max-width: 760px) {
+    .hero,
+    .entry,
+    .lists {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

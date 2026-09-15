@@ -104,6 +104,8 @@ export function describeEffect(e: Effect): string {
       return `Sponsor income bonuses ×${fmt(e.mult, 2)}.`;
     case 'merchMult':
       return `Merch sales ×${fmt(e.mult, 2)}.`;
+    case 'legacyLevelPct':
+      return `Each legacy level gives +${pct(e.add)} more income.`;
     case 'noveltyMult':
       return e.mult === 2 ? 'Merch designs stay fresh twice as long.' : `Merch designs stay fresh ${pct(e.mult - 1)} longer.`;
   }

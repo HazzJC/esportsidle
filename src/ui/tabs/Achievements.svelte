@@ -19,6 +19,7 @@
     { id: 'staff', label: 'Staff & House' },
     { id: 'events', label: 'Events & Tournaments' },
     { id: 'business', label: 'Sponsors & Merch' },
+    { id: 'legacy', label: 'Legacy' },
     { id: 'misc', label: 'Miscellaneous' },
   ];
 

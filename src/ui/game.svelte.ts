@@ -20,6 +20,8 @@ import {
 } from '../engine/designs';
 import { setLineDesign, setLinePrice, unlockProduct } from '../engine/merch';
 import { cancelContract, signOffer } from '../engine/sponsors';
+import { buyNode, sellOrg, type SellOptions } from '../engine/prestige';
+import { LEGACY_NODE_MAP } from '../data/legacy';
 import { BRAND_MAP } from '../data/sponsors';
 import { PRODUCT_MAP } from '../data/merch';
 import { buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
@@ -44,6 +46,7 @@ export type TabId =
   | 'staff'
   | 'studio'
   | 'sponsors'
+  | 'legacy'
   | 'achievements'
   | 'stats'
   | 'options';
@@ -521,6 +524,29 @@ class GameStore {
 
   setLinePrice(productId: string, price: number): void {
     if (setLinePrice(this.state, productId, price)) this.refresh();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Prestige
+  // ---------------------------------------------------------------------------
+  sellOrg(options: SellOptions): boolean {
+    const entry = sellOrg(this.state, options);
+    if (!entry) return false;
+    this.offlineReport = null;
+    this.selectedPlayer = null;
+    this.marketFilter = null;
+    this.acc = 0;
+    refreshUpgradeUnlocks(this.state);
+    this.save(false);
+    this.refresh();
+    return true;
+  }
+
+  buyLegacyNode(id: string): void {
+    if (!buyNode(this.state, id)) return;
+    const def = LEGACY_NODE_MAP.get(id);
+    this.toast({ title: `${def?.name ?? 'Legacy node'} unlocked`, body: def?.desc, icon: def?.icon ?? 'crown', tone: 'gold' }, 3000);
+    this.refresh();
   }
 
   signSponsor(offerId: number): void {

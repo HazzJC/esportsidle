@@ -93,7 +93,8 @@ export function maxStaffAffordable(def: StaffDef, owned: number, cash: number, c
 /** Hires staff. `amount` of -1 hires as many as affordable. Returns the number hired. */
 export function hireStaff(s: GameState, id: string, amount: number, costMult = 1): number {
   const def = STAFF_MAP.get(id);
-  if (!def || !isStaffUnlocked(s, def)) return 0;
+  // Skeleton Crew challenge: no hiring.
+  if (!def || !isStaffUnlocked(s, def) || s.prestige.challenge === 'nostaff') return 0;
   const owned = s.staff[id] ?? 0;
   const n = amount < 0 ? maxStaffAffordable(def, owned, s.cash, costMult) : Math.floor(amount);
   if (n <= 0) return 0;

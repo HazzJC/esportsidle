@@ -1,6 +1,7 @@
 import { fmt } from '../engine/format';
 import type { GameState, Rates } from '../engine/types';
 import { DECOR, ROOMS } from './decor';
+import { CHALLENGES, LEGACY_NODES } from './legacy';
 import { PRODUCTS } from './merch';
 import { OPERATIONS, OP_ACH_THRESHOLDS } from './operations';
 import { STAFF } from './staff';
@@ -18,6 +19,7 @@ export type AchievementGroup =
   | 'staff'
   | 'events'
   | 'business'
+  | 'legacy'
   | 'misc';
 
 export interface AchievementDef {
@@ -759,6 +761,89 @@ add({
   group: 'business',
   secret: true,
   check: (s) => s.stats.cryptoCrashes >= 1,
+});
+
+// Legacy -------------------------------------------------------------------------
+const SOLD: [number, string][] = [
+  [1, 'Exit Strategy'],
+  [5, 'Serial Founder'],
+  [25, 'Esports Mogul'],
+];
+for (const [n, name] of SOLD) {
+  add({
+    id: `sold_${n}`,
+    name,
+    desc: () => `Sell your org ${n} time${n === 1 ? '' : 's'}.`,
+    icon: 'crown',
+    group: 'legacy',
+    check: (s) => s.stats.orgsSold >= n,
+  });
+}
+const LEGACY_LEVELS: [number, string][] = [
+  [10, 'Local Legend'],
+  [100, 'Household Name'],
+  [1_000, 'Esports Royalty'],
+  [10_000, 'Immortal Org'],
+];
+for (const [n, name] of LEGACY_LEVELS) {
+  add({
+    id: `legacy_${n}`,
+    name,
+    desc: () => `Reach legacy level ${fmt(n)}.`,
+    icon: 'star',
+    group: 'legacy',
+    check: (s) => s.prestige.level >= n,
+  });
+}
+add({
+  id: 'nodes_10',
+  name: 'Family Tree',
+  desc: () => 'Buy 10 legacy nodes.',
+  icon: 'layers',
+  group: 'legacy',
+  check: (s) => Object.keys(s.prestige.nodes).length >= 10,
+});
+add({
+  id: 'nodes_all',
+  name: 'Fully Grown',
+  desc: () => 'Buy every legacy node.',
+  icon: 'layers',
+  group: 'legacy',
+  check: (s) => LEGACY_NODES.every((n) => s.prestige.nodes[n.id] !== undefined),
+});
+for (const c of CHALLENGES) {
+  add({
+    id: `challenge_${c.id}`,
+    name: `Beat ${c.name}`,
+    desc: () => `Complete the ${c.name} challenge.`,
+    icon: c.icon,
+    group: 'legacy',
+    check: (s) => s.prestige.challengesDone[c.id] !== undefined,
+  });
+}
+add({
+  id: 'challenge_all',
+  name: 'Proven Champions',
+  desc: () => 'Complete every challenge.',
+  icon: 'swords',
+  group: 'legacy',
+  check: (s) => CHALLENGES.every((c) => s.prestige.challengesDone[c.id] !== undefined),
+});
+add({
+  id: 'legend_retired',
+  name: 'Jersey Retired',
+  desc: () => 'Retire a player as a Hall of Fame legend.',
+  icon: 'medal',
+  group: 'legacy',
+  check: (s) => s.prestige.legends.length >= 1,
+});
+add({
+  id: 'franchise_tag',
+  name: 'Franchise Tag',
+  desc: () => 'Keep a player when selling your org.',
+  icon: 'user',
+  group: 'legacy',
+  check: (s) => s.prestige.hallOfFame.some((h) => h.kept !== null),
 });
 
 // Misc & shadow ----------------------------------------------------------------

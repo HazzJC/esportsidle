@@ -20,13 +20,16 @@ export interface TipContent {
 
 export type TipSource = () => TipContent;
 
+/** Tooltips can be attached to HTML elements or SVG shapes. */
+export type TipAnchor = HTMLElement | SVGElement;
+
 class TooltipStore {
   source = $state.raw<TipSource | null>(null);
   x = $state(0);
   y = $state(0);
-  anchor: HTMLElement | null = null;
+  anchor: TipAnchor | null = null;
 
-  show(anchor: HTMLElement, source: TipSource, x: number, y: number): void {
+  show(anchor: TipAnchor, source: TipSource, x: number, y: number): void {
     this.anchor = anchor;
     this.source = source;
     this.x = x;
@@ -38,7 +41,7 @@ class TooltipStore {
     this.y = y;
   }
 
-  hide(anchor?: HTMLElement): void {
+  hide(anchor?: TipAnchor): void {
     if (anchor && anchor !== this.anchor) return;
     this.anchor = null;
     this.source = null;
@@ -53,7 +56,7 @@ const LONG_PRESS_MS = 380;
  * Attaches a live tooltip. Mouse/pen: shows on hover. Touch: shows on long-press
  * (and suppresses the click that follows the long-press).
  */
-export const tooltip: Action<HTMLElement, TipSource> = (node, initial) => {
+export const tooltip: Action<TipAnchor, TipSource> = (node, initial) => {
   let source = initial;
   let pressTimer: ReturnType<typeof setTimeout> | undefined;
   let suppressClick = false;

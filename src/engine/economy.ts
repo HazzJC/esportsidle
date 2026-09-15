@@ -6,6 +6,7 @@ import { buffTotals } from './buffs';
 import { evaluateMerch } from './merch';
 import { applyEventModifiers } from './modifiers';
 import { passiveFans } from './players';
+import { BASE_LEGACY_LEVEL_PCT, legacyBonuses } from './prestige';
 import { sponsorBonuses } from './sponsors';
 import { applyStat, applyStaffAndDecor } from './staff';
 import { evaluateTeam, teamPlayerIds } from './teams';
@@ -72,6 +73,8 @@ export function emptyMods(): Mods {
     sponsorIncomePct: 0,
     merchMult: 1,
     noveltyMult: 1,
+    legacyLevelPct: BASE_LEGACY_LEVEL_PCT,
+    gameRatingMult: {},
   };
 }
 
@@ -197,6 +200,9 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'noveltyMult':
       m.noveltyMult *= e.mult;
       break;
+    case 'legacyLevelPct':
+      m.legacyLevelPct += e.add;
+      break;
   }
 }
 
@@ -207,6 +213,10 @@ export function computeMods(s: GameState): Mods {
     const def = UPGRADE_MAP.get(id);
     if (def) for (const e of def.effects) applyEffect(m, e);
   }
+  const legacy = legacyBonuses(s);
+  for (const e of legacy.effects) applyEffect(m, e);
+  for (const [gameId, mult] of Object.entries(legacy.gameRating)) m.gameRatingMult[gameId] = (m.gameRatingMult[gameId] ?? 1) * mult;
+  m.fansMult *= legacy.fansMult;
   applyStaffAndDecor(m, s);
   applyEventModifiers(m, s);
   const sponsors = sponsorBonuses(s);
@@ -214,6 +224,7 @@ export function computeMods(s: GameState): Mods {
   for (const e of sponsors.effects) applyEffect(m, e);
   m.sponsorIncomePct = sponsors.incomePct * m.sponsorIncomeMult;
   m.globalMult *= 1 + m.sponsorIncomePct;
+  m.globalMult *= 1 + s.prestige.level * m.legacyLevelPct;
   return m;
 }
 

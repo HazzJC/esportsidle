@@ -79,6 +79,8 @@ export function rosterCapacity(team: TeamState, mods: Pick<Mods, 'benchSlots'>):
 export function hasRosterSpace(s: GameState, gameId: string, mods: Pick<Mods, 'benchSlots'>): boolean {
   const team = s.teams[gameId];
   if (!team) return false;
+  // Solo Queue challenge: one player per team.
+  if (s.prestige.challenge === 'solo') return teamPlayerIds(team).length === 0;
   return team.lineup.includes(null) || team.bench.length < mods.benchSlots;
 }
 
@@ -206,7 +208,8 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const active = available > 0;
   const average = ratings.reduce((a, b) => a + b, 0) / Math.max(1, ratings.length);
   const chemistry = game.teamSize > 1 ? 1 + 0.2 * team.chemistry : 1;
-  const rating = average * teamMult * chemistry * mods.teamRatingMult * (mods.genreRatingMult[game.genre] ?? 1);
+  const rating =
+    average * teamMult * chemistry * mods.teamRatingMult * (mods.genreRatingMult[game.genre] ?? 1) * (mods.gameRatingMult[game.id] ?? 1);
   const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
   const popularity = s.games[team.gameId]?.popularity ?? 1;
@@ -442,6 +445,15 @@ export function unlockGame(s: GameState, gameId: string): boolean {
   s.cash -= game.unlockCost;
   s.games[gameId].unlocked = true;
   if (!s.teams[gameId]) s.teams[gameId] = createTeam(gameId);
+  // Franchise players kept from a previous run join once their game is back.
+  const waiting = s.prestige.reserve.filter((p) => p.gameId === gameId);
+  if (waiting.length > 0) {
+    s.prestige.reserve = s.prestige.reserve.filter((p) => p.gameId !== gameId);
+    for (const p of waiting) {
+      s.players[p.id] = p;
+      addToTeam(s, p, { benchSlots: 1 });
+    }
+  }
   return true;
 }
 

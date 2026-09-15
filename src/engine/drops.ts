@@ -42,6 +42,8 @@ function buffSeconds(ctx: DropContext, seconds: number): number {
 }
 
 export function dramaShare(s: GameState, mods: Mods): number {
+  // Tabloid Darling challenge: every drop is drama.
+  if (s.prestige.challenge === 'drama') return 1;
   if (s.time < s.events.calmUntil) return 0;
   const level = Math.max(0, Math.min(DRAMA_SHARE.length - 1, Math.floor(mods.dramaLevel)));
   return DRAMA_SHARE[level] * mods.dramaShareMult;
@@ -263,7 +265,8 @@ export function updateDrops(s: GameState, ctx: DropContext): void {
     s.drops.nextAt = s.time + ctx.rng.range(FIRST_DROP[0], FIRST_DROP[1]);
     return;
   }
-  if (s.time >= s.drops.nextAt && s.drops.active.length === 0) {
+  // No Hype challenge: drops never spawn.
+  if (s.time >= s.drops.nextAt && s.drops.active.length === 0 && s.prestige.challenge !== 'nodrops') {
     spawnDrop(s, ctx);
     scheduleNextDrop(s, ctx);
   }

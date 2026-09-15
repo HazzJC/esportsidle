@@ -370,7 +370,8 @@ export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gea
 
 export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>): boolean {
   const p = s.players[playerId];
-  if (!p) return false;
+  // Potato League challenge: no gear upgrades.
+  if (!p || s.prestige.challenge === 'potato') return false;
   const cost = gearUpgradeCost(p, slot, mods);
   if (!Number.isFinite(cost) || s.cash < cost) return false;
   s.cash -= cost;

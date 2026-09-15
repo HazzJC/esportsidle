@@ -4,6 +4,7 @@
   import { game, type TabId } from '../game.svelte';
   import Achievements from '../tabs/Achievements.svelte';
   import HQ from '../tabs/HQ.svelte';
+  import Legacy from '../tabs/Legacy.svelte';
   import Market from '../tabs/Market.svelte';
   import Options from '../tabs/Options.svelte';
   import Roster from '../tabs/Roster.svelte';
@@ -23,6 +24,7 @@
     { id: 'staff', label: 'Staff', icon: 'briefcase' },
     { id: 'studio', label: 'Studio', icon: 'palette' },
     { id: 'sponsors', label: 'Sponsors', icon: 'handshake' },
+    { id: 'legacy', label: 'Legacy', icon: 'crown' },
     { id: 'achievements', label: 'Trophies', icon: 'trophy' },
     { id: 'stats', label: 'Stats', icon: 'chart-column' },
     { id: 'options', label: 'Options', icon: 'settings' },
@@ -49,6 +51,8 @@
       <Studio />
     {:else if game.tab === 'sponsors'}
       <Sponsors />
+    {:else if game.tab === 'legacy'}
+      <Legacy />
     {:else if game.tab === 'teams'}
       <Teams />
     {:else if game.tab === 'roster'}

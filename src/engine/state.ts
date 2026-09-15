@@ -9,7 +9,7 @@ import { addToTeam, createTeam } from './teams';
 import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 2;
-export const GAME_VERSION = '0.6.0';
+export const GAME_VERSION = '0.7.0';
 
 export function createSettings(): Settings {
   return {
@@ -76,6 +76,9 @@ export function createStats(): Stats {
     sponsorsSigned: 0,
     sponsorGoals: 0,
     cryptoCrashes: 0,
+    orgsSold: 0,
+    legacyNodes: 0,
+    challengesCompleted: 0,
   };
 }
 
@@ -138,6 +141,19 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     designs: {},
     merch: { trend: 'neon', trendEndsAt: 0, unlocked: {}, lines: {} },
     sponsors: { offers: [], active: [], nextRefresh: 0, history: [] },
+    prestige: {
+      level: 0,
+      points: 0,
+      spent: 0,
+      runs: 0,
+      nodes: {},
+      hallOfFame: [],
+      legends: [],
+      reserve: [],
+      challenge: null,
+      challengesDone: {},
+      runBaseline: { seasonTitles: 0, tournamentsWon: 0, matchesWon: 0 },
+    },
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

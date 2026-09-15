@@ -75,7 +75,8 @@ export type Effect =
   | { kind: 'sponsorSlots'; add: number }
   | { kind: 'sponsorIncome'; mult: number }
   | { kind: 'merchMult'; mult: number }
-  | { kind: 'noveltyMult'; mult: number };
+  | { kind: 'noveltyMult'; mult: number }
+  | { kind: 'legacyLevelPct'; add: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -133,6 +134,10 @@ export interface Mods {
   sponsorIncomePct: number;
   merchMult: number;
   noveltyMult: number;
+  /** Income bonus per legacy level. */
+  legacyLevelPct: number;
+  /** Team rating multipliers per game (retired legends). */
+  gameRatingMult: Record<string, number>;
 }
 
 export interface TeamEval {
@@ -453,6 +458,53 @@ export interface SponsorsState {
   history: SponsorHistoryEntry[];
 }
 
+export interface Legend {
+  tag: string;
+  first: string;
+  last: string;
+  gameId: string;
+  look: Appearance;
+  rating: number;
+  run: number;
+}
+
+export interface HallOfFameEntry {
+  run: number;
+  orgName: string;
+  logo: string | null;
+  earned: number;
+  legacyGained: number;
+  bestTier: number;
+  bestGame: string | null;
+  titles: number;
+  tournamentsWon: number;
+  matchesWon: number;
+  mvp: { tag: string; first: string; last: string; gameId: string; rarity: Rarity; look: Appearance; wins: number; founder: boolean } | null;
+  retired: string | null;
+  kept: string | null;
+  duration: number;
+  endedAt: number;
+  challenge: string | null;
+}
+
+export interface PrestigeState {
+  /** Total legacy earned across all sales (each level is +1% income). */
+  level: number;
+  /** Unspent legacy points. */
+  points: number;
+  spent: number;
+  runs: number;
+  /** Legacy node id -> real timestamp bought. */
+  nodes: Record<string, number>;
+  hallOfFame: HallOfFameEntry[];
+  legends: Legend[];
+  /** Kept players waiting for their game to be unlocked. */
+  reserve: Player[];
+  challenge: string | null;
+  challengesDone: Record<string, number>;
+  runBaseline: { seasonTitles: number; tournamentsWon: number; matchesWon: number };
+}
+
 export interface Settings {
   numberFormat: NumberFormat;
   autosaveSeconds: number;
@@ -515,6 +567,9 @@ export interface Stats {
   sponsorsSigned: number;
   sponsorGoals: number;
   cryptoCrashes: number;
+  orgsSold: number;
+  legacyNodes: number;
+  challengesCompleted: number;
 }
 
 export interface GameState {
@@ -557,6 +612,7 @@ export interface GameState {
   designs: Record<string, Design>;
   merch: MerchState;
   sponsors: SponsorsState;
+  prestige: PrestigeState;
   nextId: number;
   popularityClock: number;
   stats: Stats;
