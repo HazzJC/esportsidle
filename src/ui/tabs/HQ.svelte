@@ -3,6 +3,7 @@
   import { PR_CLEANUP_SECONDS, dramaShare, prCleanupCost } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
+  import Agenda from '../components/Agenda.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { laneHue } from '../theme';
@@ -27,6 +28,8 @@
 </script>
 
 <div class="hq">
+  <Agenda />
+
   <div class="cards">
     <div class="card">
       <span class="label">Income</span>
