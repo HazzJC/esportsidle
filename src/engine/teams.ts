@@ -32,7 +32,7 @@ import {
   traitsOf,
 } from './players';
 import type { Rng } from './rng';
-import type { GameState, MatchRecord, Mods, Player, TeamEval, TeamState } from './types';
+import type { GameState, MatchRecord, Mods, Player, TeamEval, TeamKit, TeamState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
@@ -44,6 +44,7 @@ export function createTeam(gameId: string): TeamState {
   const game = getGame(gameId);
   return {
     gameId,
+    kit: null,
     lineup: Array.from({ length: game.teamSize }, () => null),
     bench: [],
     tier: 0,
@@ -62,6 +63,11 @@ export function createTeam(gameId: string): TeamState {
     titles: 0,
     earnings: 0,
   };
+}
+
+/** The colours a team plays in: its own kit if it has one, otherwise the org's team colours. */
+export function teamKit(s: GameState, gameId: string): TeamKit {
+  return s.teams[gameId]?.kit ?? { primary: s.org.primary, secondary: s.org.secondary };
 }
 
 // ---------------------------------------------------------------------------

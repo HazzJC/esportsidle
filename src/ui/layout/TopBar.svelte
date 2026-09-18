@@ -40,18 +40,18 @@
     <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
       <defs>
         <linearGradient id="brand-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#22e4ff" />
-          <stop offset="1" stop-color="#ff2bd6" />
+          <stop offset="0" style="stop-color: var(--accent)" />
+          <stop offset="1" style="stop-color: var(--gold)" />
         </linearGradient>
       </defs>
       <path
         d="M18 22h28a10 10 0 0 1 10 10v6a10 10 0 0 1-17 7l-3-3H28l-3 3a10 10 0 0 1-17-7v-6a10 10 0 0 1 10-10z"
         fill="url(#brand-g)"
       />
-      <circle cx="44" cy="31" r="3" fill="#0b0e1f" />
-      <circle cx="50" cy="37" r="3" fill="#0b0e1f" />
-      <rect x="17" y="28" width="4" height="12" rx="1" fill="#0b0e1f" />
-      <rect x="13" y="32" width="12" height="4" rx="1" fill="#0b0e1f" />
+      <circle cx="44" cy="31" r="3" fill="#0e0e10" />
+      <circle cx="50" cy="37" r="3" fill="#0e0e10" />
+      <rect x="17" y="28" width="4" height="12" rx="1" fill="#0e0e10" />
+      <rect x="13" y="32" width="12" height="4" rx="1" fill="#0e0e10" />
     </svg>
     <span class="wordmark">ESPORTS<b>IDLE</b></span>
   </div>
@@ -109,7 +109,7 @@
     letter-spacing: 0.12em;
   }
   .wordmark b {
-    color: var(--cyan);
+    color: var(--accent);
     font-weight: 900;
   }
   .org {
@@ -126,7 +126,7 @@
   }
   .org:hover {
     color: var(--text);
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .org-name {
     font-family: var(--font-ui);
@@ -154,7 +154,7 @@
   }
   .ticker :global(.ticker-icon) {
     flex: none;
-    color: var(--magenta);
+    color: var(--accent-2);
   }
   .news {
     white-space: nowrap;
@@ -197,7 +197,7 @@
   }
   .rename input:focus {
     outline: none;
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .actions {
     display: flex;

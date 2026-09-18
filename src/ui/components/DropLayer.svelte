@@ -38,8 +38,8 @@
     pointer-events: none;
   }
   .drop {
-    --c: #ffc83d;
-    --c2: #ff8a3d;
+    --c: var(--gold);
+    --c2: var(--accent);
     position: absolute;
     width: 72px;
     height: 72px;
@@ -55,12 +55,12 @@
     -webkit-tap-highlight-color: transparent;
   }
   .drop.drama {
-    --c: #ff4d6d;
+    --c: var(--red);
     --c2: #8b1e3f;
   }
   .drop.chain {
-    --c: #22e4ff;
-    --c2: #8b5cff;
+    --c: var(--accent-2);
+    --c2: var(--accent);
   }
   .core {
     display: grid;
@@ -107,7 +107,7 @@
     height: 22px;
     padding: 0 5px;
     border-radius: 999px;
-    background: #0b0e1f;
+    background: var(--bg);
     border: 2px solid var(--c);
     color: var(--c);
     font-family: var(--font-display);

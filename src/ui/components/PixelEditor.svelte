@@ -191,7 +191,7 @@
       }
       ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(34,228,255,0.6)';
+    ctx.strokeStyle = 'color-mix(in srgb, var(--accent) 60%, transparent)';
     ctx.setLineDash([6, 6]);
     if (mirrorX) {
       ctx.beginPath();
@@ -533,9 +533,9 @@
     color: var(--muted);
   }
   .tool.active {
-    color: var(--cyan);
-    border-color: var(--cyan);
-    background: rgba(34, 228, 255, 0.12);
+    color: var(--accent);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
   .toggles,
   .sizes {
@@ -556,8 +556,8 @@
   }
   .toggle.active {
     color: var(--text);
-    border-color: var(--magenta);
-    background: rgba(255, 43, 214, 0.12);
+    border-color: var(--accent-2);
+    background: color-mix(in srgb, var(--accent-2) 12%, transparent);
   }
   .stamp,
   .name input {
@@ -577,7 +577,7 @@
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--line-2);
-    background: #0b0e1f;
+    background: var(--bg);
   }
   .canvas {
     display: block;
@@ -608,7 +608,7 @@
   }
   .swatch.active {
     border-color: #fff;
-    box-shadow: 0 0 0 2px var(--cyan);
+    box-shadow: 0 0 0 2px var(--accent);
   }
   .swatch.add {
     background: var(--bg-2);
@@ -659,7 +659,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    color: var(--cyan);
+    color: var(--accent);
   }
   .actions {
     display: flex;

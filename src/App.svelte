@@ -3,11 +3,13 @@
   import { money } from './engine/format';
   import ChoicePanel from './ui/components/ChoicePanel.svelte';
   import DropLayer from './ui/components/DropLayer.svelte';
+  import Onboarding from './ui/components/Onboarding.svelte';
   import Toasts from './ui/components/Toasts.svelte';
   import TournamentModal from './ui/components/TournamentModal.svelte';
   import Tooltip from './ui/components/Tooltip.svelte';
   import WelcomeBack from './ui/components/WelcomeBack.svelte';
   import { game } from './ui/game.svelte';
+  import { applyTone } from './ui/tone';
   import CenterPanel from './ui/layout/CenterPanel.svelte';
   import ClickerPanel from './ui/layout/ClickerPanel.svelte';
   import MobileNav from './ui/layout/MobileNav.svelte';
@@ -20,6 +22,8 @@
   });
 
   const s = $derived(game.view.s);
+
+  $effect(() => applyTone(s.settings.uiAccent));
 
   $effect(() => {
     document.title = `${money(s.cash)} · Esports Idle`;
@@ -39,7 +43,11 @@
   <TournamentModal />
   <Toasts />
   <Tooltip />
-  {#if game.offlineReport}<WelcomeBack />{/if}
+  {#if !s.settings.onboarded}
+    <Onboarding />
+  {:else if game.offlineReport}
+    <WelcomeBack />
+  {/if}
 </div>
 
 <style>

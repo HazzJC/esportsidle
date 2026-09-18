@@ -50,8 +50,8 @@
       font-size: 12px;
     }
     button.active {
-      color: var(--cyan);
-      background: rgba(34, 228, 255, 0.12);
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
     }
   }
 </style>

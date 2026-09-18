@@ -349,11 +349,11 @@
     border-left: 1px solid var(--line-2);
   }
   .seg button.active {
-    background: rgba(34, 228, 255, 0.2);
-    color: var(--cyan);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
   }
   .seg button.active.sell {
-    background: rgba(255, 77, 109, 0.2);
+    background: color-mix(in srgb, var(--red) 20%, transparent);
     color: var(--red);
   }
   .op-list {

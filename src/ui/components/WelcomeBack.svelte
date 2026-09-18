@@ -17,7 +17,7 @@
       </div>
       <div class="stat">
         <span class="label">Fans gained</span>
-        <span class="value num cyan-text">{fmt(report.fans)}</span>
+        <span class="value num accent-text">{fmt(report.fans)}</span>
       </div>
     </div>
     <p class="muted small">

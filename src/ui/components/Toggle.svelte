@@ -64,15 +64,15 @@
       background 0.15s;
   }
   input:checked + .switch {
-    background: rgba(34, 228, 255, 0.25);
-    border-color: var(--cyan);
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    border-color: var(--accent);
   }
   input:checked + .switch i {
     transform: translateX(18px);
-    background: var(--cyan);
+    background: var(--accent);
   }
   input:focus-visible + .switch {
-    outline: 2px solid var(--cyan);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 </style>

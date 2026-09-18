@@ -46,7 +46,7 @@
     }
     lines.push({ text: `With ${fmt(owned + step)}:`, tone: 'cyan' });
     for (const l of effectLines(def, owned + step)) lines.push({ text: `  ${l}`, tone: 'cyan' });
-    return { title: def.name, subtitle: `Employed: ${fmt(owned)}`, icon: def.icon, iconColor: 'var(--violet)', lines, flavor: def.flavor };
+    return { title: def.name, subtitle: `Employed: ${fmt(owned)}`, icon: def.icon, iconColor: countQuality(owned), lines, flavor: def.flavor };
   }
 </script>
 
@@ -140,7 +140,7 @@
     border-left: 1px solid var(--line-2);
   }
   .seg button.active {
-    background: rgba(139, 92, 255, 0.25);
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
     color: var(--text);
   }
   .list {
@@ -166,7 +166,7 @@
     box-shadow: inset 0 0 14px color-mix(in srgb, var(--q) 14%, transparent);
   }
   button.row:hover {
-    border-color: var(--violet);
+    border-color: var(--q);
   }
   button.row:active {
     transform: scale(0.995);

@@ -93,8 +93,8 @@
     letter-spacing: 0.08em;
     padding: 2px 6px;
     border-radius: 999px;
-    background: rgba(34, 228, 255, 0.15);
-    color: var(--cyan);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
   }
   .where.bench {
     background: rgba(255, 255, 255, 0.06);

@@ -30,9 +30,9 @@
   <div class="cards">
     <div class="card">
       <span class="label">Income</span>
-      <span class="value num cyan-text">{money(r.totalCps, 1)}/s</span>
+      <span class="value num accent-text">{money(r.totalCps, 1)}/s</span>
     </div>
-    <div class="card" use:tooltip={() => ({ title: 'Fame multiplier', icon: 'heart', iconColor: 'var(--magenta)', lines: ['Every fan makes your whole org a little more valuable.'] })}>
+    <div class="card" use:tooltip={() => ({ title: 'Fame multiplier', icon: 'heart', iconColor: 'var(--accent-2)', lines: ['Every fan makes your whole org a little more valuable.'] })}>
       <span class="label">Fame</span>
       <span class="value num">×{r.fameMult.toFixed(2)}</span>
     </div>
@@ -205,13 +205,13 @@
     padding: 8px 10px;
     border-radius: 9px;
     color: var(--red);
-    border: 1px solid rgba(255, 77, 109, 0.4);
-    background: rgba(255, 77, 109, 0.08);
+    border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+    background: color-mix(in srgb, var(--red) 8%, transparent);
   }
   .drama.calm {
     color: var(--green);
-    border-color: rgba(61, 255, 154, 0.4);
-    background: rgba(61, 255, 154, 0.07);
+    border-color: color-mix(in srgb, var(--green) 40%, transparent);
+    background: color-mix(in srgb, var(--green) 7%, transparent);
   }
   .dtext {
     flex: 1;
@@ -230,13 +230,13 @@
     padding: 5px 10px;
     border-radius: 8px;
     font-size: 13px;
-    border: 1px solid rgba(61, 255, 154, 0.35);
-    background: rgba(61, 255, 154, 0.06);
+    border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+    background: color-mix(in srgb, var(--green) 6%, transparent);
     color: var(--green);
   }
   .mod.bad {
-    border-color: rgba(255, 77, 109, 0.35);
-    background: rgba(255, 77, 109, 0.06);
+    border-color: color-mix(in srgb, var(--red) 35%, transparent);
+    background: color-mix(in srgb, var(--red) 6%, transparent);
     color: var(--red);
   }
   .mname {
@@ -264,7 +264,7 @@
     padding: 4px 6px;
     border-radius: 6px;
     font-size: 12.5px;
-    color: var(--cyan);
+    color: var(--accent);
   }
   .log li:nth-child(odd) {
     background: rgba(255, 255, 255, 0.025);
@@ -349,8 +349,8 @@
     gap: 3px;
     padding: 1px 7px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 200, 61, 0.5);
-    background: rgba(255, 200, 61, 0.1);
+    border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent);
+    background: color-mix(in srgb, var(--gold) 10%, transparent);
     color: var(--gold);
     font-family: var(--font-ui);
     font-weight: 700;

@@ -35,7 +35,7 @@
   >
     <div class="head">
       {#if content.icon}
-        <span class="icon" style="--c:{content.iconColor ?? 'var(--cyan)'}"><Icon name={content.icon} size={20} /></span>
+        <span class="icon" style="--c:{content.iconColor ?? 'var(--accent)'}"><Icon name={content.icon} size={20} /></span>
       {/if}
       <div class="titles">
         <div class="title">{content.title}</div>
@@ -68,10 +68,10 @@
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid var(--line-2);
-    background: linear-gradient(180deg, rgba(24, 29, 60, 0.98), rgba(12, 15, 34, 0.98));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--panel-3) 98%, transparent), color-mix(in srgb, var(--panel) 98%, transparent));
     box-shadow:
       var(--shadow),
-      0 0 0 1px rgba(34, 228, 255, 0.08) inset;
+      0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent) inset;
     pointer-events: none;
   }
   .head {
@@ -138,7 +138,7 @@
     color: var(--gold);
   }
   .line.cyan {
-    color: var(--cyan);
+    color: var(--accent);
   }
   .flavor {
     margin-top: 8px;

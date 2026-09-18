@@ -109,10 +109,10 @@
     color: var(--text);
   }
   .tab.active {
-    color: var(--cyan);
+    color: var(--accent);
     border-color: var(--line);
-    background: linear-gradient(180deg, rgba(34, 228, 255, 0.12), transparent);
-    box-shadow: inset 0 2px 0 var(--cyan);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+    box-shadow: inset 0 2px 0 var(--accent);
   }
   .body {
     flex: 1;

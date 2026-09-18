@@ -37,7 +37,7 @@
   {@const g = GAME_MAP.get(t.gameId)}
   {@const done = revealed > t.rounds.length}
   <Modal title="Tournament Invite" onclose={() => game.dismissTournament()} width={480}>
-    <div class="head" style="--gc:{g?.color ?? 'var(--cyan)'}">
+    <div class="head" style="--gc:{g?.color ?? 'var(--accent)'}">
       <span class="gicon"><Icon name={g?.icon ?? 'trophy'} size={24} /></span>
       <div>
         <div class="gname">{g?.name ?? 'Your team'} Invitational</div>
@@ -71,7 +71,7 @@
         </div>
         <div class="rewards">
           <span><b class="num gold-text">{money(t.totalPrize)}</b> prize money</span>
-          <span><b class="num cyan-text">{fmt(t.fans)}</b> fans</span>
+          <span><b class="num accent-text">{fmt(t.fans)}</b> fans</span>
           <span><b class="num gold-text">{t.trophies}</b> {t.trophies === 1 ? 'trophy' : 'trophies'}</span>
         </div>
         {#if t.champion}<p class="muted small">Income ×2 for two minutes while you celebrate.</p>{/if}
@@ -132,12 +132,12 @@
       background 0.2s;
   }
   .round.win {
-    border-color: rgba(61, 255, 154, 0.5);
-    background: rgba(61, 255, 154, 0.08);
+    border-color: color-mix(in srgb, var(--green) 50%, transparent);
+    background: color-mix(in srgb, var(--green) 8%, transparent);
   }
   .round.loss {
-    border-color: rgba(255, 77, 109, 0.5);
-    background: rgba(255, 77, 109, 0.08);
+    border-color: color-mix(in srgb, var(--red) 50%, transparent);
+    background: color-mix(in srgb, var(--red) 8%, transparent);
   }
   .round.skipped {
     opacity: 0.45;
@@ -175,7 +175,7 @@
   }
   .summary.champion {
     border-color: var(--gold);
-    background: linear-gradient(180deg, rgba(255, 200, 61, 0.16), transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 16%, transparent), transparent);
   }
   .big {
     display: flex;

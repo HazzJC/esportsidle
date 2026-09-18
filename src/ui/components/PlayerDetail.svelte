@@ -35,6 +35,7 @@
     xpToNext,
   } from '../../engine/players';
   import { Rng } from '../../engine/rng';
+  import { teamKit } from '../../engine/teams';
   import type { Appearance } from '../../engine/types';
   import { game } from '../game.svelte';
   import Avatar from './Avatar.svelte';
@@ -113,7 +114,7 @@
     <div class="detail" style="--rc:{rarity.color}; --gc:{g.color}">
       <aside class="side">
         <div class="stage">
-          <Avatar look={p.look} gear={p.gear} primary={v.s.org.primary} secondary={v.s.org.secondary} size={132} number={p.jersey} />
+          <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={132} number={p.jersey} />
         </div>
         <div class="chips">
           <span class="chip rarity">{p.founder ? 'Founder' : rarity.name}</span>
@@ -344,7 +345,7 @@
     background: var(--lime);
   }
   .bar.morale i {
-    background: var(--magenta);
+    background: var(--accent-2);
   }
   .status {
     display: flex;
@@ -395,9 +396,9 @@
     font-weight: 700;
   }
   .tabs button.active {
-    color: var(--cyan);
+    color: var(--accent);
     border-color: var(--line-2);
-    background: rgba(34, 228, 255, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
   .rating {
     display: flex;
@@ -440,7 +441,7 @@
     position: absolute;
     inset: 0 auto 0 0;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    background: linear-gradient(90deg, var(--gold), var(--accent));
   }
   .sbar b {
     position: absolute;
@@ -579,7 +580,7 @@
   }
   .names input:focus {
     outline: none;
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .look {
     display: grid;
@@ -618,7 +619,7 @@
     background: var(--bg-2);
   }
   .stepper button:hover {
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .swatches {
     display: flex;
@@ -636,7 +637,7 @@
   }
   .sw.active {
     border-color: #fff;
-    box-shadow: 0 0 0 2px var(--cyan);
+    box-shadow: 0 0 0 2px var(--accent);
   }
   .look-foot {
     display: flex;
@@ -672,8 +673,8 @@
     border-color: var(--gold);
   }
   .slot-btn.current {
-    border-color: var(--cyan);
-    background: rgba(34, 228, 255, 0.12);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
   @media (max-width: 720px) {
     .detail {

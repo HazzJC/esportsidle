@@ -31,7 +31,9 @@ import { buyGear } from '../engine/players';
 import { buyDecor, hireStaff } from '../engine/staff';
 import { Rng } from '../engine/rng';
 import { assignSlot, benchPlayer, changeTier, unlockGame } from '../engine/teams';
-import type { Appearance } from '../engine/types';
+import type { Appearance, TeamKit } from '../engine/types';
+import { isHexColor } from '../data/palette';
+import { cleanOrgName, completeOnboarding as completeOnboardingState } from '../engine/org';
 import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, writeSave, type StorageLike } from '../engine/save';
 import { createNewGame } from '../engine/state';
 import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
@@ -631,10 +633,41 @@ class GameStore {
   }
 
   rename(name: string): void {
-    const clean = name.replace(/\s+/g, ' ').trim().slice(0, 24);
+    const clean = cleanOrgName(name);
     if (!clean || clean === this.state.org.name) return;
     this.state.org.name = clean;
     this.state.stats.renames++;
+    this.refresh();
+  }
+
+  /** Interface tone: recolours menus and buttons only, never in-game kit. */
+  setTone(color: string): void {
+    if (!isHexColor(color)) return;
+    this.state.settings.uiAccent = color.toLowerCase();
+    this.refresh();
+  }
+
+  /** Finishes the first-run screen. The rules live in engine/org.ts. */
+  completeOnboarding(name: string, tone: string): void {
+    completeOnboardingState(this.state, name, tone);
+    this.save(false);
+    this.refresh();
+  }
+
+  /** Org-wide team colours: the default for every team without its own kit. */
+  setOrgKit(primary: string, secondary: string): void {
+    if (!isHexColor(primary) || !isHexColor(secondary)) return;
+    this.state.org.primary = primary.toLowerCase();
+    this.state.org.secondary = secondary.toLowerCase();
+    this.refresh();
+  }
+
+  /** Gives one team its own colours, or returns it to the org colours with null. */
+  setTeamKit(gameId: string, kit: TeamKit | null): void {
+    const team = this.state.teams[gameId];
+    if (!team) return;
+    if (kit && (!isHexColor(kit.primary) || !isHexColor(kit.secondary))) return;
+    team.kit = kit ? { primary: kit.primary.toLowerCase(), secondary: kit.secondary.toLowerCase() } : null;
     this.refresh();
   }
 

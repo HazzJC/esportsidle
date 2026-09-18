@@ -3,14 +3,19 @@
   import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, TITLE_WINS, prizeSeconds, tierName } from '../../data/leagues';
   import { fmt, fmtPct, money } from '../../engine/format';
   import { isAvailable, skillRating } from '../../engine/players';
-  import { CHALLENGE_WIN_CHANCE } from '../../engine/teams';
+  import { CHALLENGE_WIN_CHANCE, teamKit } from '../../engine/teams';
   import Avatar from '../components/Avatar.svelte';
   import Icon from '../components/Icon.svelte';
+  import KitPicker from '../components/KitPicker.svelte';
+  import Modal from '../components/Modal.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   const v = $derived(game.view);
+  /** Game id whose kit is being edited. */
+  let kitGame: string | null = $state(null);
+  const kitTeam = $derived(kitGame ? v.s.teams[kitGame] : undefined);
   const nextLocked = $derived(GAMES.find((g) => !v.s.games[g.id]?.unlocked));
   const lockedCount = $derived(GAMES.filter((g) => !v.s.games[g.id]?.unlocked).length);
 
@@ -75,6 +80,7 @@
       {@const team = v.s.teams[g.id]}
       {@const ev = v.r.teams[g.id]}
       {@const pop = v.s.games[g.id].popularity}
+      {@const kit = teamKit(v.s, g.id)}
       <article class="team" style="--gc:{g.color}">
         <header>
           <span class="gicon"><Icon name={g.icon} size={20} /></span>
@@ -82,6 +88,13 @@
             <h3>{g.name}</h3>
             <span class="muted small">{GENRE_LABEL[g.genre]} · {g.teamSize === 1 ? 'Solo' : `${g.teamSize} players`}</span>
           </div>
+          <button
+            class="kit-btn"
+            style="--p:{kit.primary}; --s:{kit.secondary}"
+            onclick={() => (kitGame = g.id)}
+            aria-label="{g.name} team colours"
+            use:tooltip={() => ({ title: 'Team colours', icon: 'shirt', lines: [team.kit ? 'This team has its own colours.' : 'Using your org colours.', 'Click to change.'] })}
+          ></button>
           <div class="pop" use:tooltip={() => popTip(g)}>
             <Sparkline values={v.s.games[g.id].history} color={g.color} width={90} />
             <span class="num" class:good={pop >= 1.05} class:bad={pop < 0.95}>×{pop.toFixed(2)}</span>
@@ -108,7 +121,7 @@
                 <b class="num" class:good={ev.winChance >= 0.6} class:bad={ev.winChance < 0.4}>{fmtPct(ev.winChance)}</b> win
               </span>
               <span><b class="num gold-text">{money(ev.winPrize)}</b> /win</span>
-              <span><b class="num cyan-text">{money(ev.cps, 1)}</b> /s</span>
+              <span><b class="num accent-text">{money(ev.cps, 1)}</b> /s</span>
             </div>
           {/if}
         </div>
@@ -126,7 +139,7 @@
                   onclick={() => (game.selectedPlayer = p.id)}
                   use:tooltip={() => playerTip(p.id)}
                 >
-                  <Avatar look={p.look} gear={p.gear} primary={v.s.org.primary} secondary={v.s.org.secondary} size={54} mode="bust" />
+                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={54} mode="bust" />
                   <span class="ptag">{p.tag}</span>
                   <span class="prtg num">{fmt(skillRating(p, g))}</span>
                   <span class="energy"><i style="width:{p.energy}%"></i></span>
@@ -148,7 +161,7 @@
               {@const p = v.s.players[id]}
               {#if p}
                 <button class="bench-player" onclick={() => (game.selectedPlayer = p.id)} use:tooltip={() => playerTip(p.id)}>
-                  <Avatar look={p.look} gear={p.gear} primary={v.s.org.primary} secondary={v.s.org.secondary} size={26} mode="bust" />
+                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={26} mode="bust" />
                   <span>{p.tag}</span>
                 </button>
               {/if}
@@ -226,7 +239,57 @@
   {/if}
 </div>
 
+{#if kitGame && kitTeam}
+  {@const g = GAMES.find((x) => x.id === kitGame)!}
+  {@const kit = teamKit(v.s, g.id)}
+  <Modal title="{g.name} colours" onclose={() => (kitGame = null)} width={440}>
+    <div class="kit-modal">
+      <label class="check follow">
+        <input
+          type="checkbox"
+          checked={!kitTeam.kit}
+          onchange={(e) => game.setTeamKit(g.id, e.currentTarget.checked ? null : { primary: v.s.org.primary, secondary: v.s.org.secondary })}
+        />
+        Use org colours
+      </label>
+      <p class="muted small">{kitTeam.kit ? 'This team plays in its own colours.' : 'Picking a kit below gives this team its own colours.'}</p>
+      <KitPicker primary={kit.primary} secondary={kit.secondary} onchange={(p, a) => game.setTeamKit(g.id, { primary: p, secondary: a })} />
+    </div>
+  </Modal>
+{/if}
+
 <style>
+  .kit-btn {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    background: linear-gradient(135deg, var(--p) 0 58%, var(--s) 58% 76%, var(--p) 76%);
+    box-shadow:
+      0 0 0 2px var(--panel),
+      0 0 0 3px var(--line-2);
+    transition: transform 0.12s;
+  }
+  .kit-btn:hover {
+    transform: scale(1.12);
+    box-shadow:
+      0 0 0 2px var(--panel),
+      0 0 0 3px var(--accent);
+  }
+  .kit-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .kit-modal .small {
+    margin: 0;
+    font-size: 12.5px;
+  }
+  .follow {
+    font-weight: 700;
+  }
   .teams {
     display: flex;
     flex-direction: column;
@@ -294,8 +357,8 @@
     gap: 8px;
     padding: 4px 10px 4px 4px;
     border-radius: 8px;
-    background: rgba(255, 200, 61, 0.08);
-    border: 1px solid rgba(255, 200, 61, 0.3);
+    background: color-mix(in srgb, var(--gold) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
   }
   .tier-num {
     font-family: var(--font-display);
@@ -423,8 +486,8 @@
     font-size: 12px;
   }
   .slot-empty:hover {
-    color: var(--cyan);
-    border-color: var(--cyan);
+    color: var(--accent);
+    border-color: var(--accent);
   }
   .bench {
     display: flex;
@@ -471,11 +534,11 @@
     border-radius: 4px;
     font-size: 10px;
     font-weight: 800;
-    background: rgba(255, 77, 109, 0.2);
+    background: color-mix(in srgb, var(--red) 20%, transparent);
     color: var(--red);
   }
   .res.win {
-    background: rgba(61, 255, 154, 0.18);
+    background: color-mix(in srgb, var(--green) 18%, transparent);
     color: var(--green);
   }
   footer {

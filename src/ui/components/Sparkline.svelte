@@ -3,7 +3,7 @@
     values,
     width = 110,
     height = 26,
-    color = 'var(--cyan)',
+    color = 'var(--accent)',
   }: { values: number[]; width?: number; height?: number; color?: string } = $props();
 
   const paths = $derived.by(() => {

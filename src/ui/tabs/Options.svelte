@@ -3,6 +3,8 @@
   import { GAME_VERSION } from '../../engine/state';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import { UI_TONES } from '../../data/palette';
+  import ToneSwatches from '../components/ToneSwatches.svelte';
   import Toggle from '../components/Toggle.svelte';
   import { game } from '../game.svelte';
 
@@ -79,6 +81,12 @@
       <textarea rows="3" bind:value={importText} placeholder="Paste a save string here…" aria-label="Import save"></textarea>
       <button class="btn small" disabled={!importText.trim()} onclick={doImport}><Icon name="upload" size={13} /> Import</button>
     </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Interface tone</h3>
+    <p class="muted small">The highlight colour for menus and buttons. This only changes the interface; your team colours are set in the Studio.</p>
+    <ToneSwatches value={settings.uiAccent} swatches={UI_TONES} onpick={(c) => game.setTone(c)} label="Interface tone" />
   </section>
 
   <section>
@@ -210,7 +218,7 @@
   select:focus,
   .confirm:focus {
     outline: none;
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .volume {
     display: flex;
@@ -219,7 +227,7 @@
   }
   .volume input {
     width: 130px;
-    accent-color: var(--cyan);
+    accent-color: var(--accent);
   }
   .select-row {
     display: flex;
@@ -233,6 +241,6 @@
     color: var(--red);
   }
   .about a {
-    color: var(--cyan);
+    color: var(--accent);
   }
 </style>

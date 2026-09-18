@@ -4,6 +4,7 @@
   import { fmt } from '../../engine/format';
   import { RARITY_MAP, isAvailable, skillRating } from '../../engine/players';
   import type { Player } from '../../engine/types';
+  import { teamKit } from '../../engine/teams';
   import { game } from '../game.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
@@ -17,7 +18,8 @@
 
   const title = $derived(getGame(player.gameId));
   const rarity = $derived(RARITY_MAP.get(player.rarity)!);
-  const org = $derived(game.view.s.org);
+  // Market players wear the kit of the team they would join.
+  const kit = $derived(teamKit(game.view.s, player.gameId));
   const out = $derived(!isAvailable(player, game.view.s.time));
 
   function onKey(e: KeyboardEvent) {
@@ -30,7 +32,7 @@
 
 {#snippet body()}
   <div class="portrait">
-    <Avatar look={player.look} gear={player.gear} primary={org.primary} secondary={org.secondary} size={50} mode="bust" />
+    <Avatar look={player.look} gear={player.gear} primary={kit.primary} secondary={kit.secondary} size={50} mode="bust" />
     {#if out}<span class="status" title={player.status.reason}><Icon name="thermometer" size={12} /></span>{/if}
   </div>
   <div class="info">
@@ -90,7 +92,7 @@
     border-color: var(--rc);
   }
   .card:focus-visible {
-    outline: 2px solid var(--cyan);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
   .portrait {
@@ -176,7 +178,7 @@
     background: var(--lime);
   }
   .morale b {
-    background: var(--magenta);
+    background: var(--accent-2);
   }
   .rating {
     display: flex;

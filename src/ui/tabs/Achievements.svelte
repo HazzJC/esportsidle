@@ -85,8 +85,8 @@
     gap: 12px;
     padding: 10px 12px;
     border-radius: 10px;
-    background: linear-gradient(90deg, rgba(255, 200, 61, 0.12), transparent);
-    border: 1px solid rgba(255, 200, 61, 0.3);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 12%, transparent), transparent);
+    border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
   }
   .big {
     font-family: var(--font-display);
@@ -111,13 +111,13 @@
   .ach.got {
     opacity: 1;
     color: var(--gold);
-    border-color: rgba(255, 200, 61, 0.55);
-    background: linear-gradient(180deg, rgba(255, 200, 61, 0.18), rgba(255, 200, 61, 0.04));
-    box-shadow: 0 0 10px rgba(255, 200, 61, 0.15);
+    border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 18%, transparent), color-mix(in srgb, var(--gold) 4%, transparent));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 15%, transparent);
   }
   .ach.got.shadow {
-    color: var(--violet);
-    border-color: rgba(139, 92, 255, 0.55);
-    background: linear-gradient(180deg, rgba(139, 92, 255, 0.18), rgba(139, 92, 255, 0.04));
+    color: var(--accent-2);
+    border-color: color-mix(in srgb, var(--accent-2) 55%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 18%, transparent), color-mix(in srgb, var(--accent-2) 4%, transparent));
   }
 </style>

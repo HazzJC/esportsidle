@@ -50,7 +50,7 @@
     border: 1px solid var(--line-2);
     background: linear-gradient(180deg, rgba(24, 29, 60, 0.97), rgba(14, 17, 38, 0.97));
     box-shadow: var(--shadow);
-    --c: var(--cyan);
+    --c: var(--accent);
   }
   .toast.good {
     --c: var(--green);

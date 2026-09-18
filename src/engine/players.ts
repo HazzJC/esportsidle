@@ -1,3 +1,4 @@
+import { RARITY_COLORS } from '../data/palette';
 import {
   ACCESSORIES,
   BODY_TYPES,
@@ -49,12 +50,12 @@ export interface RarityDef {
 }
 
 export const RARITIES: RarityDef[] = [
-  { id: 'rookie', name: 'Rookie', color: '#9aa3c7', statMin: 14, statMax: 32, potMin: 45, potMax: 62, cut: 0.05, fee: 40, weight: 42, traitMin: 1, traitMax: 1 },
-  { id: 'talent', name: 'Talent', color: '#3dff9a', statMin: 22, statMax: 40, potMin: 55, potMax: 72, cut: 0.07, fee: 250, weight: 30, traitMin: 1, traitMax: 2 },
-  { id: 'pro', name: 'Pro', color: '#22a8ff', statMin: 32, statMax: 50, potMin: 65, potMax: 82, cut: 0.1, fee: 1_800, weight: 16, traitMin: 1, traitMax: 2 },
-  { id: 'star', name: 'Star', color: '#b05cff', statMin: 42, statMax: 60, potMin: 75, potMax: 92, cut: 0.13, fee: 14_000, weight: 8, traitMin: 2, traitMax: 2 },
-  { id: 'superstar', name: 'Superstar', color: '#ffc83d', statMin: 52, statMax: 70, potMin: 85, potMax: 100, cut: 0.16, fee: 120_000, weight: 3.5, traitMin: 2, traitMax: 3 },
-  { id: 'legend', name: 'Legend', color: '#ff2bd6', statMin: 62, statMax: 80, potMin: 95, potMax: 110, cut: 0.2, fee: 1_200_000, weight: 0.5, traitMin: 2, traitMax: 3 },
+  { id: 'rookie', name: 'Rookie', color: RARITY_COLORS[0], statMin: 14, statMax: 32, potMin: 45, potMax: 62, cut: 0.05, fee: 40, weight: 42, traitMin: 1, traitMax: 1 },
+  { id: 'talent', name: 'Talent', color: RARITY_COLORS[1], statMin: 22, statMax: 40, potMin: 55, potMax: 72, cut: 0.07, fee: 250, weight: 30, traitMin: 1, traitMax: 2 },
+  { id: 'pro', name: 'Pro', color: RARITY_COLORS[2], statMin: 32, statMax: 50, potMin: 65, potMax: 82, cut: 0.1, fee: 1_800, weight: 16, traitMin: 1, traitMax: 2 },
+  { id: 'star', name: 'Star', color: RARITY_COLORS[3], statMin: 42, statMax: 60, potMin: 75, potMax: 92, cut: 0.13, fee: 14_000, weight: 8, traitMin: 2, traitMax: 2 },
+  { id: 'superstar', name: 'Superstar', color: RARITY_COLORS[4], statMin: 52, statMax: 70, potMin: 85, potMax: 100, cut: 0.16, fee: 120_000, weight: 3.5, traitMin: 2, traitMax: 3 },
+  { id: 'legend', name: 'Legend', color: RARITY_COLORS[5], statMin: 62, statMax: 80, potMin: 95, potMax: 110, cut: 0.2, fee: 1_200_000, weight: 0.5, traitMin: 2, traitMax: 3 },
 ];
 
 export const RARITY_MAP: Map<Rarity, RarityDef> = new Map(RARITIES.map((r) => [r.id, r]));

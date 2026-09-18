@@ -52,7 +52,7 @@
     border-color: var(--gold);
     box-shadow:
       var(--shadow),
-      0 0 24px rgba(255, 200, 61, 0.2);
+      0 0 24px color-mix(in srgb, var(--gold) 20%, transparent);
   }
   .top {
     display: flex;
@@ -65,7 +65,7 @@
     height: 36px;
     border-radius: 9px;
     color: var(--gold);
-    background: rgba(255, 200, 61, 0.14);
+    background: color-mix(in srgb, var(--gold) 14%, transparent);
     flex: none;
   }
   .title {
@@ -84,7 +84,7 @@
     gap: 5px;
   }
   .option {
-    --c: var(--cyan);
+    --c: var(--accent);
     display: flex;
     flex-direction: column;
     align-items: flex-start;

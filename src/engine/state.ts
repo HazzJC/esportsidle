@@ -1,3 +1,4 @@
+import { DEFAULT_KIT, DEFAULT_TONE } from '../data/palette';
 import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { STAFF } from '../data/staff';
@@ -8,7 +9,7 @@ import { Rng, randomSeed } from './rng';
 import { addToTeam, createTeam } from './teams';
 import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const GAME_VERSION = '0.7.0';
 
 export function createSettings(): Settings {
@@ -25,6 +26,8 @@ export function createSettings(): Settings {
     confirmPrestige: true,
     buyAmount: 1,
     matchToasts: false,
+    uiAccent: DEFAULT_TONE,
+    onboarded: false,
   };
 }
 
@@ -114,8 +117,8 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
       name: 'Garage Gamers',
       logo: null,
       jersey: null,
-      primary: '#22e4ff',
-      secondary: '#ff2bd6',
+      primary: DEFAULT_KIT.primary,
+      secondary: DEFAULT_KIT.secondary,
     },
     cash: 0,
     earnedRun: 0,

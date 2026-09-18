@@ -132,14 +132,14 @@
   }
   .filters button.active {
     color: var(--text);
-    border-color: var(--gc, var(--cyan));
-    background: color-mix(in srgb, var(--gc, var(--cyan)) 15%, var(--bg-2));
+    border-color: var(--gc, var(--accent));
+    background: color-mix(in srgb, var(--gc, var(--accent)) 15%, var(--bg-2));
   }
   .open {
     font-size: 10px;
     padding: 0 5px;
     border-radius: 999px;
-    background: var(--cyan);
+    background: var(--accent);
     color: #041318;
   }
   .grid {
@@ -183,7 +183,7 @@
   .sb i {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    background: linear-gradient(90deg, var(--gold), var(--accent));
   }
   .sv {
     width: 22px;
@@ -206,15 +206,15 @@
   }
   .trait.good {
     color: var(--green);
-    border-color: rgba(61, 255, 154, 0.35);
+    border-color: color-mix(in srgb, var(--green) 35%, transparent);
   }
   .trait.bad {
     color: var(--red);
-    border-color: rgba(255, 77, 109, 0.35);
+    border-color: color-mix(in srgb, var(--red) 35%, transparent);
   }
   .trait.mixed {
     color: var(--gold);
-    border-color: rgba(255, 200, 61, 0.35);
+    border-color: color-mix(in srgb, var(--gold) 35%, transparent);
   }
   .foot {
     display: flex;

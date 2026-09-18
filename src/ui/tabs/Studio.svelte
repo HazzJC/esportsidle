@@ -4,7 +4,9 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, optimalPrice } from '../../engine/merch';
   import type { Design } from '../../engine/types';
+  import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
+  import KitPicker from '../components/KitPicker.svelte';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
   import PixelEditor from '../components/PixelEditor.svelte';
@@ -16,6 +18,9 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
+  /** Someone to model the kit: the founder if they are still around, otherwise any player. */
+  const model = $derived(s.players.founder ?? Object.values(s.players)[0]);
+  const customKits = $derived(Object.values(s.teams).filter((t) => t.kit).length);
   const designs = $derived(Object.values(s.designs).sort((a, b) => b.createdAt - a.createdAt));
   const full = $derived(designs.length >= MAX_DESIGNS);
   const trend = $derived(TREND_MAP.get(s.merch.trend));
@@ -64,6 +69,22 @@
       </div>
     {/if}
   </header>
+
+  <section class="colours">
+    <div class="kit-preview">
+      {#if model}
+        <Avatar look={model.look} gear={model.gear} primary={s.org.primary} secondary={s.org.secondary} size={92} number={model.jersey} />
+      {/if}
+    </div>
+    <div class="kit-main">
+      <h3 class="section-title">Team colours</h3>
+      <p class="muted small">
+        The default kit for every team: jerseys, chairs and your gaming house. Give a single team its own colours from its card in the
+        Teams tab.{#if customKits > 0}<span class="dim"> {customKits} {customKits === 1 ? 'team uses' : 'teams use'} their own colours.</span>{/if}
+      </p>
+      <KitPicker primary={s.org.primary} secondary={s.org.secondary} onchange={(p, a) => game.setOrgKit(p, a)} />
+    </div>
+  </section>
 
   <section>
     <div class="section-head">
@@ -213,9 +234,9 @@
     gap: 8px;
     padding: 6px 12px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 43, 214, 0.45);
-    background: rgba(255, 43, 214, 0.1);
-    color: var(--magenta);
+    border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+    background: color-mix(in srgb, var(--accent-2) 10%, transparent);
+    color: var(--accent-2);
   }
   .trend b {
     color: var(--text);
@@ -227,6 +248,41 @@
     gap: 8px;
     flex-wrap: wrap;
     margin-bottom: 8px;
+  }
+  .colours {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .kit-preview {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 110px;
+    padding-top: 6px;
+  }
+  .kit-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kit-main .section-title {
+    margin: 0;
+  }
+  @media (max-width: 520px) {
+    .colours {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .kit-preview {
+      width: 100%;
+    }
   }
   .section-head .section-title {
     margin: 0;
@@ -271,7 +327,7 @@
     overflow: hidden;
   }
   .thumb:hover {
-    border-color: var(--cyan);
+    border-color: var(--accent);
   }
   .dname {
     font-family: var(--font-ui);
@@ -291,7 +347,7 @@
   }
   .uses {
     font-size: 10.5px;
-    color: var(--cyan);
+    color: var(--accent);
     text-align: center;
   }
   .dactions {
@@ -330,7 +386,7 @@
     border: 1px solid var(--line);
   }
   .product.live {
-    border-color: rgba(61, 255, 154, 0.35);
+    border-color: color-mix(in srgb, var(--green) 35%, transparent);
   }
   .locked-product {
     border-style: dashed;
@@ -347,8 +403,8 @@
     font-weight: 700;
   }
   .trending {
-    color: var(--magenta);
-    border-color: var(--magenta);
+    color: var(--accent-2);
+    border-color: var(--accent-2);
   }
   .pbody {
     display: flex;
@@ -377,7 +433,7 @@
   }
   .price input {
     width: 100%;
-    accent-color: var(--cyan);
+    accent-color: var(--accent);
   }
   .pstats {
     display: flex;

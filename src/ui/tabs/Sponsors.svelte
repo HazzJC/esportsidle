@@ -194,8 +194,8 @@
     gap: 8px;
     padding: 8px 12px;
     border-radius: 9px;
-    border: 1px solid rgba(61, 255, 154, 0.4);
-    background: rgba(61, 255, 154, 0.08);
+    border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+    background: color-mix(in srgb, var(--green) 8%, transparent);
     color: var(--green);
   }
   .total b {
@@ -234,7 +234,7 @@
     font-family: var(--font-display);
     font-weight: 900;
     font-size: 14px;
-    color: #0b0e1f;
+    color: var(--bg);
     background: var(--bc);
     flex: none;
   }

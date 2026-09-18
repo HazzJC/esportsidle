@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { DEFAULT_KIT } from '../../data/palette';
+  import { shade } from '../color';
   let {
     name,
-    primary = '#22e4ff',
-    secondary = '#ff2bd6',
+    primary = DEFAULT_KIT.primary,
+    secondary = DEFAULT_KIT.secondary,
     size = 160,
     logoUrl,
   }: { name: string; primary?: string; secondary?: string; size?: number; logoUrl?: string } = $props();
@@ -28,8 +30,8 @@
       <stop offset="1" stop-color={secondary} />
     </linearGradient>
     <linearGradient id="{uid}-inner" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1a2050" />
-      <stop offset="1" stop-color="#090b1c" />
+      <stop offset="0" stop-color={shade(primary, -0.72)} />
+      <stop offset="1" stop-color={shade(primary, -0.9)} />
     </linearGradient>
     <filter id="{uid}-glow" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="6" result="b" />

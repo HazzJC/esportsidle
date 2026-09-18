@@ -1,17 +1,22 @@
-/** Frame colours for upgrade tiers, from plain to neon. */
+import { RARITY_COLORS } from '../data/palette';
+
+/**
+ * Frame colours for upgrade tiers. Ordered so rank reads at a glance: base metals first, then the
+ * rarity gems, then white-hot. The previous list was thirteen unrelated hues with no order to learn.
+ */
 export const TIER_COLORS = [
-  '#9aa3c7',
-  '#cd8b4e',
-  '#c9d3e6',
-  '#ffc83d',
-  '#3dff9a',
-  '#22a8ff',
-  '#ff4d6d',
-  '#b05cff',
-  '#22e4ff',
-  '#ff2bd6',
-  '#9dff3b',
-  '#ff8a3d',
+  '#8d8a84',
+  '#c98a55',
+  '#c9ccd1',
+  '#f5c451',
+  RARITY_COLORS[1],
+  RARITY_COLORS[2],
+  RARITY_COLORS[3],
+  RARITY_COLORS[5],
+  '#ff6b35',
+  '#ffb27a',
+  '#ffe2b8',
+  '#fff4e0',
   '#ffffff',
 ];
 
@@ -28,7 +33,7 @@ export function laneHue(index: number): number {
  * Rarity-style colours for a growing count. Staff and decor have no tier of their own, so without
  * this a department of 500 looks exactly like a single hire.
  */
-export const QUALITY_COLORS = ['#9aa3c7', '#3dff9a', '#22a8ff', '#b05cff', '#ffc83d', '#ff2bd6'];
+export const QUALITY_COLORS = RARITY_COLORS;
 const QUALITY_STEPS = [5, 25, 75, 200, 500];
 
 export function countQuality(n: number): string {

@@ -1,29 +1,34 @@
 :root {
-  --bg: #070812;
-  --bg-2: #0b0e1f;
-  --panel: #10142b;
-  --panel-2: #161b38;
-  --panel-3: #1d2347;
-  --line: #262d58;
-  --line-2: #343d74;
-  --text: #e9ecff;
-  --muted: #8d95c9;
-  --dim: #5b6395;
-  --cyan: #22e4ff;
-  --magenta: #ff2bd6;
-  --violet: #8b5cff;
-  --lime: #9dff3b;
-  --gold: #ffc83d;
-  --orange: #ff8a3d;
-  --red: #ff4d6d;
-  --green: #3dff9a;
+  /* --accent is the player's interface tone, set at runtime by ui/tone.ts. Every neutral below is
+     a true grey with a trace of the tone mixed in, so choosing a tone sets the mood of the whole
+     interface rather than only its buttons. Nothing in-game (kits, rooms, items) reads these. */
+  --accent: #e8e6e1;
+  --on-accent: #141416;
+  --bg: color-mix(in srgb, var(--accent) 2%, #0b0b0d);
+  --bg-2: color-mix(in srgb, var(--accent) 3%, #111113);
+  --panel: color-mix(in srgb, var(--accent) 3%, #161618);
+  --panel-2: color-mix(in srgb, var(--accent) 4%, #1c1c1f);
+  --panel-3: color-mix(in srgb, var(--accent) 5%, #242427);
+  --line: color-mix(in srgb, var(--accent) 7%, #2a2a2e);
+  --line-2: color-mix(in srgb, var(--accent) 10%, #37373c);
+  --text: #f1f1f0;
+  --muted: #a3a3a6;
+  --dim: #6c6c70;
 
-  --r-common: #9aa3c7;
-  --r-uncommon: #3dff9a;
-  --r-rare: #22a8ff;
-  --r-epic: #b05cff;
-  --r-legendary: #ffc83d;
-  --r-mythic: #ff2bd6;
+  /* Fixed semantic colours: fans and hype, money, good, bad. They never follow the tone. */
+  --accent-2: #ff7a9c;
+  --gold: #f5c451;
+  --green: #4ade80;
+  --red: #f0525f;
+  --lime: #c5e84a;
+  --orange: #ff9a3c;
+
+  --r-common: #a3a3a6;
+  --r-uncommon: #4ade80;
+  --r-rare: #4f9dff;
+  --r-epic: #a97bff;
+  --r-legendary: #f5c451;
+  --r-mythic: #ff5f7e;
 
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-ui: 'Rajdhani', 'Inter', system-ui, sans-serif;
@@ -31,9 +36,9 @@
 
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-  --glow-cyan: 0 0 18px rgba(34, 228, 255, 0.45);
-  --glow-magenta: 0 0 18px rgba(255, 43, 214, 0.45);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --glow-accent: 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent);
+  --glow-accent-2: 0 0 16px color-mix(in srgb, var(--accent-2) 40%, transparent);
 
   color-scheme: dark;
 }
@@ -58,9 +63,8 @@ body {
 
 body {
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(139, 92, 255, 0.14), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(255, 43, 214, 0.1), transparent 60%),
-    radial-gradient(900px 600px at 50% 120%, rgba(34, 228, 255, 0.08), transparent 60%),
+    radial-gradient(1100px 520px at 0% -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, color-mix(in srgb, var(--accent-2) 4%, transparent), transparent 60%),
     var(--bg);
   background-attachment: fixed;
   overflow: hidden;
@@ -112,6 +116,7 @@ textarea {
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-2);
   background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  color: var(--text);
   font-family: var(--font-ui);
   font-weight: 700;
   font-size: 14px;
@@ -122,8 +127,8 @@ textarea {
     transform 0.05s;
 }
 .btn:hover:not(:disabled) {
-  border-color: var(--cyan);
-  box-shadow: var(--glow-cyan);
+  border-color: var(--accent);
+  box-shadow: var(--glow-accent);
 }
 .btn:active:not(:disabled) {
   transform: translateY(1px);
@@ -133,16 +138,16 @@ textarea {
   cursor: not-allowed;
 }
 .btn.primary {
-  border-color: var(--cyan);
-  background: linear-gradient(180deg, rgba(34, 228, 255, 0.28), rgba(34, 228, 255, 0.1));
+  border-color: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 34%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
 }
 .btn.danger {
   border-color: var(--red);
-  background: linear-gradient(180deg, rgba(255, 77, 109, 0.28), rgba(255, 77, 109, 0.08));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--red) 28%, transparent), color-mix(in srgb, var(--red) 8%, transparent));
 }
 .btn.gold {
   border-color: var(--gold);
-  background: linear-gradient(180deg, rgba(255, 200, 61, 0.3), rgba(255, 200, 61, 0.08));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 30%, transparent), color-mix(in srgb, var(--gold) 8%, transparent));
 }
 .btn.small {
   padding: 3px 8px;
@@ -150,7 +155,7 @@ textarea {
 }
 
 .panel {
-  background: linear-gradient(180deg, rgba(22, 27, 56, 0.92), rgba(16, 20, 43, 0.92));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 94%, transparent), color-mix(in srgb, var(--panel) 94%, transparent));
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
@@ -180,8 +185,8 @@ textarea {
 .gold-text {
   color: var(--gold);
 }
-.cyan-text {
-  color: var(--cyan);
+.accent-text {
+  color: var(--accent);
 }
 
 .chip {
@@ -208,7 +213,7 @@ textarea {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--cyan), var(--magenta));
+  background: linear-gradient(90deg, var(--accent), var(--gold));
 }
 
 @media (prefers-reduced-motion: reduce) {

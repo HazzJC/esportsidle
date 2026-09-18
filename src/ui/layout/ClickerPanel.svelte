@@ -51,7 +51,7 @@
     return {
       title: 'Income per second',
       icon: 'trending-up',
-      iconColor: 'var(--cyan)',
+      iconColor: 'var(--accent)',
       lines: [
         `Operations: ${money(r.cps, 1)}/s`,
         `Matches (average): ${money(r.matchCps, 1)}/s`,
@@ -122,7 +122,7 @@
     return {
       title: 'Fans',
       icon: 'heart',
-      iconColor: 'var(--magenta)',
+      iconColor: 'var(--accent-2)',
       lines: [
         `${fmt(s.fans)} fans, gaining ${fmt(r.fansPerSec, 1)} per second.`,
         { text: `Fame multiplies all income by ×${r.fameMult.toFixed(3)}.`, tone: 'good' },
@@ -134,7 +134,7 @@
   const hypeTip = (): TipContent => ({
     title: 'Hype Meter',
     icon: 'megaphone',
-    iconColor: 'var(--magenta)',
+    iconColor: 'var(--accent-2)',
     lines: [
       'Clicking your logo fills the hype meter.',
       'When it is full, the crowd goes wild: income ×2 for 30 seconds.',
@@ -230,7 +230,7 @@
           use:tooltip={() => ({
             title: m.name,
             icon: m.icon,
-            iconColor: m.tone === 'bad' ? 'var(--red)' : 'var(--cyan)',
+            iconColor: m.tone === 'bad' ? 'var(--red)' : 'var(--accent)',
             lines: [m.desc, { text: `${fmtTime(m.endsAt - game.view.s.time)} remaining`, tone: 'muted' }],
           })}
         >
@@ -293,13 +293,13 @@
     font-weight: 900;
     font-size: clamp(22px, 2.3vw, 30px);
     letter-spacing: 0.02em;
-    text-shadow: 0 0 18px rgba(34, 228, 255, 0.35);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   .cps {
     font-family: var(--font-ui);
     font-weight: 700;
     font-size: 15px;
-    color: var(--cyan);
+    color: var(--accent);
   }
   .cps span {
     color: var(--muted);
@@ -322,7 +322,7 @@
     justify-content: center;
     gap: 5px;
     font-size: 13px;
-    color: var(--magenta);
+    color: var(--accent-2);
   }
   .trophies {
     color: var(--gold);
@@ -335,7 +335,7 @@
     padding: 1px 8px;
     border-radius: 999px;
     border: 1px solid var(--gold);
-    background: rgba(255, 200, 61, 0.14);
+    background: color-mix(in srgb, var(--gold) 14%, transparent);
     color: var(--gold);
     font-family: var(--font-ui);
     font-weight: 700;
@@ -343,14 +343,14 @@
     animation: pulse 1.6s ease-in-out infinite;
   }
   .buff.mod {
-    border-color: var(--cyan);
-    background: rgba(34, 228, 255, 0.1);
-    color: var(--cyan);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
     border-style: dashed;
   }
   .buff.mod.bad {
     border-color: var(--red);
-    background: rgba(255, 77, 109, 0.1);
+    background: color-mix(in srgb, var(--red) 10%, transparent);
     color: var(--red);
   }
   .stage {
@@ -366,12 +366,12 @@
     position: absolute;
     inset: -20px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(34, 228, 255, 0.18), transparent 65%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%);
     animation: breathe 4s ease-in-out infinite;
     pointer-events: none;
   }
   .spotlight.crowd {
-    background: radial-gradient(circle, rgba(255, 200, 61, 0.3), transparent 65%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--gold) 30%, transparent), transparent 65%);
     animation-duration: 0.8s;
   }
   .ring {
@@ -388,9 +388,9 @@
     stroke: rgba(255, 255, 255, 0.07);
   }
   .ring .fill {
-    stroke: var(--magenta);
+    stroke: var(--accent-2);
     stroke-linecap: round;
-    filter: drop-shadow(0 0 3px var(--magenta));
+    filter: drop-shadow(0 0 3px var(--accent-2));
     transition: stroke-dasharray 0.15s linear;
   }
   .ring .fill.crowd {
@@ -417,7 +417,7 @@
     transform: scale(0.94);
   }
   .logo:focus-visible {
-    outline: 2px solid var(--cyan);
+    outline: 2px solid var(--accent);
     outline-offset: 6px;
   }
   .logo.crowd {
@@ -431,7 +431,7 @@
     font-size: 17px;
     color: #fff;
     text-shadow:
-      0 0 8px rgba(34, 228, 255, 0.9),
+      0 0 8px color-mix(in srgb, var(--accent) 90%, transparent),
       0 2px 2px rgba(0, 0, 0, 0.6);
     pointer-events: none;
     white-space: nowrap;
@@ -462,7 +462,7 @@
     flex: 1;
   }
   .hype .bar i {
-    background: linear-gradient(90deg, var(--violet), var(--magenta));
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
   }
   .crowd-text {
     width: 100%;
@@ -486,12 +486,12 @@
     padding: 5px 4px 4px;
     border-radius: 8px;
     border: 1px solid var(--green);
-    background: rgba(61, 255, 154, 0.1);
+    background: color-mix(in srgb, var(--green) 10%, transparent);
     color: var(--green);
   }
   .buff.bad {
     border-color: var(--red);
-    background: rgba(255, 77, 109, 0.1);
+    background: color-mix(in srgb, var(--red) 10%, transparent);
     color: var(--red);
   }
   .buff-bar {
@@ -524,12 +524,12 @@
     padding: 3px 8px;
     border-radius: 6px;
     border: 1px solid var(--line);
-    background: rgba(255, 77, 109, 0.06);
+    background: color-mix(in srgb, var(--red) 6%, transparent);
     font-size: 12px;
     text-align: left;
   }
   .match.win {
-    background: rgba(61, 255, 154, 0.06);
+    background: color-mix(in srgb, var(--green) 6%, transparent);
   }
   .wl {
     font-weight: 800;

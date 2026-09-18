@@ -55,7 +55,7 @@
       title: n.name,
       subtitle: state === 'owned' ? 'Owned' : state === 'available' ? 'Available' : 'Locked',
       icon: n.icon,
-      iconColor: state === 'owned' ? 'var(--gold)' : 'var(--cyan)',
+      iconColor: state === 'owned' ? 'var(--gold)' : 'var(--accent)',
       cost: state === 'owned' ? undefined : `${fmt(n.cost)} legacy`,
       costOk: game.view.s.prestige.points >= n.cost,
       lines: [n.desc, ...(parents.length && state === 'locked' ? [{ text: `Requires ${parents.join(', ')}`, tone: 'muted' as const }] : [])],
@@ -215,7 +215,7 @@
                   <div class="dim">MVP</div>
                   <b>{h.mvp.tag}</b>
                   {#if h.retired === h.mvp.tag}<span class="gold-text"> · retired</span>{/if}
-                  {#if h.kept === h.mvp.tag}<span class="cyan-text"> · kept</span>{/if}
+                  {#if h.kept === h.mvp.tag}<span class="accent-text"> · kept</span>{/if}
                 </div>
               </div>
             {/if}
@@ -312,8 +312,8 @@
     gap: 14px;
     padding: 14px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 200, 61, 0.35);
-    background: linear-gradient(135deg, rgba(255, 200, 61, 0.12), transparent 60%), var(--bg-2);
+    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 12%, transparent), transparent 60%), var(--bg-2);
   }
   .level {
     display: flex;
@@ -352,7 +352,7 @@
     padding: 8px 12px;
     border-radius: 9px;
     border: 1px solid var(--gold);
-    background: rgba(255, 200, 61, 0.1);
+    background: color-mix(in srgb, var(--gold) 10%, transparent);
     color: var(--gold);
     font-size: 13px;
   }
@@ -364,7 +364,7 @@
     border-radius: 12px;
     border: 1px solid var(--line);
     background:
-      radial-gradient(circle at 50% 0%, rgba(255, 200, 61, 0.08), transparent 60%),
+      radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%),
       var(--bg-2);
   }
   .tree {
@@ -378,7 +378,7 @@
     stroke-width: 2;
   }
   .edge.lit {
-    stroke: rgba(34, 228, 255, 0.5);
+    stroke: color-mix(in srgb, var(--accent) 50%, transparent);
   }
   .edge.done {
     stroke: var(--gold);
@@ -396,20 +396,20 @@
     color: var(--dim);
   }
   .node.available circle {
-    stroke: var(--cyan);
+    stroke: var(--accent);
   }
   .node.available :global(svg) {
-    color: var(--cyan);
+    color: var(--accent);
   }
   .node.available.affordable {
     cursor: pointer;
   }
   .node.available.affordable circle {
-    fill: rgba(34, 228, 255, 0.12);
-    filter: drop-shadow(0 0 6px rgba(34, 228, 255, 0.6));
+    fill: color-mix(in srgb, var(--accent) 12%, transparent);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent));
   }
   .node.owned circle {
-    fill: rgba(255, 200, 61, 0.2);
+    fill: color-mix(in srgb, var(--gold) 20%, transparent);
     stroke: var(--gold);
   }
   .node.owned :global(svg) {
@@ -425,7 +425,7 @@
     fill: var(--muted);
   }
   .node.affordable .cost {
-    fill: var(--cyan);
+    fill: var(--accent);
   }
   .challenges {
     display: grid;
@@ -442,7 +442,7 @@
     gap: 4px;
   }
   .challenge.done {
-    border-color: rgba(61, 255, 154, 0.45);
+    border-color: color-mix(in srgb, var(--green) 45%, transparent);
   }
   .challenge.active {
     border-color: var(--gold);
@@ -469,7 +469,7 @@
     gap: 2px;
     padding: 8px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 200, 61, 0.4);
+    border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
     background: var(--bg-2);
     min-width: 96px;
   }
@@ -503,7 +503,7 @@
     width: 40px;
     height: 40px;
     border-radius: 8px;
-    background: rgba(255, 200, 61, 0.12);
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
     color: var(--gold);
     font-family: var(--font-display);
   }

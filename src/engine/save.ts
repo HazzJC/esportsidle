@@ -1,3 +1,4 @@
+import { DEFAULT_KIT, LEGACY_KIT } from '../data/palette';
 import LZString from 'lz-string';
 import { GAMES } from '../data/games';
 import { sanitizeDesign } from './designs';
@@ -26,6 +27,13 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
   // v1 -> v2 added players, teams and games. Static fields come from defaults; the founder and
   // starting team are created by repairState.
   1: () => {},
+  2: (raw) => {
+    const org = raw.org as Record<string, unknown> | undefined;
+    if (org && org.primary === LEGACY_KIT.primary && org.secondary === LEGACY_KIT.secondary) {
+      org.primary = DEFAULT_KIT.primary;
+      org.secondary = DEFAULT_KIT.secondary;
+    }
+  },
 };
 
 function isPlainObject(value: unknown): value is Json {

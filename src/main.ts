@@ -8,6 +8,10 @@ import '@fontsource/orbitron/900.css';
 import './styles/global.css';
 import App from './App.svelte';
 import { game } from './ui/game.svelte';
+import { applyTone } from './ui/tone';
+
+// Apply the saved tone before the first paint so the interface never flashes the default.
+applyTone(game.state.settings.uiAccent);
 
 const app = mount(App, { target: document.getElementById('app')! });
 

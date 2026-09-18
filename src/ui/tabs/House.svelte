@@ -4,8 +4,10 @@
   import { STAT_DESCRIPTIONS } from '../../data/staff';
   import { fmtPct, money } from '../../engine/format';
   import { isAvailable } from '../../engine/players';
+  import { teamKit } from '../../engine/teams';
   import { roomLevel } from '../../engine/staff';
   import type { Player } from '../../engine/types';
+  import { mix, shade } from '../color';
   import Icon from '../components/Icon.svelte';
   import Station from '../components/Station.svelte';
   import { game } from '../game.svelte';
@@ -63,20 +65,29 @@
 
   const trophies = $derived(Math.min(10, Math.floor(v.s.trophies)));
 
+  // Neutral surfaces per room, getting darker and sleeker as the org grows. The org's team colours
+  // are mixed in at render time, so the house is dressed in the player's own colours.
   const WALLS = [
-    ['#3d424e', '#2a2e37'],
-    ['#3b2f4a', '#2c2338'],
-    ['#221a40', '#120e24'],
-    ['#10213a', '#0a1424'],
-    ['#0d2533', '#081820'],
-    ['#0c0c1e', '#05050f'],
+    ['#3c3c40', '#2a2a2d'],
+    ['#35353a', '#242428'],
+    ['#2e2e33', '#1e1e22'],
+    ['#28282c', '#19191c'],
+    ['#222226', '#141417'],
+    ['#161618', '#0a0a0b'],
   ];
-  const FLOORS = ['#4a4d55', '#5a4032', '#1d1b31', '#121a2c', '#10222c', '#15152a'];
-  const POSTERS: { x: number; y: number; color: string }[] = [
-    { x: 330, y: 60, color: '#ff4d6d' },
-    { x: 410, y: 50, color: '#22e4ff' },
-    { x: 490, y: 64, color: '#ffc83d' },
+  const FLOORS = ['#48484c', '#3a3a3f', '#303035', '#26262a', '#1f1f23', '#18181b'];
+  const kit = $derived(v.s.org);
+  const wallTop = $derived(mix(WALLS[level][0], kit.primary, 0.1));
+  const wallBottom = $derived(mix(WALLS[level][1], kit.primary, 0.06));
+  const floor = $derived(mix(FLOORS[level], kit.primary, 0.05));
+  /** The skyline glows in the team colour at night. */
+  const skyGlow = $derived(level >= 5 ? '#121216' : mix('#24242a', kit.primary, 0.3));
+  const POSTERS: { x: number; y: number; tone: 'primary' | 'secondary' | 'gold' }[] = [
+    { x: 330, y: 60, tone: 'primary' },
+    { x: 410, y: 50, tone: 'secondary' },
+    { x: 490, y: 64, tone: 'gold' },
   ];
+  const posterColor = (tone: 'primary' | 'secondary' | 'gold') => (tone === 'gold' ? '#f5c451' : kit[tone]);
 
   function decorTip(d: DecorDef) {
     const owned = !!game.view.s.decor[d.id];
@@ -123,17 +134,17 @@
     <svg class="scene" viewBox="0 0 960 460" role="img" aria-label="{room.name} with {seats.length} players">
       <defs>
         <linearGradient id="house-wall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color={WALLS[level][0]} />
-          <stop offset="1" stop-color={WALLS[level][1]} />
+          <stop offset="0" stop-color={wallTop} />
+          <stop offset="1" stop-color={wallBottom} />
         </linearGradient>
         <linearGradient id="house-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color={level >= 5 ? '#02020a' : '#0b1030'} />
-          <stop offset="1" stop-color={level >= 5 ? '#120a2e' : '#3a1f5c'} />
+          <stop offset="0" stop-color={level >= 5 ? '#050506' : '#101013'} />
+          <stop offset="1" stop-color={skyGlow} />
         </linearGradient>
         <linearGradient id="house-rgb" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#22e4ff" />
-          <stop offset="0.5" stop-color="#ff2bd6" />
-          <stop offset="1" stop-color="#9dff3b" />
+          <stop offset="0" stop-color={kit.primary} />
+          <stop offset="0.5" stop-color={kit.secondary} />
+          <stop offset="1" stop-color={kit.primary} />
         </linearGradient>
         <filter id="house-glow" x="-20%" y="-50%" width="140%" height="200%">
           <feGaussianBlur stdDeviation="4" result="b" />
@@ -143,7 +154,7 @@
 
       <!-- Structure -->
       <rect x="0" y="0" width="960" height="290" fill="url(#house-wall)" />
-      <rect x="0" y="290" width="960" height="170" fill={FLOORS[level]} />
+      <rect x="0" y="290" width="960" height="170" fill={floor} />
       <path d="M0 290 H960" stroke="rgba(255,255,255,0.08)" stroke-width="3" />
       {#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as i (i)}
         <path d="M{480 + (i - 4) * 60} 290 L{480 + (i - 4) * 180} 460" stroke="rgba(255,255,255,0.03)" stroke-width="2" />
@@ -169,8 +180,8 @@
         {/each}
         <path d="M180 50 V200 M70 125 H290" stroke="#5b4a3f" stroke-width="5" />
       {:else if level === 2}
-        <rect x="60" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2c2450" stroke-width="6" />
-        <rect x="740" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2c2450" stroke-width="6" />
+        <rect x="60" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
+        <rect x="740" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
         <circle cx="850" cy="80" r="14" fill="#f5f0d8" opacity="0.85" />
       {:else if level === 3 || level === 4}
         <rect x="0" y="20" width="960" height="250" fill="url(#house-sky)" opacity="0.9" />
@@ -188,12 +199,12 @@
         {/each}
       {:else}
         {#each [180, 480, 780] as px (px)}
-          <circle cx={px} cy="130" r="92" fill="url(#house-sky)" stroke="#2b2b44" stroke-width="12" />
+          <circle cx={px} cy="130" r="92" fill="url(#house-sky)" stroke="#2c2c31" stroke-width="12" />
         {/each}
         {#each Array.from({ length: 40 }, (_, i) => i) as i (i)}
           <circle cx={(i * 211) % 960} cy={50 + ((i * 97) % 170)} r={i % 5 === 0 ? 1.8 : 1} fill="#fff" opacity="0.7" />
         {/each}
-        <path d="M400 200 Q480 150 560 200" fill="none" stroke="#3fb6ff" stroke-width="10" opacity="0.6" />
+        <path d="M400 200 Q480 150 560 200" fill="none" stroke="#ff9a3c" stroke-width="10" opacity="0.45" />
       {/if}
 
       <!-- Wall decor -->
@@ -203,23 +214,23 @@
       {/if}
       {#if has('posters')}
         {#each POSTERS as poster (poster.x)}
-          <rect x={poster.x} y={poster.y} width="58" height="80" rx="2" fill="#11131f" stroke={poster.color} stroke-width="2" />
-          <circle cx={poster.x + 29} cy={poster.y + 32} r="14" fill={poster.color} opacity="0.6" />
+          <rect x={poster.x} y={poster.y} width="58" height="80" rx="2" fill="#141417" stroke={posterColor(poster.tone)} stroke-width="2" />
+          <circle cx={poster.x + 29} cy={poster.y + 32} r="14" fill={posterColor(poster.tone)} opacity="0.6" />
           <rect x={poster.x + 10} y={poster.y + 58} width="38" height="4" fill="#fff" opacity="0.5" />
         {/each}
       {/if}
       {#if has('whiteboard')}
-        <rect x="580" y="54" width="120" height="80" rx="3" fill="#eef0f5" stroke="#9aa3c7" stroke-width="3" />
-        <path d="M596 110 q 20 -30 40 -10 t 40 -20 M600 76 l 20 10 M650 70 a 10 10 0 1 0 0.1 0" stroke="#ff4d6d" stroke-width="2" fill="none" />
+        <rect x="580" y="54" width="120" height="80" rx="3" fill="#eef0f5" stroke="#a3a09a" stroke-width="3" />
+        <path d="M596 110 q 20 -30 40 -10 t 40 -20 M600 76 l 20 10 M650 70 a 10 10 0 1 0 0.1 0" stroke="#f0525f" stroke-width="2" fill="none" />
       {/if}
       {#if has('neon')}
-        <text x="480" y="44" text-anchor="middle" class="neon" filter="url(#house-glow)">{v.s.org.name}</text>
+        <text x="480" y="44" text-anchor="middle" class="neon" fill={kit.primary} filter="url(#house-glow)">{v.s.org.name}</text>
       {/if}
       {#if has('shelf')}
-        <rect x="80" y="210" width="200" height="8" fill="#6b4f3a" />
+        <rect x="80" y="210" width="200" height="8" fill="#3a3a40" />
         {#each Array.from({ length: trophies }, (_, i) => i) as i (i)}
           <g transform="translate({92 + i * 19} 188)">
-            <path d="M0 0 H14 V6 Q14 14 7 14 Q0 14 0 6 Z" fill="#ffc83d" />
+            <path d="M0 0 H14 V6 Q14 14 7 14 Q0 14 0 6 Z" fill="#f5c451" />
             <rect x="5" y="14" width="4" height="5" fill="#d9a441" />
             <rect x="2" y="19" width="10" height="3" fill="#b8862f" />
           </g>
@@ -227,8 +238,8 @@
       {/if}
       {#if has('aquarium')}
         <rect x="720" y="190" width="140" height="90" rx="4" fill="rgba(34,168,255,0.35)" stroke="#9ad4ff" stroke-width="3" />
-        <ellipse cx="760" cy="230" rx="10" ry="5" fill="#ff8a3d" class="fish" />
-        <ellipse cx="820" cy="250" rx="8" ry="4" fill="#ffc83d" class="fish slow" />
+        <ellipse cx="760" cy="230" rx="10" ry="5" fill="#ff9a3c" class="fish" />
+        <ellipse cx="820" cy="250" rx="8" ry="4" fill="#f5c451" class="fish slow" />
         <circle cx="840" cy="210" r="3" fill="none" stroke="#fff" opacity="0.6" />
       {/if}
 
@@ -239,22 +250,22 @@
         <rect x="940" y="214" width="3" height="18" fill="#8d929c" />
       {/if}
       {#if has('arcade')}
-        <path d="M20 180 H90 L96 320 H14 Z" fill="#2a1446" stroke="#ff2bd6" stroke-width="2" />
-        <rect x="30" y="196" width="50" height="40" fill="#22e4ff" opacity="0.6" filter="url(#house-glow)" />
+        <path d="M20 180 H90 L96 320 H14 Z" fill="#1d1d21" stroke={kit.secondary} stroke-width="2" />
+        <rect x="30" y="196" width="50" height="40" fill={kit.primary} opacity="0.6" filter="url(#house-glow)" />
       {/if}
       {#if has('espresso')}
-        <rect x="600" y="262" width="60" height="30" fill="#4b3a2f" />
+        <rect x="600" y="262" width="60" height="30" fill="#2a2a2e" />
         <rect x="612" y="236" width="36" height="28" rx="3" fill="#b9bec7" />
       {/if}
       {#if has('massage')}
-        <path d="M860 330 Q880 260 930 280 L940 360 H860 Z" fill="#3a2d52" />
+        <path d="M860 330 Q880 260 930 280 L940 360 H860 Z" fill={shade(kit.primary, -0.55)} />
       {/if}
       {#if has('napPods')}
-        <ellipse cx="60" cy="350" rx="44" ry="60" fill="#e9ecf5" stroke="#22e4ff" stroke-width="2" />
-        <ellipse cx="60" cy="340" rx="28" ry="36" fill="#1b1f33" />
+        <ellipse cx="60" cy="350" rx="44" ry="60" fill="#ecebe6" stroke={kit.primary} stroke-width="2" />
+        <ellipse cx="60" cy="340" rx="28" ry="36" fill="#1d1d21" />
       {/if}
       {#if has('holotable')}
-        <path d="M430 300 L400 270 H560 L530 300 Z" fill="rgba(34,228,255,0.25)" filter="url(#house-glow)" />
+        <path d="M430 300 L400 270 H560 L530 300 Z" fill={kit.primary} fill-opacity="0.25" filter="url(#house-glow)" />
       {/if}
 
       <!-- Stations -->
@@ -264,8 +275,8 @@
           x={pos.x}
           y={pos.y}
           scale={pos.scale}
-          primary={v.s.org.primary}
-          secondary={v.s.org.secondary}
+          primary={teamKit(v.s, pos.seat.player.gameId).primary}
+          secondary={teamKit(v.s, pos.seat.player.gameId).secondary}
           gameColor={pos.seat.color}
           status={pos.seat.status}
         />
@@ -276,7 +287,7 @@
         {#each [24, 920] as px (px)}
           <g transform="translate({px} 400)">
             <path d="M-14 0 H14 L10 40 H-10 Z" fill="#a0522d" />
-            <path d="M0 0 Q-24 -30 -8 -60 M0 0 Q20 -40 6 -70 M0 0 Q-4 -40 14 -50" stroke="#3dff9a" stroke-width="6" fill="none" stroke-linecap="round" />
+            <path d="M0 0 Q-24 -30 -8 -60 M0 0 Q20 -40 6 -70 M0 0 Q-4 -40 14 -50" stroke="#4ade80" stroke-width="6" fill="none" stroke-linecap="round" />
           </g>
         {/each}
       {/if}
@@ -289,13 +300,13 @@
           <ellipse cx="0" cy="0" rx="20" ry="12" fill="#1b1b22" />
           <circle cx="18" cy="-12" r="9" fill="#1b1b22" />
           <path d="M12 -18 L14 -28 L19 -20 Z M20 -20 L25 -28 L26 -17 Z" fill="#1b1b22" />
-          <circle cx="21" cy="-13" r="1.6" fill="#9dff3b" />
+          <circle cx="21" cy="-13" r="1.6" fill="#c5e84a" />
           <path d="M-20 0 Q-36 -6 -30 -22" stroke="#1b1b22" stroke-width="4" fill="none" stroke-linecap="round" />
         </g>
       {/if}
       {#if has('zeroG')}
         {#each [[140, 120], [480, 90], [820, 140]] as [ox, oy] (ox)}
-          <circle cx={ox} cy={oy} r="10" fill="#b05cff" opacity="0.5" filter="url(#house-glow)" class="float" />
+          <circle cx={ox} cy={oy} r="10" fill="#a97bff" opacity="0.5" filter="url(#house-glow)" class="float" />
         {/each}
       {/if}
 
@@ -375,7 +386,7 @@
   }
   .filters button.active {
     color: var(--text);
-    border-color: var(--gc, var(--cyan));
+    border-color: var(--gc, var(--accent));
   }
   .scene-wrap {
     border-radius: 12px;
@@ -392,7 +403,6 @@
     font-family: var(--font-display);
     font-weight: 900;
     font-size: 30px;
-    fill: #ff5fe0;
     letter-spacing: 4px;
   }
   .empty {
@@ -435,8 +445,8 @@
     cursor: default;
   }
   .item.owned {
-    border-color: rgba(61, 255, 154, 0.45);
-    background: linear-gradient(180deg, rgba(61, 255, 154, 0.1), transparent), var(--bg-2);
+    border-color: color-mix(in srgb, var(--green) 45%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--green) 10%, transparent), transparent), var(--bg-2);
   }
   .item.locked {
     opacity: 0.45;

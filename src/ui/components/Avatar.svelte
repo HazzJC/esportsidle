@@ -1,6 +1,7 @@
 <script lang="ts">
   import { HAIR_COLORS, PANTS_COLORS, SHOE_COLORS, SKIN_TONES } from '../../data/cosmetics';
   import { gearRarity, type GearSlot } from '../../data/gear';
+  import { DEFAULT_KIT } from '../../data/palette';
   import type { Appearance } from '../../engine/types';
   import { BRAND_MAP } from '../../data/sponsors';
   import { shade } from '../color';
@@ -10,8 +11,8 @@
   let {
     look,
     gear,
-    primary = '#22e4ff',
-    secondary = '#ff2bd6',
+    primary = DEFAULT_KIT.primary,
+    secondary = DEFAULT_KIT.secondary,
     size = 120,
     mode = 'full',
     number,
@@ -45,6 +46,10 @@
     const first = game.view.s.sponsors.active[0];
     return first ? BRAND_MAP.get(first.brandId) : undefined;
   });
+  // Gear effects glow in the item's rarity colour, so a mythic headset visibly reads as mythic.
+  const shoeGlow = $derived(gearRarity(shoes).color);
+  const jerseyGlow = $derived(gearRarity(jerseyTier).color);
+  const headsetGlow = $derived(gearRarity(headset).color);
   const charm = $derived(gear.charm ?? 0);
   const charmColor = $derived(gearRarity(charm).color);
   // A soft dark outline separates overlapping flat shapes against the dark background.
@@ -84,9 +89,9 @@
       <stop offset="1" stop-color="#000" stop-opacity="0.3" />
     </radialGradient>
     <linearGradient id="{uid}-holo" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#22e4ff" stop-opacity="0.45" />
-      <stop offset="0.5" stop-color="#ff2bd6" stop-opacity="0.2" />
-      <stop offset="1" stop-color="#9dff3b" stop-opacity="0.45" />
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32" />
+      <stop offset="0.5" stop-color={jerseyGlow} stop-opacity="0.28" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.08" />
     </linearGradient>
   </defs>
 
@@ -115,9 +120,9 @@
     {#each [50.5 - w / 2, 69.5 + w / 2] as cx, i (i)}
       <g transform="translate({cx} 0) scale({i === 0 ? -1 : 1} 1) translate({-cx} 0)">
         {#if shoes === 0}
-          <rect x={cx - 8} y="160" width="16" height="9" rx="4.5" fill="#e9ecf5" />
+          <rect x={cx - 8} y="160" width="16" height="9" rx="4.5" fill="#ecebe6" />
         {:else if shoes === 1}
-          <ellipse cx={cx + 1} cy="168" rx="11" ry="3" fill="#2b2f45" />
+          <ellipse cx={cx + 1} cy="168" rx="11" ry="3" fill="#2a2a2f" />
           <path d="M{cx - 4} 167 L{cx + 1} 161 L{cx + 6} 167" stroke={shoeColor} stroke-width="2.2" fill="none" />
         {:else if shoes === 2}
           <rect x={cx - 8} y="159" width="19" height="10" rx="5" fill={shoeColor} />
@@ -126,7 +131,7 @@
         {:else}
           <path
             d="M{cx - 9} {shoes >= 5 ? 155 : 159} h 13 q 8 0 9 8 v 1 h -22 z"
-            fill={shoes >= 14 ? '#ffc83d' : shoeColor}
+            fill={shoes >= 14 ? '#f5c451' : shoeColor}
           />
           <rect
             x={cx - 10}
@@ -134,14 +139,14 @@
             width="23"
             height="3.5"
             rx="1.5"
-            fill={shoes >= 11 ? '#22e4ff' : '#f4f4f4'}
+            fill={shoes >= 11 ? shoeGlow : '#f4f4f4'}
             filter={shoes >= 7 ? `url(#${uid}-glow)` : undefined}
           />
           {#if shoes >= 7}
-            <path d="M{cx - 6} 163 h 11" stroke={shoes >= 11 ? '#ff2bd6' : '#22e4ff'} stroke-width="1.5" filter="url(#{uid}-glow)" />
+            <path d="M{cx - 6} 163 h 11" stroke={shoeGlow} stroke-width="1.5" filter="url(#{uid}-glow)" />
           {/if}
           {#if shoes >= 12}
-            <path d="M{cx - 6} 172 l 2 5 l 2 -3 l 2 4 l 2 -5" stroke="#ff8a3d" stroke-width="1.4" fill="none" filter="url(#{uid}-glow)" />
+            <path d="M{cx - 6} 172 l 2 5 l 2 -3 l 2 4 l 2 -5" stroke="#ff9a3c" stroke-width="1.4" fill="none" filter="url(#{uid}-glow)" />
           {/if}
         {/if}
       </g>
@@ -182,7 +187,7 @@
     {/if}
   </g>
   {#if jerseyTier >= 8}
-    <path d={torso} fill="none" stroke="#22e4ff" stroke-width="1.2" filter="url(#{uid}-glow)" />
+    <path d={torso} fill="none" stroke={jerseyGlow} stroke-width="1.2" filter="url(#{uid}-glow)" />
   {/if}
   <path d="M51 80 Q60 89 69 80" fill="none" stroke={shade(primary, -0.4)} stroke-width="3" />
   {#if crestUrl}
@@ -217,13 +222,13 @@
   <!-- Neck & head -->
   <rect x="54" y="66" width="12" height="15" rx="3" fill={shade(skin, -0.12)} />
   {#if look.accessory === 1}
-    <path d="M50 80 Q60 93 70 80" fill="none" stroke="#ffc83d" stroke-width="1.6" />
-    <circle cx="60" cy="87" r="2" fill="#ffc83d" />
+    <path d="M50 80 Q60 93 70 80" fill="none" stroke="#f5c451" stroke-width="1.6" />
+    <circle cx="60" cy="87" r="2" fill="#f5c451" />
   {/if}
   <ellipse cx="39.5" cy="51" rx="3.5" ry="5" fill={skin} />
   <ellipse cx="80.5" cy="51" rx="3.5" ry="5" fill={skin} />
   {#if look.accessory === 3}
-    <circle cx="39" cy="57" r="1.6" fill="#ffc83d" />
+    <circle cx="39" cy="57" r="1.6" fill="#f5c451" />
   {/if}
   <circle cx="60" cy="50" r="20.5" fill={skin} stroke={ink} stroke-width="1.1" />
   <circle cx="60" cy="50" r="20.5" fill="url(#{uid}-face)" />
@@ -386,19 +391,19 @@
     </g>
     <path d="M47.5 48 l 3 0" stroke="#fff" stroke-width="1" opacity="0.5" />
   {:else if look.glasses === 4}
-    <rect x="41" y="45" width="38" height="9" rx="4.5" fill="#22e4ff" opacity="0.55" filter="url(#{uid}-glow)" />
+    <rect x="41" y="45" width="38" height="9" rx="4.5" fill={secondary} opacity="0.55" filter="url(#{uid}-glow)" />
   {/if}
 
   <!-- Headset (gear) -->
   {#if headset === 0}
-    <circle cx="39.5" cy="53" r="2" fill="#e9ecf5" />
-    <circle cx="80.5" cy="53" r="2" fill="#e9ecf5" />
-    <path d="M39.5 55 Q38 70 50 84" stroke="#e9ecf5" stroke-width="0.9" fill="none" />
-    <path d="M80.5 55 Q82 70 70 84" stroke="#e9ecf5" stroke-width="0.9" fill="none" />
+    <circle cx="39.5" cy="53" r="2" fill="#ecebe6" />
+    <circle cx="80.5" cy="53" r="2" fill="#ecebe6" />
+    <path d="M39.5 55 Q38 70 50 84" stroke="#ecebe6" stroke-width="0.9" fill="none" />
+    <path d="M80.5 55 Q82 70 70 84" stroke="#ecebe6" stroke-width="0.9" fill="none" />
   {:else}
     {@const big = headset >= 4}
     {@const neon = headset >= 8}
-    {@const band = neon ? '#22e4ff' : big ? '#2a2f4a' : '#444a66'}
+    {@const band = neon ? headsetGlow : big ? '#2c2c31' : '#46464d'}
     <path
       d="M{big ? 36 : 38} 50 Q{big ? 34 : 37} 21 60 {big ? 20 : 22} Q{big ? 86 : 83} 21 {big ? 84 : 82} 50"
       fill="none"
@@ -413,15 +418,15 @@
         width={big ? 10 : 8}
         height={big ? 16 : 13}
         rx="4"
-        fill={neon ? '#0b0e1f' : '#23263a'}
-        stroke={big ? (neon ? '#ff2bd6' : secondary) : 'none'}
+        fill={neon ? '#0e0e10' : '#26262a'}
+        stroke={big ? (neon ? headsetGlow : secondary) : 'none'}
         stroke-width="1.6"
         filter={neon ? `url(#${uid}-glow)` : undefined}
       />
     {/each}
     {#if big}
       <path d="M35 57 Q39 68 51 64" stroke={band} stroke-width="1.6" fill="none" />
-      <circle cx="51.5" cy="64" r="1.9" fill={neon ? '#ff2bd6' : secondary} />
+      <circle cx="51.5" cy="64" r="1.9" fill={neon ? headsetGlow : secondary} />
     {/if}
   {/if}
 </svg>

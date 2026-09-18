@@ -269,8 +269,16 @@ export interface MatchRecord {
   time: number;
 }
 
+/** Colours a team plays in. Kept separate from the interface tone. */
+export interface TeamKit {
+  primary: string;
+  secondary: string;
+}
+
 export interface TeamState {
   gameId: string;
+  /** Colours for this team only; null follows the org's team colours. */
+  kit: TeamKit | null;
   lineup: (string | null)[];
   bench: string[];
   tier: number;
@@ -518,6 +526,10 @@ export interface Settings {
   confirmPrestige: boolean;
   buyAmount: number;
   matchToasts: boolean;
+  /** Interface highlight colour, chosen at the start and changeable in Options. */
+  uiAccent: string;
+  /** Whether the first-run screen (org name and interface tone) has been completed. */
+  onboarded: boolean;
 }
 
 export interface Stats {

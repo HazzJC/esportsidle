@@ -1,3 +1,4 @@
+import { RARITY_COLORS } from './palette';
 import type { StatKey } from '../engine/types';
 
 export type GearSlot = 'pc' | 'monitor' | 'mouse' | 'keyboard' | 'headset' | 'chair' | 'desk' | 'shoes' | 'jersey' | 'charm';
@@ -307,12 +308,12 @@ export interface GearRarityDef {
  * differ only by a slightly stronger cyan, so upgrades stop feeling like they land.
  */
 export const GEAR_RARITIES: GearRarityDef[] = [
-  { id: 'common', name: 'Common', color: '#9aa3c7' },
-  { id: 'uncommon', name: 'Uncommon', color: '#3dff9a' },
-  { id: 'rare', name: 'Rare', color: '#22a8ff' },
-  { id: 'epic', name: 'Epic', color: '#b05cff' },
-  { id: 'legendary', name: 'Legendary', color: '#ffc83d' },
-  { id: 'mythic', name: 'Mythic', color: '#ff2bd6' },
+  { id: 'common', name: 'Common', color: RARITY_COLORS[0] },
+  { id: 'uncommon', name: 'Uncommon', color: RARITY_COLORS[1] },
+  { id: 'rare', name: 'Rare', color: RARITY_COLORS[2] },
+  { id: 'epic', name: 'Epic', color: RARITY_COLORS[3] },
+  { id: 'legendary', name: 'Legendary', color: RARITY_COLORS[4] },
+  { id: 'mythic', name: 'Mythic', color: RARITY_COLORS[5] },
 ];
 
 /** Maps a 0-15 gear tier onto a rarity band. */
