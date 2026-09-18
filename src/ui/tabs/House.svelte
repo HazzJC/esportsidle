@@ -315,6 +315,7 @@
           class="item"
           class:owned
           class:locked={!fits}
+          class:poor={!owned && fits && v.s.cash < d.cost}
           disabled={owned || !fits || v.s.cash < d.cost}
           onclick={() => game.buyDecor(d.id)}
           use:tooltip={() => decorTip(d)}
@@ -440,11 +441,30 @@
   .item.locked {
     opacity: 0.45;
   }
+  /* Framed like gear and staff icons so every purchasable in the game reads the same way. */
   .dicon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 3px;
+    border-radius: 8px;
     color: var(--gold);
+    border: 1.5px solid color-mix(in srgb, var(--gold) 40%, transparent);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--gold) 18%, transparent), transparent 60%), var(--bg);
   }
   .item.owned .dicon {
     color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 55%, transparent);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--green) 20%, transparent), transparent 60%), var(--bg);
+  }
+  .item.poor .dicon {
+    color: var(--dim);
+    border-color: var(--line-2);
+    background: var(--bg);
+  }
+  .item.poor .dcost {
+    color: var(--red);
   }
   .dname {
     font-family: var(--font-ui);

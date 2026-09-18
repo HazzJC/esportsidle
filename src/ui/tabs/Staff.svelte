@@ -4,6 +4,7 @@
   import { isStaffUnlocked, maxStaffAffordable, staffPower, staffPrice, totalStaff } from '../../engine/staff';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
+  import { countQuality } from '../theme';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   const AMOUNTS: { value: number; label: string }[] = [
@@ -69,7 +70,14 @@
       {#if isStaffUnlocked(v.s, def)}
         {@const i = info(def)}
         {@const owned = v.s.staff[def.id] ?? 0}
-        <button class="row" class:no={!i.ok} onclick={() => game.hireStaff(def.id, amount)} use:tooltip={() => tip(def)}>
+        <button
+          class="row"
+          class:no={!i.ok}
+          class:elite={owned >= 200}
+          style="--q:{countQuality(owned)}"
+          onclick={() => game.hireStaff(def.id, amount)}
+          use:tooltip={() => tip(def)}
+        >
           <span class="icon"><Icon name={def.icon} size={26} /></span>
           <span class="main">
             <span class="name">{def.name}</span>
@@ -141,17 +149,21 @@
     gap: 6px;
   }
   .row {
+    --q: var(--dim);
     display: flex;
     align-items: center;
     gap: 12px;
     width: 100%;
     padding: 8px 12px 8px 8px;
     border-radius: 10px;
-    border: 1px solid rgba(139, 92, 255, 0.35);
+    border: 1px solid color-mix(in srgb, var(--q) 34%, var(--line));
     background:
-      linear-gradient(90deg, rgba(139, 92, 255, 0.14), transparent 70%),
+      linear-gradient(90deg, color-mix(in srgb, var(--q) 13%, transparent), transparent 70%),
       var(--bg-2);
     text-align: left;
+  }
+  .row.elite {
+    box-shadow: inset 0 0 14px color-mix(in srgb, var(--q) 14%, transparent);
   }
   button.row:hover {
     border-color: var(--violet);
@@ -173,8 +185,11 @@
     height: 46px;
     border-radius: 10px;
     flex: none;
-    color: #c4b1ff;
-    background: rgba(139, 92, 255, 0.18);
+    color: var(--q);
+    border: 1.5px solid color-mix(in srgb, var(--q) 45%, transparent);
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--q) 20%, transparent), transparent 60%),
+      var(--bg-2);
   }
   .main {
     flex: 1;

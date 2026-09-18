@@ -1,6 +1,6 @@
 <script lang="ts">
   import { HAIR_COLORS, PANTS_COLORS, SHOE_COLORS, SKIN_TONES } from '../../data/cosmetics';
-  import type { GearSlot } from '../../data/gear';
+  import { gearRarity, type GearSlot } from '../../data/gear';
   import type { Appearance } from '../../engine/types';
   import { BRAND_MAP } from '../../data/sponsors';
   import { shade } from '../color';
@@ -45,6 +45,15 @@
     const first = game.view.s.sponsors.active[0];
     return first ? BRAND_MAP.get(first.brandId) : undefined;
   });
+  const charm = $derived(gear.charm ?? 0);
+  const charmColor = $derived(gearRarity(charm).color);
+  // A soft dark outline separates overlapping flat shapes against the dark background.
+  const ink = 'rgba(0, 0, 0, 0.42)';
+  const idleDelay = $derived.by(() => {
+    let h = 0;
+    for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) % 997;
+    return (h % 20) / 10;
+  });
   const line = '#1a1a22';
   const lip = '#5a2a22';
 </script>
@@ -54,6 +63,7 @@
   height={full ? size * 1.5 : size}
   viewBox={full ? '0 0 120 180' : '16 8 88 88'}
   class="avatar"
+  style="animation-delay: {idleDelay}s"
   aria-hidden="true"
 >
   <defs>
@@ -68,6 +78,11 @@
       <stop offset="0.7" stop-color="#fff" stop-opacity="0.06" />
       <stop offset="1" stop-color="#000" stop-opacity="0.25" />
     </linearGradient>
+    <radialGradient id="{uid}-face" cx="0.34" cy="0.28" r="0.88">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.14" />
+      <stop offset="0.55" stop-color="#fff" stop-opacity="0" />
+      <stop offset="1" stop-color="#000" stop-opacity="0.3" />
+    </radialGradient>
     <linearGradient id="{uid}-holo" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#22e4ff" stop-opacity="0.45" />
       <stop offset="0.5" stop-color="#ff2bd6" stop-opacity="0.2" />
@@ -95,8 +110,8 @@
 
   <!-- Legs & shoes -->
   {#if full}
-    <rect x={43 - w / 2} y="118" width="15" height="46" rx="5" fill={pants} />
-    <rect x={62 + w / 2} y="118" width="15" height="46" rx="5" fill={pants} />
+    <rect x={43 - w / 2} y="118" width="15" height="46" rx="5" fill={pants} stroke={ink} stroke-width="1" />
+    <rect x={62 + w / 2} y="118" width="15" height="46" rx="5" fill={pants} stroke={ink} stroke-width="1" />
     {#each [50.5 - w / 2, 69.5 + w / 2] as cx, i (i)}
       <g transform="translate({cx} 0) scale({i === 0 ? -1 : 1} 1) translate({-cx} 0)">
         {#if shoes === 0}
@@ -134,8 +149,8 @@
   {/if}
 
   <!-- Arms -->
-  <rect x={22 - w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} transform="rotate(8 {28 - w} 86)" />
-  <rect x={86 + w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} transform="rotate(-8 {92 + w} 86)" />
+  <rect x={22 - w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(8 {28 - w} 86)" />
+  <rect x={86 + w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(-8 {92 + w} 86)" />
   <circle cx={23 - w} cy="121" r="5.5" fill={skin} />
   <circle cx={97 + w} cy="121" r="5.5" fill={skin} />
   {#if look.accessory === 2}
@@ -144,7 +159,7 @@
   {/if}
 
   <!-- Torso / jersey -->
-  <path d={torso} fill={primary} />
+  <path d={torso} fill={primary} stroke={ink} stroke-width="1.1" />
   <g clip-path="url(#{uid}-torso)">
     {#if look.jersey === 1}
       {#each [0, 1, 2, 3, 4, 5, 6] as k (k)}
@@ -172,6 +187,12 @@
   <path d="M51 80 Q60 89 69 80" fill="none" stroke={shade(primary, -0.4)} stroke-width="3" />
   {#if crestUrl}
     <image href={crestUrl} x="52" y="88" width="16" height="16" style="image-rendering: pixelated" />
+  {/if}
+  {#if charm >= 3}
+    <g filter={charm >= 11 ? `url(#${uid}-glow)` : undefined}>
+      <path d="M45 94 L48.5 99 L45 104 L41.5 99 Z" fill={charmColor} stroke={ink} stroke-width="0.7" />
+      <path d="M45 94 L48.5 99 L45 100.5 Z" fill="#fff" opacity="0.35" />
+    </g>
   {/if}
   {#if sponsor && full}
     <text x="60" y="124" text-anchor="middle" font-family="Rajdhani, sans-serif" font-weight="700" font-size="6" fill={sponsor.color} letter-spacing="0.5"
@@ -204,7 +225,8 @@
   {#if look.accessory === 3}
     <circle cx="39" cy="57" r="1.6" fill="#ffc83d" />
   {/if}
-  <circle cx="60" cy="50" r="20.5" fill={skin} />
+  <circle cx="60" cy="50" r="20.5" fill={skin} stroke={ink} stroke-width="1.1" />
+  <circle cx="60" cy="50" r="20.5" fill="url(#{uid}-face)" />
 
   <!-- Face -->
   {#if look.accessory === 4}
@@ -408,5 +430,18 @@
   .avatar {
     display: block;
     overflow: visible;
+    transform-origin: 50% 92%;
+    animation: idle 3.6s ease-in-out infinite;
+    will-change: transform;
+  }
+  /* Just enough motion to stop a roster reading as stickers. */
+  @keyframes idle {
+    0%,
+    100% {
+      transform: translateY(0) scaleY(1);
+    }
+    50% {
+      transform: translateY(-1.2px) scaleY(1.008);
+    }
   }
 </style>

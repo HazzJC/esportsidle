@@ -295,3 +295,29 @@ export const GEAR_MAP: Map<GearSlot, GearSlotDef> = new Map(GEAR_SLOTS.map((g) =
 export function emptyGear(): Record<GearSlot, number> {
   return { pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 0, chair: 0, desk: 0, shoes: 0, jersey: 0, charm: 0 };
 }
+
+export interface GearRarityDef {
+  id: string;
+  name: string;
+  color: string;
+}
+
+/**
+ * Gear reuses the same six rarity bands as players. Without this a Tier 14 mouse and a Tier 3 one
+ * differ only by a slightly stronger cyan, so upgrades stop feeling like they land.
+ */
+export const GEAR_RARITIES: GearRarityDef[] = [
+  { id: 'common', name: 'Common', color: '#9aa3c7' },
+  { id: 'uncommon', name: 'Uncommon', color: '#3dff9a' },
+  { id: 'rare', name: 'Rare', color: '#22a8ff' },
+  { id: 'epic', name: 'Epic', color: '#b05cff' },
+  { id: 'legendary', name: 'Legendary', color: '#ffc83d' },
+  { id: 'mythic', name: 'Mythic', color: '#ff2bd6' },
+];
+
+/** Maps a 0-15 gear tier onto a rarity band. */
+export function gearRarity(tier: number): GearRarityDef {
+  const t = Math.max(0, Math.min(GEAR_MAX_TIER, Math.round(tier)));
+  const band = t <= 1 ? 0 : t <= 4 ? 1 : t <= 7 ? 2 : t <= 10 ? 3 : t <= 13 ? 4 : 5;
+  return GEAR_RARITIES[band];
+}

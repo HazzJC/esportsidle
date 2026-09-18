@@ -7,7 +7,7 @@
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
-  import { laneHue, tierColor } from '../theme';
+  import { TIER_COLORS, laneHue, tierColor } from '../theme';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   const GROUP_LABEL: Record<UpgradeGroup, string> = {
@@ -134,13 +134,15 @@
           <button
             class="upgrade"
             class:ok
-            style="--c:{tierColor(def.tier)}"
+            class:hi={def.tier >= 7}
+            style="--c:{tierColor(def.tier)}; --rank:{Math.min(1, (def.tier + 1) / TIER_COLORS.length)}"
             onclick={() => game.buyUpgrade(def.id)}
             use:tooltip={() => upgradeTip(def)}
             aria-label="{def.name}, costs {money(upgradePrice(def, v.m))}"
           >
             <Icon name={def.icon} size={22} />
             {#if def.badge}<span class="badge"><Icon name={def.badge} size={11} /></span>{/if}
+            <i class="rank" aria-hidden="true"></i>
           </button>
         {/each}
       </div>
@@ -254,8 +256,11 @@
     display: grid;
     place-items: center;
     border-radius: 8px;
+    overflow: hidden;
     border: 1.5px solid color-mix(in srgb, var(--c) 45%, transparent);
-    background: color-mix(in srgb, var(--c) 8%, var(--bg-2));
+    background:
+      linear-gradient(140deg, color-mix(in srgb, var(--c) 26%, transparent), transparent 58%),
+      color-mix(in srgb, var(--c) 8%, var(--bg-2));
     color: color-mix(in srgb, var(--c) 55%, var(--dim));
     opacity: 0.6;
     transition:
@@ -268,6 +273,21 @@
     color: var(--c);
     border-color: var(--c);
     box-shadow: 0 0 10px color-mix(in srgb, var(--c) 35%, transparent);
+  }
+  .upgrade.hi.ok {
+    box-shadow:
+      0 0 12px color-mix(in srgb, var(--c) 45%, transparent),
+      inset 0 0 10px color-mix(in srgb, var(--c) 15%, transparent);
+  }
+  /* A rank bar makes tier readable as a quantity; the frame hue alone does not rank. */
+  .rank {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2.5px;
+    width: calc(var(--rank) * 100%);
+    background: var(--c);
+    opacity: 0.85;
   }
   .upgrade:hover {
     transform: translateY(-2px);

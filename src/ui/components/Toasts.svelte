@@ -28,6 +28,15 @@
     align-items: flex-end;
     pointer-events: none;
   }
+  /* On wide screens the store sits bottom-right, so toasts anchored there mask its buy rows.
+     The left column below the clicker is read-only, so they cover nothing clickable. */
+  @media (min-width: 1100px) {
+    .toasts {
+      right: auto;
+      left: 14px;
+      align-items: flex-start;
+    }
+  }
   .toast {
     pointer-events: auto;
     display: flex;

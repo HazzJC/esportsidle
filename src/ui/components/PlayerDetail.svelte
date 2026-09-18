@@ -16,7 +16,7 @@
     SKIN_TONES,
   } from '../../data/cosmetics';
   import { GENRE_WEIGHTS, getGame } from '../../data/games';
-  import { GEAR_MAX_TIER, GEAR_SLOTS } from '../../data/gear';
+  import { GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
   import { NATIONS } from '../../data/names';
   import { fmt, fmtPct, money } from '../../engine/format';
   import {
@@ -38,8 +38,12 @@
   import type { Appearance } from '../../engine/types';
   import { game } from '../game.svelte';
   import Avatar from './Avatar.svelte';
+  import GearIcon from './GearIcon.svelte';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
+
+  /** Pip indices for the 15-step gear track. */
+  const PIPS = Array.from({ length: GEAR_MAX_TIER }, (_, i) => i);
 
   type Tab = 'stats' | 'gear' | 'look' | 'lineup';
   const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -205,13 +209,20 @@
               {@const maxed = tier >= GEAR_MAX_TIER}
               {@const cost = gearUpgradeCost(p, gs.id, v.m)}
               {@const tm = gearTraitMult(p, gs.id)}
-              <div class="gear-row" class:maxed>
-                <span class="gicon" style="--t:{tier / GEAR_MAX_TIER}"><Icon name={gs.icon} size={20} /></span>
+              {@const rarity = gearRarity(tier)}
+              <div class="gear-row" class:maxed style="--r:{rarity.color}">
+                <GearIcon icon={gs.icon} {tier} size={42} />
                 <div class="ginfo">
-                  <div class="gname">{gs.tiers[tier]} <span class="tier num">T{tier}</span></div>
+                  <div class="gname">
+                    {gs.tiers[tier]}
+                    <span class="rarity">{rarity.name}</span>
+                  </div>
                   <div class="gdesc muted">
                     {gs.stats.map((st) => STAT_LABEL[st]).join(' & ')} ×{fmt(Math.pow(gs.growth, tier * tm), 2)}
                     {#if !maxed}<span class="good"> → ×{fmt(Math.pow(gs.growth, (tier + 1) * tm), 2)}</span>{/if}
+                  </div>
+                  <div class="pips" aria-hidden="true">
+                    {#each PIPS as i (i)}<i class:on={i < tier}></i>{/each}
                   </div>
                   {#if !maxed}<div class="next dim">Next: {gs.tiers[tier + 1]}</div>{/if}
                 </div>
@@ -487,23 +498,39 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 8px;
+    padding: 7px 9px;
     border-radius: 9px;
-    background: var(--bg-2);
-    border: 1px solid var(--line);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--r) 10%, transparent), transparent 42%), var(--bg-2);
+    border: 1px solid color-mix(in srgb, var(--r) 28%, var(--line));
   }
   .gear-row.maxed {
-    border-color: rgba(255, 200, 61, 0.5);
+    border-color: color-mix(in srgb, var(--r) 60%, transparent);
   }
-  .gicon {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    flex: none;
-    color: color-mix(in srgb, var(--cyan) calc(var(--t) * 100%), var(--muted));
-    background: color-mix(in srgb, var(--cyan) calc(var(--t) * 25%), rgba(255, 255, 255, 0.04));
+  .rarity {
+    margin-left: 4px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--r);
+    vertical-align: 1px;
+  }
+  /* A 15-step track so the distance left to max is visible without reading numbers. */
+  .pips {
+    display: flex;
+    gap: 2px;
+    margin: 4px 0 3px;
+  }
+  .pips i {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+  .pips i.on {
+    background: var(--r);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--r) 55%, transparent);
   }
   .ginfo {
     flex: 1;
