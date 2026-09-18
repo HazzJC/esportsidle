@@ -1,14 +1,19 @@
 <script lang="ts">
+  import { AUTOMATION_MAP } from '../../data/automation';
+  import { CHARTERS, CHARTER_MAP } from '../../data/charters';
   import { GAME_MAP } from '../../data/games';
+  import { MANDATE_MAP } from '../../data/mandates';
   import { CHALLENGES, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
   import { tierName } from '../../data/leagues';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
+    FOUNDING_POINTS,
     LEGACY_DIVISOR,
     activeChallenge,
     canSell,
     hasSpecial,
     legacyFor,
+    mandateOffers,
     nextLegacyThreshold,
     nodeState,
     pendingLegacy,
@@ -34,6 +39,8 @@
   let keepId = $state('');
   let retireId = $state('');
   let challengeId = $state('');
+  let charterId = $state('');
+  let mandateId = $state('');
 
   const v = $derived(game.view);
   const s = $derived(v.s);
@@ -47,6 +54,11 @@
   });
   const tradable = $derived(Object.values(s.players).filter((pl) => !pl.founder).sort((a, b) => b.level - a.level));
   const active = $derived(activeChallenge(s));
+  const charter = $derived(p.charter ? CHARTER_MAP.get(p.charter) : undefined);
+  const mandate = $derived(p.mandate ? MANDATE_MAP.get(p.mandate) : undefined);
+  const offers = $derived(mandateOffers(s));
+  /** The charter is required the first time it can be chosen. */
+  const needsCharter = $derived(!p.charter);
 
   function nodeTip(n: LegacyNodeDef): TipContent {
     const state = nodeState(game.view.s, n.id);
@@ -73,11 +85,21 @@
     keepId = '';
     retireId = '';
     challengeId = '';
+    charterId = '';
+    mandateId = '';
     selling = true;
   }
 
   function confirmSell() {
-    if (game.sellOrg({ keepPlayerId: keepId || null, retirePlayerId: retireId || null, challenge: challengeId || null })) selling = false;
+    if (needsCharter && !charterId) return;
+    const options = {
+      keepPlayerId: keepId || null,
+      retirePlayerId: retireId || null,
+      challenge: challengeId || null,
+      charter: charterId || null,
+      mandate: mandateId || null,
+    };
+    if (game.sellOrg(options)) selling = false;
   }
 </script>
 
@@ -88,6 +110,20 @@
       <div>
         <div class="big num">Legacy {fmt(p.level)}</div>
         <div class="muted small">+{fmtPct(p.level * v.m.legacyLevelPct)} income forever · {fmt(p.points)} points to spend · {p.runs} org{p.runs === 1 ? '' : 's'} sold</div>
+        {#if charter || mandate}
+          <div class="run-chips">
+            {#if charter}
+              <span class="chip" use:tooltip={() => ({ title: charter.name, subtitle: 'Founding Charter', icon: charter.icon, lines: [charter.start, `${AUTOMATION_MAP.get(charter.automation)?.name} unlocked from the start of every run.`] })}>
+                <Icon name={charter.icon} size={12} /> {charter.name}
+              </span>
+            {/if}
+            {#if mandate}
+              <span class="chip" use:tooltip={() => ({ title: mandate.name, subtitle: 'Mandate for this run', icon: mandate.icon, lines: [{ text: mandate.upside, tone: 'good' }, { text: mandate.downside, tone: 'bad' }] })}>
+                <Icon name={mandate.icon} size={12} /> {mandate.name}
+              </span>
+            {/if}
+          </div>
+        {/if}
       </div>
     </div>
     <div class="sell">
@@ -227,12 +263,43 @@
 </div>
 
 {#if selling}
-  <Modal title="Sell the Org" onclose={() => (selling = false)} width={560}>
+  <Modal title="Sell the Org" onclose={() => (selling = false)} width={640}>
     <div class="sell-modal">
       <p>
         Sell <b>{s.org.name}</b> and start again from the garage with <b class="gold-text">+{fmt(pending)} legacy</b>
         (+{fmtPct(pending * v.m.legacyLevelPct)} income forever and {fmt(pending)} points to spend).
       </p>
+
+      {#if p.runs === 0}
+        <div class="first-sale">
+          <Icon name="crown" size={16} color="var(--gold)" />
+          <span><b>First sale bonus:</b> Legacy of Champions (+10% income) is yours free, plus {FOUNDING_POINTS} extra points to spend.</span>
+        </div>
+      {/if}
+
+      {#if needsCharter}
+        <h4 class="pick-title">Choose a Founding Charter <span class="dim">· kept for every run</span></h4>
+        <div class="picks">
+          {#each CHARTERS as c (c.id)}
+            <button type="button" class="pick" class:chosen={charterId === c.id} aria-pressed={charterId === c.id} onclick={() => (charterId = c.id)}>
+              <span class="pick-head"><Icon name={c.icon} size={17} /> <b>{c.name}</b></span>
+              <span class="pick-line muted">{c.start}</span>
+              <span class="pick-line accent-text"><Icon name="zap" size={12} /> {AUTOMATION_MAP.get(c.automation)?.name} from the start</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+
+      <h4 class="pick-title">Mandate for the next run <span class="dim">· optional, one run only</span></h4>
+      <div class="picks">
+        {#each offers as m (m.id)}
+          <button type="button" class="pick" class:chosen={mandateId === m.id} aria-pressed={mandateId === m.id} onclick={() => (mandateId = mandateId === m.id ? '' : m.id)}>
+            <span class="pick-head"><Icon name={m.icon} size={17} /> <b>{m.name}</b></span>
+            <span class="pick-line good">+ {m.upside}</span>
+            <span class="pick-line bad">− {m.downside}</span>
+          </button>
+        {/each}
+      </div>
       <div class="lists">
         <div>
           <h4>You keep</h4>
@@ -291,12 +358,75 @@
     </div>
     {#snippet footer()}
       <button class="btn" onclick={() => (selling = false)}>Not yet</button>
-      <button class="btn gold" disabled={!canSell(s)} onclick={confirmSell}><Icon name="crown" size={14} /> Sell for +{fmt(pending)} legacy</button>
+      <button class="btn gold" disabled={!canSell(s) || (needsCharter && !charterId)} onclick={confirmSell}>
+        <Icon name="crown" size={14} />
+        {needsCharter && !charterId ? 'Choose a charter first' : `Sell for +${fmt(pending)} legacy`}
+      </button>
     {/snippet}
   </Modal>
 {/if}
 
 <style>
+  .run-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .first-sale {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    background: color-mix(in srgb, var(--gold) 9%, transparent);
+    font-size: 13px;
+  }
+  .pick-title {
+    margin: 4px 0 -2px;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 8px;
+  }
+  .pick {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 10px;
+    text-align: left;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    background: var(--bg-2);
+  }
+  .pick:hover {
+    border-color: var(--line-2);
+  }
+  .pick.chosen {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 65%), var(--bg-2);
+  }
+  .pick-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-size: 15px;
+  }
+  .pick-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.3;
+  }
   .legacy {
     display: flex;
     flex-direction: column;

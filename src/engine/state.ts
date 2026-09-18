@@ -7,10 +7,20 @@ import { createFounder } from './players';
 import { createGameProgress } from './popularity';
 import { Rng, randomSeed } from './rng';
 import { addToTeam, createTeam } from './teams';
-import type { GameProgress, GameState, OperationState, Settings, Stats } from './types';
+import type { AutomationSettings, GameProgress, GameState, OperationState, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 3;
 export const GAME_VERSION = '0.7.0';
+
+/** Every routine starts switched off; the player opts in once it unlocks. */
+export function createAutomation(): AutomationSettings {
+  return {
+    upgrades: { on: false, maxCostPct: 0.25 },
+    roster: { on: false, maxCostPct: 0.5 },
+    gear: { on: false, maxCostPct: 0.01 },
+    sponsors: { on: false, minTier: 0, avoidCrypto: true },
+  };
+}
 
 export function createSettings(): Settings {
   return {
@@ -156,7 +166,11 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
       challenge: null,
       challengesDone: {},
       runBaseline: { seasonTitles: 0, tournamentsWon: 0, matchesWon: 0 },
+      charter: null,
+      mandate: null,
     },
+    automation: createAutomation(),
+    automationLog: [],
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

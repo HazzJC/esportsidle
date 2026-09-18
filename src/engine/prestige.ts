@@ -1,17 +1,20 @@
 import { emptyGear } from '../data/gear';
 import { GAMES, getGame } from '../data/games';
 import { CHALLENGE_MAP, LEGACY_NODES, LEGACY_NODE_MAP, type ChallengeDef, type LegacySpecial } from '../data/legacy';
+import { CHARTER_MAP } from '../data/charters';
 import { tierName } from '../data/leagues';
+import { MANDATES, MANDATE_CHOICES, MANDATE_MAP, type MandateDef } from '../data/mandates';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
 import { emit } from './bus';
 import { fmt } from './format';
 import { refreshMarket } from './market';
-import { skillRating } from './players';
+import { generatePlayer, skillRating } from './players';
+import { gainFans } from './wallet';
 import { Rng } from './rng';
 import { createGames, createOps, createStaff, setupNewRun } from './state';
 import { addToTeam, createTeam } from './teams';
-import type { Effect, GameState, HallOfFameEntry, Player } from './types';
+import type { Effect, GameState, HallOfFameEntry, Player, Rarity } from './types';
 
 /**
  * All-time earnings needed for the first legacy point; later points follow a cube curve. This is
@@ -23,6 +26,8 @@ export const BASE_LEGACY_LEVEL_PCT = 0.01;
 export const LEGEND_RATING_BONUS = 0.05;
 export const LEGEND_FANS_BONUS = 0.02;
 export const MAX_HALL_OF_FAME = 50;
+/** Extra points on the first sale, so the first pick is a real one even when selling for a single point. */
+export const FOUNDING_POINTS = 4;
 
 export function legacyFor(earned: number): number {
   return Math.floor(Math.cbrt(Math.max(0, earned) / LEGACY_DIVISOR));
@@ -92,6 +97,10 @@ export function legacyBonuses(s: GameState): LegacyBonuses {
     const def = CHALLENGE_MAP.get(id);
     if (def) out.effects.push(...def.rewardEffects);
   }
+  const charter = s.prestige.charter ? CHARTER_MAP.get(s.prestige.charter) : undefined;
+  if (charter?.effects) out.effects.push(...charter.effects);
+  const mandate = s.prestige.mandate ? MANDATE_MAP.get(s.prestige.mandate) : undefined;
+  if (mandate) out.effects.push(...mandate.effects);
   for (const legend of s.prestige.legends) {
     out.gameRating[legend.gameId] = (out.gameRating[legend.gameId] ?? 1) * (1 + LEGEND_RATING_BONUS);
     out.fansMult *= 1 + LEGEND_FANS_BONUS;
@@ -129,32 +138,47 @@ export interface SellOptions {
   keepPlayerId?: string | null;
   retirePlayerId?: string | null;
   challenge?: string | null;
+  /** A Founding Charter, chosen once while the org has none. */
+  charter?: string | null;
+  /** One of mandateOffers(s) for the next run, or null to play without one. */
+  mandate?: string | null;
 }
 
+/** Starting advantages from owned legacy nodes and the Founding Charter, applied to a fresh run. */
 function startBonuses(s: GameState): void {
+  const specials: LegacySpecial[] = [];
+  for (const id in s.prestige.nodes) specials.push(...(LEGACY_NODE_MAP.get(id)?.special ?? []));
+  const charter = s.prestige.charter ? CHARTER_MAP.get(s.prestige.charter) : undefined;
+  if (charter) specials.push(...charter.special);
+
   const games = new Set<string>();
-  for (const id in s.prestige.nodes) {
-    for (const sp of LEGACY_NODE_MAP.get(id)?.special ?? []) {
-      switch (sp.kind) {
-        case 'startCash':
-          s.cash = Math.max(s.cash, sp.amount);
-          break;
-        case 'startOps':
-          for (const [op, count] of Object.entries(sp.ops)) {
-            if (!s.ops[op]) continue;
-            s.ops[op].owned += count;
-            s.ops[op].highest = Math.max(s.ops[op].highest, s.ops[op].owned);
-          }
-          break;
-        case 'startGame':
-          games.add(sp.game);
-          break;
-        case 'startStaff':
-          for (const [staff, count] of Object.entries(sp.staff)) s.staff[staff] = (s.staff[staff] ?? 0) + count;
-          break;
-        default:
-          break;
-      }
+  const signings: { game: string; rarity: Rarity }[] = [];
+  for (const sp of specials) {
+    switch (sp.kind) {
+      case 'startCash':
+        s.cash = Math.max(s.cash, sp.amount);
+        break;
+      case 'startOps':
+        for (const [op, count] of Object.entries(sp.ops)) {
+          if (!s.ops[op]) continue;
+          s.ops[op].owned += count;
+          s.ops[op].highest = Math.max(s.ops[op].highest, s.ops[op].owned);
+        }
+        break;
+      case 'startGame':
+        games.add(sp.game);
+        break;
+      case 'startStaff':
+        for (const [staff, count] of Object.entries(sp.staff)) s.staff[staff] = (s.staff[staff] ?? 0) + count;
+        break;
+      case 'startFans':
+        gainFans(s, sp.amount);
+        break;
+      case 'startPlayer':
+        signings.push({ game: sp.game, rarity: sp.rarity });
+        break;
+      default:
+        break;
     }
   }
   for (const gameId of games) {
@@ -165,6 +189,27 @@ function startBonuses(s: GameState): void {
       if (!s.teams[g.id]) s.teams[g.id] = createTeam(g.id);
     }
   }
+  const rng = new Rng(s);
+  for (const sign of signings) {
+    if (!s.teams[sign.game]) continue;
+    const p = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: sign.game, time: s.time, rarity: sign.rarity });
+    s.players[p.id] = p;
+    addToTeam(s, p, { benchSlots: 1 });
+  }
+}
+
+/**
+ * The mandates offered for the next run. Seeded from values that are stable within a run, so reopening
+ * the dialog shows the same three, while each run and each org gets a different draw.
+ */
+export function mandateOffers(s: GameState): MandateDef[] {
+  let h = (s.prestige.runs * 7919 + Math.floor(s.runStartTime) * 31 + 0x9e3779b9) >>> 0;
+  for (const ch of s.org.name) h = (Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0);
+  const rng = new Rng({ rng: h });
+  const pool = [...MANDATES];
+  const out: MandateDef[] = [];
+  while (out.length < MANDATE_CHOICES && pool.length > 0) out.push(pool.splice(rng.int(0, pool.length - 1), 1)[0]);
+  return out;
 }
 
 function resetPlayerForNewRun(p: Player): Player {
@@ -182,6 +227,8 @@ function resetPlayerForNewRun(p: Player): Player {
 export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntry | null {
   const gained = pendingLegacy(s);
   if (gained < 1) return null;
+  const firstSale = s.prestige.runs === 0;
+  const offered = mandateOffers(s).map((m) => m.id);
 
   const players = Object.values(s.players);
   const mvp = [...players].sort((a, b) => b.wins - a.wins)[0];
@@ -213,6 +260,7 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
     duration: s.time - s.runStartTime,
     endedAt: Date.now(),
     challenge: s.prestige.challenge,
+    mandate: s.prestige.mandate,
   };
 
   // Carry-overs -------------------------------------------------------------
@@ -286,6 +334,14 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
   const challenge = options.challenge && hasSpecial(s, 'challenges') ? CHALLENGE_MAP.get(options.challenge) : undefined;
   s.prestige.challenge = challenge && s.prestige.challengesDone[challenge.id] === undefined ? challenge.id : null;
   s.prestige.runBaseline = { seasonTitles: s.stats.seasonTitles, tournamentsWon: s.stats.tournamentsWon, matchesWon: s.stats.matchesWon };
+  // The first sale gives the root node for free, so every point earned goes on a real choice.
+  if (firstSale && s.prestige.nodes.legacy === undefined) {
+    s.prestige.nodes.legacy = Date.now();
+    s.stats.legacyNodes++;
+  }
+  if (firstSale) s.prestige.points += FOUNDING_POINTS;
+  if (!s.prestige.charter && options.charter && CHARTER_MAP.has(options.charter)) s.prestige.charter = options.charter;
+  s.prestige.mandate = options.mandate && offered.includes(options.mandate) ? options.mandate : null;
 
   // New run -------------------------------------------------------------------
   setupNewRun(s);

@@ -76,7 +76,9 @@ export type Effect =
   | { kind: 'sponsorIncome'; mult: number }
   | { kind: 'merchMult'; mult: number }
   | { kind: 'noveltyMult'; mult: number }
-  | { kind: 'legacyLevelPct'; add: number };
+  | { kind: 'legacyLevelPct'; add: number }
+  | { kind: 'feeMult'; mult: number }
+  | { kind: 'energyDrain'; mult: number };
 
 export interface Mods {
   opMult: Record<string, number>;
@@ -136,6 +138,8 @@ export interface Mods {
   noveltyMult: number;
   /** Income bonus per legacy level. */
   legacyLevelPct: number;
+  /** Multiplier on transfer-market signing fees. */
+  feeMult: number;
   /** Team rating multipliers per game (retired legends). */
   gameRatingMult: Record<string, number>;
 }
@@ -478,6 +482,7 @@ export interface Legend {
 
 export interface HallOfFameEntry {
   run: number;
+  mandate?: string | null;
   orgName: string;
   logo: string | null;
   earned: number;
@@ -493,6 +498,19 @@ export interface HallOfFameEntry {
   duration: number;
   endedAt: number;
   challenge: string | null;
+}
+
+/** Standing orders the front office carries out once each routine is unlocked. */
+export interface AutomationSettings {
+  upgrades: { on: boolean; maxCostPct: number };
+  roster: { on: boolean; maxCostPct: number };
+  gear: { on: boolean; maxCostPct: number };
+  sponsors: { on: boolean; minTier: number; avoidCrypto: boolean };
+}
+
+export interface AutomationLogEntry {
+  time: number;
+  text: string;
 }
 
 export interface PrestigeState {
@@ -511,6 +529,10 @@ export interface PrestigeState {
   challenge: string | null;
   challengesDone: Record<string, number>;
   runBaseline: { seasonTitles: number; tournamentsWon: number; matchesWon: number };
+  /** Founding Charter, chosen once on the first sale and kept for every later run. */
+  charter: string | null;
+  /** Run Mandate for the current run, chosen when the org was last sold. */
+  mandate: string | null;
 }
 
 export interface Settings {
@@ -625,6 +647,9 @@ export interface GameState {
   merch: MerchState;
   sponsors: SponsorsState;
   prestige: PrestigeState;
+  /** Kept across sales: the rules are the player's, even though unlocks are re-earned. */
+  automation: AutomationSettings;
+  automationLog: AutomationLogEntry[];
   nextId: number;
   popularityClock: number;
   stats: Stats;

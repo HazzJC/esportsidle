@@ -108,5 +108,9 @@ export function describeEffect(e: Effect): string {
       return `Each legacy level gives +${pct(e.add)} more income.`;
     case 'noveltyMult':
       return e.mult === 2 ? 'Merch designs stay fresh twice as long.' : `Merch designs stay fresh ${pct(e.mult - 1)} longer.`;
+    case 'feeMult':
+      return e.mult < 1 ? `Signing fees ${pct(1 - e.mult)} cheaper.` : `Signing fees ${pct(e.mult - 1)} higher.`;
+    case 'energyDrain':
+      return e.mult > 1 ? `Players tire ${pct(e.mult - 1)} faster.` : `Players tire ${pct(1 - e.mult)} slower.`;
   }
 }

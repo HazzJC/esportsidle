@@ -31,7 +31,7 @@ import { buyGear } from '../engine/players';
 import { buyDecor, hireStaff } from '../engine/staff';
 import { Rng } from '../engine/rng';
 import { assignSlot, benchPlayer, changeTier, unlockGame } from '../engine/teams';
-import type { Appearance, TeamKit } from '../engine/types';
+import type { Appearance, AutomationSettings, TeamKit } from '../engine/types';
 import { isHexColor } from '../data/palette';
 import { cleanOrgName, completeOnboarding as completeOnboardingState } from '../engine/org';
 import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, writeSave, type StorageLike } from '../engine/save';
@@ -681,6 +681,12 @@ class GameStore {
   completeOnboarding(name: string, tone: string): void {
     completeOnboardingState(this.state, name, tone);
     this.save(false);
+    this.refresh();
+  }
+
+  /** Updates one standing order for the front office. */
+  setAutomation<K extends keyof AutomationSettings>(id: K, patch: Partial<AutomationSettings[K]>): void {
+    Object.assign(this.state.automation[id], patch);
     this.refresh();
   }
 

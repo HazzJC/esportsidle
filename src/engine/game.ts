@@ -1,5 +1,6 @@
 import { OPERATIONS } from '../data/operations';
 import { checkAchievements } from './achievements';
+import { AUTOMATION_INTERVAL, runAutomation } from './automation';
 import { expireBuffs } from './buffs';
 import { decayHype } from './clicker';
 import { updateDrops } from './drops';
@@ -50,6 +51,7 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
 
   if (!offline) {
     updateMarket(s, rng, mods);
+    if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) runAutomation(s, mods);
     const ctx = { rng, mods, rates };
     updateDrops(s, ctx);
     updateWorldEvents(s, ctx);

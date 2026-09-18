@@ -82,6 +82,7 @@ export function emptyMods(): Mods {
     merchMult: 1,
     noveltyMult: 1,
     legacyLevelPct: BASE_LEGACY_LEVEL_PCT,
+    feeMult: 1,
     gameRatingMult: {},
   };
 }
@@ -207,6 +208,12 @@ export function applyEffect(m: Mods, e: Effect): void {
       break;
     case 'noveltyMult':
       m.noveltyMult *= e.mult;
+      break;
+    case 'feeMult':
+      m.feeMult *= e.mult;
+      break;
+    case 'energyDrain':
+      m.energyDrainMult *= e.mult;
       break;
     case 'legacyLevelPct':
       m.legacyLevelPct += e.add;

@@ -6,6 +6,7 @@ import { computeMods, computeRates } from '../src/engine/economy';
 import { refreshMarket, signListing } from '../src/engine/market';
 import { buyGear } from '../src/engine/players';
 import {
+  FOUNDING_POINTS,
   LEGACY_DIVISOR,
   buyNode,
   canSell,
@@ -99,7 +100,7 @@ describe('selling the org', () => {
     expect(entry.legacyGained).toBe(3);
     expect(entry.orgName).toBe('Legacy Gaming');
     expect(s.prestige.level).toBe(3);
-    expect(s.prestige.points).toBe(3);
+    expect(s.prestige.points).toBe(3 + FOUNDING_POINTS);
     expect(s.prestige.hallOfFame).toHaveLength(1);
 
     expect(s.cash).toBe(0);

@@ -1,4 +1,4 @@
-import type { Effect, GameState } from '../engine/types';
+import type { Effect, GameState, Rarity } from '../engine/types';
 
 export type LegacySpecial =
   | { kind: 'startCash'; amount: number }
@@ -9,7 +9,9 @@ export type LegacySpecial =
   | { kind: 'keepMerch' }
   | { kind: 'keepPlayer' }
   | { kind: 'legends' }
-  | { kind: 'challenges' };
+  | { kind: 'challenges' }
+  | { kind: 'startPlayer'; game: string; rarity: Rarity }
+  | { kind: 'startFans'; amount: number };
 
 export interface LegacyNodeDef {
   id: string;

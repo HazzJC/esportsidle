@@ -18,12 +18,14 @@ export function signingFee(p: Player): number {
   return Math.ceil(rarity.fee * getGame(p.gameId).costScale * (0.8 + 0.5 * quality) * (1 + (p.potential - rarity.potMin) / 100));
 }
 
-function makeListing(s: GameState, rng: Rng, gameId: string, mods: Pick<Mods, 'scoutLuck'>): MarketListing {
+type ListingMods = Pick<Mods, 'scoutLuck'> & Partial<Pick<Mods, 'feeMult'>>;
+
+function makeListing(s: GameState, rng: Rng, gameId: string, mods: ListingMods): MarketListing {
   const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId, time: s.time, luck: mods.scoutLuck });
-  return { player, price: signingFee(player) };
+  return { player, price: Math.ceil(signingFee(player) * (mods.feeMult ?? 1)) };
 }
 
-export function refreshMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuck' | 'marketSize'>): void {
+export function refreshMarket(s: GameState, rng: Rng, mods: ListingMods & Pick<Mods, 'marketSize'>): void {
   const unlocked = GAMES.filter((g) => s.games[g.id]?.unlocked);
   if (unlocked.length === 0) return;
   const listings: MarketListing[] = [];
@@ -42,7 +44,7 @@ export function refreshMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuc
 }
 
 /** Adds fresh listings for a newly unlocked game, replacing the oldest ones. */
-export function seedMarketForGame(s: GameState, rng: Rng, gameId: string, count: number, mods: Pick<Mods, 'scoutLuck'>): void {
+export function seedMarketForGame(s: GameState, rng: Rng, gameId: string, count: number, mods: ListingMods): void {
   const fresh = Array.from({ length: count }, () => makeListing(s, rng, gameId, mods));
   s.market.listings = [...fresh, ...s.market.listings].slice(0, Math.max(MARKET_BASE_SIZE, s.market.listings.length));
 }

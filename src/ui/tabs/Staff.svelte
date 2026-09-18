@@ -2,6 +2,7 @@
   import { STAFF, STAT_DESCRIPTIONS, type StaffDef } from '../../data/staff';
   import { fmt, money } from '../../engine/format';
   import { isStaffUnlocked, maxStaffAffordable, staffPower, staffPrice, totalStaff } from '../../engine/staff';
+  import FrontOffice from '../components/FrontOffice.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { countQuality } from '../theme';
@@ -64,6 +65,8 @@
       {/each}
     </div>
   </header>
+
+  <FrontOffice />
 
   <div class="list">
     {#each STAFF as def (def.id)}
