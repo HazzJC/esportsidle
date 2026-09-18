@@ -43,6 +43,8 @@
   import GearIcon from './GearIcon.svelte';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
+  import RosterImpact from './RosterImpact.svelte';
+  import { previewAssign } from '../../engine/roster';
 
   /** Pip indices for the 15-step gear track. */
   const PIPS = Array.from({ length: GEAR_MAX_TIER }, (_, i) => i);
@@ -292,9 +294,11 @@
             <div class="slots">
               {#each team.lineup as id, i (i)}
                 {@const occ = id ? v.s.players[id] : undefined}
+                {@const pv = i === slot ? null : previewAssign(v.s, p.gameId, p.id, i, v.m)}
                 <button class="slot-btn" class:current={i === slot} class:preferred={i === p.role && g.teamSize > 1} onclick={() => game.assignSlot(p.gameId, p.id, i)}>
                   <b>{g.roles[i]}</b>
                   <span>{occ ? occ.tag : 'Empty'}</span>
+                  {#if pv}<RosterImpact preview={pv} />{:else}<span class="here dim">Playing here</span>{/if}
                 </button>
               {/each}
             </div>

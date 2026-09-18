@@ -7,6 +7,8 @@
   import { hasRosterSpace } from '../../engine/teams';
   import Icon from '../components/Icon.svelte';
   import PlayerCard from '../components/PlayerCard.svelte';
+  import RosterImpact from '../components/RosterImpact.svelte';
+  import { previewSigning } from '../../engine/roster';
   import { game } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
 
@@ -57,6 +59,7 @@
         {@const afford = v.s.cash >= l.price}
         <div class="listing">
           <PlayerCard player={p} showCondition={false} />
+          <RosterImpact preview={previewSigning(v.s, p, v.m)} />
           <div class="stats">
             {#each ALL_STATS as st (st)}
               <div class="stat" title={STAT_LABEL[st]}>
