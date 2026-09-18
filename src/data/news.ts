@@ -84,4 +84,52 @@ export const NEWS: NewsItem[] = [
   { text: 'Babies increasingly named after {org} players.', when: (s) => s.fans >= 1e6 },
   { text: 'Crowd noise at {org} events now measured on the Richter scale.', when: (s) => s.stats.crowdsTotal >= 1 },
   { text: 'Doctors warn of "clicking finger" epidemic among {org} fans.', when: (s) => s.stats.clicksTotal >= 5000 },
+
+  // Teams & players
+  { text: '{org} founder wins a local Smash Siblings bracket. Prize: a crisp $3 and a participation sticker.', when: (s) => s.stats.matchesWon >= 1 && s.earnedRun < 1e5, weight: 2 },
+  { text: 'Rival org claims {org} "just got lucky". {org} gets lucky again.', when: (s) => s.stats.matchesWon >= 50 },
+  { text: '{org} rookie asks coach what "macro" means. Coach sighs for eleven minutes.', when: (s) => s.stats.playersSigned >= 1 },
+  { text: 'Transfer rumour: {org} spotted scouting a 14-year-old with suspiciously good aim.', when: (s) => s.stats.playersSigned >= 3 },
+  { text: 'Season champions {org} celebrate by immediately queueing more ranked.', when: (s) => s.stats.seasonTitles >= 1, weight: 2 },
+  { text: '{org} player admits his lucky socks have not been washed since the promotion run.', when: (s) => s.stats.promotions >= 3 },
+  { text: 'Commentators struggle to pronounce {org} player tags; one is just "xXx".', when: (s) => s.stats.playersSigned >= 5 },
+  { text: '{org} team chemistry described as "found family, but with more shouting".', when: (s) => Object.keys(s.players).length >= 6 },
+  { text: 'Pro player upgrades to Anti-Gravity Boots. Denies they affect aim. Refuses to take them off.', when: (s) => Object.values(s.players).some((p) => p.gear.shoes >= 11) },
+  { text: 'Hardware reviewers baffled by {org} PC that appears to be running on a small star.', when: (s) => Object.values(s.players).some((p) => p.gear.pc >= 14) },
+  { text: 'Opposing team requests to inspect {org} chairs for "performance-enhancing lumbar support".', when: (s) => Object.values(s.players).some((p) => p.gear.chair >= 6) },
+  { text: '{org} reaches the Continental Major. Mums everywhere finally admit it might be a real job.', when: (s) => Object.values(s.teams).some((t) => t.bestTier >= 8), weight: 2 },
+  { text: 'Galactic Series officials confirm {org} is the first team to play in low orbit without spilling a drink.', when: (s) => Object.values(s.teams).some((t) => t.bestTier >= 12) },
+
+  // Staff & house
+  { text: '{org} coach bans the phrase "it’s just a game" from the gaming house.', when: (s) => (s.staff.coach ?? 0) >= 1 },
+  { text: '{org} chef introduces vegetables. Players stage a 20-minute protest, then eat them.', when: (s) => (s.staff.chef ?? 0) >= 1, weight: 2 },
+  { text: '{org} physio confiscates a player’s claw grip. "For your own good."', when: (s) => (s.staff.physio ?? 0) >= 1 },
+  { text: '{org} sports psychologist schedules a group session titled "Why We Don’t Type in All Chat".', when: (s) => (s.staff.psych ?? 0) >= 1 },
+  { text: '{org} AI Trainer defeats every player 400-0, then offers "constructive feedback".', when: (s) => (s.staff.ai ?? 0) >= 1 },
+  { text: 'The {org} house cat has now been on stream more than the bench player.', when: (s) => !!s.decor.cat, weight: 2 },
+  { text: '{org} neon sign visible from space, astronauts report.', when: (s) => !!s.decor.neon },
+  { text: '{org} gaming house flu outbreak traced back to one shared mouse.', when: (s) => s.stats.illnesses >= 3 },
+
+  // Events
+  { text: 'Hype Drop spotted over {org} HQ. Fans report "the air smells like frame rate".', when: (s) => s.stats.dropsClicked >= 1 },
+  { text: 'Tournament organisers add extra security after {org} wins another invitational.', when: (s) => s.stats.tournamentsWon >= 3 },
+  { text: '{org} Hype Train reaches carriage 9. Rail authorities concerned.', when: (s) => s.stats.hypeTrainBest >= 9 },
+  { text: '{org} publishes a 400-word apology written entirely in emojis.', when: (s) => s.stats.dramaClicked >= 1, weight: 2 },
+  { text: 'Balance patch notes include the line "we are aware of {org}".', when: (s) => s.stats.eventsSeen >= 20 },
+
+  // Merch & sponsors
+  { text: '{org} T-shirt spotted on a celebrity. Celebrity claims they "just grabbed whatever was on the floor".', when: (s) => Object.keys(s.merch.unlocked).length > 0, weight: 2 },
+  { text: 'Fashion critics call the {org} hoodie "brave, pixelated and oddly moving".', when: (s) => !!s.merch.unlocked.hoodie },
+  { text: '{org} plushie sells out in 4 seconds. Bots blamed. Bots also want plushies.', when: (s) => !!s.merch.unlocked.plushie },
+  { text: '{org} logo design leaks early. Fans spend six hours analysing each pixel.', when: (s) => s.org.logo !== null },
+  { text: '{org} player reads sponsor script live: "This match brought to you by... sorry, what does VPN stand for?"', when: (s) => s.stats.sponsorsSigned >= 1, weight: 2 },
+  { text: 'Energy drink sponsor asks {org} to stop saying "it tastes like battery acid" on stream.', when: (s) => s.stats.sponsorsSigned >= 2 },
+  { text: '{org} crypto sponsor rebrands for the fourth time this week.', when: (s) => s.stats.sponsorsSigned >= 3 },
+  { text: 'Sponsor logos now cover 94% of the {org} jersey. Players request a small window.', when: (s) => s.sponsors.active.length >= 3 },
+
+  // Legacy
+  { text: 'Business schools launch a course on "The {org} Exit".', when: (s) => s.stats.orgsSold >= 1, weight: 2 },
+  { text: 'Veterans of the old org visit the new garage. "We had it rough," they say, gesturing at a mini fridge.', when: (s) => s.stats.orgsSold >= 1 },
+  { text: 'Hall of Fame inducts another {org} legend. The speech runs three hours and includes a PowerPoint.', when: (s) => s.prestige.legends.length >= 1 },
+  { text: 'Historians confirm {org} has more legacy than most medieval kingdoms.', when: (s) => s.prestige.level >= 100 },
 ];

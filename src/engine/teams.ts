@@ -214,12 +214,12 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const chance = active ? winChance(rating, opponent) : 0;
   const popularity = s.games[team.gameId]?.popularity ?? 1;
   const cut = available > 0 ? cutSum / available : 0;
-  const gross =
-    (game.basePrize * Math.pow(PRIZE_GROWTH, team.tier) + ctx.cpsNoBuffs * prizeSeconds(team.tier)) *
-    popularity *
-    mods.prizeMult *
-    (mods.gamePrizeMult[game.id] ?? 1) *
-    ctx.incomeBuff;
+  // Prize upgrades multiply the flat tier prize only. The income-linked share exists to keep matches
+  // relevant as operations grow; multiplying it as well would make each team a scaled copy of the
+  // whole economy, so total income became a large multiple of operations income and ran away.
+  const flat = game.basePrize * Math.pow(PRIZE_GROWTH, team.tier) * mods.prizeMult * (mods.gamePrizeMult[game.id] ?? 1);
+  const share = ctx.cpsNoBuffs * prizeSeconds(team.tier);
+  const gross = (flat + share) * popularity * ctx.incomeBuff;
   const winPrize = gross * (1 - cut);
   const lossPrize = winPrize * LOSS_PRIZE_RATIO;
   const fansWin = FAN_BASE * Math.pow(FAN_GROWTH, team.tier) * popularity * ctx.fansMult * (available > 0 ? fansSum / available : 1);

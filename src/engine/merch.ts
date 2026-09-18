@@ -16,7 +16,7 @@ export const NOVELTY_FLOOR = 0.25;
 export const TREND_SECONDS = 900;
 export const TRENDING_THRESHOLD = 0.6;
 export const TREND_BONUS = 1.25;
-export const MERCH_UNLOCK_FANS = 5_000;
+export const MERCH_UNLOCK_FANS = 25_000;
 
 export function clampPrice(price: number): number {
   return Math.max(PRICE_MIN, Math.min(PRICE_MAX, Number.isFinite(price) ? price : 1));
@@ -64,9 +64,12 @@ export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, inco
     const trending = appeal.trend >= TRENDING_THRESHOLD;
     const novelty = noveltyOf(line, s.time, mods);
     const pf = priceFactor(line.price, trending);
-    const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1) * novelty * pf * mods.merchMult;
-    const base = cpsNoBuffs * product.cpsShare + Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.05;
-    const lineCps = base * quality * incomeBuff;
+    const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1) * novelty * pf;
+    // The income-linked share is capped by design; merch multipliers only boost fan-driven sales,
+    // otherwise merch would multiply operations income without bound.
+    const fromIncome = cpsNoBuffs * product.cpsShare * quality;
+    const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.05 * quality * mods.merchMult;
+    const lineCps = (fromIncome + fromFans) * incomeBuff;
     const profitPerUnit = product.basePrice * Math.max(0.01, clampPrice(line.price) - UNIT_COST);
     lines[product.id] = {
       productId: product.id,

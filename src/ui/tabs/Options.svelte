@@ -91,6 +91,25 @@
         <option value="scientific">Scientific (1.23e6)</option>
       </select>
     </label>
+    <label class="select-row">
+      <span>Sound effects</span>
+      <span class="volume">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={settings.volume}
+          disabled={settings.muted}
+          aria-label="Sound volume"
+          oninput={(e) => game.setSetting('volume', Number(e.currentTarget.value))}
+          onchange={() => game.sfx('buy')}
+        />
+        <button class="btn small" onclick={() => game.setSetting('muted', !settings.muted)} aria-label={settings.muted ? 'Unmute' : 'Mute'}>
+          <Icon name={settings.muted ? 'volume-x' : 'volume-2'} size={14} />
+        </button>
+      </span>
+    </label>
     <Toggle checked={settings.newsTicker} label="News ticker" onchange={(v) => game.setSetting('newsTicker', v)} />
     <Toggle checked={settings.floatingText} label="Floating numbers" description="Show cash popping out when you click." onchange={(v) => game.setSetting('floatingText', v)} />
     <Toggle checked={settings.particles} label="Particles" onchange={(v) => game.setSetting('particles', v)} />
@@ -192,6 +211,15 @@
   .confirm:focus {
     outline: none;
     border-color: var(--cyan);
+  }
+  .volume {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .volume input {
+    width: 130px;
+    accent-color: var(--cyan);
   }
   .select-row {
     display: flex;

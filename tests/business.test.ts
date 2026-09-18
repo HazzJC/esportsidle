@@ -150,7 +150,7 @@ describe('merch', () => {
     const s = createNewGame(0, 2);
     s.cash = 1e12;
     expect(unlockProduct(s, 'tee')).toBe(false);
-    s.fansRun = 5_000;
+    s.fansRun = PRODUCTS.find((p) => p.id === 'tee')!.unlockFans;
     expect(unlockProduct(s, 'tee')).toBe(true);
     expect(unlockProduct(s, 'tee')).toBe(false);
   });

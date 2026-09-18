@@ -36,6 +36,7 @@ import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, wr
 import { createNewGame } from '../engine/state';
 import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
+import { playSound, type SoundId } from './sound';
 
 export type TabId =
   | 'hq'
@@ -279,18 +280,31 @@ class GameStore {
     switch (e.type) {
       case 'toast':
         this.toast({ title: e.title, body: e.body, icon: e.icon, tone: e.tone ?? 'info' });
+        if (e.tone === 'gold') this.sfx('win');
+        else if (e.tone === 'bad') this.sfx('error');
         break;
       case 'achievement': {
         const def = ACHIEVEMENT_MAP.get(e.id);
         if (def) this.toast({ title: 'Achievement unlocked', body: def.name, icon: def.icon, tone: 'gold' });
+        this.sfx('achievement');
         break;
       }
       case 'crowd':
         this.toast({ title: 'The crowd goes wild!', body: 'Income ×2 while the hype lasts.', icon: 'megaphone', tone: 'good' });
+        this.sfx('crowd');
+        break;
+      case 'drop':
+        this.sfx('drop');
         break;
       default:
         break;
     }
+  }
+
+  /** Plays a UI sound unless the player has muted them. */
+  sfx(id: SoundId): void {
+    const { muted, volume } = this.state.settings;
+    if (!muted && volume > 0) playSound(id, volume);
   }
 
   toast(t: Omit<Toast, 'id'> & { tone?: Tone }, durationMs = 5000): void {
@@ -310,6 +324,7 @@ class GameStore {
   // ---------------------------------------------------------------------------
   click(): ClickResult {
     const result = clickLogo(this.state);
+    this.sfx('click');
     this.refresh();
     return result;
   }
@@ -317,6 +332,7 @@ class GameStore {
   buyOperation(id: string, amount: number): number {
     const n = buyOperation(this.state, id, amount);
     if (n > 0) {
+      this.sfx('buy');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
     }
@@ -332,6 +348,7 @@ class GameStore {
   buyUpgrade(id: string): boolean {
     const ok = buyUpgrade(this.state, id);
     if (ok) {
+      this.sfx('upgrade');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
     }
@@ -360,6 +377,7 @@ class GameStore {
     if (!unlockGame(this.state, gameId)) return false;
     const mods = computeMods(this.state);
     seedMarketForGame(this.state, new Rng(this.state), gameId, 4, mods);
+    this.sfx('promote');
     const game = getGame(gameId);
     this.toast({ title: `${game.name} team founded!`, body: 'Sign players from the transfer market to fill your lineup.', icon: game.icon, tone: 'gold' });
     this.refresh();
@@ -373,6 +391,7 @@ class GameStore {
       return false;
     }
     const p = result.player;
+    this.sfx('buy');
     this.toast({ title: `Signed ${p.tag}!`, body: `${p.first} ${p.last} joins your ${getGame(p.gameId).name} roster.`, icon: 'user-plus', tone: 'good' }, 3500);
     this.refresh();
     return true;
@@ -402,7 +421,10 @@ class GameStore {
 
   buyGear(playerId: string, slot: GearSlot): boolean {
     const ok = buyGear(this.state, playerId, slot, computeMods(this.state));
-    if (ok) this.refresh();
+    if (ok) {
+      this.sfx('buy');
+      this.refresh();
+    }
     return ok;
   }
 
@@ -438,6 +460,7 @@ class GameStore {
   clickDrop(id: number): void {
     const result = clickDrop(this.state, id, this.eventContext());
     if (result) {
+      this.sfx('dropClick');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
     }
@@ -532,6 +555,7 @@ class GameStore {
   sellOrg(options: SellOptions): boolean {
     const entry = sellOrg(this.state, options);
     if (!entry) return false;
+    this.sfx('legacy');
     this.offlineReport = null;
     this.selectedPlayer = null;
     this.marketFilter = null;
@@ -544,6 +568,7 @@ class GameStore {
 
   buyLegacyNode(id: string): void {
     if (!buyNode(this.state, id)) return;
+    this.sfx('upgrade');
     const def = LEGACY_NODE_MAP.get(id);
     this.toast({ title: `${def?.name ?? 'Legacy node'} unlocked`, body: def?.desc, icon: def?.icon ?? 'crown', tone: 'gold' }, 3000);
     this.refresh();
@@ -556,6 +581,7 @@ class GameStore {
       return;
     }
     const brand = BRAND_MAP.get(result.contract.brandId);
+    this.sfx('promote');
     this.toast({ title: `${brand?.name ?? 'Sponsor'} signed!`, body: brand?.slogan, icon: 'handshake', tone: 'gold' });
     refreshUpgradeUnlocks(this.state);
     this.refresh();
@@ -568,6 +594,7 @@ class GameStore {
   hireStaff(id: string, amount: number): number {
     const n = hireStaff(this.state, id, amount, computeMods(this.state).staffCostMult);
     if (n > 0) {
+      this.sfx('buy');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
     }
@@ -577,6 +604,7 @@ class GameStore {
   buyDecor(id: string): boolean {
     const ok = buyDecor(this.state, id);
     if (ok) {
+      this.sfx('buy');
       const def = DECOR_MAP.get(id);
       this.toast({ title: `${def?.name ?? 'Decor'} installed`, body: 'The house is looking better already.', icon: def?.icon ?? 'house', tone: 'good' }, 2500);
       this.refresh();

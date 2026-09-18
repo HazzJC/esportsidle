@@ -4,7 +4,7 @@ import { OPERATIONS } from '../src/data/operations';
 import { UPGRADES } from '../src/data/upgrades';
 import { addBuff } from '../src/engine/buffs';
 import { clickLogo, CROWD_BUFF_ID, HYPE_MAX, HYPE_PER_CLICK } from '../src/engine/clicker';
-import { computeRates, fameMultiplier } from '../src/engine/economy';
+import { MAX_FAME_EXP, computeMods, computeRates, fameMultiplier } from '../src/engine/economy';
 import { createNewGame } from '../src/engine/state';
 import { buyUpgrade, refreshUpgradeUnlocks, storeUpgrades } from '../src/engine/upgrades';
 
@@ -66,6 +66,16 @@ describe('rates', () => {
     const r = computeRates(s);
     // streamers x2 => 20, creator +1% per streamer => 8 * 1.10
     expect(r.baseCps).toBeCloseTo(20 + 8 * 1.1);
+  });
+
+  it('caps the fame exponent however many fame upgrades are owned', () => {
+    const s = createNewGame(0, 1);
+    for (const u of UPGRADES) if (u.effects.some((e) => e.kind === 'fameExp')) s.upgrades[u.id] = 0;
+    const m = computeMods(s);
+    expect(m.fameExp).toBeLessThanOrEqual(MAX_FAME_EXP);
+    // Fans grow without bound with league tier, so an uncapped exponent turns fame into the entire
+    // economy: at a quadrillion fans every extra 0.01 of exponent is worth another ~1.4x forever.
+    expect(fameMultiplier(1e15, m.fameExp)).toBeLessThan(100);
   });
 
   it('scales with fans and buffs', () => {

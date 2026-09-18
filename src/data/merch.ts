@@ -68,16 +68,16 @@ export interface ProductDef {
 }
 
 export const PRODUCTS: ProductDef[] = [
-  { id: 'tee', name: 'T-Shirt', icon: 'shirt', unlockCost: 25_000, unlockFans: 5_000, basePrice: 25, cpsShare: 0.02, desc: 'The classic. Every fan owns at least three.' },
-  { id: 'cap', name: 'Snapback Cap', icon: 'graduation-cap', unlockCost: 250_000, unlockFans: 20_000, basePrice: 30, cpsShare: 0.025, desc: 'Worn backwards, obviously.' },
-  { id: 'mug', name: 'Mug', icon: 'coffee', unlockCost: 2e6, unlockFans: 60_000, basePrice: 18, cpsShare: 0.03, desc: 'For energy drinks. Nobody drinks coffee from these.' },
-  { id: 'mousepad', name: 'XXL Mousepad', icon: 'mouse', unlockCost: 2e7, unlockFans: 200_000, basePrice: 35, cpsShare: 0.04, desc: 'Covers the entire desk and part of the floor.' },
-  { id: 'hoodie', name: 'Hoodie', icon: 'shirt', unlockCost: 2e8, unlockFans: 1e6, basePrice: 70, cpsShare: 0.05, desc: 'Hood up, headphones on, game face.' },
-  { id: 'poster', name: 'Poster', icon: 'image', unlockCost: 2e9, unlockFans: 3e6, basePrice: 20, cpsShare: 0.05, desc: 'Signed prints for bedroom walls everywhere.' },
-  { id: 'keycaps', name: 'Keycap Set', icon: 'keyboard', unlockCost: 2e10, unlockFans: 1e7, basePrice: 90, cpsShare: 0.06, desc: 'Artisan keycaps. Sold out in 11 seconds.' },
-  { id: 'jersey', name: 'Replica Jersey', icon: 'shirt', unlockCost: 2e11, unlockFans: 5e7, basePrice: 120, cpsShare: 0.07, desc: 'Just like the pros wear, minus the sweat.' },
-  { id: 'sneakers', name: 'Signature Sneakers', icon: 'footprints', unlockCost: 2e12, unlockFans: 2.5e8, basePrice: 220, cpsShare: 0.08, desc: 'Resold for ten times the price within the hour.' },
-  { id: 'plushie', name: 'Player Plushie', icon: 'cat', unlockCost: 2e13, unlockFans: 1e9, basePrice: 45, cpsShare: 0.1, desc: 'Squishy versions of your stars. Wildly popular.' },
+  { id: 'tee', name: 'T-Shirt', icon: 'shirt', unlockCost: 25_000, unlockFans: 25_000, basePrice: 25, cpsShare: 0.02, desc: 'The classic. Every fan owns at least three.' },
+  { id: 'cap', name: 'Snapback Cap', icon: 'graduation-cap', unlockCost: 250_000, unlockFans: 100_000, basePrice: 30, cpsShare: 0.025, desc: 'Worn backwards, obviously.' },
+  { id: 'mug', name: 'Mug', icon: 'coffee', unlockCost: 2e6, unlockFans: 300_000, basePrice: 18, cpsShare: 0.03, desc: 'For energy drinks. Nobody drinks coffee from these.' },
+  { id: 'mousepad', name: 'XXL Mousepad', icon: 'mouse', unlockCost: 2e7, unlockFans: 1e6, basePrice: 35, cpsShare: 0.04, desc: 'Covers the entire desk and part of the floor.' },
+  { id: 'hoodie', name: 'Hoodie', icon: 'shirt', unlockCost: 2e8, unlockFans: 5e6, basePrice: 70, cpsShare: 0.05, desc: 'Hood up, headphones on, game face.' },
+  { id: 'poster', name: 'Poster', icon: 'image', unlockCost: 2e9, unlockFans: 15e6, basePrice: 20, cpsShare: 0.05, desc: 'Signed prints for bedroom walls everywhere.' },
+  { id: 'keycaps', name: 'Keycap Set', icon: 'keyboard', unlockCost: 2e10, unlockFans: 5e7, basePrice: 90, cpsShare: 0.06, desc: 'Artisan keycaps. Sold out in 11 seconds.' },
+  { id: 'jersey', name: 'Replica Jersey', icon: 'shirt', unlockCost: 2e11, unlockFans: 2.5e8, basePrice: 120, cpsShare: 0.07, desc: 'Just like the pros wear, minus the sweat.' },
+  { id: 'sneakers', name: 'Signature Sneakers', icon: 'footprints', unlockCost: 2e12, unlockFans: 1.25e9, basePrice: 220, cpsShare: 0.08, desc: 'Resold for ten times the price within the hour.' },
+  { id: 'plushie', name: 'Player Plushie', icon: 'cat', unlockCost: 2e13, unlockFans: 5e9, basePrice: 45, cpsShare: 0.1, desc: 'Squishy versions of your stars. Wildly popular.' },
 ];
 
 export const PRODUCT_MAP: Map<string, ProductDef> = new Map(PRODUCTS.map((p) => [p.id, p]));

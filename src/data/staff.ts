@@ -209,7 +209,7 @@ const RAW: RawStaff[] = [
     baseCost: 150_000,
     desc: 'Negotiates better sponsor deals. Boosts sponsor income.',
     flavor: '"My client will wear the hat, but only for 20% more."',
-    effects: [{ stat: 'sponsor', amount: 0.03 }],
+    effects: [{ stat: 'sponsor', amount: 0.015 }],
     requirement: 'Sign a sponsor',
     unlock: (s) => s.stats.sponsorsSigned >= 1,
     upgradeNames: ['Contract Templates', 'Hardball Negotiators', 'Legendary Super-Agent'],

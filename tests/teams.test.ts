@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TRAITS } from '../src/data/traits';
 import { GEAR_SLOTS } from '../src/data/gear';
 import { getGame } from '../src/data/games';
-import { opponentRating, winChance } from '../src/data/leagues';
+import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, opponentRating, winChance } from '../src/data/leagues';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { advance } from '../src/engine/game';
 import { refreshMarket, sellPlayer, signListing } from '../src/engine/market';
@@ -96,15 +96,27 @@ describe('teams and matches', () => {
     const s = createNewGame(0, 5);
     const team = s.teams.smash;
     const ev = computeRates(s).teams.smash;
-    team.seasonWins = 8;
-    team.seasonPlayed = 10;
+    team.seasonWins = PROMOTE_WINS;
+    team.seasonPlayed = SEASON_LENGTH;
     endSeason(s, team, ev);
     expect(team.tier).toBe(1);
-    team.seasonWins = 1;
+    team.seasonWins = RELEGATE_WINS;
     endSeason(s, team, ev);
     expect(team.tier).toBe(0);
     expect(changeTier(s, 'smash', 1)).toBe(true);
     expect(changeTier(s, 'smash', 5)).toBe(false);
+  });
+
+  it('prize upgrades do not multiply the income-linked share of prizes', () => {
+    const s = createNewGame(0, 5);
+    const mods = computeMods(s);
+    const ctx = { cpsNoBuffs: 1e9, incomeBuff: 1, fansMult: 1 };
+    const plain = evaluateTeam(s, s.teams.smash, mods, ctx);
+    const boosted = evaluateTeam(s, s.teams.smash, { ...mods, prizeMult: 100 }, ctx);
+    // The flat tier prize is tiny next to a 1e9 income share, so a 100x prize multiplier must stay
+    // nearly invisible here. If it ever multiplies the share too, match income becomes a multiple of
+    // operations income across every team and the economy runs away.
+    expect(boosted.winPrize).toBeLessThan(plain.winPrize * 2);
   });
 
   it('empty teams do not play', () => {

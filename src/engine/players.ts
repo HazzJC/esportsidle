@@ -16,6 +16,7 @@ import {
 } from '../data/cosmetics';
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
 import { GEAR_COST_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
+import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { FIRST_NAMES, LAST_NAMES, NATIONS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
@@ -323,7 +324,8 @@ export function drainEnergy(p: Player, mods?: Pick<Mods, 'energyDrainMult'>): vo
 /** Passive fans per second from a player's charisma, scaled by their team's tier. */
 export function passiveFans(p: Player, tier: number): number {
   const charisma = effectiveStat(p, 'charisma');
-  return (charisma / 50) * 2 * Math.pow(2.6, tier) * playerFansMult(p) / 30;
+  // Mirrors the per-win fan curve, so passive fans can never outgrow the fans matches pay out.
+  return ((charisma / 50) * FAN_BASE * Math.pow(FAN_GROWTH, tier) * playerFansMult(p)) / 30;
 }
 
 // ---------------------------------------------------------------------------

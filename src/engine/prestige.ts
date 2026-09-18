@@ -13,8 +13,12 @@ import { createGames, createOps, createStaff, setupNewRun } from './state';
 import { addToTeam, createTeam } from './teams';
 import type { Effect, GameState, HallOfFameEntry, Player } from './types';
 
-/** All-time earnings needed for the first legacy point; later points follow a cube curve. */
-export const LEGACY_DIVISOR = 1e12;
+/**
+ * All-time earnings needed for the first legacy point; later points follow a cube curve. This is
+ * the dial that sets when a run can end: the sim reaches this figure at roughly three hours of
+ * active play, which is the intended window for a first prestige.
+ */
+export const LEGACY_DIVISOR = 1e17;
 export const BASE_LEGACY_LEVEL_PCT = 0.01;
 export const LEGEND_RATING_BONUS = 0.05;
 export const LEGEND_FANS_BONUS = 0.02;
