@@ -1,3 +1,4 @@
+import type { SeasonPlan } from '../data/seasonPlans';
 import type { GearSlot } from '../data/gear';
 import type { TrendId } from '../data/merch';
 import type { SponsorGoalKind } from '../data/sponsors';
@@ -261,6 +262,12 @@ export interface Player {
   matches: number;
   wins: number;
   founder: boolean;
+  /** Seasons completed with the org; players age a year every few seasons. */
+  seasons: number;
+  /** Announced retirement: leaves at the end of their team's next season. */
+  retiring: boolean;
+  /** Level when signed, so resale value can reward development done by this org. */
+  signedLevel: number;
 }
 
 export interface MatchRecord {
@@ -283,6 +290,9 @@ export interface TeamState {
   gameId: string;
   /** Colours for this team only; null follows the org's team colours. */
   kit: TeamKit | null;
+  plan: SeasonPlan;
+  /** A plan chosen mid-season waits for the next season. */
+  nextPlan: SeasonPlan | null;
   lineup: (string | null)[];
   bench: string[];
   tier: number;
@@ -555,6 +565,7 @@ export interface Settings {
 }
 
 export interface Stats {
+  playersRetired: number;
   clicksRun: number;
   clicksTotal: number;
   clickCashRun: number;

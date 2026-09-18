@@ -1,5 +1,6 @@
 <script lang="ts">
   import { GAMES, GENRE_LABEL, type GameDef } from '../../data/games';
+  import { SEASON_PLANS, SEASON_PLAN_ORDER, type SeasonPlan } from '../../data/seasonPlans';
   import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, TITLE_WINS, prizeSeconds, tierName } from '../../data/leagues';
   import { fmt, fmtPct, money } from '../../engine/format';
   import { isAvailable, skillRating } from '../../engine/players';
@@ -22,6 +23,24 @@
   function openMarket(gameId: string) {
     game.marketFilter = gameId;
     game.tab = 'market';
+  }
+
+  const times = (x: number) => (x === 1 ? "normal" : `×${parseFloat(x.toFixed(2))}`);
+
+  function planTip(id: SeasonPlan, deferred: boolean): TipContent {
+    const d = SEASON_PLANS[id];
+    return {
+      title: d.name,
+      subtitle: "Season plan",
+      icon: d.icon,
+      lines: [
+        d.summary,
+        { text: `Team rating ${times(d.rating)} · XP ${times(d.xp)}`, tone: d.rating >= 1 ? "good" : "muted" },
+        { text: `Fatigue ${times(d.drain)} · recovery ${times(d.recovery)}`, tone: "muted" },
+        { text: d.benchXp > 0 ? `Bench players train at ${Math.round(d.benchXp * 100)}% of match XP` : "Bench players do not train", tone: "muted" },
+        ...(deferred ? [{ text: "Takes effect from next season.", tone: "gold" as const }] : []),
+      ],
+    };
   }
 
   function popTip(g: GameDef): TipContent {
@@ -141,6 +160,7 @@
                 >
                   <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={54} mode="bust" />
                   <span class="ptag">{p.tag}</span>
+                  {#if p.retiring}<span class="retiring" title="Retiring after this season"><Icon name="calendar-clock" size={11} /></span>{/if}
                   <span class="prtg num">{fmt(skillRating(p, g))}</span>
                   <span class="energy"><i style="width:{p.energy}%"></i></span>
                 </button>
@@ -190,6 +210,26 @@
               >
             {/each}
           </div>
+        </div>
+
+        <div class="plan-row">
+          <span class="plan-label">Season plan</span>
+          <div class="plans" role="radiogroup" aria-label="{g.name} season plan">
+            {#each SEASON_PLAN_ORDER as id (id)}
+              {@const def = SEASON_PLANS[id]}
+              <button
+                role="radio"
+                aria-checked={team.plan === id}
+                class:current={team.plan === id}
+                class:queued={team.nextPlan === id}
+                onclick={() => game.setSeasonPlan(g.id, id)}
+                use:tooltip={() => planTip(id, team.seasonPlayed > 0 && team.plan !== id)}
+              >
+                <Icon name={def.icon} size={13} /> {def.name}
+              </button>
+            {/each}
+          </div>
+          {#if team.nextPlan}<span class="plan-next dim">{SEASON_PLANS[team.nextPlan].name} from next season</span>{/if}
         </div>
 
         <footer>
@@ -259,6 +299,64 @@
 {/if}
 
 <style>
+  .plan-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .plan-label {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .plans {
+    display: inline-flex;
+    border: 1px solid var(--line-2);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .plans button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: none;
+    background: var(--bg-2);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12.5px;
+  }
+  .plans button + button {
+    border-left: 1px solid var(--line-2);
+  }
+  .plans button.current {
+    background: color-mix(in srgb, var(--accent) 20%, var(--bg-2));
+    color: var(--text);
+  }
+  .plans button.queued {
+    box-shadow: inset 0 -2px 0 var(--gold);
+    color: var(--gold);
+  }
+  .plan-next {
+    font-size: 12px;
+  }
+  .retiring {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #141416;
+  }
   .kit-btn {
     flex: none;
     width: 24px;
@@ -432,6 +530,7 @@
   }
   .slot-player,
   .slot-empty {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;

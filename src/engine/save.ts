@@ -100,7 +100,11 @@ export function repairState(s: GameState): void {
   if (s.org.jersey && !s.designs[s.org.jersey]) s.org.jersey = null;
   const template = createFounder(new Rng({ rng: 1 }), 'Template');
   for (const [id, p] of Object.entries(s.players)) {
-    s.players[id] = mergeDefaults(template, p) as GameState['players'][string];
+    const tracked = (p as Partial<GameState['players'][string]>).signedLevel !== undefined;
+    const merged = mergeDefaults(template, p) as GameState['players'][string];
+    // Players from older saves get no development credit for levels gained before it was tracked.
+    if (!tracked) merged.signedLevel = merged.level;
+    s.players[id] = merged;
   }
   for (const game of GAMES) {
     const team = s.teams[game.id];

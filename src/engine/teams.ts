@@ -15,8 +15,9 @@ import {
   winChance,
 } from '../data/leagues';
 import { RIVAL_ORGS } from '../data/names';
+import { DECLINE_AGE, RETIRE_AGE, RETIRE_CHANCE_PER_YEAR, SEASONS_PER_YEAR, SEASON_PLANS, type SeasonPlan } from '../data/seasonPlans';
 import { emit } from './bus';
-import { money } from './format';
+import { fmt, money } from './format';
 import { rollHealth } from './health';
 import {
   STAND_IN_RATING,
@@ -31,8 +32,8 @@ import {
   skillRating,
   traitsOf,
 } from './players';
-import type { Rng } from './rng';
-import type { GameState, MatchRecord, Mods, Player, TeamEval, TeamKit, TeamState } from './types';
+import { Rng } from './rng';
+import type { GameState, MatchRecord, Mods, Player, StatKey, TeamEval, TeamKit, TeamState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
@@ -45,6 +46,8 @@ export function createTeam(gameId: string): TeamState {
   return {
     gameId,
     kit: null,
+    plan: 'balanced',
+    nextPlan: null,
     lineup: Array.from({ length: game.teamSize }, () => null),
     bench: [],
     tier: 0,
@@ -63,6 +66,23 @@ export function createTeam(gameId: string): TeamState {
     titles: 0,
     earnings: 0,
   };
+}
+
+export function teamPlan(team: TeamState) {
+  return SEASON_PLANS[team.plan] ?? SEASON_PLANS.balanced;
+}
+
+/** Plans are season-level: a change waits for the next season unless this one has not started. */
+export function setSeasonPlan(s: GameState, gameId: string, plan: SeasonPlan): boolean {
+  const team = s.teams[gameId];
+  if (!team || !SEASON_PLANS[plan]) return false;
+  if (team.seasonPlayed === 0) {
+    team.plan = plan;
+    team.nextPlan = null;
+  } else {
+    team.nextPlan = plan === team.plan ? null : plan;
+  }
+  return true;
 }
 
 /** The colours a team plays in: its own kit if it has one, otherwise the org's team colours. */
@@ -158,7 +178,7 @@ export function autoSubstitute(s: GameState, team: TeamState): boolean {
   for (let slot = 0; slot < team.lineup.length; slot++) {
     const id = team.lineup[slot];
     const starter = id ? s.players[id] : undefined;
-    const needsSub = !starter || !isAvailable(starter, s.time) || starter.energy < 35;
+    const needsSub = !starter || !isAvailable(starter, s.time) || starter.energy < teamPlan(team).subAt;
     if (!needsSub) continue;
     let best: Player | undefined;
     let bestRating = -1;
@@ -215,7 +235,13 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const average = ratings.reduce((a, b) => a + b, 0) / Math.max(1, ratings.length);
   const chemistry = game.teamSize > 1 ? 1 + 0.2 * team.chemistry : 1;
   const rating =
-    average * teamMult * chemistry * mods.teamRatingMult * (mods.genreRatingMult[game.genre] ?? 1) * (mods.gameRatingMult[game.id] ?? 1);
+    average *
+    teamMult *
+    chemistry *
+    mods.teamRatingMult *
+    (mods.genreRatingMult[game.genre] ?? 1) *
+    (mods.gameRatingMult[game.id] ?? 1) *
+    teamPlan(team).rating;
   const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
   const popularity = s.games[team.gameId]?.popularity ?? 1;
@@ -311,22 +337,31 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   if (game.teamSize > 1) team.chemistry = Math.min(1, team.chemistry + 0.01);
 
   const hasBench = team.bench.length > 0;
+  const plan = teamPlan(team);
+  const baseXp = (win ? 15 : 10) * mods.xpMult;
   for (const id of team.lineup) {
     const p = id ? s.players[id] : undefined;
     if (!p || !isAvailable(p, s.time)) continue;
     p.matches++;
     if (win) p.wins++;
-    grantXp(p, (win ? 15 : 10) * mods.xpMult * playerXpMult(p), rng);
+    grantXp(p, baseXp * plan.xp * playerXpMult(p), rng);
     applyMorale(p, win ? 3 : -4, mods);
-    drainEnergy(p, mods);
+    drainEnergy(p, mods, plan.drain);
     rollHealth(s, p, mods, rng, hasBench);
   }
+  // Bench players train alongside; how much depends on the plan.
+  if (plan.benchXp > 0) {
+    for (const id of team.bench) {
+      const p = s.players[id];
+      if (p && isAvailable(p, s.time)) grantXp(p, baseXp * plan.benchXp * playerXpMult(p), rng);
+    }
+  }
 
-  if (team.seasonPlayed >= SEASON_LENGTH) endSeason(s, team, ev);
+  if (team.seasonPlayed >= SEASON_LENGTH) endSeason(s, team, ev, rng);
   return record;
 }
 
-export function endSeason(s: GameState, team: TeamState, ev: TeamEval): void {
+export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng = new Rng(s)): void {
   const game = getGame(team.gameId);
   const wins = team.seasonWins;
   const record = `${wins}-${SEASON_LENGTH - wins}`;
@@ -353,9 +388,58 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval): void {
     team.tier--;
     emit({ type: 'toast', title: `${game.name}: relegated`, body: `${record} season. Back down to the ${tierName(team.tier)}.`, icon: 'trending-down', tone: 'bad' });
   }
+  ageSquad(s, team, rng);
+  if (team.nextPlan) {
+    team.plan = team.nextPlan;
+    team.nextPlan = null;
+  }
   team.seasonNumber++;
   team.seasonPlayed = 0;
   team.seasonWins = 0;
+}
+
+/** End of a season: announced retirements take effect and everyone else gets a season older. */
+function ageSquad(s: GameState, team: TeamState, rng: Rng): void {
+  for (const id of teamPlayerIds(team)) {
+    const p = s.players[id];
+    if (!p || p.founder) continue;
+    if (p.retiring) {
+      retirePlayer(s, p);
+      continue;
+    }
+    p.seasons++;
+    if (p.seasons % SEASONS_PER_YEAR !== 0) continue;
+    p.age++;
+    if (p.age >= DECLINE_AGE) {
+      p.potential = Math.max(20, p.potential - 2);
+      p.stats.mechanics = Math.max(5, p.stats.mechanics - 2);
+      p.stats.stamina = Math.max(5, p.stats.stamina - 2);
+      for (const k of Object.keys(p.stats) as StatKey[]) p.stats[k] = Math.min(p.stats[k], p.potential);
+    }
+    if (p.age >= RETIRE_AGE && rng.chance(RETIRE_CHANCE_PER_YEAR * (p.age - RETIRE_AGE + 1))) {
+      p.retiring = true;
+      emit({
+        type: 'toast',
+        title: `${p.tag} will retire after next season`,
+        body: `Aged ${p.age}. Sell before then if you want a fee for them.`,
+        icon: 'calendar-clock',
+        tone: 'info',
+      });
+    }
+  }
+}
+
+export function retirePlayer(s: GameState, p: Player): void {
+  removeFromTeams(s, p.id);
+  delete s.players[p.id];
+  s.stats.playersRetired++;
+  emit({
+    type: 'toast',
+    title: `${p.tag} retires`,
+    body: `${p.seasons} seasons and ${fmt(p.wins)} wins with ${s.org.name}. Thanks for everything.`,
+    icon: 'heart',
+    tone: 'gold',
+  });
 }
 
 /**
@@ -408,12 +492,16 @@ export function updateTeams(s: GameState, dt: number, offline: boolean, factor: 
 /** Energy recovery, morale drift and recovery from illness. */
 export function updatePlayers(s: GameState, dt: number, mods: Mods): void {
   const starters = new Set<string>();
-  for (const team of Object.values(s.teams)) for (const id of team.lineup) if (id) starters.add(id);
+  const recovery = new Map<string, number>();
+  for (const team of Object.values(s.teams)) {
+    for (const id of team.lineup) if (id) starters.add(id);
+    for (const id of teamPlayerIds(team)) recovery.set(id, teamPlan(team).recovery);
+  }
   let unavailable = 0;
   for (const p of Object.values(s.players)) {
     const resting = !starters.has(p.id);
     // Recovery scales with missing energy, so starters settle at an equilibrium instead of burning out.
-    const rate = (resting ? 0.04 : 0.01) * mods.energyRecoveryMult;
+    const rate = (resting ? 0.04 : 0.01) * mods.energyRecoveryMult * (recovery.get(p.id) ?? 1);
     p.energy = Math.min(100, p.energy + (100 - p.energy) * Math.min(1, rate * dt));
     const base = moraleBase(p, mods);
     p.morale += (base - p.morale) * Math.min(1, 0.01 * dt);

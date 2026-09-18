@@ -221,6 +221,7 @@ function resetPlayerForNewRun(p: Player): Player {
     status: { kind: 'healthy', until: 0, reason: '' },
     matches: 0,
     wins: 0,
+    signedLevel: p.level,
   };
 }
 

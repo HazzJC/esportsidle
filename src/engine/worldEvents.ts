@@ -9,7 +9,8 @@ import { TREND_MAP } from '../data/merch';
 import { refreshMarket } from './market';
 import { isMerchUnlocked, rotateTrend } from './merch';
 import { addModifier, expireModifiers } from './modifiers';
-import { applyMorale, isAvailable, sellValue } from './players';
+import { applyMorale, isAvailable, transferValue } from './players';
+import { getGame } from '../data/games';
 import { shockPopularity } from './popularity';
 import type { Rng } from './rng';
 import { removeFromTeams } from './teams';
@@ -198,7 +199,9 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     fire: (s, ctx) => {
       const p = ctx.rng.weighted(tradable(s), (x) => x.level + 5) ?? tradable(s)[0];
       const rival = ctx.rng.pick(RIVAL_ORGS);
-      const value = Math.ceil(Math.max(sellValue(p) * 3, p.fee * 1.2, 100));
+      // Rivals pay over the odds for a player you developed: well above a normal transfer.
+      const worth = transferValue(p, ctx.rates.teams[p.gameId]?.cps ?? 0, getGame(p.gameId).teamSize);
+      const value = Math.ceil(Math.max(worth * 1.6, p.fee * 1.2, 100));
       const counter = Math.ceil(Math.max(100, p.fee * 0.25));
       offerChoice(s, {
         eventId: 'poaching',

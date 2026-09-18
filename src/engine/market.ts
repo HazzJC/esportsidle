@@ -1,5 +1,5 @@
 import { GAMES, getGame } from '../data/games';
-import { RARITY_MAP, generatePlayer, sellValue } from './players';
+import { RARITY_MAP, generatePlayer, transferValue } from './players';
 import type { Rng } from './rng';
 import type { GameState, MarketListing, Mods, Player } from './types';
 import { addToTeam, hasRosterSpace, removeFromTeams } from './teams';
@@ -77,7 +77,7 @@ export function signListing(s: GameState, playerId: string, mods: Pick<Mods, 'be
   if (!hasRosterSpace(s, gameId, mods)) return { ok: false, reason: 'That roster is full. Sell a player or buy more bench space.' };
   if (s.cash < listing.price) return { ok: false, reason: 'Not enough cash.' };
   s.cash -= listing.price;
-  const player: Player = { ...listing.player, fee: listing.price, signedAt: s.time };
+  const player: Player = { ...listing.player, fee: listing.price, signedAt: s.time, signedLevel: listing.player.level };
   s.players[player.id] = player;
   addToTeam(s, player, mods);
   s.market.listings.splice(index, 1);
@@ -85,10 +85,11 @@ export function signListing(s: GameState, playerId: string, mods: Pick<Mods, 'be
   return { ok: true, player };
 }
 
-export function sellPlayer(s: GameState, playerId: string): number {
+/** Sells to a rival org. `teamCps` is the player's team income, which prices their development. */
+export function sellPlayer(s: GameState, playerId: string, teamCps = 0): number {
   const p = s.players[playerId];
   if (!p || p.founder) return 0;
-  const value = sellValue(p);
+  const value = transferValue(p, teamCps, getGame(p.gameId).teamSize);
   removeFromTeams(s, playerId);
   delete s.players[playerId];
   s.cash += value;

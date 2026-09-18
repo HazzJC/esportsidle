@@ -30,7 +30,8 @@ import { DECOR_MAP } from '../data/decor';
 import { buyGear } from '../engine/players';
 import { buyDecor, hireStaff } from '../engine/staff';
 import { Rng } from '../engine/rng';
-import { assignSlot, benchPlayer, changeTier, unlockGame } from '../engine/teams';
+import { assignSlot, benchPlayer, changeTier, setSeasonPlan, unlockGame } from '../engine/teams';
+import type { SeasonPlan } from '../data/seasonPlans';
 import type { Appearance, AutomationSettings, TeamKit } from '../engine/types';
 import { isHexColor } from '../data/palette';
 import { cleanOrgName, completeOnboarding as completeOnboardingState } from '../engine/org';
@@ -431,7 +432,7 @@ class GameStore {
 
   sellPlayer(playerId: string): number {
     const p = this.state.players[playerId];
-    const value = sellPlayer(this.state, playerId);
+    const value = sellPlayer(this.state, playerId, p ? (this.view.r.teams[p.gameId]?.cps ?? 0) : 0);
     if (value > 0 && p) {
       if (this.selectedPlayer === playerId) this.selectedPlayer = null;
       this.toast({ title: `Sold ${p.tag}`, body: `A rival org paid ${money(value)}.`, icon: 'handshake', tone: 'info' }, 3500);
@@ -682,6 +683,11 @@ class GameStore {
     completeOnboardingState(this.state, name, tone);
     this.save(false);
     this.refresh();
+  }
+
+  /** Sets a team's season plan; mid-season it waits for the next season. */
+  setSeasonPlan(gameId: string, plan: SeasonPlan): void {
+    if (setSeasonPlan(this.state, gameId, plan)) this.refresh();
   }
 
   /** Updates one standing order for the front office. */

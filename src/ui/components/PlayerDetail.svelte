@@ -29,7 +29,7 @@
     gearUpgradeCost,
     isAvailable,
     randomLook,
-    sellValue,
+    transferValue,
     skillRating,
     traitsOf,
     xpToNext,
@@ -38,6 +38,7 @@
   import { teamKit } from '../../engine/teams';
   import type { Appearance } from '../../engine/types';
   import { game } from '../game.svelte';
+  import { tooltip } from '../tooltip.svelte';
   import Avatar from './Avatar.svelte';
   import GearIcon from './GearIcon.svelte';
   import Icon from './Icon.svelte';
@@ -121,7 +122,10 @@
           <span class="chip"><Icon name={g.icon} size={12} color={g.color} /> {g.name}</span>
           <span class="chip">{g.roles[p.role]}</span>
         </div>
-        <div class="muted small">{nationName(p.nation)} · age {p.age} · #{p.jersey}</div>
+        <div class="muted small">{nationName(p.nation)} · age {p.age} · #{p.jersey}{p.founder ? '' : ` · ${p.seasons} season${p.seasons === 1 ? '' : 's'} with you`}</div>
+        {#if p.retiring}
+          <div class="status warn"><Icon name="calendar-clock" size={14} /> Retiring after this season. Sell now for a fee, or give them a send-off.</div>
+        {/if}
 
         <div class="meter">
           <div class="meter-head"><span>Level {p.level}</span><span class="num muted">{Math.floor(p.xp)}/{xpToNext(p.level)} XP</span></div>
@@ -145,8 +149,9 @@
           <dt>Prize cut</dt>
           <dd class="num">{fmtPct(p.cut)}</dd>
           {#if !p.founder}
+            {@const levels = Math.max(0, p.level - p.signedLevel)}
             <dt>Resale value</dt>
-            <dd class="num">{money(sellValue(p))}</dd>
+            <dd class="num" use:tooltip={() => ({ title: 'Transfer value', icon: 'handshake', lines: [levels > 0 ? `Includes ${levels} level${levels === 1 ? '' : 's'} developed with you, priced from the income they bring in.` : 'No development with you yet: sells for about what they cost.', { text: 'Young players carry a premium; veterans and retirees sell for less.', tone: 'muted' }] })}>{money(transferValue(p, v.r.teams[p.gameId]?.cps ?? 0, g.teamSize))}</dd>
           {/if}
         </dl>
 
@@ -348,6 +353,11 @@
   }
   .bar.morale i {
     background: var(--accent-2);
+  }
+  .status.warn {
+    color: var(--gold);
+    border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+    background: color-mix(in srgb, var(--gold) 8%, transparent);
   }
   .status {
     display: flex;

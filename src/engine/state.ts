@@ -43,6 +43,7 @@ export function createSettings(): Settings {
 
 export function createStats(): Stats {
   return {
+    playersRetired: 0,
     clicksRun: 0,
     clicksTotal: 0,
     clickCashRun: 0,

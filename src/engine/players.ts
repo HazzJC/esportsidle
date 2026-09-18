@@ -180,6 +180,9 @@ export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
     matches: 0,
     wins: 0,
     founder: false,
+    seasons: 0,
+    retiring: false,
+    signedLevel: 1,
   };
 }
 
@@ -212,6 +215,9 @@ export function createFounder(rng: Rng, orgName: string): Player {
     matches: 0,
     wins: 0,
     founder: true,
+    seasons: 0,
+    retiring: false,
+    signedLevel: 1,
   };
 }
 
@@ -316,9 +322,9 @@ export function applyMorale(p: Player, delta: number, mods?: Pick<Mods, 'moraleS
   p.morale = Math.max(0, Math.min(100, p.morale + delta * moraleSwing(p, mods)));
 }
 
-export function drainEnergy(p: Player, mods?: Pick<Mods, 'energyDrainMult'>): void {
+export function drainEnergy(p: Player, mods?: Pick<Mods, 'energyDrainMult'>, factor = 1): void {
   const stamina = effectiveStat(p, 'stamina');
-  const drain = 5 * Math.max(0.35, 1.3 - stamina / 200) * energyDrainMult(p) * (mods?.energyDrainMult ?? 1);
+  const drain = 5 * Math.max(0.35, 1.3 - stamina / 200) * energyDrainMult(p) * (mods?.energyDrainMult ?? 1) * factor;
   p.energy = Math.max(0, p.energy - drain);
 }
 
@@ -390,4 +396,29 @@ export function playerDisplayName(p: Player): string {
 export function sellValue(p: Player): number {
   if (p.founder) return 0;
   return Math.floor(p.fee * 0.3 * (1 + (p.level - 1) / 20));
+}
+
+/** Seconds of a player's share of their team's income that each level gained with the org adds. */
+export const DEVELOPMENT_VALUE_SECONDS = 40;
+
+/** Young players carry a premium; veterans and announced retirees sell for less. */
+export function ageValueFactor(p: Player): number {
+  if (p.retiring) return 0.35;
+  if (p.age <= 23) return 1.25;
+  if (p.age <= 27) return 1;
+  if (p.age <= 30) return 0.7;
+  return 0.5;
+}
+
+/**
+ * What a rival org pays. Raw talent is priced from the signing fee; every level gained on this org's
+ * books adds a slice of the income the player brings in, so developing players and selling at their
+ * peak pays. A player signed and sold straight away earns no development credit, so flipping players
+ * for profit does not work.
+ */
+export function transferValue(p: Player, teamCps: number, teamSize: number): number {
+  if (p.founder) return 0;
+  const levels = Math.max(0, p.level - p.signedLevel);
+  const share = Math.max(0, teamCps) / Math.max(1, teamSize);
+  return Math.floor((sellValue(p) + share * DEVELOPMENT_VALUE_SECONDS * levels) * ageValueFactor(p));
 }
