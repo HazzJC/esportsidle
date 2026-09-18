@@ -212,7 +212,7 @@
               {@const tm = gearTraitMult(p, gs.id)}
               {@const rarity = gearRarity(tier)}
               <div class="gear-row" class:maxed style="--r:{rarity.color}">
-                <GearIcon icon={gs.icon} {tier} size={42} />
+                <GearIcon slot={gs.id} {tier} size={56} />
                 <div class="ginfo">
                   <div class="gname">
                     {gs.tiers[tier]}
@@ -225,7 +225,9 @@
                   <div class="pips" aria-hidden="true">
                     {#each PIPS as i (i)}<i class:on={i < tier}></i>{/each}
                   </div>
-                  {#if !maxed}<div class="next dim">Next: {gs.tiers[tier + 1]}</div>{/if}
+                  {#if !maxed}
+                    <div class="next dim"><GearIcon slot={gs.id} tier={tier + 1} size={24} showTier={false} /> Next: {gs.tiers[tier + 1]}</div>
+                  {/if}
                 </div>
                 {#if maxed}
                   <span class="chip gold-text">MAX</span>
@@ -549,6 +551,11 @@
   .gdesc,
   .next {
     font-size: 11.5px;
+  }
+  .next {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .names {
     display: flex;
