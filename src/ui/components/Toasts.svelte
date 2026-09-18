@@ -1,56 +1,90 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
-  import { game } from '../game.svelte';
+  import { CABINET_PER_ACHIEVEMENT } from '../../engine/economy';
+  import { game, type Toast } from '../game.svelte';
   import Icon from './Icon.svelte';
+
+  /** Achievements named in a batched popup before collapsing into "and N more". */
+  const MAX_LISTED = 3;
+  const cabinetPct = Math.round(CABINET_PER_ACHIEVEMENT * 100);
+  const cabinetGain = (t: Toast) => (t.achievements ?? []).filter((a) => a.cabinet).length * cabinetPct;
 </script>
 
+<!--
+  Popups sit over the top-left corner and never take the pointer: clicks pass straight through to
+  whatever is underneath, so a popup can never block a purchase. Only the close button is clickable.
+  Entry-only transitions, because outros never finish in a background tab and would leave stale cards.
+-->
 <div class="toasts" aria-live="polite">
   {#each game.toasts as t (t.id)}
-    <button class="toast {t.tone}" onclick={() => game.dismissToast(t.id)} transition:fly={{ x: 40, duration: 220 }}>
-      {#if t.icon}<span class="icon"><Icon name={t.icon} size={18} /></span>{/if}
-      <span class="text">
-        <span class="title">{t.title}</span>
-        {#if t.body}<span class="body">{t.body}</span>{/if}
-      </span>
-    </button>
+    <div class="toast {t.tone}" class:ach={t.achievements} style="--life:{t.duration}ms" in:fly={{ x: -28, duration: 260 }}>
+      {#if t.achievements}
+        {@const list = t.achievements}
+        <span class="medal" aria-hidden="true">
+          <span class="burst"></span>
+          <Icon name={list.length === 1 ? list[0].icon : 'trophy'} size={22} />
+        </span>
+        <span class="text">
+          <span class="eyebrow">{t.title}</span>
+          {#if list.length === 1}
+            <span class="name">{list[0].name}</span>
+            <span class="desc">{list[0].desc}</span>
+          {:else}
+            <span class="names">
+              {#each list.slice(0, MAX_LISTED) as a, i (i)}
+                <span class="row"><Icon name={a.icon} size={13} /><span>{a.name}</span></span>
+              {/each}
+              {#if list.length > MAX_LISTED}<span class="more">and {list.length - MAX_LISTED} more</span>{/if}
+            </span>
+          {/if}
+          {#if cabinetGain(t) > 0}
+            <span class="reward"><Icon name="trophy" size={12} /> +{cabinetGain(t)}% trophy cabinet</span>
+          {/if}
+        </span>
+        <i class="shine" aria-hidden="true"></i>
+      {:else}
+        {#if t.icon}<span class="icon"><Icon name={t.icon} size={18} /></span>{/if}
+        <span class="text">
+          <span class="title">{t.title}</span>
+          {#if t.body}<span class="body">{t.body}</span>{/if}
+        </span>
+      {/if}
+      <button class="close" onclick={() => game.dismissToast(t.id)} aria-label="Dismiss notification">
+        <Icon name="x" size={13} />
+      </button>
+      <i class="life" aria-hidden="true"></i>
+    </div>
   {/each}
 </div>
 
 <style>
   .toasts {
     position: fixed;
-    right: 14px;
-    bottom: 14px;
+    top: 8px;
+    left: 8px;
     z-index: 900;
+    width: min(340px, calc(100vw - 16px));
     display: flex;
     flex-direction: column;
     gap: 8px;
-    align-items: flex-end;
     pointer-events: none;
   }
-  /* On wide screens the store sits bottom-right, so toasts anchored there mask its buy rows.
-     The left column below the clicker is read-only, so they cover nothing clickable. */
-  @media (min-width: 1100px) {
-    .toasts {
-      right: auto;
-      left: 14px;
-      align-items: flex-start;
-    }
-  }
   .toast {
-    pointer-events: auto;
+    --c: var(--accent);
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-width: 220px;
-    max-width: 340px;
-    padding: 9px 12px;
-    text-align: left;
-    border-radius: 10px;
-    border: 1px solid var(--line-2);
-    background: linear-gradient(180deg, rgba(24, 29, 60, 0.97), rgba(14, 17, 38, 0.97));
+    gap: 11px;
+    padding: 10px 34px 12px 12px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--c) 30%, var(--line-2));
+    background:
+      linear-gradient(100deg, color-mix(in srgb, var(--c) 12%, transparent), transparent 55%),
+      color-mix(in srgb, var(--panel-2) 97%, transparent);
     box-shadow: var(--shadow);
-    --c: var(--accent);
+    backdrop-filter: blur(8px);
+    pointer-events: none;
   }
   .toast.good {
     --c: var(--green);
@@ -61,37 +95,183 @@
   .toast.gold {
     --c: var(--gold);
   }
-  .toast {
-    border-left: 3px solid var(--c);
-  }
   .icon {
-    color: var(--c);
     display: grid;
     place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 14%, transparent);
   }
   .text {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    gap: 1px;
   }
   .title {
     font-family: var(--font-ui);
     font-weight: 700;
     font-size: 15px;
+    line-height: 1.2;
   }
   .body {
     font-size: 12.5px;
     color: var(--muted);
   }
-  @media (max-width: 860px) {
-    .toasts {
-      right: 8px;
-      left: 8px;
-      bottom: 64px;
-      align-items: stretch;
+
+  /* Achievement card */
+  .ach {
+    padding: 12px 34px 14px 12px;
+    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+    background:
+      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 60%),
+      color-mix(in srgb, var(--panel-2) 97%, transparent);
+  }
+  .medal {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    color: #2a1e05;
+    background: radial-gradient(circle at 35% 30%, #fff4cc, var(--gold) 45%, #b8862f);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--gold) 35%, transparent),
+      0 0 18px color-mix(in srgb, var(--gold) 40%, transparent);
+  }
+  .burst {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    opacity: 0;
+    animation: burst 0.9s ease-out 0.1s 1;
+  }
+  .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .name {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 17px;
+    line-height: 1.15;
+  }
+  .desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+  .names {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 2px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .row :global(svg) {
+    flex: none;
+    color: var(--gold);
+  }
+  .row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .more {
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .reward {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--gold);
+  }
+  /* One sweep of light across the card as it arrives. */
+  .shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.14) 50%, transparent 65%);
+    transform: translateX(-100%);
+    animation: shine 1.2s ease-out 0.2s 1;
+    pointer-events: none;
+  }
+
+  .close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dim);
+    pointer-events: auto;
+  }
+  .close:hover {
+    color: var(--text);
+    background: var(--panel-3);
+  }
+  /* Countdown to auto-dismiss. */
+  .life {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--c);
+    opacity: 0.7;
+    transform-origin: left;
+    animation: life var(--life) linear forwards;
+  }
+
+  @keyframes life {
+    from {
+      transform: scaleX(1);
     }
-    .toast {
-      max-width: none;
+    to {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes shine {
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes burst {
+    0% {
+      opacity: 0.9;
+      transform: scale(0.8);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.5);
     }
   }
 </style>

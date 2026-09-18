@@ -55,13 +55,27 @@ export type TabId =
   | 'options';
 export type MobileView = 'clicker' | 'center' | 'store';
 
+export interface ToastAchievement {
+  name: string;
+  desc: string;
+  icon: string;
+  /** Counts towards the trophy cabinet income bonus. */
+  cabinet: boolean;
+}
+
 export interface Toast {
   id: number;
   title: string;
   body?: string;
   icon?: string;
   tone: Tone;
+  /** Milliseconds on screen, driving the countdown bar. */
+  duration: number;
+  /** Present on achievement popups, which get their own card. */
+  achievements?: ToastAchievement[];
 }
+
+export type ToastInput = Omit<Toast, 'id' | 'tone' | 'duration'> & { tone?: Tone };
 
 export interface View {
   s: GameState;
@@ -73,7 +87,10 @@ export interface View {
 const UI_INTERVAL_MS = 1000 / 15;
 const NEWS_INTERVAL_MS = 14_000;
 const MAX_ONLINE_CATCHUP_SECONDS = 3600;
-const MAX_TOASTS = 5;
+/** Popups sit over the top-left corner, so only a few are shown at once. */
+const MAX_TOASTS = 3;
+/** Unlocks landing within this window share one popup and one chime. */
+const ACHIEVEMENT_BATCH_MS = 450;
 
 /**
  * The engine mutates one plain state object in place. Svelte skips updates when a derived value keeps the
@@ -120,7 +137,9 @@ class GameStore {
   saveError = $state<string | null>(null);
 
   private storage = getStorage();
-  private pendingToasts: Omit<Toast, 'id'>[] = [];
+  private pendingToasts: ToastInput[] = [];
+  private pendingAchievements: string[] = [];
+  private achievementTimer: ReturnType<typeof setTimeout> | undefined;
   state: GameState = this.loadInitial();
   view = $state.raw<View>(this.makeView());
 
@@ -286,9 +305,8 @@ class GameStore {
         else if (e.tone === 'bad') this.sfx('error');
         break;
       case 'achievement': {
-        const def = ACHIEVEMENT_MAP.get(e.id);
-        if (def) this.toast({ title: 'Achievement unlocked', body: def.name, icon: def.icon, tone: 'gold' });
-        this.sfx('achievement');
+        this.pendingAchievements.push(e.id);
+        this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
         break;
       }
       case 'crowd':
@@ -309,9 +327,21 @@ class GameStore {
     if (!muted && volume > 0) playSound(id, volume);
   }
 
-  toast(t: Omit<Toast, 'id'> & { tone?: Tone }, durationMs = 5000): void {
+  /** Shows every achievement unlocked in the last batch window as a single popup. */
+  private flushAchievements(): void {
+    this.achievementTimer = undefined;
+    const defs = this.pendingAchievements.map((id) => ACHIEVEMENT_MAP.get(id)).filter((d) => d !== undefined);
+    this.pendingAchievements = [];
+    if (defs.length === 0) return;
+    this.sfx('achievement');
+    const achievements = defs.map((d) => ({ name: d.name, desc: d.desc(), icon: d.icon, cabinet: !d.shadow }));
+    const title = defs.length === 1 ? 'Achievement unlocked' : `${defs.length} achievements unlocked`;
+    this.toast({ title, icon: defs[0].icon, tone: 'gold', achievements }, defs.length === 1 ? 6000 : 8000);
+  }
+
+  toast(t: ToastInput, durationMs = 5000): void {
     const id = ++this.toastId;
-    this.toasts.push({ ...t, tone: t.tone ?? 'info', id });
+    this.toasts.push({ ...t, tone: t.tone ?? 'info', id, duration: durationMs });
     if (this.toasts.length > MAX_TOASTS) this.toasts.splice(0, this.toasts.length - MAX_TOASTS);
     setTimeout(() => this.dismissToast(id), durationMs);
   }
