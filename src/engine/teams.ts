@@ -14,7 +14,6 @@ import {
   tierName,
   winChance,
 } from '../data/leagues';
-import { RIVAL_ORGS } from '../data/names';
 import { DECLINE_AGE, RETIRE_AGE, RETIRE_CHANCE_PER_YEAR, SEASONS_PER_YEAR, SEASON_PLANS, type SeasonPlan } from '../data/seasonPlans';
 import { emit } from './bus';
 import { fmt, money } from './format';
@@ -34,6 +33,7 @@ import {
 } from './players';
 import { Rng } from './rng';
 import type { GameState, MatchRecord, Mods, Player, StatKey, TeamEval, TeamKit, TeamState } from './types';
+import { RIVAL_FANS_MULT, addTrophy, checkPlayerMilestones, checkServiceMilestones, pickOpponent, recordRivalMatch, recordSeason } from './stories';
 import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
@@ -48,6 +48,9 @@ export function createTeam(gameId: string): TeamState {
     kit: null,
     plan: 'balanced',
     nextPlan: null,
+    seasonEarnings: 0,
+    seasonStats: {},
+    lastSeason: null,
     lineup: Array.from({ length: game.teamSize }, () => null),
     bench: [],
     tier: 0,
@@ -305,15 +308,19 @@ export function scoreline(genre: Genre, win: boolean, rng: Rng): string {
 export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mods, rng: Rng): MatchRecord {
   const game = getGame(team.gameId);
   const win = rng.next() < ev.winChance;
+  const opponent = pickOpponent(s, rng);
   const prize = win ? ev.winPrize : ev.lossPrize;
-  const fans = win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO;
+  // Derby wins against the rival bring in extra fans.
+  const fans = (win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO) * (opponent.rival && win ? RIVAL_FANS_MULT : 1);
   earnCash(s, prize);
   gainFans(s, fans);
+  if (opponent.rival) recordRivalMatch(s, win, team.gameId);
 
   const record: MatchRecord = {
     win,
     score: scoreline(game.genre, win, rng),
-    opponent: rng.pick(RIVAL_ORGS),
+    opponent: opponent.name,
+    rival: opponent.rival,
     prize,
     fans,
     tier: team.tier,
@@ -322,6 +329,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   team.history.unshift(record);
   if (team.history.length > HISTORY_LENGTH) team.history.length = HISTORY_LENGTH;
   team.earnings += prize;
+  team.seasonEarnings += prize;
   if (win) {
     team.wins++;
     team.streak = team.streak >= 0 ? team.streak + 1 : 1;
@@ -343,8 +351,12 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     const p = id ? s.players[id] : undefined;
     if (!p || !isAvailable(p, s.time)) continue;
     p.matches++;
-    if (win) p.wins++;
-    grantXp(p, baseXp * plan.xp * playerXpMult(p), rng);
+    if (win) {
+      p.wins++;
+      team.seasonStats[p.id] = (team.seasonStats[p.id] ?? 0) + 1;
+    }
+    const levels = grantXp(p, baseXp * plan.xp * playerXpMult(p), rng);
+    checkPlayerMilestones(s, p, win, levels);
     applyMorale(p, win ? 3 : -4, mods);
     drainEnergy(p, mods, plan.drain);
     rollHealth(s, p, mods, rng, hasBench);
@@ -365,10 +377,13 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   const game = getGame(team.gameId);
   const wins = team.seasonWins;
   const record = `${wins}-${SEASON_LENGTH - wins}`;
+  const promoted = wins >= PROMOTE_WINS && team.autoPromote;
+  recordSeason(s, team, { title: wins >= TITLE_WINS, promoted, relegated: !promoted && wins <= RELEGATE_WINS && team.tier > 0 });
   if (wins >= TITLE_WINS) {
     team.titles++;
     s.stats.seasonTitles++;
     gainTrophies(s, 1);
+    addTrophy(s, { kind: 'title', gameId: team.gameId, tier: team.tier, season: team.seasonNumber, mvp: team.lastSeason?.mvp ?? null });
     const bonus = ev.winPrize * 3;
     earnCash(s, bonus);
     emit({
@@ -396,6 +411,8 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   team.seasonNumber++;
   team.seasonPlayed = 0;
   team.seasonWins = 0;
+  team.seasonEarnings = 0;
+  team.seasonStats = {};
 }
 
 /** End of a season: announced retirements take effect and everyone else gets a season older. */
@@ -408,6 +425,7 @@ function ageSquad(s: GameState, team: TeamState, rng: Rng): void {
       continue;
     }
     p.seasons++;
+    checkServiceMilestones(s, p);
     if (p.seasons % SEASONS_PER_YEAR !== 0) continue;
     p.age++;
     if (p.age >= DECLINE_AGE) {

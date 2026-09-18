@@ -5,6 +5,7 @@
   import { fmt, fmtPct, money } from '../../engine/format';
   import { isAvailable, skillRating } from '../../engine/players';
   import { CHALLENGE_WIN_CHANCE, teamKit } from '../../engine/teams';
+  import { seasonSummary } from '../../engine/stories';
   import Avatar from '../components/Avatar.svelte';
   import Icon from '../components/Icon.svelte';
   import KitPicker from '../components/KitPicker.svelte';
@@ -212,6 +213,9 @@
           </div>
         </div>
 
+        {#if team.lastSeason}
+          <p class="last-season"><Icon name="calendar-clock" size={12} /> Last season: {seasonSummary(team.lastSeason)}</p>
+        {/if}
         <div class="plan-row">
           <span class="plan-label">Season plan</span>
           <div class="plans" role="radiogroup" aria-label="{g.name} season plan">
@@ -299,6 +303,14 @@
 {/if}
 
 <style>
+  .last-season {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
   .plan-row {
     display: flex;
     flex-wrap: wrap;

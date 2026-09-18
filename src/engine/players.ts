@@ -183,6 +183,7 @@ export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
     seasons: 0,
     retiring: false,
     signedLevel: 1,
+    milestones: [],
   };
 }
 
@@ -218,6 +219,7 @@ export function createFounder(rng: Rng, orgName: string): Player {
     seasons: 0,
     retiring: false,
     signedLevel: 1,
+    milestones: [],
   };
 }
 

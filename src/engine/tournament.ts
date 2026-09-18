@@ -6,6 +6,7 @@ import { applyMorale } from './players';
 import type { Rng } from './rng';
 import { scoreline } from './teams';
 import type { GameState, Mods, Rates, TeamEval, TournamentResult, TournamentRound } from './types';
+import { addTrophy } from './stories';
 import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const ROUND_NAMES = ['Quarter-final', 'Semi-final', 'Grand Final'];
@@ -93,7 +94,14 @@ export function runTournament(s: GameState, ctx: TournamentContext): TournamentR
   }
 
   s.stats.tournamentsPlayed++;
-  if (champion) s.stats.tournamentsWon++;
+  if (champion) {
+    s.stats.tournamentsWon++;
+    const star = team.lineup
+      .map((id) => (id ? s.players[id] : undefined))
+      .filter((p) => p !== undefined)
+      .sort((a, b) => b.level - a.level)[0];
+    addTrophy(s, { kind: 'tournament', gameId: game.id, tier, season: null, mvp: star?.tag ?? null });
+  }
 
   const result: TournamentResult = {
     id: s.nextId++,

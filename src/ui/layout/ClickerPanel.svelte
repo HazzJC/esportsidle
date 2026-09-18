@@ -261,7 +261,7 @@
       {#each recent as { m, gameId } (`${gameId}-${m.time}`)}
         <button class="match" class:win={m.win} onclick={() => (game.tab = 'teams', game.mobileView = 'center')}>
           <span class="wl">{m.win ? 'W' : 'L'}</span>
-          <span class="vs">{m.score} vs {m.opponent}</span>
+          <span class="vs">{m.score} vs {m.opponent}{#if m.rival}<span class="derby" title="Derby against your rival"><Icon name="swords" size={11} /></span>{/if}</span>
           <span class="prize num">+{money(m.prize)}</span>
         </button>
       {/each}
@@ -272,6 +272,13 @@
 </div>
 
 <style>
+  .derby {
+    display: inline-grid;
+    place-items: center;
+    margin-left: 4px;
+    color: var(--gold);
+    vertical-align: -1px;
+  }
   .clicker {
     height: 100%;
     display: flex;

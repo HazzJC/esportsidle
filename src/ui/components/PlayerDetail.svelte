@@ -157,6 +157,17 @@
           {/if}
         </dl>
 
+        {#if p.milestones.length > 0}
+          <div class="career">
+            <h4>Career</h4>
+            <ul>
+              {#each p.milestones as m (m.id)}
+                <li><Icon name="medal" size={12} color="var(--gold)" /> {m.label}{#if m.run !== v.s.prestige.runs + 1}<span class="dim"> · run {m.run}</span>{/if}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+
         {#if !p.founder}
           {#if confirmSell}
             <div class="sell">
@@ -357,6 +368,28 @@
   }
   .bar.morale i {
     background: var(--accent-2);
+  }
+  .career h4 {
+    margin: 4px 0 3px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .career ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+  }
+  .career li {
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
   .status.warn {
     color: var(--gold);

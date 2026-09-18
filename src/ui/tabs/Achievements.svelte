@@ -2,6 +2,7 @@
   import { ACHIEVEMENTS, type AchievementDef, type AchievementGroup } from '../../data/achievements';
   import { fmtPct } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
+  import TrophyCabinet from '../components/TrophyCabinet.svelte';
   import { game } from '../game.svelte';
   import type { TipContent } from '../tooltip.svelte';
   import { tooltip } from '../tooltip.svelte';
@@ -56,6 +57,8 @@
       <div class="muted">Trophy Cabinet {fmtPct(game.view.r.cabinet)} · every achievement adds 4%</div>
     </div>
   </div>
+
+  <TrophyCabinet />
 
   {#each BY_GROUP as g (g.id)}
     {@const count = g.list.filter((a) => s.achievements[a.id] !== undefined).length}

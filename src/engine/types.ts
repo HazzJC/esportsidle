@@ -268,15 +268,68 @@ export interface Player {
   retiring: boolean;
   /** Level when signed, so resale value can reward development done by this org. */
   signedLevel: number;
+  milestones: CareerMilestone[];
 }
 
 export interface MatchRecord {
   win: boolean;
+  /** Played against the org's rival. */
+  rival?: boolean;
   score: string;
   opponent: string;
   prize: number;
   fans: number;
   tier: number;
+  time: number;
+}
+
+export interface CareerMilestone {
+  id: string;
+  label: string;
+  time: number;
+  run: number;
+}
+
+export interface RivalState {
+  name: string;
+  wins: number;
+  losses: number;
+  /** Positive: our winning streak against them; negative: theirs. */
+  streak: number;
+  since: number;
+}
+
+export interface RivalRecord {
+  name: string;
+  wins: number;
+  losses: number;
+  until: number;
+}
+
+export interface SeasonRecap {
+  run: number;
+  gameId: string;
+  season: number;
+  tier: number;
+  wins: number;
+  played: number;
+  title: boolean;
+  promoted: boolean;
+  relegated: boolean;
+  mvp: string | null;
+  earnings: number;
+  time: number;
+}
+
+/** A trophy on the shelf. Kept across sales, so the cabinet tells the org's whole story. */
+export interface TrophyEntry {
+  id: number;
+  kind: 'title' | 'tournament';
+  gameId: string;
+  tier: number;
+  season: number | null;
+  mvp: string | null;
+  run: number;
   time: number;
 }
 
@@ -293,6 +346,10 @@ export interface TeamState {
   plan: SeasonPlan;
   /** A plan chosen mid-season waits for the next season. */
   nextPlan: SeasonPlan | null;
+  seasonEarnings: number;
+  /** Wins per starter this season, for picking the MVP. */
+  seasonStats: Record<string, number>;
+  lastSeason: SeasonRecap | null;
   lineup: (string | null)[];
   bench: string[];
   tier: number;
@@ -661,6 +718,11 @@ export interface GameState {
   /** Kept across sales: the rules are the player's, even though unlocks are re-earned. */
   automation: AutomationSettings;
   automationLog: AutomationLogEntry[];
+  /** Persistent stories, kept across sales. */
+  rival: RivalState | null;
+  rivalHistory: RivalRecord[];
+  seasonLog: SeasonRecap[];
+  trophyCase: TrophyEntry[];
   nextId: number;
   popularityClock: number;
   stats: Stats;

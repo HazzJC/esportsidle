@@ -4,6 +4,7 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
+  import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { laneHue } from '../theme';
@@ -29,6 +30,7 @@
 
 <div class="hq">
   <Agenda />
+  <Stories />
 
   <div class="cards">
     <div class="card">
