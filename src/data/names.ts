@@ -28,6 +28,109 @@ export const TAG_WORDS = [
   'Sniper', 'Blade', 'Storm', 'Hawk', 'Wolf', 'Fox', 'Raven', 'Cobra', 'Mantis', 'Kraken', 'Dragon', 'Phoenix', 'Comet',
 ];
 
+/**
+ * Tags that sound like they belong to a scene, and often to a role inside it: an AWPer reads like an
+ * AWPer, an IGL like a shotcaller. They are affectionate riffs on the kinds of handles each scene
+ * produces rather than any real player, so the market feels like a real transfer window.
+ */
+export interface SceneTags {
+  /** Fits anyone in this game. */
+  any: string[];
+  /** Fits one role, by its index in the game's role list. */
+  byRole?: string[][];
+}
+
+export const SCENE_TAGS: Record<string, SceneTags> = {
+  smash: {
+    any: ['TomAto', 'HungryBocks', 'Armadillo', 'Leffin', 'MewThree', 'Plopp', 'Zainy', 'AxeBody', 'Wizzrobot', 'CodySchwarm', 'aMSaLad', 'PPMD-ish', 'Lucky7', 'SFAT-free', 'Wobbles'],
+  },
+  rocket: {
+    any: ['Squishee', 'JSTNott', 'Firstchiller', 'Vatiro', 'Zennith'],
+    byRole: [
+      ['Firstchiller', 'Vatiro', 'Mognus', 'Rizey', 'ApparentlyJack'],
+      ['Turboparsa', 'Kaydrop', 'Alph4', 'Metsanaut', 'Scrubkilla'],
+      ['Fizzle', 'Chaussette', 'Mistadobalina', 'Netcode', 'Wallride'],
+    ],
+  },
+  counter: {
+    any: ['Forzt', 'Ropz2', 'Frozone', 'Magiskb0Y', 'BlameF1'],
+    byRole: [
+      ['EliJAY', 'NoKo', 'Electr0nic', 'Jame5', 'Rush B'],
+      ['ZywOoh', 'Dev0ce', 'sh2ro', 'm0NESY-ish', 'Kenny5'],
+      ['Xyp8x', 'Hobbat', 'Flamez', 'Wraithy', 'Lurkstar'],
+      ['Krumz', 'Xazt', 'Nafan', 'Smoooya', 'UtilityBill'],
+      ['Gla2ve', 'Karrogan', 'FallUN', 'Apex-ish', 'Shotcaller'],
+    ],
+  },
+  lanes: {
+    any: ['Poser', 'Chewy', 'Cups', 'Knite', 'Rookee'],
+    byRole: [
+      ['TheSly', 'Zoos', 'Nagari', 'Bin-ish', 'Wunda'],
+      ['Canon', 'Owner', 'Jankos-ish', 'Peanutt', 'Tarzaned'],
+      ['Poser', 'Chewy', 'Cups', 'Knite', 'Rookee'],
+      ['Rular', 'Gumayoosi', 'Uzee', 'Viperr', 'Jackeylove-ish'],
+      ['Kyria', 'Matta', 'Barrel', 'Mingg', 'CoreJJ-ish'],
+    ],
+  },
+  apex: {
+    any: ['ImperialPal', 'Genburger', 'Sourdough', 'Hakas', 'Ripz'],
+    byRole: [
+      ['ImperialPal', 'Genburger', 'Zerg', 'Nafen', 'Ripz'],
+      ['Hakas', 'Sourdough', 'Verhulst-ish', 'Scoutt', 'Pathfound'],
+      ['Anchorman', 'Fuhhh', 'Gild', 'Sikezz', 'HisWattson-ish'],
+    ],
+  },
+  valorunt: {
+    any: ['TenX', 'Aspaz', 'Derky', 'Saucy', 'Alfajam'],
+    byRole: [
+      ['TenX', 'Aspaz', 'Derky', 'Yayster', 'Jinggg-ish'],
+      ['Stix', 'Smashies', 'Sova-ish', 'Kaplan', 'Trentt'],
+      ['Marbled', 'Miko', 'Smokey', 'Astr0', 'Viperess'],
+      ['Gnats', 'Chronicle-ish', 'Killjoyous', 'Cypherpunk', 'Sentry'],
+      ['Lesser', 'Flexeria', 'Sacyy', 'Cryocell-ish', 'Utility'],
+    ],
+  },
+  fortnight: {
+    any: ['Booga', 'Mongrel', 'Benjyfishe', 'Clax', 'Agua'],
+    byRole: [
+      ['Buildzilla', 'Rampz', 'Turtler', '90sKid', 'Coneheadz'],
+      ['Booga', 'Mongrel', 'Clax', 'Benjyfishe', 'Mitr0-ish'],
+      ['Agua', 'Podsee', 'Kamii', 'Tayson-ish', 'Setty'],
+      ['Callout', 'EndZone', 'Rotationz', 'ZoneKing', 'Stormcall'],
+    ],
+  },
+  starcrafty: {
+    any: ['Feral', 'Marue', 'Rainor', 'Flush', 'Lyfe', 'Innovashun', 'Dark-ish', 'Herö', 'ByuNn', 'Clemmy'],
+  },
+  overclock: {
+    any: ['Sinatrap', 'Carpp', 'Proffit', 'JJoSnack', 'Viol8t'],
+    byRole: [
+      ['Mono', 'Gestur', 'Muma-ish', 'Rampart', 'Shieldwall'],
+      ['Smirk', 'Mogg', 'Hookshot', 'Choihyobin-ish', 'Pitstop'],
+      ['Sinatrap', 'Carpp', 'Proffit', 'Corey-ish', 'Onetap'],
+      ['Birdwing', 'Feta', 'Diem-ish', 'Blastoff', 'Flexer'],
+      ['JJoSnack', 'Viol8t', 'Twilightt', 'Mercymain', 'Beamer'],
+      ['Shu-ish', 'Fielder-ish', 'Lucioball', 'Dropkick', 'Boopist'],
+    ],
+  },
+  hearthstoned: {
+    any: ['Thajs', 'Firecat', 'Kibbler', 'Trumpet', 'Rdoh', 'Savjazz', 'Toastyy', 'Lifecoachh', 'Reynadd', 'TopDecker'],
+  },
+  pong: {
+    any: ['Paddington', 'PongDaddy', 'Deuce', 'Spinzone', 'Bouncey', 'Ralleigh', 'Volleyed', 'Smashette'],
+  },
+  galactic: {
+    any: ['Shrud', 'Zeroh', 'Gravitas', 'Orbitr', 'Vaccum'],
+    byRole: [
+      ['Vanguardian', 'Breacher', 'Frontline', 'Hullbreak', 'Shrud'],
+      ['Maverique', 'Barrelroll', 'Afterburn', 'Zeroh', 'Stickdrift'],
+      ['Ohmz', 'Sparkplug', 'Ductape', 'Reroute', 'Gravitas'],
+      ['Parallax', 'Holdbreath', 'Longshot', 'Orbitr', 'Recoyl'],
+      ['Startac', 'Callsign', 'Admiralish', 'Voxcom', 'Vaccum'],
+    ],
+  },
+};
+
 export const TAG_SUFFIXES = ['', '', '', '', '', 'X', 'TV', 'GG', '99', 'EZ', 'Pro', 'Jr', '1337', 'Main', 'Z', 'Prime', 'OP', '7'];
 
 export interface Nation {

@@ -60,7 +60,7 @@ export function hypeTrainPayout(s: GameState, ctx: DropContext, step: number): n
 
 function continueHypeTrain(s: GameState, ctx: DropContext, step: number): DropResult {
   const payout = hypeTrainPayout(s, ctx, step);
-  earnCash(s, payout);
+  earnCash(s, payout, 'drop');
   s.stats.hypeTrainBest = Math.max(s.stats.hypeTrainBest, step);
   const capped = payout < hypeTrainBase(ctx) * Math.pow(7, step - 1);
   const goesOn = !capped && ctx.rng.chance(Math.max(0.2, 0.95 - step * 0.05));
@@ -91,7 +91,7 @@ const OUTCOMES: Outcome[] = [
     weight: () => 40,
     apply: (s, ctx) => {
       const amount = Math.min(s.cash * 0.15, ctx.rates.cpsNoBuffs * 900) + 13;
-      earnCash(s, amount);
+      earnCash(s, amount, 'drop');
       return { outcome: 'prize', title: 'Prize Pool!', body: `+${money(amount)} from a surprise showmatch.`, icon: 'dollar-sign', tone: 'gold' };
     },
   },
@@ -207,7 +207,7 @@ const OUTCOMES: Outcome[] = [
     weight: () => 25,
     apply: (s, ctx) => {
       const amount = Math.min(s.cash * 0.25, ctx.rates.cpsNoBuffs * 1800) + 13;
-      earnCash(s, amount);
+      earnCash(s, amount, 'drop');
       return { outcome: 'leak', title: 'Leaked DMs Payday', body: `The drama documentary rights sold for ${money(amount)}.`, icon: 'dollar-sign', tone: 'gold' };
     },
   },
@@ -231,14 +231,34 @@ export function applyDropOutcome(s: GameState, id: string, ctx: DropContext): Dr
   return outcome.apply(s, ctx);
 }
 
+/** How far apart drops try to spawn, as a share of the play area. */
+const DROP_SPACING = 0.22;
+
+/** A spot that is not already taken by another drop, so one can never hide behind another. */
+function freeSpot(s: GameState, ctx: DropContext): { x: number; y: number } {
+  let best = { x: ctx.rng.range(0.06, 0.94), y: ctx.rng.range(0.08, 0.92) };
+  let bestGap = -1;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const spot = { x: ctx.rng.range(0.06, 0.94), y: ctx.rng.range(0.08, 0.92) };
+    const gap = s.drops.active.reduce((min, d) => Math.min(min, Math.hypot(d.x - spot.x, d.y - spot.y)), Number.POSITIVE_INFINITY);
+    if (gap >= DROP_SPACING) return spot;
+    if (gap > bestGap) {
+      bestGap = gap;
+      best = spot;
+    }
+  }
+  return best;
+}
+
 export function spawnDrop(s: GameState, ctx: DropContext, chain = 0): ActiveDrop {
   const kind: DropKind = chain === 0 && ctx.rng.chance(dramaShare(s, ctx.mods)) ? 'drama' : 'hype';
   const life = (chain > 0 ? CHAIN_LIFETIME : DROP_LIFETIME) * ctx.mods.dropLifeMult;
+  const spot = freeSpot(s, ctx);
   const drop: ActiveDrop = {
     id: s.nextId++,
     kind,
-    x: ctx.rng.range(0.08, 0.92),
-    y: ctx.rng.range(0.14, 0.86),
+    x: spot.x,
+    y: spot.y,
     spawnedAt: s.time,
     expiresAt: s.time + life,
     chain,
@@ -276,6 +296,55 @@ export const PR_CLEANUP_SECONDS = 1800;
 
 export function prCleanupCost(cpsNoBuffs: number): number {
   return Math.ceil(Math.max(1000, cpsNoBuffs * 600));
+}
+
+/** How long the fallout lasts when an org rides out a scandal instead of paying to bury it. */
+export const SCANDAL_SECONDS = 300;
+/** The share of the fanbase that walks out during a scandal. They all come back afterwards. */
+export const SCANDAL_FAN_SHARE = 0.25;
+export const SCANDAL_INCOME_MULT = 0.8;
+export const SCANDAL_FAN_MULT = 0.5;
+
+/** How many fans would walk if the org rode out the drama right now. */
+export function scandalFanLoss(s: GameState): number {
+  return Math.floor(s.fans * SCANDAL_FAN_SHARE);
+}
+
+/**
+ * Takes the hit instead of paying: a chunk of the fanbase walks out, income and fan gain suffer for
+ * a few minutes, and the story dies down. The fans come back when it blows over, so riding it out
+ * costs momentum rather than cash — the option an org without a war chest actually has.
+ */
+export function rideOutDrama(s: GameState): boolean {
+  if (s.time < s.events.calmUntil) return false;
+  const lost = scandalFanLoss(s);
+  s.fans -= lost;
+  s.events.fansHeld += lost;
+  s.events.fansReturnAt = s.time + SCANDAL_SECONDS;
+  addBuff(s, {
+    id: 'scandal',
+    name: 'Scandal',
+    icon: 'flame',
+    tone: 'bad',
+    desc: `Income ×${SCANDAL_INCOME_MULT} · new fans ×${SCANDAL_FAN_MULT}`,
+    duration: SCANDAL_SECONDS,
+    effects: [
+      { kind: 'income', mult: SCANDAL_INCOME_MULT },
+      { kind: 'fans', mult: SCANDAL_FAN_MULT },
+    ],
+  });
+  s.events.calmUntil = s.time + PR_CLEANUP_SECONDS;
+  s.drops.active = s.drops.active.filter((d) => d.kind !== 'drama');
+  return true;
+}
+
+/** Brings back the fans who walked out, once the scandal has blown over. Returns how many. */
+export function returnScandalFans(s: GameState): number {
+  if (s.events.fansHeld <= 0 || s.time < s.events.fansReturnAt) return 0;
+  const back = s.events.fansHeld;
+  s.events.fansHeld = 0;
+  s.fans += back;
+  return back;
 }
 
 /** Pays a PR team to suppress Drama Drops for a while and clears any on screen. */

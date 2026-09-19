@@ -2,13 +2,13 @@ import { ACHIEVEMENT_MAP } from '../data/achievements';
 import { subscribe, type GameEvent } from '../engine/bus';
 import { clickLogo, type ClickResult } from '../engine/clicker';
 import { computeMods, computeRates } from '../engine/economy';
-import { money, setNumberFormat, type NumberFormat } from '../engine/format';
+import { fmt, fmtTime, money, setNumberFormat, type NumberFormat } from '../engine/format';
 import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
 import { pickNews } from '../engine/news';
 import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
-import { refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing } from '../engine/market';
-import { calmDrama, clickDrop } from '../engine/drops';
+import { isPinned, pinnedRival, refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing, togglePin } from '../engine/market';
+import { SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, calmDrama, clickDrop, rideOutDrama, scandalFanLoss } from '../engine/drops';
 import {
   addDesign,
   deleteDesign,
@@ -24,7 +24,9 @@ import { buyDynasty, buyNode, sellOrg, type SellOptions } from '../engine/presti
 import { LEGACY_NODE_MAP } from '../data/legacy';
 import { BRAND_MAP } from '../data/sponsors';
 import { PRODUCT_MAP } from '../data/merch';
-import { buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
+import { bulkPrice, buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
+import { OPERATIONS } from '../data/operations';
+import { UPGRADE_MAP } from '../data/upgrades';
 import { resolveChoice } from '../engine/worldEvents';
 import { DECOR_MAP } from '../data/decor';
 import { buyGear } from '../engine/players';
@@ -39,7 +41,7 @@ import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, wr
 import { createNewGame } from '../engine/state';
 import type { GameState, Mods, NotifyChannel, Rates, Settings, Tone } from '../engine/types';
 import { rarityName } from './theme';
-import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
+import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks, upgradePrice } from '../engine/upgrades';
 import { customiseDraft, signDraftPick, type DraftCustomisation } from '../engine/draft';
 import { isEmblem, type Emblem } from '../data/emblems';
 import { randomLook } from '../engine/players';
@@ -441,6 +443,23 @@ class GameStore {
       this.sfx('buy');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
+      return n;
+    }
+    // Nothing bought: say why, rather than looking like a purchase that did not stick.
+    const def = OPERATIONS.find((op) => op.id === id);
+    if (def) {
+      const want = amount < 0 ? 1 : Math.max(1, Math.floor(amount));
+      const price = bulkPrice(def, this.state.ops[id].owned, want, computeMods(this.state).opCostMult);
+      this.sfx('error');
+      this.toast(
+        {
+          title: `Not enough cash for ${def.name}`,
+          body: `${want > 1 ? `${fmt(want)} of them cost` : 'One costs'} ${money(price)}. You have ${money(this.state.cash)}.`,
+          icon: def.icon,
+          tone: 'bad',
+        },
+        3500,
+      );
     }
     return n;
   }
@@ -457,6 +476,15 @@ class GameStore {
       this.sfx('upgrade');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
+      return ok;
+    }
+    const def = UPGRADE_MAP.get(id);
+    if (def && def.currency === 'cash') {
+      this.sfx('error');
+      this.toast(
+        { title: `Not enough cash for ${def.name}`, body: `It costs ${money(upgradePrice(def, computeMods(this.state)))}.`, icon: def.icon, tone: 'bad' },
+        3500,
+      );
     }
     return ok;
   }
@@ -575,6 +603,23 @@ class GameStore {
     return value;
   }
 
+  /** Holds a prospect through market refreshes, or lets them go. One pin per role. */
+  togglePin(playerId: string): void {
+    const listing = this.state.market.listings.find((l) => l.player.id === playerId);
+    if (!listing) return;
+    const wasPinned = isPinned(this.state, playerId);
+    const replaced = wasPinned ? undefined : pinnedRival(this.state, listing.player);
+    if (!togglePin(this.state, playerId)) return;
+    this.sfx(wasPinned ? 'click' : 'buy');
+    if (replaced) {
+      this.toast(
+        { title: `Pinned ${listing.player.tag}`, body: `${replaced.player.tag} is no longer pinned: one pin per role.`, icon: 'pin', tone: 'info' },
+        3500,
+      );
+    }
+    this.refresh();
+  }
+
   rerollMarket(): boolean {
     const ok = rerollMarket(this.state, new Rng(this.state), computeMods(this.state), this.view.r.cpsNoBuffs);
     if (ok) this.refresh();
@@ -645,6 +690,23 @@ class GameStore {
 
   levelUpOperation(id: string): void {
     if (levelUpOperation(this.state, id)) this.refresh();
+  }
+
+  /** Takes the hit instead of paying: fans walk out for a few minutes and income dips. */
+  rideOutDrama(): void {
+    const lost = scandalFanLoss(this.state);
+    if (!rideOutDrama(this.state)) return;
+    this.sfx('error');
+    this.toast(
+      {
+        title: 'You ride it out',
+        body: `${fmt(lost)} fans walked. Income ×${SCANDAL_INCOME_MULT} and new fans ×${SCANDAL_FAN_MULT} for ${fmtTime(SCANDAL_SECONDS)}; they will be back.`,
+        icon: 'flame',
+        tone: 'bad',
+      },
+      6000,
+    );
+    this.refresh();
   }
 
   calmDrama(): void {

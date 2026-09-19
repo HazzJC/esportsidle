@@ -357,7 +357,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     resolve: (s, choice, option) => {
       if (option === 0) {
         const amount = Number(choice.data.amount);
-        earnCash(s, amount);
+        earnCash(s, amount, 'event');
         addBuff(s, { id: 'investor', name: 'Investor Oversight', icon: 'briefcase', tone: 'bad', desc: 'Income ×0.9', duration: 600, effects: [{ kind: 'income', mult: 0.9 }] });
         logEvent(s, { title: 'Investment secured', body: `+${money(amount)}. The board is watching.`, icon: 'briefcase', tone: 'info' }, false);
       } else {

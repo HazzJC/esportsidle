@@ -22,7 +22,7 @@ import { refreshMarket } from './market';
 import { generatePlayer, skillRating } from './players';
 import { gainFans } from './wallet';
 import { Rng } from './rng';
-import { addFounder, createGames, createOps, createStaff, setupNewRun } from './state';
+import { addFounder, createGames, createIncomeLedger, createOps, createStaff, setupNewRun } from './state';
 import { addToTeam, createTeam, ensureTeam } from './teams';
 import type { Effect, GameState, HallOfFameEntry, Player, Rarity } from './types';
 
@@ -355,6 +355,7 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
   s.runStartTime = s.time;
   s.cash = 0;
   s.earnedRun = 0;
+  s.incomeRun = createIncomeLedger();
   s.fans = 0;
   s.fansRun = 0;
   s.hype = 0;
@@ -367,11 +368,11 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
   s.games = createGames();
   s.teams = {};
   s.players = {};
-  s.market = { listings: [], nextRefresh: 0, rerolls: 0 };
+  s.market = { listings: [], nextRefresh: 0, rerolls: 0, pinned: [] };
   s.staff = createStaff();
   if (!keepDecor) s.decor = {};
   s.drops = { nextAt: 0, active: [] };
-  s.events = { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, lastTournament: null };
+  s.events = { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, fansHeld: 0, fansReturnAt: 0, lastTournament: null };
   const lines: GameState['merch']['lines'] = {};
   if (keepMerch) {
     for (const [id, line] of Object.entries(s.merch.lines)) lines[id] = { ...line, launchedAt: s.time, sold: 0, revenue: 0 };

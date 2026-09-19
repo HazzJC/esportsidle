@@ -1,10 +1,15 @@
-import type { GameState } from './types';
+import type { GameState, IncomeSource } from './types';
 
-export function earnCash(s: GameState, amount: number): void {
+/**
+ * Pays the org. Every caller names the system the money came from, which keeps a running breakdown
+ * of the run's income for the Stats screen and the balance sim.
+ */
+export function earnCash(s: GameState, amount: number, source: IncomeSource = 'event'): void {
   if (!(amount > 0)) return;
   s.cash += amount;
   s.earnedRun += amount;
   s.earnedTotal += amount;
+  s.incomeRun[source] = (s.incomeRun[source] ?? 0) + amount;
 }
 
 export function gainFans(s: GameState, amount: number): void {

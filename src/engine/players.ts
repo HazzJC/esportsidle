@@ -18,7 +18,7 @@ import {
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
 import { GEAR_COST_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
-import { FIRST_NAMES, LAST_NAMES, NATIONS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
+import { FIRST_NAMES, LAST_NAMES, NATIONS, SCENE_TAGS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
 import { playerEasterEgg } from './easterEggs';
@@ -84,7 +84,20 @@ export function rollRarity(rng: Rng, luck = 0): Rarity {
   return def?.id ?? 'rookie';
 }
 
-export function randomTag(rng: Rng): string {
+/** How often a generated player gets a tag from their scene rather than the generic word list. */
+const SCENE_TAG_CHANCE = 0.45;
+
+/**
+ * A gamer tag. Most of the time it comes from the scene the player competes in, and often from the
+ * pool for their role, so a market listing reads like a real transfer rumour.
+ */
+export function randomTag(rng: Rng, gameId?: string, role?: number): string {
+  const scene = gameId ? SCENE_TAGS[gameId] : undefined;
+  if (scene && rng.chance(SCENE_TAG_CHANCE)) {
+    const forRole = role !== undefined ? scene.byRole?.[role] : undefined;
+    const pool = forRole && forRole.length > 0 && rng.chance(0.7) ? forRole : scene.any;
+    if (pool.length > 0) return rng.pick(pool);
+  }
   let tag = rng.pick(TAG_WORDS);
   if (rng.chance(0.25)) tag = `${tag}${rng.pick(TAG_WORDS)}`.slice(0, 14);
   tag += rng.pick(TAG_SUFFIXES);
@@ -146,6 +159,7 @@ export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
     if (w >= 0.3) value += rng.range(0, 6);
     stats[stat] = Math.round(value);
   }
+  const role = rng.int(0, game.roles.length - 1);
   const traits = rollTraits(rng, rng.int(rarity.traitMin, rarity.traitMax));
   let potential = Math.round(rng.range(rarity.potMin, rarity.potMax));
   let cut = rarity.cut;
@@ -158,11 +172,11 @@ export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
     id: opts.id,
     first: rng.pick(FIRST_NAMES),
     last: rng.pick(LAST_NAMES),
-    tag: randomTag(rng),
+    tag: randomTag(rng, game.id, role),
     nation: rng.pick(NATIONS).code,
     age: rng.int(16, 29),
     gameId: game.id,
-    role: rng.int(0, game.roles.length - 1),
+    role,
     rarity: rarity.id,
     stats,
     potential: Math.max(potential, Math.max(...Object.values(stats))),

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { getGame } from '../../data/games';
-  import { tierName } from '../../data/leagues';
+  import { fmt } from '../../engine/format';
   import type { TrophyEntry } from '../../engine/types';
   import { game } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
+  import { trophyTip } from '../trophyTip';
   import TrophyIcon from './TrophyIcon.svelte';
 
   /** Trophies drawn per shelf before collapsing into a count. */
@@ -17,20 +17,24 @@
     return [...byRun.entries()].sort((a, b) => b[0] - a[0]);
   });
 
-  function tip(t: TrophyEntry) {
-    const g = getGame(t.gameId);
-    return {
-      title: t.kind === 'title' ? `${tierName(t.tier)} champions` : `${tierName(t.tier)} Invitational`,
-      subtitle: `${g.name} · ${t.season !== null ? `Season ${t.season}` : 'Tournament'}`,
-      icon: t.kind === 'title' ? 'trophy' : 'medal',
-      iconColor: 'var(--gold)',
-      lines: [...(t.mvp ? [`MVP: ${t.mvp}`] : []), { text: t.run === currentRun ? 'Won this run' : `Won in run ${t.run}`, tone: 'muted' as const }],
-    };
-  }
+  const tip = (t: TrophyEntry) => trophyTip(s, t);
 </script>
 
 <section class="cabinet">
-  <h3 class="section-title">Trophy shelf <span class="dim">{s.trophyCase.length}</span></h3>
+  <h3
+    class="section-title"
+    use:tooltip={() => ({
+      title: 'Trophy shelf',
+      icon: 'trophy',
+      iconColor: 'var(--gold)',
+      lines: [
+        `${fmt(s.trophyCase.length)} trophies won, across every run.`,
+        { text: `${fmt(s.trophies)} are still unspent. Spending them on operation levels and trophy upgrades leaves the trophy itself on the shelf.`, tone: 'muted' },
+      ],
+    })}
+  >
+    Trophy shelf <span class="dim">{s.trophyCase.length}</span>
+  </h3>
   {#if s.trophyCase.length === 0}
     <p class="muted small">Win a season title or a tournament to put your first trophy on the shelf. Trophies stay here when you sell the org.</p>
   {:else}

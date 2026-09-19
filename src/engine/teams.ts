@@ -351,7 +351,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   const prize = win ? ev.winPrize : ev.lossPrize;
   // Derby wins against the rival bring in extra fans.
   const fans = (win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO) * (opponent.rival && win ? RIVAL_FANS_MULT : 1);
-  earnCash(s, prize);
+  earnCash(s, prize, 'match');
   gainFans(s, fans);
   if (opponent.rival) recordRivalMatch(s, win, team.gameId);
 
@@ -432,7 +432,7 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
     gainTrophies(s, 1);
     addTrophy(s, { kind: 'title', gameId: team.gameId, tier: team.tier, season: team.seasonNumber, mvp: team.lastSeason?.mvp ?? null });
     const bonus = ev.winPrize * 3;
-    earnCash(s, bonus);
+    earnCash(s, bonus, 'match');
     emit({
       type: 'toast',
       title: `${game.name}: season champions!`,
@@ -538,7 +538,7 @@ export function updateTeams(s: GameState, dt: number, offline: boolean, factor: 
     if (!team || !ev || !s.games[game.id]?.unlocked) continue;
     if (offline) {
       if (ev.active) {
-        earnCash(s, ev.cps * dt * factor);
+        earnCash(s, ev.cps * dt * factor, 'match');
         gainFans(s, ev.fansPerSec * dt * factor);
       }
       continue;

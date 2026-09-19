@@ -10,6 +10,7 @@ import {
 import type { StatAmount } from '../data/staff';
 import { addBuff } from './buffs';
 import { emit } from './bus';
+import { addTrophy, trophyHomeGame } from './stories';
 import { fmt, money } from './format';
 import type { Rng } from './rng';
 import type { Effect, GameState, Mods, Rates, SponsorContract, SponsorOffer } from './types';
@@ -38,6 +39,34 @@ const bestTeamTier = (s: GameState): number => Object.values(s.teams).reduce((m,
 
 export function goalLabel(kind: SponsorGoalKind, target: number): string {
   return GOAL_INFO[kind].label(fmt(target));
+}
+
+/** The share of what the org earned during a deal that finishing its goal pays out. */
+export const GOAL_EARNINGS_SHARE = 0.2;
+
+/**
+ * What finishing a sponsor goal pays.
+ *
+ * A goal used to pay a flat slice of current income, so a deal that completed the moment it was
+ * signed — which late-game orgs do constantly — handed over an hour of earnings for nothing. Now the
+ * bonus is a share of what the org actually earned while the deal ran, capped by the contract's
+ * headline value, and scaled down when the goal is finished early. Running the full goal time and
+ * earning well is what pays.
+ */
+export function goalReward(s: GameState, c: SponsorContract, cpsNoBuffs: number): number {
+  const floor = 500 * (c.tier + 1);
+  const full = c.goal.rewardSeconds;
+  const pace = Math.min(1, Math.max(0, s.time - c.signedAt) / Math.max(1, full));
+  const headline = Math.max(0, cpsNoBuffs) * full;
+  // Contracts signed before this rule have no baseline, so they keep the old headline value.
+  const earnedDuring = c.earnedAt === undefined ? null : Math.max(0, s.earnedRun - c.earnedAt);
+  const share = earnedDuring === null ? headline : earnedDuring * GOAL_EARNINGS_SHARE;
+  return Math.max(floor, Math.min(headline, share) * pace);
+}
+
+/** The most a goal could pay if the deal runs its full goal time: what an offer advertises. */
+export function goalRewardPotential(tier: number, rewardSeconds: number, cpsNoBuffs: number): number {
+  return Math.max(500 * (tier + 1), Math.max(0, cpsNoBuffs) * rewardSeconds);
 }
 
 export function goalProgress(s: GameState, c: SponsorContract): number {
@@ -98,6 +127,7 @@ export function signOffer(s: GameState, offerId: number, mods: Pick<Mods, 'spons
     signedAt: s.time,
     endsAt: s.time + offer.duration,
     baseline: GOAL_STAT[offer.goal.kind](s),
+    earnedAt: s.earnedRun,
     completed: false,
   };
   s.sponsors.active.push(contract);
@@ -163,10 +193,13 @@ export function updateSponsors(s: GameState, ctx: SponsorContext, dt: number, of
     const brand = BRAND_MAP.get(c.brandId);
     if (!c.completed && goalProgress(s, c) >= c.goal.target) {
       c.completed = true;
-      const reward = Math.max(500 * (c.tier + 1), ctx.rates.cpsNoBuffs * c.goal.rewardSeconds);
-      earnCash(s, reward);
+      const reward = goalReward(s, c, ctx.rates.cpsNoBuffs);
+      earnCash(s, reward, 'sponsor');
       const trophies = c.tier >= 2 ? 1 : 0;
       gainTrophies(s, trophies);
+      if (trophies > 0) {
+        addTrophy(s, { kind: 'sponsor', gameId: trophyHomeGame(s), tier: c.tier, season: null, mvp: null, label: `${brand?.name ?? 'Sponsor'} goal` }, trophies);
+      }
       s.stats.sponsorGoals++;
       emit({
         type: 'toast',

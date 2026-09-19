@@ -15,6 +15,7 @@
   import { game } from '../game.svelte';
   import { rarityName, roomColor } from '../theme';
   import { tooltip } from '../tooltip.svelte';
+  import { trophyTip } from '../trophyTip';
 
   const MAX_STATIONS = 10;
   /** Trophies drawn on the house shelf, newest first. */
@@ -291,14 +292,26 @@
           <path d="M800 70 L716 170 H884 Z" fill={primary} opacity="0.06" />
           {#each shelfTrophies as t, i (t.id)}
             {@const [fill, shadeColor] = metal(t.tier)}
-            <g transform="translate({716 + i * 19} {t.kind === 'title' ? 144 : 148})">
+            <g transform="translate({716 + i * 19} {t.kind === 'title' ? 144 : 148})" class="shelf-trophy" use:tooltip={() => trophyTip(v.s, t)}>
+              <!-- A hit area, so a thin trophy is still easy to hover. -->
+              <rect x="-2" y="-4" width="19" height="32" fill="transparent" />
               {#if t.kind === 'title'}
                 <path d="M0 0 H14 V6 Q14 14 7 14 Q0 14 0 6 Z" fill={fill} />
                 <path d="M7 0 H14 V6 Q14 14 7 14 Z" fill={shadeColor} opacity="0.4" />
                 <rect x="5.5" y="14" width="3" height="6" fill={shadeColor} />
                 <rect x="2" y="20" width="10" height="4" rx="1" fill={fill} />
+              {:else if t.kind === 'sponsor' || t.kind === 'quest'}
+                <circle cx="7" cy="7" r="6.4" fill={t.kind === 'quest' ? 'none' : fill} stroke={shadeColor} stroke-width={t.kind === 'quest' ? 1.6 : 0.8} />
+                {#if t.kind === 'quest'}<path d="M4.4 11 3 18l4-2.2L11 18l-1.4-7Z" fill={shadeColor} opacity="0.85" />{/if}
+                <rect x="5.8" y="13.4" width="2.4" height="6.6" fill={shadeColor} />
+                <rect x="2" y="20" width="10" height="3" rx="1" fill={fill} />
               {:else}
-                <path d="M7 0 L9.2 4.6 L14 5.2 L10.4 8.6 L11.4 13.4 L7 11 L2.6 13.4 L3.6 8.6 L0 5.2 L4.8 4.6 Z" fill={fill} stroke={shadeColor} stroke-width="0.8" />
+                <path
+                  d="M7 0 L9.2 4.6 L14 5.2 L10.4 8.6 L11.4 13.4 L7 11 L2.6 13.4 L3.6 8.6 L0 5.2 L4.8 4.6 Z"
+                  fill={t.kind === 'runnerUp' ? 'none' : fill}
+                  stroke={shadeColor}
+                  stroke-width={t.kind === 'runnerUp' ? 1.3 : 0.8}
+                />
                 <rect x="5.8" y="13" width="2.4" height="7" fill={shadeColor} />
                 <rect x="2" y="20" width="10" height="3" rx="1" fill={fill} />
               {/if}
@@ -521,6 +534,9 @@
   }
   .neon-sign {
     animation: flicker 7s linear infinite;
+  }
+  .shelf-trophy {
+    cursor: help;
   }
   .shelf-empty {
     font-family: var(--font-ui);

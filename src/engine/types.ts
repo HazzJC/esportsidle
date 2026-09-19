@@ -328,13 +328,17 @@ export interface SeasonRecap {
 }
 
 /** A trophy on the shelf. Kept across sales, so the cabinet tells the org's whole story. */
+export type TrophyKind = 'title' | 'tournament' | 'runnerUp' | 'sponsor' | 'quest';
+
 export interface TrophyEntry {
   id: number;
-  kind: 'title' | 'tournament';
+  kind: TrophyKind;
   gameId: string;
   tier: number;
   season: number | null;
   mvp: string | null;
+  /** Where a trophy that is not a league title came from: a brand, a quest, a bracket. */
+  label?: string;
   run: number;
   time: number;
 }
@@ -393,6 +397,8 @@ export interface MarketState {
   listings: MarketListing[];
   nextRefresh: number;
   rerolls: number;
+  /** Player ids held through market refreshes: at most one per game and role. */
+  pinned: string[];
 }
 
 export type DropKind = 'hype' | 'drama';
@@ -483,6 +489,10 @@ export interface EventsState {
   log: EventLogEntry[];
   /** Drama Drops are suppressed until this simulated time. */
   calmUntil: number;
+  /** Fans who walked out over a scandal and are waiting to be won back. */
+  fansHeld: number;
+  /** When those fans drift back. */
+  fansReturnAt: number;
   lastTournament: TournamentResult | null;
 }
 
@@ -528,6 +538,8 @@ export interface SponsorContract extends SponsorOffer {
   signedAt: number;
   endsAt: number;
   baseline: number;
+  /** Run earnings when the deal was signed, so the goal bonus can follow what the org actually made. */
+  earnedAt?: number;
   completed: boolean;
 }
 
@@ -638,6 +650,11 @@ export interface TutorialState {
 /** Popup categories the player can mute. Anything the player did themselves is always shown. */
 export type NotifyChannel = 'matches' | 'players' | 'events' | 'business' | 'achievements';
 
+/** Where a dollar came from, so income can be broken down by system. */
+export type IncomeSource = 'ops' | 'click' | 'match' | 'merch' | 'sponsor' | 'quest' | 'drop' | 'event' | 'tournament';
+
+export const INCOME_SOURCES: IncomeSource[] = ['ops', 'click', 'match', 'merch', 'sponsor', 'quest', 'drop', 'event', 'tournament'];
+
 export interface Settings {
   numberFormat: NumberFormat;
   autosaveSeconds: number;
@@ -742,6 +759,8 @@ export interface GameState {
   cash: number;
   earnedRun: number;
   earnedTotal: number;
+  /** Cash earned this run, split by where it came from. */
+  incomeRun: Record<IncomeSource, number>;
   fans: number;
   fansRun: number;
   fansTotal: number;

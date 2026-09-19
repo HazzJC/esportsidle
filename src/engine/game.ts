@@ -1,9 +1,11 @@
 import { OPERATIONS } from '../data/operations';
 import { checkAchievements } from './achievements';
+import { fmt } from './format';
+import { emit } from './bus';
 import { AUTOMATION_INTERVAL, runAutomation } from './automation';
 import { expireBuffs } from './buffs';
 import { decayHype } from './clicker';
-import { updateDrops } from './drops';
+import { returnScandalFans, updateDrops } from './drops';
 import { updateWorldEvents } from './worldEvents';
 import { computeMods, computeRates } from './economy';
 import { updateMarket } from './market';
@@ -48,11 +50,11 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   const rates = computeRates(s, mods);
   const factor = offline ? mods.offlineRate : 1;
 
-  earnCash(s, rates.cps * dt * factor);
+  earnCash(s, rates.cps * dt * factor, 'ops');
   for (const op of OPERATIONS) s.ops[op.id].produced += rates.opCps[op.id] * dt * factor;
   gainFans(s, rates.fansPerSec * dt * factor);
 
-  earnCash(s, rates.merchCps * dt * factor);
+  earnCash(s, rates.merchCps * dt * factor, 'merch');
   updateMerch(s, dt, factor, rates, rng, offline);
   updateTeams(s, dt, offline, factor, mods, rates.teams, rng, options?.pauseTeams);
   updatePlayers(s, dt, mods);
@@ -77,6 +79,17 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   if (Math.floor(s.time * 2) !== Math.floor(prevTime * 2)) {
     refreshUpgradeUnlocks(s);
     checkChallenge(s);
+    const returned = returnScandalFans(s);
+    if (returned > 0) {
+      emit({
+        type: 'toast',
+        title: 'The scandal blows over',
+        body: `${fmt(returned)} fans came back.`,
+        icon: 'heart',
+        tone: 'good',
+        channel: 'business',
+      });
+    }
     checkAchievements(s, rates);
     updateTutorial(s);
     updateQuests(s);

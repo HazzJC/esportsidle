@@ -62,7 +62,7 @@ export function runTournament(s: GameState, ctx: TournamentContext): TournamentR
     for (let guard = 0; used.has(opponent) && guard < 10; guard++) opponent = ctx.rng.pick(RIVAL_ORGS);
     used.add(opponent);
     const prize = win ? prizeUnit * ROUND_PRIZE_WINS[i] : 0;
-    earnCash(s, prize);
+    earnCash(s, prize, 'tournament');
     rounds.push({ name: ROUND_NAMES[i], opponent, win, score: scoreline(game.genre, win, ctx.rng), prize, chance });
     if (!win) break;
   }
@@ -94,13 +94,14 @@ export function runTournament(s: GameState, ctx: TournamentContext): TournamentR
   }
 
   s.stats.tournamentsPlayed++;
+  if (finalist) addTrophy(s, { kind: 'runnerUp', gameId: game.id, tier, season: null, mvp: null, label: 'Invitational runner-up' }, trophies);
   if (champion) {
     s.stats.tournamentsWon++;
     const star = team.lineup
       .map((id) => (id ? s.players[id] : undefined))
       .filter((p) => p !== undefined)
       .sort((a, b) => b.level - a.level)[0];
-    addTrophy(s, { kind: 'tournament', gameId: game.id, tier, season: null, mvp: star?.tag ?? null });
+    addTrophy(s, { kind: 'tournament', gameId: game.id, tier, season: null, mvp: star?.tag ?? null, label: 'Invitational champions' }, trophies);
   }
 
   const result: TournamentResult = {

@@ -2,7 +2,7 @@
   import { GAMES, getGame } from '../../data/games';
   import { TRAIT_MAP } from '../../data/traits';
   import { fmtPct, fmtTime, money } from '../../engine/format';
-  import { rerollCost } from '../../engine/market';
+  import { isPinned, pinnedRival, rerollCost } from '../../engine/market';
   import { ALL_STATS, STAT_LABEL } from '../../engine/players';
   import { tick } from 'svelte';
   import { hasRosterSpace } from '../../engine/teams';
@@ -73,7 +73,25 @@
         {@const p = l.player}
         {@const space = hasRosterSpace(v.s, p.gameId, v.m)}
         {@const afford = v.s.cash >= l.price}
-        <div class="listing">
+        {@const pinned = isPinned(v.s, p.id)}
+        {@const replaces = pinned ? undefined : pinnedRival(v.s, p)}
+        <div class="listing" class:pinned>
+          <button
+            class="pin"
+            class:on={pinned}
+            aria-pressed={pinned}
+            onclick={() => game.togglePin(p.id)}
+            use:tooltip={() => ({
+              title: pinned ? 'Pinned' : 'Pin this prospect',
+              icon: pinned ? 'pin-off' : 'pin',
+              lines: [
+                pinned ? 'They stay on the board through refreshes and scouting. Click to let them go.' : 'Keep them on the board through refreshes and scouting while you save up.',
+                { text: `One pin per role${replaces ? `: this releases ${replaces.player.tag}` : ''}.`, tone: replaces ? 'gold' : 'muted' },
+              ],
+            })}
+          >
+            <Icon name={pinned ? 'pin-off' : 'pin'} size={14} />
+          </button>
           <PlayerCard player={p} showCondition={false} />
           <RosterImpact preview={previewSigning(v.s, p, v.m)} />
           <div class="stats">
@@ -176,6 +194,7 @@
     gap: 10px;
   }
   .listing {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -183,6 +202,33 @@
     border-radius: 12px;
     border: 1px solid var(--line);
     background: rgba(0, 0, 0, 0.15);
+  }
+  .listing.pinned {
+    border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+    background: linear-gradient(160deg, color-mix(in srgb, var(--gold) 10%, transparent), rgba(0, 0, 0, 0.15) 60%);
+  }
+  .pin {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid var(--line-2);
+    background: var(--bg-2);
+    color: var(--muted);
+  }
+  .pin:hover {
+    color: var(--text);
+    border-color: var(--gold);
+  }
+  .pin.on {
+    color: #1a1406;
+    background: var(--gold);
+    border-color: var(--gold);
   }
   .stats {
     display: grid;

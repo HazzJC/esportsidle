@@ -21,7 +21,7 @@ export function clickLogo(s: GameState): ClickResult {
   const mods = computeMods(s);
   const rates = computeRates(s, mods);
   const gain = rates.click;
-  earnCash(s, gain);
+  earnCash(s, gain, 'click');
   s.stats.clicksRun++;
   s.stats.clicksTotal++;
   s.stats.clickCashRun += gain;

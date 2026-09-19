@@ -4,6 +4,9 @@
   import Icon from './Icon.svelte';
 
   const s = $derived(game.view.s);
+
+  /** Half a drop, so one placed at the very edge still sits fully inside the play area. */
+  const HALF = 40;
 </script>
 
 <div class="drops">
@@ -14,7 +17,7 @@
       class="drop {d.kind}"
       class:chain={d.chain > 0}
       class:fading={left < 2.5}
-      style="left:{d.x * 100}%; top:{d.y * 100}%"
+      style="left:calc({d.x * 100}% - {(d.x * 2 - 1) * HALF}px); top:calc({d.y * 100}% - {(d.y * 2 - 1) * HALF}px)"
       onclick={() => game.clickDrop(d.id)}
       aria-label={d.chain > 0 ? `Hype Train carriage ${d.chain}` : d.kind === 'drama' ? 'Drama Drop' : 'Hype Drop'}
       in:scale={{ duration: 220, start: 0.3 }}
@@ -31,11 +34,34 @@
 </div>
 
 <style>
+  /*
+   * Drops only ever appear inside the play area. They used to cover the whole window, which put
+   * them behind the top bar (higher up the stack) where a drop was invisible but still took the
+   * click, and let one sit over the store, where aiming at an operation caught the drop instead.
+   * Above the popups now, so nothing can hide one.
+   */
   .drops {
     position: fixed;
-    inset: 0;
-    z-index: 750;
+    inset: 62px 8px 12px 8px;
+    z-index: 950;
     pointer-events: none;
+  }
+  @media (min-width: 861px) {
+    .drops {
+      /* Clear of the store column, so a drop can never be mistaken for a purchase. */
+      right: 340px;
+    }
+  }
+  @media (max-width: 1100px) and (min-width: 861px) {
+    .drops {
+      right: 300px;
+    }
+  }
+  @media (max-width: 860px) {
+    .drops {
+      /* Above the tab bar on phones. */
+      bottom: 84px;
+    }
   }
   .drop {
     --c: var(--gold);

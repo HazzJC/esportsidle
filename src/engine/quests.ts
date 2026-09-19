@@ -1,5 +1,6 @@
 import { QUESTS, QUEST_MAP, type QuestDef, type QuestReward } from '../data/quests';
 import { emit } from './bus';
+import { addTrophy, bestTrophyTier, trophyHomeGame } from './stories';
 import { fmt, fmtTime, money } from './format';
 import { grantXp, xpToNext } from './players';
 import type { Rng } from './rng';
@@ -125,13 +126,14 @@ export function rewardDetail(r: QuestReward, ctx: RewardContext): string {
 function applyReward(s: GameState, r: QuestReward, ctx: RewardContext, rng: Rng): void {
   switch (r.kind) {
     case 'cash':
-      earnCash(s, cashAmount(r, ctx));
+      earnCash(s, cashAmount(r, ctx), 'quest');
       break;
     case 'fans':
       gainFans(s, fanAmount(r, ctx));
       break;
     case 'trophies':
       gainTrophies(s, r.amount);
+      addTrophy(s, { kind: 'quest', gameId: trophyHomeGame(s), tier: bestTrophyTier(s), season: null, mvp: null, label: 'Quest reward' }, r.amount);
       break;
     case 'levels':
       for (const p of Object.values(s.players)) {

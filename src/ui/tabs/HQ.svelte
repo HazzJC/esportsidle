@@ -1,6 +1,6 @@
 <script lang="ts">
   import { OPERATIONS } from '../../data/operations';
-  import { PR_CLEANUP_SECONDS, dramaShare, prCleanupCost } from '../../engine/drops';
+  import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
@@ -22,6 +22,8 @@
   const drama = $derived(dramaShare(s, v.m));
   const calm = $derived(s.events.calmUntil > s.time);
   const prCost = $derived(prCleanupCost(r.cpsNoBuffs));
+  const fansAtRisk = $derived(scandalFanLoss(s));
+  const fansAway = $derived(s.events.fansHeld);
 
   function ago(time: number): string {
     const d = s.time - time;
@@ -65,14 +67,42 @@
           <span class="dtext">
             {#if calm}
               PR team on duty for {fmtTime(s.events.calmUntil - s.time)}. No Drama Drops.
+              {#if fansAway > 0}<span class="dim">· {fmt(fansAway)} fans back in {fmtTime(Math.max(0, s.events.fansReturnAt - s.time))}</span>{/if}
             {:else}
               Drama level {v.m.dramaLevel}: {fmtPct(drama)} of Hype Drops are Drama Drops.
             {/if}
           </span>
           {#if !calm}
-            <button class="btn small" disabled={s.cash < prCost} onclick={() => game.calmDrama()}>
-              PR cleanup · {money(prCost)}
-            </button>
+            <div class="dbuttons">
+              <button
+                class="btn small"
+                disabled={s.cash < prCost}
+                onclick={() => game.calmDrama()}
+                use:tooltip={() => ({
+                  title: 'PR cleanup',
+                  icon: 'shield',
+                  lines: [`Pay ${money(prCost)} to bury the story.`, { text: `No Drama Drops for ${fmtTime(PR_CLEANUP_SECONDS)}.`, tone: 'muted' }],
+                })}
+              >
+                PR cleanup · {money(prCost)}
+              </button>
+              <button
+                class="btn small"
+                onclick={() => game.rideOutDrama()}
+                use:tooltip={() => ({
+                  title: 'Ride it out',
+                  icon: 'flame',
+                  lines: [
+                    'Say nothing and let it burn out. Costs no cash.',
+                    { text: `${fmt(fansAtRisk)} fans walk out and come back in ${fmtTime(SCANDAL_SECONDS)}.`, tone: 'bad' },
+                    { text: `Income ×${SCANDAL_INCOME_MULT} and new fans ×${SCANDAL_FAN_MULT} while it lasts.`, tone: 'bad' },
+                    { text: `No Drama Drops for ${fmtTime(PR_CLEANUP_SECONDS)}, same as paying.`, tone: 'muted' },
+                  ],
+                })}
+              >
+                Ride it out · {fmt(fansAtRisk)} fans
+              </button>
+            </div>
           {/if}
         </div>
       {/if}
@@ -206,6 +236,11 @@
   }
   .activity .section-title {
     margin: 0;
+  }
+  .dbuttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .drama {
     display: flex;

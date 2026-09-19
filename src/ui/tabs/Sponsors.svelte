@@ -1,7 +1,7 @@
 <script lang="ts">
   import { BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { goalLabel, goalProgress, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
+  import { GOAL_EARNINGS_SHARE, goalLabel, goalProgress, goalReward, goalRewardPotential, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
   import type { SponsorOffer } from '../../engine/types';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
@@ -84,10 +84,23 @@
                   </div>
                   <span class="bar"><i style="width:{Math.min(100, (progress / c.goal.target) * 100)}%"></i></span>
                   {#if !c.completed}
-                    {@const payout = Math.max(500 * (c.tier + 1), v.r.cpsNoBuffs * c.goal.rewardSeconds)}
-                    <div class="payout-row small">
-                      <span class="dim">Bonus payout:</span>
+                    {@const payout = goalReward(s, c, v.r.cpsNoBuffs)}
+                    {@const potential = goalRewardPotential(c.tier, c.goal.rewardSeconds, v.r.cpsNoBuffs)}
+                    <div
+                      class="payout-row small"
+                      use:tooltip={() => ({
+                        title: 'Bonus payout',
+                        icon: 'handshake',
+                        lines: [
+                          `Finishing this goal now pays ${money(payout)}.`,
+                          { text: `It is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs, up to ${money(potential)}.`, tone: 'muted' },
+                          { text: `A goal finished early pays proportionally less, so let the deal run its ${fmtTime(c.goal.rewardSeconds)}.`, tone: 'muted' },
+                        ],
+                      })}
+                    >
+                      <span class="dim">Bonus payout now:</span>
                       <b class="payout-val num">{money(payout)}</b>
+                      <span class="dim">of {money(potential)}</span>
                       {#if c.tier >= 2}<span class="dim">· +1 trophy</span>{/if}
                     </div>
                   {/if}
@@ -117,7 +130,7 @@
             {@const brand = BRAND_MAP.get(offer.brandId)}
             {@const info = brand ? CATEGORY_INFO[brand.category] : undefined}
             {@const block = blocker(offer)}
-            {@const payout = Math.max(500 * (offer.tier + 1), v.r.cpsNoBuffs * offer.goal.rewardSeconds)}
+            {@const payout = goalRewardPotential(offer.tier, offer.goal.rewardSeconds, v.r.cpsNoBuffs)}
             {#if brand && info}
               <div class="card" style="--bc:{brand.color}">
                 <div class="brand">
@@ -132,13 +145,19 @@
                 <div class="perk"><Icon name={info.icon} size={13} /> {info.perk}</div>
                 <div
                   class="goal-offer small"
-                  use:tooltip={() => ({ title: 'Bonus goal', lines: [`Complete during the contract for about ${money(payout)}${offer.tier >= 2 ? ' and a trophy' : ''}.`] })}
+                  use:tooltip={() => ({
+                    title: 'Bonus goal',
+                    lines: [
+                      `Worth up to ${money(payout)}${offer.tier >= 2 ? ' and a trophy' : ''}.`,
+                      { text: `The bonus is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs, and pays less if the goal is finished in under ${fmtTime(offer.goal.rewardSeconds)}.`, tone: 'muted' },
+                    ],
+                  })}
                 >
                   <div class="goal-offer-main">
                     <Icon name="badge-check" size={13} />
                     <span>{goalLabel(offer.goal.kind, offer.goal.target)}</span>
                   </div>
-                  <span class="payout-badge num">+{money(payout)}</span>
+                  <span class="payout-badge num">up to +{money(payout)}</span>
                 </div>
                 <div class="foot">
                   <span class="dim small">{fmtTime(offer.duration)} contract</span>

@@ -123,11 +123,28 @@ export function recordSeason(s: GameState, team: TeamState, flags: { title: bool
   return recap;
 }
 
-export function addTrophy(s: GameState, t: Omit<TrophyEntry, 'id' | 'run' | 'time'>): TrophyEntry {
-  const entry: TrophyEntry = { ...t, id: s.nextId++, run: s.prestige.runs + 1, time: s.time };
+export function addTrophy(s: GameState, t: Omit<TrophyEntry, 'id' | 'run' | 'time'>, count = 1): TrophyEntry {
+  let entry: TrophyEntry = { ...t, id: s.nextId++, run: s.prestige.runs + 1, time: s.time };
   s.trophyCase.unshift(entry);
+  // Every trophy the org is paid gets its own place on the shelf, so the shelf and the trophy
+  // counter always tell the same story.
+  for (let i = 1; i < count; i++) {
+    entry = { ...t, id: s.nextId++, run: s.prestige.runs + 1, time: s.time };
+    s.trophyCase.unshift(entry);
+  }
   if (s.trophyCase.length > TROPHY_CASE_SIZE) s.trophyCase.length = TROPHY_CASE_SIZE;
   return entry;
+}
+
+/** The tier an org-wide trophy is engraved with: the best league the org competes in. */
+export function bestTrophyTier(s: GameState): number {
+  return Object.values(s.teams).reduce((n, t) => Math.max(n, t.tier), 0);
+}
+
+/** The game an org-wide trophy (a sponsor goal, a quest) is filed under: its strongest team. */
+export function trophyHomeGame(s: GameState): string {
+  const best = Object.values(s.teams).sort((a, b) => b.tier - a.tier)[0];
+  return best?.gameId ?? 'smash';
 }
 
 export function seasonSummary(r: SeasonRecap): string {

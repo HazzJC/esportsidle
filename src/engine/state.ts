@@ -9,6 +9,7 @@ import { createFounder } from './players';
 import { createGameProgress } from './popularity';
 import { Rng, randomSeed } from './rng';
 import { addToTeam, createTeam, ensureTeam } from './teams';
+import { INCOME_SOURCES, type IncomeSource } from './types';
 import type { AutomationSettings, GameProgress, GameState, OperationState, Player, Settings, Stats } from './types';
 
 export const SAVE_VERSION = 5;
@@ -146,6 +147,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     },
     cash: 0,
     earnedRun: 0,
+    incomeRun: createIncomeLedger(),
     earnedTotal: 0,
     fans: 0,
     fansRun: 0,
@@ -160,11 +162,11 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     games: createGames(),
     teams: {},
     players: {},
-    market: { listings: [], nextRefresh: 0, rerolls: 0 },
+    market: { listings: [], nextRefresh: 0, rerolls: 0, pinned: [] },
     staff: createStaff(),
     decor: {},
     drops: { nextAt: 0, active: [] },
-    events: { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, lastTournament: null },
+    events: { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, fansHeld: 0, fansReturnAt: 0, lastTournament: null },
     designs: {},
     merch: { trend: 'neon', trendEndsAt: 0, unlocked: {}, lines: {} },
     sponsors: { offers: [], active: [], nextRefresh: 0, history: [] },
@@ -207,6 +209,11 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
  * Starts a run with an empty roster and the first-player draft. Teams exist only for games that
  * are already unlocked beyond the first; the first signing founds the Smash Siblings team.
  */
+/** A fresh income breakdown with every source at zero. */
+export function createIncomeLedger(): Record<IncomeSource, number> {
+  return Object.fromEntries(INCOME_SOURCES.map((k) => [k, 0])) as Record<IncomeSource, number>;
+}
+
 export function setupNewRun(s: GameState): void {
   const rng = new Rng(s);
   for (const g of GAMES) {

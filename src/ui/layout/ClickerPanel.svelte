@@ -289,11 +289,23 @@
     overflow: hidden;
     position: relative;
   }
+  /*
+   * A fixed block. Cash, income and the chips under them change length constantly, and any reflow
+   * here used to shove the logo up and down mid-click.
+   */
   .head {
     text-align: center;
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     gap: 2px;
+    min-height: 94px;
+  }
+  .cash,
+  .cps {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cash {
     font-family: var(--font-display);
@@ -320,7 +332,14 @@
     justify-content: center;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
+    /* One row, always: wrapping used to add a line and move everything below it. */
+    flex-wrap: nowrap;
+    min-height: 24px;
+    max-width: 100%;
+  }
+  .subline > * {
+    white-space: nowrap;
+    min-width: 0;
   }
   .fans,
   .trophies {
