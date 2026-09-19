@@ -42,7 +42,7 @@ import { rarityName } from './theme';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
 import { signDraftPick } from '../engine/draft';
 import { QUEST_MAP } from '../data/quests';
-import { claimQuest, describeReward } from '../engine/quests';
+import { claimQuest, describeReward, skipQuest } from '../engine/quests';
 import { skipTutorial, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
 
@@ -467,16 +467,22 @@ class GameStore {
     this.refresh();
   }
 
-  /** Pays one of a finished quest's two rewards. */
-  claimQuest(id: string, choice: 0 | 1): void {
+  /** Pays the chosen reward of a finished quest (or its only one). */
+  claimQuest(id: string, choice = 0): void {
     const r = this.view.r;
     const ctx = { cps: r.cpsNoBuffs, fansPerSec: r.fansPerSec };
+    const picked = QUEST_MAP.get(id)?.rewards[choice];
     const def = QUEST_MAP.get(id);
-    const reward = def ? describeReward(def.rewards[choice], ctx) : '';
+    const reward = picked ? describeReward(picked, ctx) : '';
     if (!claimQuest(this.state, id, choice, ctx, new Rng(this.state))) return;
     this.sfx('win');
     this.toast({ title: `Reward: ${reward}`, body: def?.title, icon: def?.icon ?? 'flag', tone: 'gold' }, 3000);
     this.refresh();
+  }
+
+  /** Puts a quest aside; the next quest takes its slot. */
+  skipQuest(id: string): void {
+    if (skipQuest(this.state, id)) this.refresh();
   }
 
   sellPlayer(playerId: string): number {

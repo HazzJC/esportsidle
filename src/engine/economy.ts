@@ -7,6 +7,7 @@ import { evaluateMerch } from './merch';
 import { applyEventModifiers } from './modifiers';
 import { passiveFans } from './players';
 import { BASE_LEGACY_LEVEL_PCT, legacyBonuses } from './prestige';
+import { questPerkEffects } from './quests';
 import { sponsorBonuses } from './sponsors';
 import { applyStat, applyStaffAndDecor } from './staff';
 import { evaluateTeam, teamPlayerIds } from './teams';
@@ -232,6 +233,7 @@ export function computeMods(s: GameState): Mods {
   for (const e of legacy.effects) applyEffect(m, e);
   for (const [gameId, mult] of Object.entries(legacy.gameRating)) m.gameRatingMult[gameId] = (m.gameRatingMult[gameId] ?? 1) * mult;
   m.fansMult *= legacy.fansMult;
+  for (const e of questPerkEffects(s)) applyEffect(m, e);
   applyStaffAndDecor(m, s);
   applyEventModifiers(m, s);
   const sponsors = sponsorBonuses(s);

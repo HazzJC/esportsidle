@@ -9,11 +9,16 @@
   import Icon from './Icon.svelte';
   import PlayerCard from './PlayerCard.svelte';
 
-  /** How each of the three picks is pitched, cheapest first. */
-  const PITCH = [
-    { label: 'Quick start', icon: 'zap' },
-    { label: 'Worth the wait', icon: 'clock' },
-    { label: 'Big bet', icon: 'gem' },
+  /** How each of the three first-run picks is pitched, cheapest first. */
+  const FIRST_PITCH = [
+    { label: 'Bargain bin', icon: 'dollar-sign', note: 'Has never played. Loses until trained.' },
+    { label: 'Solid start', icon: 'user', note: 'An ordinary rookie. Ready to compete.' },
+    { label: 'Rising talent', icon: 'sparkles', note: 'Uncommon talent. Worth the extra clicks.' },
+  ];
+  const LATER_PITCH = [
+    { label: 'Safe pick', icon: 'user', note: '' },
+    { label: 'Proven pro', icon: 'star', note: '' },
+    { label: 'Star signing', icon: 'gem', note: '' },
   ];
 
   const v = $derived(game.view);
@@ -25,12 +30,12 @@
 </script>
 
 {#if picks.length > 0 && g}
-  <section class="draft" class:tut-target={s.tutorial.step === 'draft'}>
+  <section class="draft">
     <header>
       <h2 class="section-title">Sign your first player</h2>
       <p class="muted small">
         {#if firstRun}
-          Three prospects want to play {g.name} for {s.org.name}. Whoever you sign founds your first team. Sign the rookie now, or keep clicking for someone better.
+          Three prospects want to play {g.name} for {s.org.name}. Whoever you sign founds your first team. A few more clicks buys a much better start.
         {:else}
           A new chapter, and your name opens doors. Three prospects want to play {g.name} for {s.org.name}; whoever you sign founds the team.
         {/if}
@@ -41,10 +46,11 @@
         {@const p = l.player}
         {@const outlook = draftOutlook(s, p, v.m)}
         {@const short = Math.max(0, l.price - s.cash)}
-        {@const pitch = PITCH[i] ?? PITCH[0]}
-        <article class="pick" class:ready={short === 0}>
+        {@const pitch = (firstRun ? FIRST_PITCH : LATER_PITCH)[i] ?? LATER_PITCH[0]}
+        <article class="pick" class:ready={short === 0} class:tut-target={s.tutorial.step === 'draft' && short === 0}>
           <span class="pitch"><Icon name={pitch.icon} size={12} /> {pitch.label}</span>
           <PlayerCard player={p} showCondition={false} />
+          {#if pitch.note}<span class="note">{pitch.note}</span>{/if}
           <div class="outlook">
             <span use:tooltip={() => ({ title: 'Win chance', lines: [`In the ${tierName(0)}, the bottom league, before any gear or staff.`] })}>
               <b class="num">{Math.round(outlook.win * 100)}%</b> to win
@@ -54,12 +60,14 @@
               use:tooltip={() => ({
                 title: 'How far they can climb',
                 lines: [
-                  `Wins at least half their matches up to the ${tierName(outlook.reach)}, before any gear or staff.`,
+                  outlook.reach >= 0
+                    ? `Wins at least half their matches up to the ${tierName(outlook.reach)}, before any gear or staff.`
+                    : 'Not ready for any league yet. Matches and levels will teach them, slowly.',
                   { text: 'Higher leagues pay far more, and a winning season earns promotion.', tone: 'muted' },
                 ],
               })}
             >
-              up to <b>{tierName(outlook.reach)}</b>
+              {#if outlook.reach >= 0}up to <b>{tierName(outlook.reach)}</b>{:else}<b class="bad">Needs training</b>{/if}
             </span>
           </div>
           <div class="traits">
@@ -134,6 +142,10 @@
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    color: var(--muted);
+  }
+  .note {
+    font-size: 12px;
     color: var(--muted);
   }
   .outlook {

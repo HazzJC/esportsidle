@@ -8,15 +8,22 @@ import type { GameState, MarketListing, Mods, Player, Rarity } from './types';
 /** The first team is always the solo game, so one signing makes a full lineup. */
 export const DRAFT_GAME = 'smash';
 
+export interface DraftSlot {
+  rarity: Rarity;
+  price: number;
+  /** A complete beginner: every stat at zero. Cheap, and loses until trained. */
+  blank?: boolean;
+}
+
 /**
- * A brand-new org's three prospects, priced for clicking: the rookie takes a few seconds, the talent
- * about a minute and the pro a few minutes. Every choice is fine; the pricier ones trade waiting
- * now for a stronger first player.
+ * A brand-new org's three prospects, all within a minute of clicking: a complete beginner for $10,
+ * an ordinary rookie for $25 and an uncommon talent for $50. Clicking a little longer buys a much
+ * better start.
  */
-export const FIRST_DRAFT: { rarity: Rarity; price: number }[] = [
-  { rarity: 'rookie', price: 40 },
-  { rarity: 'talent', price: 250 },
-  { rarity: 'pro', price: 1_000 },
+export const FIRST_DRAFT: DraftSlot[] = [
+  { rarity: 'rookie', price: 10, blank: true },
+  { rarity: 'rookie', price: 25 },
+  { rarity: 'talent', price: 50 },
 ];
 
 /** Later runs start with a reputation, so the prospects are better and priced like the market. */
@@ -24,11 +31,18 @@ export const LATER_DRAFT: Rarity[] = ['talent', 'pro', 'star'];
 
 export function createDraft(s: GameState, rng: Rng): MarketListing[] {
   const firstRun = s.prestige.runs === 0;
-  const picks = firstRun ? FIRST_DRAFT : LATER_DRAFT.map((rarity) => ({ rarity, price: 0 }));
-  return picks.map(({ rarity, price }) => {
+  const picks: DraftSlot[] = firstRun ? FIRST_DRAFT : LATER_DRAFT.map((rarity) => ({ rarity, price: 0 }));
+  return picks.map(({ rarity, price, blank }) => {
     const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: DRAFT_GAME, time: s.time, rarity });
+    if (blank) makeBlank(player);
     return { player, price: firstRun ? price : signingFee(player) };
   });
+}
+
+/** Wipes a prospect back to a complete beginner: no stats at all, but they learn fast. */
+function makeBlank(p: Player): void {
+  for (const k of Object.keys(p.stats) as (keyof Player['stats'])[]) p.stats[k] = 0;
+  p.traits = ['grinder'];
 }
 
 export type DraftResult = { ok: true; player: Player } | { ok: false; reason: string };
@@ -51,7 +65,7 @@ export function signDraftPick(s: GameState, playerId: string, mods: Pick<Mods, '
 export interface DraftOutlook {
   /** Win chance in the bottom league. */
   win: number;
-  /** The highest league tier where this prospect alone still wins at least half the time. */
+  /** The highest league tier where this prospect alone still wins at least half the time; -1 for none. */
   reach: number;
 }
 
@@ -68,8 +82,8 @@ export function draftOutlook(s: GameState, player: Player, mods: Mods): DraftOut
   const s2: GameState = { ...s, players: { ...s.players, [player.id]: player }, teams: { ...s.teams, [player.gameId]: team } };
   const ctx = { cpsNoBuffs: 0, incomeBuff: 1, fansMult: mods.fansMult };
   const win = evaluateTeam(s2, team, mods, ctx).winChance;
-  let reach = 0;
-  for (let tier = 1; tier <= REACH_LIMIT; tier++) {
+  let reach = win >= 0.5 ? 0 : -1;
+  for (let tier = 1; reach >= 0 && tier <= REACH_LIMIT; tier++) {
     team.tier = tier;
     if (evaluateTeam(s2, team, mods, ctx).winChance < 0.5) break;
     reach = tier;

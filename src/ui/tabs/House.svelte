@@ -335,6 +335,7 @@
           secondary={teamKit(v.s, pos.seat.player.gameId).secondary}
           gameColor={pos.seat.color}
           status={pos.seat.status}
+          label={false}
         />
       {/each}
 
@@ -364,6 +365,18 @@
           <circle cx="532" cy="90" r="3" fill="#4ade80" opacity="0.6" />
         </g>
       {/if}
+
+      <!-- Names go on top of everything, so no player, desk or decor in front can hide one. -->
+      {#each placed as pos (pos.seat.player.id)}
+        <text
+          x={pos.x}
+          y={pos.y + 26 * pos.scale}
+          text-anchor="middle"
+          class="name-tag"
+          class:out={pos.seat.status === 'out'}
+          font-size={Math.max(14, 16 * pos.scale)}>{pos.seat.player.tag}</text
+        >
+      {/each}
 
       {#if seats.length === 0}
         <text x="480" y="380" text-anchor="middle" class="empty">No players here yet. Sign some from the transfer market.</text>
@@ -513,6 +526,19 @@
     font-family: var(--font-ui);
     font-size: 12px;
     fill: var(--dim);
+  }
+  .name-tag {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    fill: #fff;
+    paint-order: stroke;
+    stroke: rgba(8, 8, 10, 0.9);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+  }
+  .name-tag.out {
+    fill: #d6d6d9;
   }
   .empty {
     font-family: var(--font-ui);

@@ -11,7 +11,8 @@
  *
  * Both start the way a real player does: no team, three draft prospects and operations locked until
  * the first signing. The active model clicks for the prospect it wants (--draft=0|1|2, default the
- * middle one); the casual model signs whoever it can afford. Finished quests are claimed for cash.
+ * $50 talent); the casual model signs whoever it can afford. Quests with a choice are claimed for
+ * cash (--quest=perk takes the permanent perk instead).
  *
  *   npm run sim -- --mode=active --hours=5
  *   npm run sim -- --mode=casual --days=5 --prestige
@@ -34,7 +35,8 @@ import { optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../src
 import { buyOperation, isOperationRevealed, unitPrice } from '../src/engine/operations';
 import { buyGear, gearUpgradeCost, playerRating } from '../src/engine/players';
 import { buyNode, legacyFor, mandateOffers, pendingLegacy, sellOrg } from '../src/engine/prestige';
-import { claimQuest } from '../src/engine/quests';
+import { claimQuest, skipQuest } from '../src/engine/quests';
+import { QUEST_MAP } from '../src/data/quests';
 import { Rng } from '../src/engine/rng';
 import { signOffer } from '../src/engine/sponsors';
 import { hireStaff, isStaffUnlocked, staffPrice } from '../src/engine/staff';
@@ -62,7 +64,12 @@ const CHARTER = String(args.charter ?? 'operator');
 const MANDATE = String(args.mandate ?? 'first');
 const AUTOMATION = args.automation !== undefined ? args.automation === 'true' : MODE === 'casual';
 /** Which of the three first-player prospects the active model clicks for: 0 rookie, 1 talent, 2 pro. */
-const DRAFT_PICK = Number(args.draft ?? 1);
+const DRAFT_PICK = Number(args.draft ?? 2);
+/** Which kind of quest reward to take when a quest offers a choice: cash or perk. */
+const QUEST_PICK = String(args.quest ?? 'cash');
+const SIM_SKIPS = ['design_shirt', 'plan_1'];
+/** --quests=off never claims quest rewards: a baseline for measuring what quests are worth. */
+const QUESTS_ON = args.quests !== 'off';
 const HOURS = Number(args.hours ?? 5);
 const DAYS = Number(args.days ?? 4);
 /** Seconds between decisions: constant attention at the keyboard, or glancing in every few minutes. */
@@ -171,7 +178,13 @@ function ruleBasedActions(s: GameState): void {
   }
   const rates = computeRates(s, mods);
   for (const q of [...s.quests.active]) {
-    if (q.ready) claimQuest(s, q.id, 0, { cps: rates.cpsNoBuffs, fansPerSec: rates.fansPerSec }, new Rng(s));
+    // The sim never draws a jersey or changes season plan, so it sets those quests aside.
+    if (!q.ready && SIM_SKIPS.includes(q.id)) skipQuest(s, q.id);
+    if (!q.ready || !QUESTS_ON) continue;
+    // Takes cash when offered (easy to value); otherwise the quest's only or first reward.
+    const rewards = QUEST_MAP.get(q.id)?.rewards ?? [];
+    const pick = Math.max(0, rewards.findIndex((r) => r.kind === QUEST_PICK));
+    claimQuest(s, q.id, pick, { cps: rates.cpsNoBuffs, fansPerSec: rates.fansPerSec }, new Rng(s));
   }
 
   const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
@@ -408,3 +421,4 @@ if (run > 1) {
 console.log('\nSnapshots:');
 console.table(snapshots);
 console.log(`Legacy now ${s.prestige.level} (+${pendingLegacy(s)} pending, ${legacyFor(s.earnedTotal)} lifetime).`);
+console.log(`Quests claimed: ${s.quests.claimed}; picks ${JSON.stringify(s.quests.picks)}.`);

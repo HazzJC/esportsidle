@@ -37,7 +37,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'draft',
     title: 'Sign your first player',
-    body: 'Three prospects want to play for you. A rookie gets you competing in seconds. A pro costs a few more minutes of clicking but wins far more. Whoever you sign founds your first team.',
+    body: 'Three prospects want to play for you, and whoever you sign founds your first team. The $10 beginner has never played, the $25 rookie is ready to compete, and the $50 talent is the pick of the three if you click a little longer.',
     icon: 'user-plus',
     target: 'draft',
     progress: (s) => ({ value: Math.min(1, players(s)), target: 1 }),
@@ -45,7 +45,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'match',
     title: 'Your first match',
-    body: 'Players compete on their own: a match every few seconds, sixteen to a season, and strong seasons earn promotion to richer leagues. Players, gear and seasons are the active side of your org.',
+    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Players, gear and seasons are the active side of your org.',
     icon: 'swords',
     target: 'matches',
     progress: (s) => ({ value: Math.min(1, s.stats.matchesWon + s.stats.matchesLost), target: 1 }),
@@ -53,7 +53,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'grinder',
     title: 'Build passive income',
-    body: 'Operations earn money every second, even while the game is closed. They are the passive side of your org. Buy a Ranked Grinder from the store.',
+    body: 'Operations earn money every second, even while the game is closed. They are the passive side of your org. Buy a Ranked Grinder.',
     icon: 'gamepad-2',
     target: 'store',
     progress: (s) => ({ value: Math.min(1, s.ops.grinder?.owned ?? 0), target: 1 }),

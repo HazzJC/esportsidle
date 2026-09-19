@@ -621,6 +621,10 @@ export interface QuestState {
   active: ActiveQuest[];
   /** Quest id -> simulated time it was claimed. Kept across sales. */
   done: Record<string, number>;
+  /** Quest id -> index of the reward taken, so permanent perks keep applying. */
+  picks: Record<string, number>;
+  /** Quest id -> simulated time it was set aside. It returns once the rest of the queue is used up. */
+  skipped: Record<string, number>;
   claimed: number;
 }
 

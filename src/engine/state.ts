@@ -181,7 +181,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     trophyCase: [],
     draft: null,
     tutorial: { step: 'click' },
-    quests: { active: [], done: {}, claimed: 0 },
+    quests: { active: [], done: {}, picks: {}, skipped: {}, claimed: 0 },
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

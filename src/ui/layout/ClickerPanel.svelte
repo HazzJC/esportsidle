@@ -417,6 +417,12 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
+  /* Keep the bob when the tutorial adds its glow (both are animations). */
+  .logo.tut-target {
+    animation:
+      bob 5s ease-in-out infinite,
+      tut-glow 2.4s ease-in-out infinite;
+  }
   .logo:hover {
     transform: scale(1.03);
   }

@@ -651,6 +651,15 @@
     content: ' *';
     color: var(--orange);
   }
+  /* Name and rating sit above the avatar, which can overflow its box, with a shadow to stay readable. */
+  .ptag,
+  .prtg {
+    position: relative;
+    z-index: 1;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.9),
+      0 0 4px rgba(0, 0, 0, 0.75);
+  }
   .ptag {
     font-family: var(--font-ui);
     font-weight: 700;

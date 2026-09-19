@@ -2,20 +2,25 @@ import { isMerchUnlocked } from '../engine/merch';
 import { pendingLegacy } from '../engine/prestige';
 import { sponsorsUnlocked } from '../engine/sponsors';
 import { isStaffUnlocked } from '../engine/staff';
-import type { BuffEffect, GameState } from '../engine/types';
+import type { Effect, GameState } from '../engine/types';
 import { STAFF } from './staff';
 
-/** What a finished quest can pay out. Every quest offers two, and the player picks one. */
+/**
+ * What a finished quest pays. Early quests pay one clear reward, so nobody has to choose between
+ * things they have not seen yet; later quests offer a choice between two that the player will have
+ * met by then.
+ */
 export type QuestReward =
-  /** Cash worth this many seconds of income, and never less than `min`. */
+  /** Cash worth this many seconds of current income, and never less than `min`. */
   | { kind: 'cash'; seconds: number; min: number }
-  /** Fans worth this many seconds of fan growth, and never fewer than `min`. */
+  /** Fans worth this many seconds of current fan growth, and never fewer than `min`. */
   | { kind: 'fans'; seconds: number; min: number }
   | { kind: 'trophies'; amount: number }
   /** Every player on the roster gains this many levels. */
   | { kind: 'levels'; amount: number }
   | { kind: 'legacy'; amount: number }
-  | { kind: 'buff'; name: string; icon: string; effect: BuffEffect; seconds: number };
+  /** A permanent bonus, kept for the life of the org, even after selling it. */
+  | { kind: 'perk'; label: string; effects: Effect[] };
 
 export interface QuestDef {
   id: string;
@@ -31,34 +36,14 @@ export interface QuestDef {
   mode: 'delta' | 'absolute';
   /** Offered only when this is true, so a quest is always something the player can act on. */
   available?: (s: GameState) => boolean;
-  rewards: [QuestReward, QuestReward];
+  rewards: [QuestReward] | [QuestReward, QuestReward];
 }
 
-const cash = (seconds: number, min: number): QuestReward => ({ kind: 'cash', seconds, min });
-const fans = (seconds: number, min: number): QuestReward => ({ kind: 'fans', seconds, min });
+const cash = (minutes: number, min: number): QuestReward => ({ kind: 'cash', seconds: minutes * 60, min });
+const fans = (minutes: number, min: number): QuestReward => ({ kind: 'fans', seconds: minutes * 60, min });
 const trophies = (amount: number): QuestReward => ({ kind: 'trophies', amount });
 const levels = (amount: number): QuestReward => ({ kind: 'levels', amount });
-const incomeBuff = (mult: number, minutes: number): QuestReward => ({
-  kind: 'buff',
-  name: 'Quest bonus',
-  icon: 'flag',
-  effect: { kind: 'income', mult },
-  seconds: minutes * 60,
-});
-const clickBuff = (mult: number, minutes: number): QuestReward => ({
-  kind: 'buff',
-  name: 'Hot hands',
-  icon: 'mouse-pointer-click',
-  effect: { kind: 'click', mult },
-  seconds: minutes * 60,
-});
-const fansBuff = (mult: number, minutes: number): QuestReward => ({
-  kind: 'buff',
-  name: 'Buzz',
-  icon: 'heart',
-  effect: { kind: 'fans', mult },
-  seconds: minutes * 60,
-});
+const perk = (label: string, ...effects: Effect[]): QuestReward => ({ kind: 'perk', label, effects });
 
 const hasPlayer = (s: GameState) => Object.keys(s.players).length > 0;
 const teamsWithPlayers = (s: GameState) => Object.values(s.teams).filter((t) => t.lineup.some((id) => id !== null)).length;
@@ -71,8 +56,13 @@ const totalOps = (s: GameState) => Object.values(s.ops).reduce((n, o) => n + o.o
  * The milestones every org should hit, in roughly the order they become possible. Two are on the
  * board at a time; finishing one brings in the next available quest. Progress is kept for the life
  * of the org, across sales.
+ *
+ * Reward sizing: cash is minutes of income at the moment of claiming, with a floor so early claims
+ * still buy something real (a few more operations, a gear tier, a hire). Perks are permanent but
+ * modest, and each one follows from the quest that earns it, so the player knows what it does.
  */
 export const QUESTS: QuestDef[] = [
+  // -- Getting going: one clear reward each ----------------------------------------------------
   {
     id: 'grinders_10',
     title: 'Grinder squad',
@@ -81,28 +71,28 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.ops.grinder?.owned ?? 0,
     target: 10,
     mode: 'absolute',
-    rewards: [cash(60, 150), clickBuff(3, 2)],
+    rewards: [perk('Ranked Grinders earn twice as much', { kind: 'opMult', op: 'grinder', mult: 2 })],
   },
   {
     id: 'gear_1',
     title: 'Gear up',
-    desc: 'Buy new gear for a player. Open a player from the Teams or Roster tab.',
+    desc: 'Buy a gear upgrade for a player. Click a player in the Teams tab to see their gear.',
     icon: 'cpu',
     metric: (s) => s.stats.gearBought,
     target: 1,
     mode: 'delta',
     available: hasPlayer,
-    rewards: [cash(90, 250), levels(1)],
+    rewards: [levels(2)],
   },
   {
     id: 'upgrades_3',
     title: 'Read the patch notes',
-    desc: 'Buy 3 upgrades from the store.',
+    desc: 'Buy 3 upgrades from the top of the store.',
     icon: 'sparkles',
     metric: (s) => s.stats.upgradesBoughtTotal,
     target: 3,
     mode: 'delta',
-    rewards: [cash(90, 300), incomeBuff(2, 2)],
+    rewards: [perk('Clicks earn twice as much', { kind: 'clickMult', mult: 2 })],
   },
   {
     id: 'crowd_1',
@@ -112,17 +102,17 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.crowdsTotal,
     target: 1,
     mode: 'delta',
-    rewards: [cash(120, 400), clickBuff(5, 1)],
+    rewards: [perk('The crowd goes wild for 50% longer', { kind: 'hypeDuration', mult: 1.5 })],
   },
   {
     id: 'drop_1',
     title: 'Catch the drop',
-    desc: 'Click a Hype Drop when one appears on screen.',
+    desc: 'Click a Hype Drop, the glowing icon that sometimes floats across the screen.',
     icon: 'zap',
     metric: (s) => s.stats.dropsClicked,
     target: 1,
     mode: 'delta',
-    rewards: [cash(150, 500), fans(300, 50)],
+    rewards: [perk('Hype Drops appear 20% more often', { kind: 'dropInterval', mult: 0.8 })],
   },
   {
     id: 'staff_1',
@@ -133,8 +123,21 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => STAFF.some((d) => isStaffUnlocked(s, d)),
-    rewards: [cash(150, 600), levels(1)],
+    rewards: [cash(8, 1_500)],
   },
+  {
+    id: 'plan_1',
+    title: 'Have a plan',
+    desc: 'Set a team to the Development or Push for Promotion season plan in the Teams tab.',
+    icon: 'clipboard-list',
+    metric: (s) => (Object.values(s.teams).some((t) => t.plan !== 'balanced' || (t.nextPlan && t.nextPlan !== 'balanced')) ? 1 : 0),
+    target: 1,
+    mode: 'absolute',
+    available: hasPlayer,
+    rewards: [levels(2)],
+  },
+
+  // -- Growing: a choice between two things the player has met ------------------------------------
   {
     id: 'design_shirt',
     title: 'Design a shirt',
@@ -143,7 +146,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => (s.org.jersey ? 1 : 0),
     target: 1,
     mode: 'absolute',
-    rewards: [cash(180, 800), fans(600, 100)],
+    rewards: [cash(8, 3_000), perk('+10% fans from everything', { kind: 'fansMult', mult: 1.1 })],
   },
   {
     id: 'second_team',
@@ -153,18 +156,18 @@ export const QUESTS: QuestDef[] = [
     metric: teamsWithPlayers,
     target: 2,
     mode: 'absolute',
-    rewards: [cash(240, 2_000), fansBuff(2, 5)],
+    rewards: [cash(8, 10_000), perk('Match prize money +10%', { kind: 'prizeMult', mult: 1.1 })],
   },
   {
     id: 'promotion_1',
     title: 'Moving up',
-    desc: 'Win promotion to a higher league.',
+    desc: 'Win promotion to a higher league: 12 wins in a 16-match season.',
     icon: 'trending-up',
     metric: (s) => s.stats.promotions,
     target: 1,
     mode: 'delta',
     available: hasPlayer,
-    rewards: [cash(300, 2_500), trophies(1)],
+    rewards: [cash(8, 10_000), perk('All team ratings +3%', { kind: 'teamRating', mult: 1.03 })],
   },
   {
     id: 'sponsor_1',
@@ -175,18 +178,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: sponsorsUnlocked,
-    rewards: [cash(300, 5_000), fansBuff(2, 10)],
-  },
-  {
-    id: 'plan_1',
-    title: 'Have a plan',
-    desc: 'Set a team to the Development or Push for Promotion season plan.',
-    icon: 'clipboard-list',
-    metric: (s) => (Object.values(s.teams).some((t) => t.plan !== 'balanced' || (t.nextPlan && t.nextPlan !== 'balanced')) ? 1 : 0),
-    target: 1,
-    mode: 'absolute',
-    available: hasPlayer,
-    rewards: [levels(1), cash(240, 3_000)],
+    rewards: [cash(10, 25_000), perk('One more sponsor slot', { kind: 'sponsorSlots', add: 1 })],
   },
   {
     id: 'decor_1',
@@ -196,7 +188,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.decorBought,
     target: 1,
     mode: 'delta',
-    rewards: [cash(300, 3_000), fans(900, 300)],
+    rewards: [cash(10, 25_000), fans(20, 2_000)],
   },
   {
     id: 'merch_1',
@@ -207,7 +199,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'absolute',
     available: isMerchUnlocked,
-    rewards: [cash(360, 10_000), incomeBuff(2, 5)],
+    rewards: [cash(10, 50_000), perk('Merch sells 20% more', { kind: 'merchMult', mult: 1.2 })],
   },
   {
     id: 'title_1',
@@ -218,7 +210,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: hasPlayer,
-    rewards: [cash(480, 10_000), trophies(2)],
+    rewards: [trophies(3), cash(15, 100_000)],
   },
   {
     id: 'level_10',
@@ -229,7 +221,7 @@ export const QUESTS: QuestDef[] = [
     target: 10,
     mode: 'absolute',
     available: hasPlayer,
-    rewards: [levels(1), cash(480, 15_000)],
+    rewards: [levels(3), perk('Players earn 15% more XP', { kind: 'xpMult', mult: 1.15 })],
   },
   {
     id: 'tourney_1',
@@ -240,7 +232,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: hasPlayer,
-    rewards: [trophies(3), cash(900, 25_000)],
+    rewards: [trophies(3), perk('Tournament prizes ×1.5', { kind: 'tournamentReward', mult: 1.5 })],
   },
   {
     id: 'sell_player',
@@ -251,7 +243,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => sellable(s) >= 2,
-    rewards: [cash(600, 20_000), fans(1_200, 1_000)],
+    rewards: [cash(15, 100_000), perk('Signing fees 15% cheaper', { kind: 'feeMult', mult: 0.85 })],
   },
   {
     id: 'rival_1',
@@ -262,7 +254,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => s.rival !== null,
-    rewards: [fans(1_800, 2_000), cash(600, 25_000)],
+    rewards: [fans(30, 20_000), cash(15, 250_000)],
   },
   {
     id: 'ops_100',
@@ -272,7 +264,7 @@ export const QUESTS: QuestDef[] = [
     metric: totalOps,
     target: 100,
     mode: 'absolute',
-    rewards: [cash(900, 50_000), incomeBuff(2, 10)],
+    rewards: [cash(20, 500_000), perk('+5% income from everything', { kind: 'globalPct', pct: 0.05 })],
   },
   {
     id: 'sponsor_goal',
@@ -283,7 +275,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => s.sponsors.active.length > 0,
-    rewards: [cash(900, 50_000), trophies(1)],
+    rewards: [trophies(2), perk('Sponsor income +15%', { kind: 'sponsorIncome', mult: 1.15 })],
   },
   {
     id: 'tier_5',
@@ -294,7 +286,7 @@ export const QUESTS: QuestDef[] = [
     target: 4,
     mode: 'absolute',
     available: hasPlayer,
-    rewards: [trophies(2), cash(1_200, 100_000)],
+    rewards: [trophies(5), cash(30, 5_000_000)],
   },
   {
     id: 'sell_org',
@@ -305,7 +297,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => s.stats.orgsSold > 0 || pendingLegacy(s) >= 1,
-    rewards: [{ kind: 'legacy', amount: 3 }, trophies(5)],
+    rewards: [{ kind: 'legacy', amount: 3 }, trophies(10)],
   },
 ];
 

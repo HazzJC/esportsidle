@@ -31,8 +31,9 @@
   });
 </script>
 
-<div class="app" class:reduced-motion={s.settings.reducedMotion} class:tutoring={s.settings.onboarded && s.tutorial.step !== 'done'} data-view={game.mobileView}>
+<div class="app" class:reduced-motion={s.settings.reducedMotion} data-view={game.mobileView}>
   <TopBar />
+  <Coach />
   <div class="columns">
     <aside class="col col-left"><ClickerPanel /></aside>
     <main class="col col-center"><CenterPanel /></main>
@@ -42,7 +43,6 @@
   <DropLayer />
   <ChoicePanel />
   <TournamentModal />
-  <Coach />
   <Toasts />
   <Tooltip />
   {#if !s.settings.onboarded}
@@ -70,17 +70,6 @@
   .col {
     min-height: 0;
     min-width: 0;
-  }
-  /* The tutorial coach floats over the bottom of the screen; let scrolling content clear it. */
-  .tutoring :global(.center .body),
-  .tutoring :global(.op-list) {
-    padding-bottom: 190px;
-  }
-  @media (max-width: 860px) {
-    .tutoring :global(.center .body),
-    .tutoring :global(.op-list) {
-      padding-bottom: 70px;
-    }
   }
   @media (max-width: 1100px) {
     .columns {

@@ -16,6 +16,7 @@
     secondary,
     gameColor,
     status,
+    label = true,
   }: {
     player: Player;
     x: number;
@@ -25,6 +26,8 @@
     secondary: string;
     gameColor: string;
     status: 'playing' | 'bench' | 'out';
+    /** Draw the name under the desk. The house draws names in its own top layer instead. */
+    label?: boolean;
   } = $props();
 
   const uid = $props.id();
@@ -176,7 +179,7 @@
     <g transform="translate(-6.5 -6.5)"><Icon name={badge.icon} size={13} color="#fff" /></g>
   </g>
 
-  <text x="0" y="24" text-anchor="middle" class="tag">{player.tag}</text>
+  {#if label}<text x="0" y="24" text-anchor="middle" class="tag">{player.tag}</text>{/if}
 </g>
 
 <style>
