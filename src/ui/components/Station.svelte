@@ -82,7 +82,7 @@
 
   <!-- Player -->
   <g transform="translate(-36 -116)">
-    <Avatar look={player.look} gear={player.gear} {primary} {secondary} size={72} mode="bust" />
+    <Avatar look={player.look} gear={player.gear} {primary} {secondary} size={72} mode="bust" tag={player.tag} />
   </g>
 
   <!-- Desk -->

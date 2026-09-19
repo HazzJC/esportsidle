@@ -8,6 +8,8 @@
   import { countQuality } from '../theme';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
+  import { hasTheOnlyCook } from '../../engine/easterEggs';
+
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },
     { value: 10, label: '10' },
@@ -22,6 +24,11 @@
   function info(def: StaffDef): { n: number; price: number; ok: boolean } {
     const owned = v.s.staff[def.id] ?? 0;
     const costMult = v.m.staffCostMult;
+    if (def.id === 'chef' && hasTheOnlyCook(v.s)) {
+      if (owned >= 1) return { n: 0, price: 0, ok: false };
+      const price = staffPrice(def, 0, 1, costMult);
+      return { n: 1, price, ok: v.s.cash >= price };
+    }
     if (amount < 0) {
       const max = maxStaffAffordable(def, owned, v.s.cash, costMult);
       const n = Math.max(1, max);

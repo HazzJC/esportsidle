@@ -31,7 +31,7 @@ import type { Effect, GameState, HallOfFameEntry, Player, Rarity } from './types
  * the dial that sets when a run can end: the sim reaches this figure at roughly three hours of
  * active play, which is the intended window for a first prestige.
  */
-export const LEGACY_DIVISOR = 1e17;
+export const LEGACY_DIVISOR = 1e12;
 export const BASE_LEGACY_LEVEL_PCT = 0.01;
 export const LEGEND_RATING_BONUS = 0.05;
 export const LEGEND_FANS_BONUS = 0.02;

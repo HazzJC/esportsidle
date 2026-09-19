@@ -7,6 +7,7 @@
   import { shade } from '../color';
   import { designUrl } from '../designImage';
   import { game } from '../game.svelte';
+  import { matchEasterEgg } from '../../engine/easterEggs';
 
   let {
     look,
@@ -16,6 +17,7 @@
     size = 120,
     mode = 'full',
     number,
+    tag,
   }: {
     look: Appearance;
     gear: Record<GearSlot, number>;
@@ -24,11 +26,15 @@
     size?: number;
     mode?: 'full' | 'bust';
     number?: number;
+    tag?: string;
   } = $props();
 
   const uid = $props.id();
 
-  const skin = $derived(SKIN_TONES[look.skin] ?? SKIN_TONES[0]);
+  const egg = $derived(matchEasterEgg(tag));
+  const isVarantha = $derived(egg === 'varantha');
+  const isNijacat = $derived(egg === 'nijacat22');
+  const skin = $derived(isVarantha ? '#4f558a' : (SKIN_TONES[look.skin] ?? SKIN_TONES[0]));
   const hairColor = $derived(HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]);
   const pants = $derived(PANTS_COLORS[look.pants] ?? PANTS_COLORS[0]);
   const shoeColor = $derived(SHOE_COLORS[look.shoeColor] ?? SHOE_COLORS[0]);
@@ -192,6 +198,15 @@
   <path d="M51 80 Q60 89 69 80" fill="none" stroke={shade(primary, -0.4)} stroke-width="3" />
   {#if crestUrl}
     <image href={crestUrl} x="52" y="88" width="16" height="16" style="image-rendering: pixelated" />
+  {/if}
+  {#if isNijacat}
+    <!-- Smolder-inspired dragon graphic on jersey -->
+    <g class="dragon-crest" transform="translate(53, 90)">
+      <path d="M7 0 C9 1, 11 3, 12 6 C10 6, 9 7, 8 9 C6 8, 4 8, 2 9 C1 7, 2 4, 4 2 C5 2, 6 1, 7 0 Z" fill="#ff7043" stroke="#b71c1c" stroke-width="0.7" />
+      <circle cx="9.5" cy="3.5" r="0.9" fill="#ffe082" />
+      <path d="M5 4 C7 4, 9 7, 8 11 C5 10, 4 8, 5 4 Z" fill="#ffab91" />
+      <path d="M2 9 C0 10, 0 12, 2 12 C4 12, 5 10, 5 9 Z" fill="#ff5722" />
+    </g>
   {/if}
   {#if charm >= 3}
     <g filter={charm >= 11 ? `url(#${uid}-glow)` : undefined}>

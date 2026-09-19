@@ -36,13 +36,17 @@ function log(s: GameState, text: string): void {
 
 /**
  * Carries out the player's standing orders. Buying rules get a budget per pass of X% of the cash held
- * when the pass starts, shared across every purchase in that pass. (Re-checking "under X% of cash"
- * after each purchase instead would let one pass spend most of the bank in small steps.)
+ * when the pass starts, shared across every purchase in that pass.
  */
-export function runAutomation(s: GameState, mods: Mods): void {
+export interface AutomationOptions {
+  pauseMarket?: boolean;
+  pauseGear?: boolean;
+}
+
+export function runAutomation(s: GameState, mods: Mods, options?: AutomationOptions): void {
   if (automationActive(s, 'upgrades')) autoUpgrades(s, mods);
-  if (automationActive(s, 'roster')) autoRoster(s, mods);
-  if (automationActive(s, 'gear')) autoGear(s, mods);
+  if (!options?.pauseMarket && automationActive(s, 'roster')) autoRoster(s, mods);
+  if (!options?.pauseGear && automationActive(s, 'gear')) autoGear(s, mods);
   if (automationActive(s, 'sponsors')) autoSponsors(s, mods);
 }
 
@@ -101,7 +105,7 @@ function autoGear(s: GameState, mods: Mods): void {
 function autoSponsors(s: GameState, mods: Mods): void {
   const rules = s.automation.sponsors;
   const candidates = s.sponsors.offers
-    .filter((o) => o.tier >= rules.minTier && offerRequirements(s, o).ok)
+    .filter((o) => (rules.minTier === 0 || o.tier === rules.minTier - 1) && offerRequirements(s, o).ok)
     .filter((o) => !(rules.avoidCrypto && BRAND_MAP.get(o.brandId)?.category === 'crypto'))
     .sort((a, b) => b.incomePct - a.incomePct);
   // Offers are exclusive per category, so try each in turn rather than giving up at the first refusal.

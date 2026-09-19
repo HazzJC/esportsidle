@@ -39,7 +39,7 @@
 
     <div class="body">
       <div class="portrait">
-        <Avatar look={p.look} gear={p.gear} primary={kit.primary} secondary={kit.secondary} size={132} number={p.jersey} />
+        <Avatar look={p.look} gear={p.gear} primary={kit.primary} secondary={kit.secondary} size={132} number={p.jersey} tag={p.tag} />
         <button class="btn small" onclick={() => game.randomiseDraftLook()}><Icon name="shuffle" size={13} /> New look</button>
       </div>
 

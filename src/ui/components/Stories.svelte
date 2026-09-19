@@ -21,7 +21,7 @@
     {#if rival}
       <b class="name">{rival.name}</b>
       <span class="h2h num"><span class="good">{rival.wins}</span> – <span class="bad">{rival.losses}</span></span>
-      <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · derby wins bring double fans</span>
+      <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · derby matches against your rival bring double fans</span>
     {:else}
       <span class="muted small">
         {s.stats.matchesWon + s.stats.matchesLost < RIVAL_AFTER_MATCHES ? 'Nobody has noticed you yet. Keep playing.' : 'The next challenger is sizing you up.'}

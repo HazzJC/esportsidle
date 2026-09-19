@@ -2,6 +2,7 @@ import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
 import { STAFF, STAFF_EXPONENT, STAFF_MAP, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
 import { sectionOpen } from './sections';
+import { hasTheOnlyCook } from './easterEggs';
 import type { GameState, Mods } from './types';
 
 /** Applies a staff/decor stat bonus of the given strength to the modifier set. */
@@ -91,13 +92,14 @@ export function maxStaffAffordable(def: StaffDef, owned: number, cash: number, c
   return geometricMax(def.baseCost, owned, cash, costMult);
 }
 
-/** Hires staff. `amount` of -1 hires as many as affordable. Returns the number hired. */
 export function hireStaff(s: GameState, id: string, amount: number, costMult = 1): number {
   const def = STAFF_MAP.get(id);
   // Skeleton Crew challenge: no hiring.
   if (!def || !sectionOpen(s, 'staff') || !isStaffUnlocked(s, def) || s.prestige.challenge === 'nostaff') return 0;
   const owned = s.staff[id] ?? 0;
-  const n = amount < 0 ? maxStaffAffordable(def, owned, s.cash, costMult) : Math.floor(amount);
+  if (id === 'chef' && hasTheOnlyCook(s) && owned >= 1) return 0;
+  let n = amount < 0 ? maxStaffAffordable(def, owned, s.cash, costMult) : Math.floor(amount);
+  if (id === 'chef' && hasTheOnlyCook(s)) n = Math.min(n, 1 - owned);
   if (n <= 0) return 0;
   const price = staffPrice(def, owned, n, costMult);
   if (price > s.cash) return 0;

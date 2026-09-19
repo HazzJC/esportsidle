@@ -83,6 +83,14 @@
                     <span class="num dim">{fmt(Math.min(progress, c.goal.target))}/{fmt(c.goal.target)}</span>
                   </div>
                   <span class="bar"><i style="width:{Math.min(100, (progress / c.goal.target) * 100)}%"></i></span>
+                  {#if !c.completed}
+                    {@const payout = Math.max(500 * (c.tier + 1), v.r.cpsNoBuffs * c.goal.rewardSeconds)}
+                    <div class="payout-row small">
+                      <span class="dim">Bonus payout:</span>
+                      <b class="payout-val num">{money(payout)}</b>
+                      {#if c.tier >= 2}<span class="dim">· +1 trophy</span>{/if}
+                    </div>
+                  {/if}
                 </div>
                 <div class="foot">
                   <span class="dim small num">{fmtTime(c.endsAt - s.time)} left</span>
@@ -109,6 +117,7 @@
             {@const brand = BRAND_MAP.get(offer.brandId)}
             {@const info = brand ? CATEGORY_INFO[brand.category] : undefined}
             {@const block = blocker(offer)}
+            {@const payout = Math.max(500 * (offer.tier + 1), v.r.cpsNoBuffs * offer.goal.rewardSeconds)}
             {#if brand && info}
               <div class="card" style="--bc:{brand.color}">
                 <div class="brand">
@@ -123,9 +132,13 @@
                 <div class="perk"><Icon name={info.icon} size={13} /> {info.perk}</div>
                 <div
                   class="goal-offer small"
-                  use:tooltip={() => ({ title: 'Bonus goal', lines: [`Complete during the contract for about ${money(game.view.r.cpsNoBuffs * offer.goal.rewardSeconds)}${offer.tier >= 2 ? ' and a trophy' : ''}.`] })}
+                  use:tooltip={() => ({ title: 'Bonus goal', lines: [`Complete during the contract for about ${money(payout)}${offer.tier >= 2 ? ' and a trophy' : ''}.`] })}
                 >
-                  <Icon name="badge-check" size={13} /> {goalLabel(offer.goal.kind, offer.goal.target)}
+                  <div class="goal-offer-main">
+                    <Icon name="badge-check" size={13} />
+                    <span>{goalLabel(offer.goal.kind, offer.goal.target)}</span>
+                  </div>
+                  <span class="payout-badge num">+{money(payout)}</span>
                 </div>
                 <div class="foot">
                   <span class="dim small">{fmtTime(offer.duration)} contract</span>
@@ -254,8 +267,7 @@
     font-style: italic;
     color: var(--dim);
   }
-  .perk,
-  .goal-offer {
+  .perk {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -263,7 +275,31 @@
     color: var(--bc);
   }
   .goal-offer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 12.5px;
     color: var(--gold);
+  }
+  .goal-offer-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .payout-badge {
+    color: var(--green);
+    font-weight: 700;
+    margin-left: auto;
+  }
+  .payout-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .payout-val {
+    color: var(--green);
   }
   .goal {
     display: flex;

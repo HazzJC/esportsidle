@@ -94,6 +94,10 @@
     challengeId = '';
     charterId = '';
     mandateId = '';
+    if (!s.settings.confirmPrestige && !needsCharter && !hasSpecial(s, 'keepPlayer') && !hasSpecial(s, 'legends')) {
+      game.sellOrg({ keepPlayerId: null, retirePlayerId: null, challenge: null, charter: null, mandate: null });
+      return;
+    }
     selling = true;
   }
 
@@ -247,7 +251,7 @@
       <div class="legends">
         {#each p.legends as legend, i (`${legend.tag}-${i}`)}
           <div class="legend" use:tooltip={() => ({ title: legend.tag, subtitle: `${legend.first} ${legend.last}`, icon: 'medal', iconColor: 'var(--gold)', lines: [`Retired after run ${legend.run}.`, `+5% team rating in ${GAME_MAP.get(legend.gameId)?.name ?? legend.gameId}, +2% fans.`] })}>
-            <Avatar look={legend.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 8, chair: 0, desk: 0, shoes: 0, jersey: 9, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={52} mode="bust" />
+            <Avatar look={legend.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 8, chair: 0, desk: 0, shoes: 0, jersey: 9, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={52} mode="bust" tag={legend.tag} />
             <span class="ltag">{legend.tag}</span>
             <span class="dim small">{GAME_MAP.get(legend.gameId)?.name}</span>
           </div>
@@ -284,7 +288,7 @@
             </div>
             {#if h.mvp}
               <div class="mvp">
-                <Avatar look={h.mvp.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 4, chair: 0, desk: 0, shoes: 0, jersey: 5, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={40} mode="bust" />
+                <Avatar look={h.mvp.look} gear={{ pc: 0, monitor: 0, mouse: 0, keyboard: 0, headset: 4, chair: 0, desk: 0, shoes: 0, jersey: 5, charm: 0 }} primary={s.org.primary} secondary={s.org.secondary} size={40} mode="bust" tag={h.mvp.tag} />
                 <div class="small">
                   <div class="dim">MVP</div>
                   <b>{h.mvp.tag}</b>
@@ -342,9 +346,10 @@
         <div>
           <h4>You keep</h4>
           <ul class="small">
-            <li>Org name, logo, jersey and all designs</li>
-            <li>Achievements and all-time stats</li>
+            <li>Legacy points, levels and legacy tree nodes</li>
             <li>Trophies, operation levels and trophy upgrades</li>
+            <li>Cosmetics: org name, logo, jersey and designs</li>
+            <li>Achievements and all-time stats</li>
             {#if s.players.founder}<li>Your founder's look and tag</li>{/if}
             <li>Quest progress, trophy shelf and your rival</li>
             {#if hasSpecial(s, 'keepDecor')}<li>Gaming House decor</li>{/if}
@@ -355,8 +360,8 @@
           <h4>You lose</h4>
           <ul class="small">
             <li>Cash, fans and operations</li>
-            <li>Upgrades (except trophy upgrades)</li>
             <li>Teams, players, staff and sponsors</li>
+            <li>Upgrades (except trophy upgrades)</li>
           </ul>
         </div>
       </div>

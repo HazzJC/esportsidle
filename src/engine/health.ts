@@ -1,6 +1,7 @@
 import { emit } from './bus';
 import { fmtTime } from './format';
 import { applyMorale, isAvailable, traitsOf } from './players';
+import { hasTheOnlyCook } from './easterEggs';
 import type { Rng } from './rng';
 import type { GameState, HealthKind, Mods, Player } from './types';
 
@@ -54,6 +55,9 @@ export function healthChances(p: Player, mods: Pick<Mods, 'sickMult' | 'injuryMu
 export function rollHealth(s: GameState, p: Player, mods: Mods, rng: Rng, hasBench: boolean): HealthKind | null {
   if (!isAvailable(p, s.time)) return null;
   const c = healthChances(p, mods);
+  if (hasTheOnlyCook(s) && (s.staff.chef ?? 0) >= 1) {
+    c.sick = 0;
+  }
   const roll = rng.next();
   let kind: Exclude<HealthKind, 'healthy'> | null = null;
   if (roll < c.sick) kind = 'sick';

@@ -55,6 +55,7 @@ export function createStats(): Stats {
     bestWinStreak: 0,
     worstLoseStreak: 0,
     lateNightClicks: 0,
+    bubbystrLosses: 0,
     clicksRun: 0,
     clicksTotal: 0,
     clickCashRun: 0,

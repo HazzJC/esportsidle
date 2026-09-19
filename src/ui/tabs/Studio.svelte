@@ -75,7 +75,7 @@
   <section class="colours">
     <div class="kit-preview">
       {#if model}
-        <Avatar look={model.look} gear={model.gear} primary={s.org.primary} secondary={s.org.secondary} size={92} number={model.jersey} />
+        <Avatar look={model.look} gear={model.gear} primary={s.org.primary} secondary={s.org.secondary} size={92} number={model.jersey} tag={model.tag} />
       {/if}
     </div>
     <div class="kit-main">
