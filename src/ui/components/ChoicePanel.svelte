@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
-  import { fmtTime } from '../../engine/format';
+  import { fmtTime, money } from '../../engine/format';
   import { CHOICE_LIFETIME } from '../../engine/worldEvents';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
@@ -21,9 +21,15 @@
       </div>
       <div class="options">
         {#each choice.options as option, i (i)}
-          <button class="option {option.tone}" onclick={() => game.resolveChoice(choice.id, i)}>
-            <span class="label">{option.label}</span>
-            <span class="desc">{option.desc}</span>
+          {@const cost = option.cash ?? 0}
+          {@const tooDear = cost > 0 && s.cash < cost}
+          <button class="option {option.tone}" class:too-dear={tooDear} disabled={tooDear} onclick={() => game.resolveChoice(choice.id, i)}>
+            <span class="label">
+              {option.label}
+              {#if cost > 0}<span class="money out num">−{money(cost)}</span>
+              {:else if cost < 0}<span class="money in num">+{money(-cost)}</span>{/if}
+            </span>
+            <span class="desc">{option.desc}{tooDear ? ` · you have ${money(s.cash)}` : ''}</span>
           </button>
         {/each}
       </div>
@@ -39,6 +45,19 @@
 {/if}
 
 <style>
+  .money {
+    margin-left: 6px;
+    font-weight: 800;
+  }
+  .money.in {
+    color: var(--green);
+  }
+  .money.out {
+    color: var(--gold);
+  }
+  .option.too-dear {
+    opacity: 0.5;
+  }
   .choice {
     position: fixed;
     left: 14px;
@@ -126,7 +145,7 @@
   .small {
     font-size: 11.5px;
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1023px) {
     .choice {
       left: 8px;
       right: 8px;

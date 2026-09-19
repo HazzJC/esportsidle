@@ -22,7 +22,7 @@
     <div class="headline">
       {#if preview.placement === 'bench'}
         <span class="where">
-          {preview.couldStart ? `Bench · better at ${preview.couldStart.role}` : 'Joins the bench'}
+          {preview.couldStart ? `Sub in at ${preview.couldStart.role}` : 'No slot to improve'}
         </span>
       {:else if preview.role}
         <span class="where">{preview.role}</span>
@@ -40,6 +40,14 @@
         {/if}
         {#if chemDelta < 0}
           <span class="chip bad" title="New lineups take time to gel; chemistry rebuilds as they play together">Chemistry {chemDelta}%</span>
+        {/if}
+        {#if preview.placement === 'bench' && preview.couldStart}
+          <span
+            class="chip muted"
+            title="Measured with the same gear as your weakest starter{preview.couldStart.displaced ? ` (${preview.couldStart.displaced})` : ''}, so this is the player, not their kit"
+          >
+            Like-for-like gear{preview.couldStart.displaced ? ` vs ${preview.couldStart.displaced}` : ''}
+          </span>
         {/if}
         {#if preview.displaced}
           <span class="chip muted">{preview.displacedTo === 'swap' ? `Swaps with ${preview.displaced}` : `${preview.displaced} to the bench`}</span>

@@ -5,7 +5,8 @@ import { GEAR_SLOTS, type GearSlot } from '../data/gear';
 import { BRAND_MAP } from '../data/sponsors';
 import { money } from './format';
 import { signListing } from './market';
-import { buyGear, gearUpgradeCost, skillRating } from './players';
+import { buyGear, gearUpgradeCost, isAvailable, playerRating, skillRating } from './players';
+import { assignSlot } from './teams';
 import { offerRequirements, signOffer } from './sponsors';
 import type { GameState, Mods, Player } from './types';
 import { buyUpgrade, storeUpgrades, upgradePrice } from './upgrades';
@@ -41,13 +42,81 @@ function log(s: GameState, text: string): void {
 export interface AutomationOptions {
   pauseMarket?: boolean;
   pauseGear?: boolean;
+  pauseTeams?: boolean;
 }
 
 export function runAutomation(s: GameState, mods: Mods, options?: AutomationOptions): void {
   if (automationActive(s, 'upgrades')) autoUpgrades(s, mods);
   if (!options?.pauseMarket && automationActive(s, 'roster')) autoRoster(s, mods);
   if (!options?.pauseGear && automationActive(s, 'gear')) autoGear(s, mods);
+  if (!options?.pauseTeams && automationActive(s, 'roles')) autoRoles(s);
   if (automationActive(s, 'sponsors')) autoSponsors(s, mods);
+}
+
+/** The rating gain a swap must be worth before coaches disturb a settled lineup. */
+export const ROLE_SWAP_MARGIN = 0.02;
+/** Rearranging costs chemistry, which is worth up to 20% rating, so a swap must clear that too. */
+const CHEMISTRY_COST = 0.15 * 0.2;
+
+/**
+ * Puts players on the role they actually play. Coaches look at every starter and substitute, work
+ * out the lineup with the highest total rating, and only make the change when the gain is worth the
+ * chemistry it costs — so a marginally better fit does not churn the team every few seconds.
+ */
+export function autoRoles(s: GameState): void {
+  for (const team of Object.values(s.teams)) {
+    const game = getGame(team.gameId);
+    if (game.teamSize < 2) continue;
+    const squad = [...team.lineup.filter((id): id is string => id !== null), ...team.bench]
+      .map((id) => s.players[id])
+      .filter((p) => p !== undefined && isAvailable(p, s.time));
+    if (squad.length < 2) continue;
+
+    const rate = (p: Player | undefined, slot: number) => (p ? playerRating(p, game, team.tier, slot) : 0);
+    const current = team.lineup.map((id) => (id ? s.players[id] : undefined));
+    const currentTotal = current.reduce((n, p, slot) => n + rate(p, slot), 0);
+
+    // Start from the best player for each slot, then keep swapping pairs while it helps.
+    const best: (Player | undefined)[] = [...current];
+    const taken = new Set(best.filter((p) => p !== undefined).map((p) => p.id));
+    for (let slot = 0; slot < best.length; slot++) {
+      for (const p of squad) {
+        if (taken.has(p.id)) continue;
+        if (rate(p, slot) > rate(best[slot], slot)) {
+          const held = best[slot];
+          if (held) taken.delete(held.id);
+          best[slot] = p;
+          taken.add(p.id);
+        }
+      }
+    }
+    let improved = true;
+    while (improved) {
+      improved = false;
+      for (let a = 0; a < best.length; a++) {
+        for (let b = a + 1; b < best.length; b++) {
+          const now = rate(best[a], a) + rate(best[b], b);
+          const swapped = rate(best[b], a) + rate(best[a], b);
+          if (swapped > now) {
+            [best[a], best[b]] = [best[b], best[a]];
+            improved = true;
+          }
+        }
+      }
+    }
+
+    const bestTotal = best.reduce((n, p, slot) => n + rate(p, slot), 0);
+    const changed = best.some((p, slot) => p?.id !== current[slot]?.id);
+    if (!changed || currentTotal <= 0) continue;
+    // Net value: the gain has to beat the chemistry a reshuffle costs.
+    if (bestTotal < currentTotal * (1 + ROLE_SWAP_MARGIN + CHEMISTRY_COST)) continue;
+
+    for (let slot = 0; slot < best.length; slot++) {
+      const p = best[slot];
+      if (p && p.id !== team.lineup[slot]) assignSlot(s, team.gameId, p.id, slot);
+    }
+    log(s, `Coaches reshuffled the ${game.name} lineup: +${Math.round((bestTotal / currentTotal - 1) * 100)}% team rating.`);
+  }
 }
 
 function autoUpgrades(s: GameState, mods: Mods): void {

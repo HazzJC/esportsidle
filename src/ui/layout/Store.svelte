@@ -241,8 +241,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    /* On a narrow laptop column the controls drop to their own line instead of running off it. */
+    flex-wrap: wrap;
+    gap: 6px 8px;
     margin-bottom: 8px;
+  }
+  .section-head .seg {
+    flex: none;
   }
   .section-head .section-title {
     margin: 0;

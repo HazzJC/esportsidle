@@ -4,6 +4,7 @@
   import ChoicePanel from './ui/components/ChoicePanel.svelte';
   import Coach from './ui/components/Coach.svelte';
   import DropLayer from './ui/components/DropLayer.svelte';
+  import HypeChain from './ui/components/HypeChain.svelte';
   import Onboarding from './ui/components/Onboarding.svelte';
   import Toasts from './ui/components/Toasts.svelte';
   import TournamentModal from './ui/components/TournamentModal.svelte';
@@ -41,6 +42,7 @@
   </div>
   <MobileNav />
   <DropLayer />
+  <HypeChain />
   <ChoicePanel />
   <TournamentModal />
   <Toasts />
@@ -71,12 +73,13 @@
     min-height: 0;
     min-width: 0;
   }
-  @media (max-width: 1100px) {
+  /* Between a laptop and a wide screen the side columns give ground so the centre stays readable. */
+  @media (max-width: 1180px) {
     .columns {
-      grid-template-columns: 270px minmax(0, 1fr) 320px;
+      grid-template-columns: 250px minmax(0, 1fr) 300px;
     }
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1023px) {
     .app {
       padding-bottom: 72px;
     }

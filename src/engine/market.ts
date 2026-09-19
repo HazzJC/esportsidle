@@ -1,5 +1,5 @@
 import { GAMES, getGame } from '../data/games';
-import { RARITY_MAP, generatePlayer, transferValue } from './players';
+import { RARITY_MAP, generatePlayer, makeTagUnique, transferValue } from './players';
 import type { Rng } from './rng';
 import type { GameState, MarketListing, Mods, Player } from './types';
 import { addToTeam, ensureTeam, hasRosterSpace, removeFromTeams } from './teams';
@@ -20,8 +20,14 @@ export function signingFee(p: Player): number {
 
 type ListingMods = Pick<Mods, 'scoutLuck'> & Partial<Pick<Mods, 'feeMult'>>;
 
+/** Tags already in use, so a new face never shares one. */
+function takenTags(s: GameState): Set<string> {
+  return new Set([...Object.values(s.players).map((p) => p.tag), ...s.market.listings.map((l) => l.player.tag)]);
+}
+
 function makeListing(s: GameState, rng: Rng, gameId: string, mods: ListingMods): MarketListing {
   const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId, time: s.time, luck: mods.scoutLuck });
+  player.tag = makeTagUnique(takenTags(s), player.tag);
   return { player, price: Math.ceil(signingFee(player) * (mods.feeMult ?? 1)) };
 }
 

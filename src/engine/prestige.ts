@@ -57,6 +57,17 @@ export function canSell(s: GameState): boolean {
   return pendingLegacy(s) >= 1;
 }
 
+/**
+ * The moment an org can be sold for the first time, the game says so and opens the sale itself.
+ * Finding out that prestige exists used to mean noticing a tab had stopped being greyed out.
+ */
+export function checkSaleOffer(s: GameState): boolean {
+  if (s.prestige.offeredSale || s.prestige.runs > 0 || !canSell(s)) return false;
+  s.prestige.offeredSale = true;
+  emit({ type: 'saleReady' });
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Legacy tree
 // ---------------------------------------------------------------------------

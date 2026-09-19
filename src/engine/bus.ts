@@ -8,6 +8,8 @@ export type GameEvent =
   | { type: 'crowd' }
   | { type: 'drop'; kind: 'hype' | 'drama' }
   | { type: 'choice' }
+  /** The org can be sold for the first time. */
+  | { type: 'saleReady' }
   /** A centre tab has just opened. */
   | { type: 'section'; id: string; text: string };
 

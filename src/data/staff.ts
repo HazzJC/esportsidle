@@ -36,12 +36,23 @@ export interface StaffDef {
   flavor: string;
   /** Strength per hire before diminishing returns: strength = amount × hires^0.8. */
   effects: StatAmount[];
+  /**
+   * Hires past this point are worth less, on a shallower curve. Used where stacking one kind of
+   * staff was the whole strategy: the first ten are unchanged, the fiftieth is worth about half.
+   */
+  softCapFrom?: number;
+  /** Price growth per hire, when it differs from the usual 15% a hire. */
+  costGrowth?: number;
   requirement: string;
   unlock: (s: GameState) => boolean;
   upgradeNames: [string, string, string];
 }
 
 export const STAFF_EXPONENT = 0.8;
+/** The exponent past a soft cap: growth slows from hires^0.8 to hires^0.42. */
+export const STAFF_SOFT_EXPONENT = 0.42;
+/** Where coaching and analysis start to saturate. */
+export const STAFF_SOFT_CAP = 10;
 
 const matches = (s: GameState): number => s.stats.matchesWon + s.stats.matchesLost;
 const games = (s: GameState): number => Object.values(s.games).filter((g) => g.unlocked).length;
@@ -62,6 +73,8 @@ const RAW: RawStaff[] = [
       { stat: 'teamRating', amount: 0.03 },
       { stat: 'xp', amount: 0.01 },
     ],
+    softCapFrom: STAFF_SOFT_CAP,
+    costGrowth: 1.12,
     requirement: 'Sign a player or play 20 matches',
     unlock: (s) => s.stats.playersSigned >= 1 || matches(s) >= 20,
     upgradeNames: ['Coaching Certification', 'Tactical Masterclass', 'Hall of Fame Coaching Staff'],
@@ -122,6 +135,8 @@ const RAW: RawStaff[] = [
     desc: 'Studies every opponent. Makes rival teams effectively weaker, especially at high tiers.',
     flavor: 'Watches enemy VODs at 4× speed while eating cereal.',
     effects: [{ stat: 'opponent', amount: 0.02 }],
+    softCapFrom: STAFF_SOFT_CAP,
+    costGrowth: 1.12,
     requirement: 'Reach league tier 4 with any team',
     unlock: (s) => bestTier(s) >= 3,
     upgradeNames: ['Opponent Dossiers', 'Big Data Room', 'Predictive Meta Models'],

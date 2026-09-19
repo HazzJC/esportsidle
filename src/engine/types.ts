@@ -196,6 +196,8 @@ export interface Rates {
   buffIncomeMult: number;
   buffClickMult: number;
   cabinet: number;
+  /** Achievements counting towards the cabinet, for showing what one more is worth. */
+  cabinetCount: number;
   teams: Record<string, TeamEval>;
   /** Expected cash per second from matches. */
   matchCps: number;
@@ -439,6 +441,8 @@ export interface ChoiceOption {
   label: string;
   desc: string;
   tone: Tone;
+  /** Cash this option costs (negative means the org is paid). Drives the money line on the card. */
+  cash?: number;
 }
 
 export interface PendingChoice {
@@ -593,6 +597,7 @@ export interface AutomationSettings {
   roster: { on: boolean; maxCostPct: number };
   gear: { on: boolean; maxCostPct: number };
   sponsors: { on: boolean; minTier: number; avoidCrypto: boolean };
+  roles: { on: boolean };
 }
 
 export interface AutomationLogEntry {
@@ -622,6 +627,8 @@ export interface PrestigeState {
   mandate: string | null;
   /** Dynasty track id -> ranks owned. Repeatable, so legacy points never run out of uses. */
   dynasty: Record<string, number>;
+  /** Whether the game has already offered the first sale, so it only ever interrupts once. */
+  offeredSale?: boolean;
 }
 
 export interface ActiveQuest {
@@ -665,6 +672,8 @@ export interface Settings {
   newsTicker: boolean;
   volume: number;
   muted: boolean;
+  /** The click chain mini-game that runs when the crowd goes wild. */
+  hypeChain: boolean;
   /** Background music, synthesised in the browser. */
   musicOn: boolean;
   musicVolume: number;
@@ -740,6 +749,10 @@ export interface Stats {
   worstLoseStreak: number;
   /** Logo clicks in the small hours, local time. */
   lateNightClicks: number;
+  /** The longest chain of hype bubbles popped in one crowd. */
+  bestChain: number;
+  /** Hype bubbles popped in total. */
+  chainPops: number;
   bubbystrLosses: number;
 }
 

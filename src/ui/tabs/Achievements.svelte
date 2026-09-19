@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ACHIEVEMENTS, type AchievementDef, type AchievementGroup } from '../../data/achievements';
   import { fmtPct } from '../../engine/format';
+  import { cabinetIncomeMult, cabinetMarginalGain } from '../../engine/economy';
   import Icon from '../components/Icon.svelte';
   import TrophyCabinet from '../components/TrophyCabinet.svelte';
   import { game } from '../game.svelte';
@@ -32,6 +33,10 @@
 
   const s = $derived(game.view.s);
   const unlocked = $derived(Object.keys(s.achievements).length);
+  const factors = $derived(game.view.m.superfanFactors);
+  const counted = $derived(ACHIEVEMENTS.filter((a) => !a.shadow && s.achievements[a.id] !== undefined).length);
+  const superfanMult = $derived(cabinetIncomeMult(counted, factors));
+  const marginal = $derived(cabinetMarginalGain(counted, factors));
   /** Unlocked / total per rarity band, for the summary strip. */
   const byRarity = $derived(
     Array.from({ length: RARITY_BANDS }, (_, b) => {
@@ -39,6 +44,12 @@
       return { band: b, total: list.length, got: list.filter((a) => s.achievements[a.id] !== undefined).length };
     }),
   );
+
+  /** What holding this achievement is worth, once Superfans are turning the cabinet into income. */
+  function worth(a: AchievementDef): string | null {
+    if (a.shadow || marginal <= 0) return null;
+    return `Worth about +${fmtPct(marginal, false, 1)} income through your Superfan upgrades.`;
+  }
 
   function tip(a: AchievementDef): TipContent {
     const at = game.view.s.achievements[a.id];
@@ -54,6 +65,10 @@
         ...(hidden && a.hint ? [{ text: 'A secret achievement.', tone: 'muted' as const }] : []),
         ...(got ? [{ text: `Unlocked ${new Date(at).toLocaleString()}`, tone: 'muted' as const }] : []),
         ...(a.shadow ? [{ text: 'Shadow achievement: does not count towards the cabinet.', tone: 'muted' as const }] : []),
+        ...(() => {
+          const line = worth(a);
+          return line ? [{ text: line, tone: got ? ('good' as const) : ('muted' as const) }] : [];
+        })(),
       ],
     };
   }
@@ -64,7 +79,14 @@
     <Icon name="trophy" size={28} color="var(--gold)" />
     <div>
       <div class="big num">{unlocked} / {ACHIEVEMENTS.length}</div>
-      <div class="muted">Trophy Cabinet {fmtPct(game.view.r.cabinet)} · every achievement adds 4%</div>
+      <div class="muted">
+        {#if superfanMult > 1}
+          Superfans turn your cabinet into <b class="gold-text">×{superfanMult.toFixed(2)} income</b> · the next achievement adds
+          <b class="gold-text">+{fmtPct(marginal, false, 1)}</b>
+        {:else}
+          Superfan upgrades in the store turn these into income. Each achievement you hold makes them stronger.
+        {/if}
+      </div>
     </div>
     <div class="rarities">
       {#each byRarity as r (r.band)}

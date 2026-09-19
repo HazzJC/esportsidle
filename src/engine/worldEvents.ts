@@ -19,6 +19,17 @@ import { earnCash, gainFans } from './wallet';
 
 export const EVENT_INTERVAL: [number, number] = [90, 240];
 export const FIRST_EVENT: [number, number] = [60, 120];
+/**
+ * What it costs to keep a player a rival wants, as a share of the offer on the table. Each step up
+ * is roughly three times the last: matching the bid is a formality, refusing to be outbid at any
+ * price should hurt.
+ */
+export const COUNTER_BIDS: { label: string; share: number; morale: number }[] = [
+  { label: 'Match their offer', share: 0.25, morale: 12 },
+  { label: 'Beat their offer', share: 0.75, morale: 25 },
+  { label: 'Blow them out of the water', share: 2.25, morale: 45 },
+];
+
 export const CHOICE_LIFETIME = 120;
 export const MAX_PENDING_CHOICES = 3;
 export const LOG_LENGTH = 30;
@@ -202,18 +213,19 @@ export const WORLD_EVENTS: WorldEventDef[] = [
       // Rivals pay over the odds for a player you developed: well above a normal transfer.
       const worth = transferValue(p, ctx.rates.teams[p.gameId]?.cps ?? 0, getGame(p.gameId).teamSize);
       const value = Math.ceil(Math.max(worth * 1.6, p.fee * 1.2, 100));
-      const counter = Math.ceil(Math.max(100, p.fee * 0.25));
+      // Bids climb steeply: matching the offer is cheap, refusing to be outbid at any price is not.
+      const bids = COUNTER_BIDS.map((b) => ({ ...b, cost: Math.ceil(Math.max(100, value * b.share)) }));
       offerChoice(s, {
         eventId: 'poaching',
         title: `${rival} wants ${p.tag}`,
         body: `They're offering ${money(value)} to sign ${p.tag} away from you.`,
         icon: 'handshake',
         defaultOption: 2,
-        data: { playerId: p.id, value, counter, rival },
+        data: { playerId: p.id, value, rival, bid0: bids[0].cost, bid1: bids[1].cost, bid2: bids[2].cost },
         options: [
-          { label: `Sell for ${money(value)}`, desc: `${p.tag} leaves for ${rival}.`, tone: 'info' },
-          { label: `Counter-offer · ${money(counter)}`, desc: 'Pay to keep them happy: morale +20.', tone: 'good' },
-          { label: 'Refuse', desc: 'They stay, but they are not pleased: morale -15.', tone: 'bad' },
+          { label: `Sell ${p.tag}`, desc: `They join ${rival} and you are paid.`, tone: 'info', cash: -value },
+          ...bids.map((b) => ({ label: b.label, desc: `${p.tag} stays. Morale +${b.morale}.`, tone: 'good' as const, cash: b.cost })),
+          { label: 'Refuse to negotiate', desc: 'They stay, and they are not pleased: morale -15.', tone: 'bad', cash: 0 },
         ],
       });
     },
@@ -221,17 +233,23 @@ export const WORLD_EVENTS: WorldEventDef[] = [
       const p = s.players[String(choice.data.playerId)];
       if (!p) return;
       const value = Number(choice.data.value);
-      const counter = Number(choice.data.counter);
+      const bids = COUNTER_BIDS.map((b, i) => ({ ...b, cost: Number(choice.data[`bid${i}`]) }));
       if (option === 0) {
         removeFromTeams(s, p.id);
         delete s.players[p.id];
         s.cash += value;
         s.stats.playersSold++;
         logEvent(s, { title: `${p.tag} transferred`, body: `${choice.data.rival} paid ${money(value)}.`, icon: 'handshake', tone: 'info' });
-      } else if (option === 1 && s.cash >= counter) {
-        s.cash -= counter;
-        applyMorale(p, 20, ctx.mods);
-        logEvent(s, { title: `${p.tag} stays`, body: 'Your counter-offer worked. Morale +20.', icon: 'heart', tone: 'good' });
+      } else if (option >= 1 && option <= bids.length && s.cash >= bids[option - 1].cost) {
+        const bid = bids[option - 1];
+        s.cash -= bid.cost;
+        applyMorale(p, bid.morale, ctx.mods);
+        logEvent(s, {
+          title: `${p.tag} stays`,
+          body: `You paid ${money(bid.cost)} to see off ${choice.data.rival}. Morale +${bid.morale}.`,
+          icon: 'heart',
+          tone: 'good',
+        });
       } else {
         applyMorale(p, -15, ctx.mods);
         logEvent(s, { title: `${p.tag} is unhappy`, body: 'You refused the transfer. Morale -15.', icon: 'face-slightly-frowning', tone: 'bad' });

@@ -267,7 +267,7 @@
     color: var(--text);
     background: var(--panel-3);
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1023px) {
     .coach {
       grid-template-areas:
         'icon head skip'

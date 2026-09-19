@@ -1,6 +1,6 @@
 import type { GameState } from '../engine/types';
 
-export type AutomationId = 'upgrades' | 'roster' | 'gear' | 'sponsors';
+export type AutomationId = 'upgrades' | 'roster' | 'gear' | 'sponsors' | 'roles';
 
 export interface AutomationDef {
   id: AutomationId;
@@ -41,6 +41,15 @@ export const AUTOMATIONS: AutomationDef[] = [
     desc: 'Spends your chosen share of cash on the cheapest gear upgrades for your starters.',
     requirement: 'Employ 25 Coaches',
     unlock: (s) => (s.staff.coach ?? 0) >= 25,
+  },
+  {
+    id: 'roles',
+    name: 'Role coaching',
+    icon: 'clipboard-list',
+    owner: 'Coaches',
+    desc: 'Moves players onto the role they actually play, and brings a better substitute on, whenever the swap makes the team stronger.',
+    requirement: 'Employ 5 Coaches',
+    unlock: (s) => (s.staff.coach ?? 0) >= 5,
   },
   {
     id: 'sponsors',

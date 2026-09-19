@@ -22,6 +22,7 @@ export function createAutomation(): AutomationSettings {
     roster: { on: false, maxCostPct: 0.5 },
     gear: { on: false, maxCostPct: 0.01 },
     sponsors: { on: false, minTier: 0, avoidCrypto: true },
+    roles: { on: false },
   };
 }
 
@@ -36,6 +37,7 @@ export function createSettings(): Settings {
     newsTicker: true,
     volume: 0.5,
     muted: false,
+    hypeChain: true,
     musicOn: false,
     musicVolume: 0.35,
     confirmPrestige: true,
@@ -56,6 +58,8 @@ export function createStats(): Stats {
     bestWinStreak: 0,
     worstLoseStreak: 0,
     lateNightClicks: 0,
+    bestChain: 0,
+    chainPops: 0,
     bubbystrLosses: 0,
     clicksRun: 0,
     clicksTotal: 0,
@@ -205,15 +209,15 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
   };
 }
 
-/**
- * Starts a run with an empty roster and the first-player draft. Teams exist only for games that
- * are already unlocked beyond the first; the first signing founds the Smash Siblings team.
- */
 /** A fresh income breakdown with every source at zero. */
 export function createIncomeLedger(): Record<IncomeSource, number> {
   return Object.fromEntries(INCOME_SOURCES.map((k) => [k, 0])) as Record<IncomeSource, number>;
 }
 
+/**
+ * Starts a run with an empty roster and the first-player draft. Teams exist only for games that
+ * are already unlocked beyond the first; the first signing founds the Smash Siblings team.
+ */
 export function setupNewRun(s: GameState): void {
   const rng = new Rng(s);
   for (const g of GAMES) {

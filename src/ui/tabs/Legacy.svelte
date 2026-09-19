@@ -88,6 +88,14 @@
     }
   }
 
+  // The game offers the first sale itself: this opens the same window the button does.
+  let offeredAt = 0;
+  $effect(() => {
+    if (game.saleOffer === offeredAt) return;
+    offeredAt = game.saleOffer;
+    if (canSell(game.view.s)) openSell();
+  });
+
   function openSell() {
     keepId = '';
     retireId = '';

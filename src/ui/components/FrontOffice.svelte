@@ -8,12 +8,12 @@
   import Icon from './Icon.svelte';
 
   /** Cash-share presets per routine: small enough to be safe, large enough to matter. */
-  const SHARES: Record<Exclude<AutomationId, 'sponsors'>, number[]> = {
+  const SHARES: Record<Exclude<AutomationId, 'sponsors' | 'roles'>, number[]> = {
     upgrades: [0.05, 0.1, 0.25, 0.5],
     roster: [0.1, 0.25, 0.5, 1],
     gear: [0.005, 0.01, 0.025, 0.05],
   };
-  const SHARE_LABEL: Record<Exclude<AutomationId, 'sponsors'>, string> = {
+  const SHARE_LABEL: Record<Exclude<AutomationId, 'sponsors' | 'roles'>, string> = {
     upgrades: 'Spend up to',
     roster: 'Spend up to',
     gear: 'Spend up to',
@@ -71,6 +71,8 @@
               Skip crypto
             </label>
           </div>
+        {:else if a.id === 'roles'}
+          <p class="rule small dim">Coaches only move someone when the new lineup is clearly stronger, so a settled team is left alone.</p>
         {:else}
           {@const current = s.automation[a.id].maxCostPct}
           <div class="rule small">

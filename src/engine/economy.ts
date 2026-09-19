@@ -247,6 +247,24 @@ export function computeMods(s: GameState): Mods {
   return m;
 }
 
+/**
+ * What the trophy cabinet is worth in income right now. Achievements only pay through Superfan
+ * upgrades, so this is the number worth showing: the multiplier the cabinet is currently applying.
+ */
+export function cabinetIncomeMult(count: number, superfanFactors: number[]): number {
+  const cabinet = count * CABINET_PER_ACHIEVEMENT;
+  let mult = 1;
+  for (const f of superfanFactors) mult *= 1 + cabinet * f;
+  return mult;
+}
+
+/** The income one more achievement would add, as a share: what an achievement is actually worth. */
+export function cabinetMarginalGain(count: number, superfanFactors: number[]): number {
+  const now = cabinetIncomeMult(count, superfanFactors);
+  if (now <= 0) return 0;
+  return cabinetIncomeMult(count + 1, superfanFactors) / now - 1;
+}
+
 /** Number of unlocked achievements that count towards the trophy cabinet. */
 export function cabinetCount(s: GameState): number {
   let n = 0;
@@ -289,8 +307,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
 
   const fameMult = fameMultiplier(s.fans, mods.fameExp);
   const cabinet = cabinetCount(s) * CABINET_PER_ACHIEVEMENT;
-  let superfanMult = 1;
-  for (const f of mods.superfanFactors) superfanMult *= 1 + cabinet * f;
+  const superfanMult = cabinetIncomeMult(cabinetCount(s), mods.superfanFactors);
 
   const globalMult = mods.globalMult * fameMult * superfanMult;
   const cpsNoBuffs = base * globalMult;
@@ -342,6 +359,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     buffIncomeMult: buffs.income,
     buffClickMult: buffs.click,
     cabinet,
+    cabinetCount: cabinetCount(s),
     teams,
     matchCps,
     matchFansPerSec: matchFans,

@@ -1,4 +1,5 @@
 import { getGame } from '../data/games';
+import { playerRating } from './players';
 import { addToTeam, assignSlot, evaluateTeam } from './teams';
 import type { GameState, Mods, Player, TeamState } from './types';
 
@@ -26,8 +27,12 @@ export interface RosterPreview {
   displacedTo: 'swap' | 'bench' | null;
   before: TeamSnapshot;
   after: TeamSnapshot;
-  /** For a signing that lands on the bench: the best slot they would improve if started. */
-  couldStart: { slot: number; role: string; after: TeamSnapshot } | null;
+  /**
+   * For a signing that lands on the bench: the best slot they would improve if started, compared
+   * fairly. The candidate is given the weakest starter's gear, so the number answers "is this
+   * player better?" rather than "does this player own a better mouse?".
+   */
+  couldStart: { slot: number; role: string; after: TeamSnapshot; displaced: string | null } | null;
 }
 
 /** A what-if copy of the state in which only one team (and optionally one extra player) can change. */
@@ -41,6 +46,23 @@ function whatIf(s: GameState, gameId: string, extra?: Player): { s2: GameState; 
 function snapshot(s: GameState, team: TeamState, mods: Mods): TeamSnapshot {
   const ev = evaluateTeam(s, team, mods, CTX);
   return { rating: ev.rating, win: ev.winChance, chemistry: team.chemistry };
+}
+
+/** The starter carrying the team least, whose place a new signing would take. */
+export function weakestStarter(s: GameState, team: TeamState): Player | undefined {
+  const game = getGame(team.gameId);
+  let worst: Player | undefined;
+  let worstRating = Number.POSITIVE_INFINITY;
+  team.lineup.forEach((id, slot) => {
+    const p = id ? s.players[id] : undefined;
+    if (!p) return;
+    const rating = playerRating(p, game, team.tier, slot);
+    if (rating < worstRating) {
+      worstRating = rating;
+      worst = p;
+    }
+  });
+  return worst;
 }
 
 /** What signing `player` would do to their team, without changing anything. */
@@ -70,13 +92,18 @@ export function previewSigning(s: GameState, player: Player, mods: Mods): Roster
     return { ...empty, placement: 'lineup', slot, role: game.roles[slot], onRole: game.teamSize === 1 || slot === player.role, before, after };
   }
 
-  // On the bench: would starting them anywhere help?
+  // On the bench: what would starting them be worth, kit for kit with the weakest starter?
   let couldStart: RosterPreview['couldStart'] = null;
+  const weakest = weakestStarter(s, s.teams[player.gameId]);
+  const fair: Player = weakest ? { ...player, gear: { ...weakest.gear } } : player;
   for (let i = 0; i < team.lineup.length; i++) {
-    const trial = whatIf(s2, player.gameId);
-    if (!assignSlot(trial.s2, player.gameId, player.id, i)) continue;
+    const trial = whatIf(s2, player.gameId, fair);
+    if (!assignSlot(trial.s2, player.gameId, fair.id, i)) continue;
     const result = snapshot(trial.s2, trial.team, mods);
-    if (result.win > before.win && (!couldStart || result.win > couldStart.after.win)) couldStart = { slot: i, role: game.roles[i], after: result };
+    const displacedId = team.lineup[i];
+    if (!couldStart || result.win > couldStart.after.win) {
+      couldStart = { slot: i, role: game.roles[i], after: result, displaced: displacedId ? (s.players[displacedId]?.tag ?? null) : null };
+    }
   }
   return { ...empty, placement: 'bench', before, after, couldStart };
 }

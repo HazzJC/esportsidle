@@ -1,5 +1,5 @@
 import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
-import { STAFF, STAFF_EXPONENT, STAFF_MAP, type StaffDef, type StaffStat } from '../data/staff';
+import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
 import { sectionOpen } from './sections';
 import { hasTheOnlyCook } from './easterEggs';
@@ -63,14 +63,23 @@ export function applyStat(m: Mods, stat: StaffStat, amount: number): void {
   }
 }
 
-/** Diminishing-returns strength multiplier for `hires` of a staff type. */
-export function staffPower(hires: number, mult = 1): number {
-  return hires > 0 ? Math.pow(hires, STAFF_EXPONENT) * mult : 0;
+/**
+ * Diminishing-returns strength multiplier for `hires` of a staff type.
+ *
+ * Most staff follow hires^0.8. Coaches and analysts carry a soft cap: up to the tenth hire nothing
+ * changes, and past it each hire is worth much less, so a wall of coaches stops being the answer to
+ * every problem. The fiftieth coach is worth about half what it used to be.
+ */
+export function staffPower(hires: number, mult = 1, softCapFrom?: number): number {
+  if (hires <= 0) return 0;
+  if (softCapFrom === undefined || hires <= softCapFrom) return Math.pow(hires, STAFF_EXPONENT) * mult;
+  const atCap = Math.pow(softCapFrom, STAFF_EXPONENT);
+  return atCap * Math.pow(hires / softCapFrom, STAFF_SOFT_EXPONENT) * mult;
 }
 
 export function applyStaffAndDecor(m: Mods, s: GameState): void {
   for (const def of STAFF) {
-    const power = staffPower(s.staff[def.id] ?? 0, m.staffMult[def.id] ?? 1);
+    const power = staffPower(s.staff[def.id] ?? 0, m.staffMult[def.id] ?? 1, def.softCapFrom);
     if (power <= 0) continue;
     for (const e of def.effects) applyStat(m, e.stat, e.amount * power);
   }
@@ -85,11 +94,11 @@ export function isStaffUnlocked(s: GameState, def: StaffDef): boolean {
 }
 
 export function staffPrice(def: StaffDef, owned: number, amount: number, costMult = 1): number {
-  return geometricPrice(def.baseCost, owned, amount, costMult);
+  return geometricPrice(def.baseCost, owned, amount, costMult, def.costGrowth);
 }
 
 export function maxStaffAffordable(def: StaffDef, owned: number, cash: number, costMult = 1): number {
-  return geometricMax(def.baseCost, owned, cash, costMult);
+  return geometricMax(def.baseCost, owned, cash, costMult, def.costGrowth);
 }
 
 export function hireStaff(s: GameState, id: string, amount: number, costMult = 1): number {

@@ -108,6 +108,20 @@ export function randomTag(rng: Rng, gameId?: string, role?: number): string {
   return tag;
 }
 
+/**
+ * Keeps tags unique across the org and the board. The scene pools are small on purpose, so two
+ * prospects drawing the same handle is common; a roster with two players called the same thing is
+ * not something anyone wants to manage.
+ */
+export function makeTagUnique(taken: Set<string>, tag: string): string {
+  if (!taken.has(tag)) return tag;
+  for (let n = 2; n < 60; n++) {
+    const candidate = `${tag}${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return tag;
+}
+
 export function randomLook(rng: Rng): Appearance {
   return {
     body: rng.int(0, BODY_TYPES.length - 1),

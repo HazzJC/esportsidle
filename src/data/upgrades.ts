@@ -1,3 +1,4 @@
+import { fmt } from '../engine/format';
 import type { Effect, GameState } from '../engine/types';
 import { OPERATIONS, getOp } from './operations';
 import { STAFF } from './staff';
@@ -235,6 +236,29 @@ const HYPE_LINE: { name: string; clicks: number; cost: number; effect: Effect; f
   { name: 'Stadium Subwoofers', clicks: 40_000, cost: 5e12, effect: { kind: 'hypeGain', mult: 2 }, flavor: 'You feel the bass in your teeth.' },
   { name: 'Tifo Banners', clicks: 100_000, cost: 5e15, effect: { kind: 'hypeDuration', mult: 2 }, flavor: 'A banner the size of a city block.' },
 ];
+
+/** Hype upgrades earned by the size of the fanbase rather than by clicking. */
+const CROWD_LINE: { name: string; fans: number; cost: number; mult: number; flavor: string }[] = [
+  { name: 'Season Ticket Holders', fans: 5_000, cost: 2e6, mult: 1.4, flavor: 'Same seats, same songs, every single week.' },
+  { name: 'Away End Travel Fund', fans: 250_000, cost: 5e9, mult: 1.5, flavor: 'Three coaches, one flag, no sleep.' },
+  { name: 'Ultras Section', fans: 2e7, cost: 5e13, mult: 1.6, flavor: 'They have a drummer. The drummer has a drummer.' },
+  { name: 'Sold-Out Arena Tour', fans: 5e9, cost: 5e18, mult: 1.8, flavor: 'Every seat, every night, every continent.' },
+];
+
+CROWD_LINE.forEach((u, i) => {
+  add({
+    id: `crowd_${i}`,
+    name: u.name,
+    group: 'hype',
+    icon: 'users',
+    tier: 1 + i * 3,
+    cost: u.cost,
+    effects: [{ kind: 'hypeDuration', mult: u.mult }],
+    flavor: u.flavor,
+    requirement: `Have ${fmt(u.fans)} fans`,
+    unlock: (s) => s.fans >= u.fans,
+  });
+});
 
 HYPE_LINE.forEach((u, i) => {
   add({

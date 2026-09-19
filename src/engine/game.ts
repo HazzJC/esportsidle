@@ -12,7 +12,7 @@ import { updateMarket } from './market';
 import { updateMerch } from './merch';
 import { updateSponsors } from './sponsors';
 import { updatePopularity } from './popularity';
-import { checkChallenge } from './prestige';
+import { checkChallenge, checkSaleOffer } from './prestige';
 import { updateQuests } from './quests';
 import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
@@ -63,7 +63,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   if (!offline) {
     updateMarket(s, rng, mods);
     if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) {
-      runAutomation(s, mods, { pauseMarket: options?.pauseMarket, pauseGear: options?.pauseGear });
+      runAutomation(s, mods, { pauseMarket: options?.pauseMarket, pauseGear: options?.pauseGear, pauseTeams: options?.pauseTeams });
     }
     const ctx = { rng, mods, rates };
     // A new org gets a calm start: no drops or world events while it finds its feet.
@@ -79,6 +79,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   if (Math.floor(s.time * 2) !== Math.floor(prevTime * 2)) {
     refreshUpgradeUnlocks(s);
     checkChallenge(s);
+    checkSaleOffer(s);
     const returned = returnScandalFans(s);
     if (returned > 0) {
       emit({

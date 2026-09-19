@@ -46,18 +46,18 @@
     z-index: 950;
     pointer-events: none;
   }
-  @media (min-width: 861px) {
+  @media (min-width: 1024px) {
     .drops {
       /* Clear of the store column, so a drop can never be mistaken for a purchase. */
       right: 340px;
     }
   }
-  @media (max-width: 1100px) and (min-width: 861px) {
+  @media (max-width: 1180px) and (min-width: 1024px) {
     .drops {
       right: 300px;
     }
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1023px) {
     .drops {
       /* Above the tab bar on phones. */
       bottom: 84px;

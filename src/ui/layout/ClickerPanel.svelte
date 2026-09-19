@@ -2,6 +2,7 @@
   import { CROWD_BUFF_ID, HYPE_MAX } from '../../engine/clicker';
   import { fmt, fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
+  import Toasts from '../components/Toasts.svelte';
   import OrgLogo from '../components/OrgLogo.svelte';
   import { designUrl } from '../designImage';
   import { pendingLegacy } from '../../engine/prestige';
@@ -255,6 +256,9 @@
       {/each}
     </div>
   {/if}
+
+  <!-- Popups land here on a wide screen: in the gap between the effects and the match history. -->
+  <div class="toast-slot"><Toasts inline /></div>
 
   {#if recent.length > 0}
     <div class="recent">
@@ -540,6 +544,20 @@
   }
   .footer {
     font-size: 12px;
+  }
+  .toast-slot {
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+  @media (max-width: 1023px) {
+    /* On phones the clicker is one view of three, so popups stay over the whole screen. */
+    .toast-slot {
+      display: none;
+    }
   }
   .recent {
     margin-top: auto;

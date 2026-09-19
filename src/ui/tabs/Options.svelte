@@ -145,6 +145,12 @@
       </span>
     </label>
     <p class="muted small">"Night Shift", an original track generated live in your browser: industrial half-time drums, a growling reese bass and a slow build. It never loops quite the same way.</p>
+    <Toggle
+      checked={settings.hypeChain}
+      label="Click chain"
+      description="When the crowd goes wild, pop the chain of hype bubbles to make it louder and longer."
+      onchange={(v) => game.setSetting('hypeChain', v)}
+    />
     <Toggle checked={settings.newsTicker} label="News ticker" onchange={(v) => game.setSetting('newsTicker', v)} />
     <Toggle checked={settings.floatingText} label="Floating numbers" description="Show cash popping out when you click." onchange={(v) => game.setSetting('floatingText', v)} />
     <Toggle checked={settings.particles} label="Particles" onchange={(v) => game.setSetting('particles', v)} />

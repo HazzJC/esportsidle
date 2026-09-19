@@ -1,15 +1,22 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
-  import { CABINET_PER_ACHIEVEMENT } from '../../engine/economy';
+  import { cabinetMarginalGain } from '../../engine/economy';
   import { game, type Toast } from '../game.svelte';
   import { NOTIFY_LABEL } from '../notify';
   import { rarityColor } from '../theme';
   import Icon from './Icon.svelte';
 
+  /** Inline popups sit inside the clicker column; the floating copy covers the page on phones. */
+  let { inline = false }: { inline?: boolean } = $props();
+
   /** Achievements named in a batched popup before collapsing into "and N more". */
   const MAX_LISTED = 3;
-  const cabinetPct = Math.round(CABINET_PER_ACHIEVEMENT * 100);
-  const cabinetGain = (t: Toast) => (t.achievements ?? []).filter((a) => a.cabinet).length * cabinetPct;
+  /** The income the achievements in a popup are worth through Superfan upgrades. */
+  const cabinetGain = (t: Toast) => {
+    const counted = (t.achievements ?? []).filter((a) => a.cabinet).length;
+    const each = cabinetMarginalGain(game.view.r.cabinetCount, game.view.m.superfanFactors);
+    return counted * each * 100;
+  };
 </script>
 
 <!--
@@ -17,7 +24,7 @@
   whatever is underneath, so a popup can never block a purchase. Only its small buttons are clickable.
   Entry-only transitions, because outros never finish in a background tab and would leave stale cards.
 -->
-<div class="toasts" aria-live="polite">
+<div class="toasts" class:inline aria-live="polite">
   {#each game.toasts as t (t.id)}
     <div
       class="toast {t.tone}"
@@ -45,7 +52,7 @@
             </span>
           {/if}
           {#if cabinetGain(t) > 0}
-            <span class="reward"><Icon name="trophy" size={12} /> +{cabinetGain(t)}% trophy cabinet</span>
+            <span class="reward"><Icon name="trophy" size={12} /> +{cabinetGain(t).toFixed(1)}% income</span>
           {/if}
         </span>
         <i class="shine" aria-hidden="true"></i>
@@ -87,6 +94,19 @@
     flex-direction: column;
     gap: 8px;
     pointer-events: none;
+  }
+  /* In the clicker column: part of the page, newest at the bottom, clipped to the gap. */
+  .toasts.inline {
+    position: static;
+    width: 100%;
+    justify-content: flex-end;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  @media (min-width: 1024px) {
+    .toasts:not(.inline) {
+      display: none;
+    }
   }
   .toast {
     --c: var(--accent);

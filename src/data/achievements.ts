@@ -51,7 +51,6 @@ const totalOwned = (s: GameState): number => OPERATIONS.reduce((n, op) => n + s.
 
 // Earnings -------------------------------------------------------------------
 const EARN: [number, string][] = [
-  [0, 'Pocket Change'],
   [3, 'Garage Money'],
   [5, 'Ramen Budget'],
   [6, 'Millionaire Gamer'],
@@ -115,7 +114,6 @@ for (const [exp, name] of INCOME) {
 
 // Clicking -------------------------------------------------------------------
 const CLICKS: [number, string][] = [
-  [1, 'GG'],
   [100, 'Warm-Up Clicks'],
   [1_000, 'APM Machine'],
   [10_000, 'Carpal Tunnel Speedrun'],
@@ -224,7 +222,6 @@ for (const [n, name] of UPGRADE_COUNTS) {
 
 // Fans -----------------------------------------------------------------------
 const FANS: [number, string][] = [
-  [2, 'First Fans'],
   [3, 'Fan Club'],
   [4, 'Stadium Chants'],
   [5, 'Cult Following'],

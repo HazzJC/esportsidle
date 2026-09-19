@@ -1,6 +1,6 @@
 import { ACHIEVEMENT_MAP } from '../data/achievements';
 import { subscribe, type GameEvent } from '../engine/bus';
-import { clickLogo, type ClickResult } from '../engine/clicker';
+import { applyChain, clickLogo, type ClickResult } from '../engine/clicker';
 import { computeMods, computeRates } from '../engine/economy';
 import { fmt, fmtTime, money, setNumberFormat, type NumberFormat } from '../engine/format';
 import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
@@ -370,6 +370,16 @@ class GameStore {
       case 'drop':
         this.sfx('drop');
         break;
+      case 'saleReady': {
+        this.sfx('legacy');
+        this.openTab('legacy');
+        this.saleOffer++;
+        this.toast(
+          { title: 'Your org is worth selling', body: 'Sell it to bank legacy and start again stronger. Nothing is forced: close the window to keep playing.', icon: 'crown', tone: 'gold' },
+          9000,
+        );
+        break;
+      }
       case 'section': {
         // The tutorial already walks the player to new tabs; the tab's NEW badge is enough.
         if (tutorialActive(this.state)) break;
@@ -435,6 +445,19 @@ class GameStore {
     this.sfx('click');
     this.refresh();
     return result;
+  }
+
+  /** A hype bubble popped: a rising chime, one step louder each time. */
+  popHypeBubble(n: number): void {
+    this.sfx(n >= 10 ? 'promote' : 'dropClick');
+  }
+
+  /** A chain ended. Locks in the crowd it earned and says what it was worth. */
+  finishHypeChain(popped: number): { mult: number; duration: number } {
+    const reward = applyChain(this.state, popped, computeMods(this.state).hypeDurationMult);
+    if (popped >= 2) this.sfx('crowd');
+    this.refresh();
+    return reward;
   }
 
   buyOperation(id: string, amount: number): number {
@@ -506,6 +529,9 @@ class GameStore {
   selectedPlayer = $state<string | null>(null);
   /** Game filter for the transfer market. */
   marketFilter = $state<string | null>(null);
+  /** Set when the org first becomes sellable, so the Legacy tab can open the sale itself. */
+  saleOffer = $state(0);
+
   /** A guide the player asked to see again after closing it. */
   guideOpen = $state<string | null>(null);
 

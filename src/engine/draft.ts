@@ -1,7 +1,7 @@
 import { getGame } from '../data/games';
 import { FIRST_PLAYER_PRICE } from '../data/tutorial';
 import { signingFee } from './market';
-import { generatePlayer } from './players';
+import { generatePlayer, makeTagUnique } from './players';
 import type { Rng } from './rng';
 import { addToTeam, createTeam, ensureTeam, evaluateTeam } from './teams';
 import type { Appearance, GameState, MarketListing, Mods, Player, Rarity } from './types';
@@ -23,6 +23,7 @@ export function createDraft(s: GameState, rng: Rng): MarketListing[] {
   const firstRun = s.prestige.runs === 0;
   const rarity = firstRun ? FIRST_PLAYER_RARITY : LATER_PLAYER_RARITY;
   const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: DRAFT_GAME, time: s.time, rarity });
+  player.tag = makeTagUnique(new Set(Object.values(s.players).map((p) => p.tag)), player.tag);
   return [{ player, price: firstRun ? FIRST_PLAYER_PRICE : signingFee(player) }];
 }
 

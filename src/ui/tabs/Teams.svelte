@@ -14,12 +14,14 @@
   import Modal from '../components/Modal.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import { game } from '../game.svelte';
+  import { previewAssign } from '../../engine/roster';
   import { tooltip, type TipContent } from '../tooltip.svelte';
   import Guide from '../components/Guide.svelte';
   import { teamsGuide } from '../guides';
   import { tick } from 'svelte';
 
   const TEAMS_GUIDE = teamsGuide();
+
 
   /** Brings the guide back and scrolls up to it. */
   async function help() {
@@ -43,6 +45,46 @@
   let kitGame: string | null = $state(null);
   const kitTeam = $derived(kitGame ? v.s.teams[kitGame] : undefined);
   const nextLocked = $derived(GAMES.find((g) => !v.s.games[g.id]?.unlocked));
+
+  /**
+   * Moving players used to mean opening a player, finding the slot buttons and guessing what a
+   * swap would do. Now a card can be dragged onto a slot, or tapped to pick it up and tapped
+   * again to drop it, and every target shows what the change would do to the win chance.
+   */
+  let moving = $state<{ gameId: string; playerId: string } | null>(null);
+
+  const movingPlayer = $derived(moving ? v.s.players[moving.playerId] : undefined);
+
+  function pick(gameId: string, playerId: string) {
+    moving = moving?.playerId === playerId ? null : { gameId, playerId };
+  }
+
+  function dropOnSlot(gameId: string, slot: number) {
+    if (!moving || moving.gameId !== gameId) return;
+    game.assignSlot(gameId, moving.playerId, slot);
+    moving = null;
+  }
+
+  function dropOnBench(gameId: string) {
+    if (!moving || moving.gameId !== gameId) return;
+    game.benchPlayer(gameId, moving.playerId);
+    moving = null;
+  }
+
+  /** What moving the held player into this slot would do to the win chance, in points. */
+  function slotDelta(gameId: string, slot: number): number | null {
+    if (!moving || moving.gameId !== gameId) return null;
+    const team = v.s.teams[gameId];
+    if (!team || team.lineup[slot] === moving.playerId) return null;
+    const preview = previewAssign(v.s, gameId, moving.playerId, slot, v.m);
+    if (!preview) return null;
+    return Math.round((preview.after.win - preview.before.win) * 100);
+  }
+
+  function onKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && moving) moving = null;
+  }
+
   const lockedCount = $derived(GAMES.filter((g) => !v.s.games[g.id]?.unlocked).length);
 
   function openMarket(gameId: string) {
@@ -142,8 +184,17 @@
   }
 </script>
 
+<svelte:window onkeydown={onKeydown} />
+
 <div class="teams">
   <FirstPlayer />
+  {#if movingPlayer}
+    <div class="moving-bar" role="status">
+      <Icon name="user" size={14} />
+      <span>Moving <b>{movingPlayer.tag}</b> — pick a slot, or the bench. Drag works too.</span>
+      <button class="btn small" onclick={() => (moving = null)}>Cancel</button>
+    </div>
+  {/if}
   {#if Object.keys(v.s.teams).length > 0 && v.s.tutorial.step === 'done'}
     <Guide id="teams" title="How teams work" pages={TEAMS_GUIDE} />
   {/if}
@@ -209,16 +260,40 @@
         <div class="lineup" style="--cols:{Math.min(g.teamSize, 6)}">
           {#each team.lineup as id, slot (slot)}
             {@const p = id ? v.s.players[id] : undefined}
-            <div class="slot">
+            {@const delta = slotDelta(g.id, slot)}
+            <div
+              class="slot"
+              class:target={moving?.gameId === g.id && team.lineup[slot] !== moving.playerId}
+              ondragover={(e) => (moving?.gameId === g.id ? e.preventDefault() : undefined)}
+              ondrop={(e) => (e.preventDefault(), dropOnSlot(g.id, slot))}
+              role="presentation"
+            >
               <span class="role">{g.roles[slot]}</span>
+              {#if delta !== null}
+                <span class="delta num" class:good={delta > 0} class:bad={delta < 0}>{delta > 0 ? '+' : ''}{delta}% win</span>
+              {/if}
               {#if p}
                 <button
                   class="slot-player"
                   class:out={!isAvailable(p, v.s.time)}
                   class:offrole={g.teamSize > 1 && p.role !== slot}
-                  onclick={() => (game.selectedPlayer = p.id)}
+                  class:held={moving?.playerId === p.id}
+                  draggable="true"
+                  ondragstart={() => (moving = { gameId: g.id, playerId: p.id })}
+                  ondragend={() => (moving = null)}
+                  onclick={() => (moving ? dropOnSlot(g.id, slot) : pick(g.id, p.id))}
                   use:tooltip={() => playerTip(p.id)}
                 >
+                  <span
+                    class="info"
+                    role="button"
+                    tabindex="0"
+                    title="Open {p.tag}"
+                    onclick={(e) => (e.stopPropagation(), (game.selectedPlayer = p.id))}
+                    onkeydown={(e) => (e.key === 'Enter' ? (e.stopPropagation(), (game.selectedPlayer = p.id)) : undefined)}
+                  >
+                    <Icon name="info" size={12} />
+                  </span>
                   <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={54} mode="bust" tag={p.tag} />
                   <span class="ptag">{p.tag}</span>
                   {#if p.retiring}<span class="retiring" title="Retiring after this season"><Icon name="calendar-clock" size={11} /></span>{/if}
@@ -226,27 +301,44 @@
                   <span class="energy"><i style="width:{p.energy}%"></i></span>
                 </button>
               {:else}
-                <button class="slot-empty" onclick={() => openMarket(g.id)}>
-                  <Icon name="user-plus" size={20} />
-                  <span>Sign player</span>
+                <button class="slot-empty" onclick={() => (moving?.gameId === g.id ? dropOnSlot(g.id, slot) : openMarket(g.id))}>
+                  <Icon name={moving?.gameId === g.id ? 'arrow-down' : 'user-plus'} size={20} />
+                  <span>{moving?.gameId === g.id ? 'Put here' : 'Sign player'}</span>
                 </button>
               {/if}
             </div>
           {/each}
         </div>
 
-        {#if team.bench.length > 0}
-          <div class="bench">
+        {#if team.bench.length > 0 || moving?.gameId === g.id}
+          <div
+            class="bench"
+            class:target={moving?.gameId === g.id && team.lineup.includes(moving.playerId)}
+            ondragover={(e) => (moving?.gameId === g.id ? e.preventDefault() : undefined)}
+            ondrop={(e) => (e.preventDefault(), dropOnBench(g.id))}
+            role="presentation"
+          >
             <span class="muted small">Bench</span>
             {#each team.bench as id (id)}
               {@const p = v.s.players[id]}
               {#if p}
-                <button class="bench-player" onclick={() => (game.selectedPlayer = p.id)} use:tooltip={() => playerTip(p.id)}>
+                <button
+                  class="bench-player"
+                  class:held={moving?.playerId === p.id}
+                  draggable="true"
+                  ondragstart={() => (moving = { gameId: g.id, playerId: p.id })}
+                  ondragend={() => (moving = null)}
+                  onclick={() => pick(g.id, p.id)}
+                  use:tooltip={() => playerTip(p.id)}
+                >
                   <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={26} mode="bust" tag={p.tag} />
                   <span>{p.tag}</span>
                 </button>
               {/if}
             {/each}
+            {#if moving?.gameId === g.id && team.lineup.includes(moving.playerId)}
+              <button class="bench-drop" onclick={() => dropOnBench(g.id)}><Icon name="arrow-down" size={13} /> Bench {movingPlayer?.tag}</button>
+            {/if}
           </div>
         {/if}
 
@@ -656,6 +748,73 @@
   .numbers b {
     font-family: var(--font-ui);
     font-size: 15px;
+  }
+  .moving-bar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, var(--panel-2));
+    font-size: 13px;
+  }
+  .slot.target {
+    outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: 2px;
+    border-radius: 10px;
+  }
+  .bench.target {
+    outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: 4px;
+    border-radius: 10px;
+  }
+  .slot-player.held,
+  .bench-player.held {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .delta {
+    font-size: 10px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .delta.good {
+    color: var(--green);
+  }
+  .delta.bad {
+    color: var(--red);
+  }
+  .info {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    color: var(--dim);
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+  }
+  .info:hover {
+    color: var(--text);
+  }
+  .bench-drop {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px dashed var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
   }
   .lineup {
     display: grid;

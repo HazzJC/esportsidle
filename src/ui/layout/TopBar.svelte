@@ -329,7 +329,7 @@
       display: none;
     }
   }
-  @media (max-width: 860px) {
+  @media (max-width: 1023px) {
     .wordmark {
       display: none;
     }
