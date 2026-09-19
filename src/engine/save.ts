@@ -8,7 +8,7 @@ import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state'
 import { createDraft } from './draft';
 import { isEmblem } from '../data/emblems';
 import { openAllSections, updateSections } from './sections';
-import { createTeam } from './teams';
+import { addToTeam, createTeam, teamPlayerIds } from './teams';
 import type { GameState } from './types';
 
 export const SAVE_KEY = 'esportsidle.save';
@@ -117,6 +117,8 @@ export function repairState(s: GameState): void {
   }
   // Drafts from when three prospects were offered become the single first-player prospect.
   if (s.draft && s.draft.length !== 1) s.draft = createDraft(s, new Rng(s));
+  // A run that already has signed players skips any left-over draft.
+  if (Object.keys(s.players).length > 0) s.draft = null;
   if (!isEmblem(s.org.emblem)) s.org.emblem = { shape: 'shield', mark: 'initials' };
   updateSections(s, false);
   for (const [id, design] of Object.entries(s.designs)) {
@@ -124,6 +126,36 @@ export function repairState(s: GameState): void {
   }
   if (s.org.logo && !s.designs[s.org.logo]) s.org.logo = null;
   if (s.org.jersey && !s.designs[s.org.jersey]) s.org.jersey = null;
+
+  // Restore/migrate founder for saves where the first drafted player was not flagged as founder
+  if (!s.players.founder) {
+    const smashStarterId = s.teams.smash?.lineup[0];
+    const candidateId = (smashStarterId && s.players[smashStarterId])
+      ? smashStarterId
+      : (s.players.p1 ? 'p1' : (Object.keys(s.players).length === 1 ? Object.keys(s.players)[0] : undefined));
+
+    if (candidateId && s.players[candidateId]) {
+      const candidate = s.players[candidateId];
+      candidate.founder = true;
+      candidate.cut = 0;
+      if (candidateId !== 'founder') {
+        candidate.id = 'founder';
+        delete s.players[candidateId];
+        s.players.founder = candidate;
+        for (const team of Object.values(s.teams)) {
+          team.lineup = team.lineup.map((id) => (id === candidateId ? 'founder' : id));
+          team.bench = team.bench.map((id) => (id === candidateId ? 'founder' : id));
+        }
+      }
+    } else if (s.tutorial.step === 'done' && !s.draft) {
+      // If the founder was previously deleted (due to retirement or prestige without founder id), restore them
+      addFounder(s);
+    }
+  } else {
+    s.players.founder.founder = true;
+    s.players.founder.cut = 0;
+  }
+
   const template = createFounder(new Rng({ rng: 1 }), 'Template');
   for (const [id, p] of Object.entries(s.players)) {
     const tracked = (p as Partial<GameState['players'][string]>).signedLevel !== undefined;
@@ -137,6 +169,13 @@ export function repairState(s: GameState): void {
     if (team) s.teams[game.id] = mergeDefaults(createTeam(game.id), team) as GameState['teams'][string];
     // While the draft is open the org has no team yet; the first signing founds it.
     else if (s.games[game.id]?.unlocked && !s.draft) s.teams[game.id] = createTeam(game.id);
+  }
+  // Ensure every player in s.players is on their game's team (lineup or bench)
+  for (const p of Object.values(s.players)) {
+    const team = s.teams[p.gameId];
+    if (team && !teamPlayerIds(team).includes(p.id)) {
+      addToTeam(s, p, { benchSlots: 100 });
+    }
   }
 }
 
