@@ -3,6 +3,7 @@ import { NEWS } from '../src/data/news';
 import { pickNews, renderNews } from '../src/engine/news';
 import { Rng } from '../src/engine/rng';
 import { foundedGame } from './fixtures';
+import { createNewGame } from '../src/engine/state';
 import { pickOpponent } from '../src/engine/stories';
 import type { GameState } from '../src/engine/types';
 
@@ -15,8 +16,16 @@ function lateGame(): GameState {
   s.stats.orgsSold = 4;
   s.stats.playersRetired = 2;
   for (const id of ['arcade', 'napPods', 'aquarium', 'cat', 'espresso', 'zeroG']) s.decor[id] = true;
+  s.games.rocket.unlocked = true;
+  s.games.counter.unlocked = true;
+  s.events.log.unshift({ time: s.time, title: 'Hardware flash sale!', body: '', icon: 'cpu', tone: 'good' });
   pickOpponent(s, new Rng({ rng: 1 }));
   return s;
+}
+
+/** Every line the ticker could show right now. */
+function eligible(s: GameState): string[] {
+  return NEWS.filter((n) => !n.when || n.when(s)).map((n) => renderNews(n.text, s, () => 0));
 }
 
 describe('news ticker', () => {
@@ -41,6 +50,37 @@ describe('news ticker', () => {
     s.stats.matchesWon = 50;
     pickOpponent(s, new Rng({ rng: 1 }));
     expect(renderNews('{rival} again', s)).toBe(`${s.rival!.name} again`);
+  });
+
+  it('keeps early news to what a brand-new org has', () => {
+    const s = createNewGame(0, 6);
+    const early = eligible(s);
+    expect(early.length).toBeGreaterThan(60);
+    for (const text of early) {
+      expect(text, text).not.toMatch(/\bcoach|\bbench|network engineer|physio|\bhouse\b|social media manager|\bCFO\b|winning team|rival team/i);
+    }
+  });
+
+  it('brings in staff and places as the org gets them', () => {
+    const s = foundedGame(0, 6);
+    const has = (re: RegExp) => eligible(s).some((t) => re.test(t));
+    expect(has(/network engineer/)).toBe(false);
+    s.ops.lan.owned = 1;
+    expect(has(/network engineer/)).toBe(true);
+    expect(has(/ coach/)).toBe(false);
+    s.staff.coach = 1;
+    expect(has(/ coach/)).toBe(true);
+  });
+
+  it('reports world events, hot games and the next release', () => {
+    const s = lateGame();
+    s.games.counter.popularity = 3;
+    s.games.rocket.popularity = 0.2;
+    expect(renderNews('{event}', s)).toBe('Hardware flash sale');
+    expect(renderNews('{hotgame}/{coldgame}/{newgame}/{nextgame}', s)).toBe('Counter-Stroke/Rocket Soccar/Counter-Stroke/League of Lanes');
+    expect(eligible(s).some((t) => t.startsWith('BREAKING: Hardware flash sale.'))).toBe(true);
+    s.time += 600;
+    expect(eligible(s).some((t) => t.startsWith('BREAKING'))).toBe(false);
   });
 
   it('picks an eligible line and avoids repeating the last one', () => {

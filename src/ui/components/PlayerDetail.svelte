@@ -23,6 +23,7 @@
   import type { Appearance } from '../../engine/types';
   import { game } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
+  import { statTip } from '../statInfo';
   import Avatar from './Avatar.svelte';
   import GearIcon from './GearIcon.svelte';
   import Icon from './Icon.svelte';
@@ -153,7 +154,7 @@
               {@const mult = gearStatMult(p, st)}
               {@const weight = (GENRE_WEIGHTS[g.genre] as Record<string, number>)[st] ?? 0}
               {@const scale = Math.max(p.potential, 100)}
-              <div class="stat">
+              <div class="stat" use:tooltip={() => statTip(st, g, base)}>
                 <span class="sname">{STAT_LABEL[st]}{#if weight > 0}<span class="weight">{Math.round(weight * 100)}%</span>{/if}</span>
                 <span class="sbar">
                   <i style="width:{Math.min(100, (base / scale) * 100)}%"></i>

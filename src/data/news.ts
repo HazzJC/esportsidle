@@ -1,4 +1,5 @@
 import type { GameState } from '../engine/types';
+import { GAMES } from './games';
 
 export interface NewsItem {
   text: string;
@@ -7,6 +8,15 @@ export interface NewsItem {
 }
 
 const has = (op: string, n = 1) => (s: GameState) => (s.ops[op]?.owned ?? 0) >= n;
+const staff = (id: string, n = 1) => (s: GameState) => (s.staff[id] ?? 0) >= n;
+const players = (n = 1) => (s: GameState) => Object.keys(s.players).length >= n;
+const played = (n = 1) => (s: GameState) => s.stats.matchesWon + s.stats.matchesLost >= n;
+/** The org has a gaming house once its second team opens the House tab. */
+const house = (s: GameState) => s.sections.house !== undefined;
+/** Something happened in the wider scene in the last few minutes. */
+const recentEvent = (s: GameState) => s.events.log.length > 0 && s.time - s.events.log[0].time < 300;
+const unlockedCount = (s: GameState) => GAMES.filter((g) => s.games[g.id]?.unlocked).length;
+const nextGame = (s: GameState) => GAMES.some((g) => !s.games[g.id]?.unlocked);
 
 export const NEWS: NewsItem[] = [
   // Always
@@ -20,9 +30,9 @@ export const NEWS: NewsItem[] = [
   { text: 'Area man’s keyboard confirmed to be 40% crumbs by weight.' },
   { text: 'Caster screams so loudly during clutch play that seismographs register a 4.2.' },
   { text: 'Report: "one more game" has never once meant one more game.' },
-  { text: 'Coach reminds team that "touching grass" is not a hero ability.' },
+  { text: 'Coach reminds team that "touching grass" is not a hero ability.', when: played() },
   { text: 'Esports org unveils rebrand. Logo is now a slightly different shade of black.' },
-  { text: 'Bench player spends entire season perfecting his hype clap.' },
+  { text: 'Bench player spends entire season perfecting his hype clap.', when: played() },
   { text: 'Viral clip of a missed shot outperforms the Grand Final in views.' },
   { text: 'New study: RGB lighting adds 12 FPS, say people who sell RGB lighting.' },
   { text: 'Retired pro opens café. Menu consists entirely of instant noodles.' },
@@ -33,7 +43,7 @@ export const NEWS: NewsItem[] = [
   { text: 'Survey: 83% of gamers believe they would be pro if not for their teammates.' },
   { text: 'Headset maker unveils 11.1 surround sound. Humans still have two ears.' },
   { text: 'Mechanical keyboard so loud that neighbours file a noise complaint.' },
-  { text: 'Analyst explains team lost "because they had fewer points than the other team".' },
+  { text: 'Analyst explains team lost "because they had fewer points than the other team".', when: played() },
   { text: 'Player "in the zone" for 14 hours. The zone is now charging rent.' },
   { text: 'Hot take: the meta is broken. Colder take: it has always been broken.' },
   { text: 'Rookie asks whether the more expensive chair has "more APM".' },
@@ -42,7 +52,7 @@ export const NEWS: NewsItem[] = [
   { text: 'LAN party ends after 72 hours when the last energy drink is consumed.' },
   { text: 'Pro player’s mum reveals he still can’t make toast. Can hit 1-deag headshots.' },
   { text: 'Esports betting scandal: man bets his lunch on a match, loses lunch.' },
-  { text: 'Team announces "mental reset" after loss. Reset involves pizza.' },
+  { text: 'Team announces "mental reset" after loss. Reset involves pizza.', when: played() },
   { text: 'Wireless mouse dies mid-final. Nation mourns.' },
   { text: 'Streamer apologises for apology stream about previous apology stream.' },
   { text: 'Scientists discover the "one-tap" gene. It is mostly caffeine.' },
@@ -88,7 +98,7 @@ export const NEWS: NewsItem[] = [
   // Teams & players
   { text: '{org} founder wins a local Smash Siblings bracket. Prize: a crisp $3 and a participation sticker.', when: (s) => s.stats.matchesWon >= 1 && s.earnedRun < 1e5, weight: 2 },
   { text: 'Rival org claims {org} "just got lucky". {org} gets lucky again.', when: (s) => s.stats.matchesWon >= 50 },
-  { text: '{org} rookie asks coach what "macro" means. Coach sighs for eleven minutes.', when: (s) => s.stats.playersSigned >= 1 },
+  { text: '{org} rookie asks coach what "macro" means. Coach sighs for eleven minutes.', when: staff('coach') },
   { text: 'Transfer rumour: {org} spotted scouting a 14-year-old with suspiciously good aim.', when: (s) => s.stats.playersSigned >= 3 },
   { text: 'Season champions {org} celebrate by immediately queueing more ranked.', when: (s) => s.stats.seasonTitles >= 1, weight: 2 },
   { text: '{org} player admits his lucky socks have not been washed since the promotion run.', when: (s) => s.stats.promotions >= 3 },
@@ -101,7 +111,7 @@ export const NEWS: NewsItem[] = [
   { text: 'Galactic Series officials confirm {org} is the first team to play in low orbit without spilling a drink.', when: (s) => Object.values(s.teams).some((t) => t.bestTier >= 12) },
 
   // Staff & house
-  { text: '{org} coach bans the phrase "it’s just a game" from the gaming house.', when: (s) => (s.staff.coach ?? 0) >= 1 },
+  { text: '{org} coach bans the phrase "it’s just a game" from the gaming house.', when: (s) => (s.staff.coach ?? 0) >= 1 && house(s) },
   { text: '{org} chef introduces vegetables. Players stage a 20-minute protest, then eat them.', when: (s) => (s.staff.chef ?? 0) >= 1, weight: 2 },
   { text: '{org} physio confiscates a player’s claw grip. "For your own good."', when: (s) => (s.staff.physio ?? 0) >= 1 },
   { text: '{org} sports psychologist schedules a group session titled "Why We Don’t Type in All Chat".', when: (s) => (s.staff.psych ?? 0) >= 1 },
@@ -141,22 +151,22 @@ export const NEWS: NewsItem[] = [
 
   // More general esports life
   { text: 'Pro player spends 40 minutes adjusting sensitivity, then goes back to the setting he started with.' },
-  { text: 'Team captain’s "quick strat talk" enters its third hour.' },
+  { text: 'Team captain’s "quick strat talk" enters its third hour.', when: played() },
   { text: 'Ranked queue times now long enough to learn a second language. Players learn swear words.' },
   { text: 'Local LAN organiser discovers extension cable powering an extension cable powering the whole event.' },
   { text: 'Streamer ends stream. Stream does not end. Chat now lives in the walls.' },
   { text: 'Pro scene rocked as player admits he has never read a single patch note. Still top 10.' },
-  { text: '"Just one more tournament," says coach, for the ninth consecutive year.' },
+  { text: '"Just one more tournament," says coach, for the ninth consecutive year.', when: played() },
   { text: 'Gamer claims 900 hours in the game "don’t count, I was mostly in the menus".' },
   { text: 'Study: headsets are 30% more effective when worn around the neck for no reason.' },
   { text: 'Tournament admin asked to check replay. Admin checks, declares "vibes were off".' },
   { text: 'Hardware brand unveils mouse so light it must be tethered to the desk.' },
   { text: 'Retired pro starts podcast. First episode is four hours long and mostly about sandwiches.' },
-  { text: 'Team bus breaks down. Players try to fix it by turning it off and on again. It works.' },
+  { text: 'Team bus breaks down. Players try to fix it by turning it off and on again. It works.', when: played() },
   { text: 'Esports doctor prescribes "less screen time". Patient laughs so hard they need a second doctor.' },
   { text: 'Player lags out of the Grand Final. Blames the router. Router has filed for divorce.' },
   { text: 'Analysts unveil new stat measuring how often players say "my bad". Record is 212 per match.' },
-  { text: 'Coach draws a play on the whiteboard. Whiteboard asks for a transfer.' },
+  { text: 'Coach draws a play on the whiteboard. Whiteboard asks for a transfer.', when: played() },
   { text: 'Voice comms leak reveals entire strategy was "go in and see what happens".' },
   { text: 'Grand Final crowd starts a wave. The wave is still going three halls away.' },
   { text: 'Aim trainer high score beaten by a player who was asleep. Investigation ongoing.' },
@@ -166,57 +176,57 @@ export const NEWS: NewsItem[] = [
   { text: 'Energy drink company launches decaf edition. Nobody notices for three weeks.' },
   { text: 'Keyboard warrior loses a debate to a keyboard.' },
   { text: 'Player asks for "a quick pause" during the Grand Final. Returns with a full roast dinner.' },
-  { text: 'Snack sponsor accidentally ships 40,000 crisps to the wrong esports arena. Rival team plays suspiciously well.' },
+  { text: 'Snack sponsor accidentally ships 40,000 crisps to the wrong esports arena. Rival team plays suspiciously well.', when: played() },
   { text: 'Gaming chair reviewer finally stands up after 11 years. Reports "legs are overrated".' },
   { text: 'New game mode announced: Ranked Patience. Nobody has reached Silver.' },
   { text: 'Pro player’s mum watches first match. Asks why he keeps "running into the bad men".' },
-  { text: 'Tournament trophy so heavy the winning team needs a physio to lift it.' },
+  { text: 'Tournament trophy so heavy the winning team needs a physio to lift it.', when: played() },
   { text: 'Match paused because a player’s cat unplugged the fridge, which somehow unplugged the internet.' },
   { text: 'Caster runs out of synonyms for "insane". Settles on "big".' },
   { text: 'Balance team nerfs the one character nobody played. Mains of that character: "finally, attention".' },
   { text: 'Esports audience survey: 71% watch for the plays, 29% for the caster’s shirts.' },
-  { text: 'Rookie mistakes the team psychologist for a very calm fan.' },
+  { text: 'Rookie mistakes the team psychologist for a very calm fan.', when: played() },
 
   // Quotes
   { text: '“You miss 100% of the shots you don’t take. You also miss a lot of the ones you do.” — anonymous support main' },
-  { text: '“We didn’t lose. We just ran out of rounds before we could win.” — a coach, after a 13-0' },
+  { text: '“We didn’t lose. We just ran out of rounds before we could win.” — a coach, after a 13-0', when: played() },
   { text: '“I don’t tilt. I lean slightly, with great intensity.” — a pro, mid-tilt' },
-  { text: '“Scrims are for practice. Ranked is for suffering.” — Bootcamp House motto' },
+  { text: '“Scrims are for practice. Ranked is for suffering.” — Bootcamp House motto', when: has('bootcamp') },
   { text: '“Never trust a player who says they are warmed up.” — veteran analyst' },
   { text: '“The meta is whatever the best player did last week.” — balance designer, off the record' },
   { text: '“He’s done it! He’s done it! I have no idea what he’s done, but he’s done it!” — caster, overtime' },
   { text: '“If you’re not first, you’re in the loser bracket, which is honestly a great journey.” — tournament organiser' },
   { text: '“My reaction time is fine. The world is just early.” — a player, 0-12' },
-  { text: '“Hydrate or diedrate.” — hand-drawn sign in the {org} house' },
-  { text: '“Every clutch starts with somebody else dying first.” — {player}, probably' },
-  { text: '“Our strategy is simple: be better.” — {org} coach, to a room of confused players' },
-  { text: '“Gear doesn’t make the player. It does make the player’s wallet cry.” — {org} accountant' },
-  { text: '“I’ve seen things. Clutches in the dark. Shoes that cost more than cars.” — retired {org} physio' },
+  { text: '“Hydrate or diedrate.” — hand-drawn sign in the {org} house', when: house },
+  { text: '“Every clutch starts with somebody else dying first.” — {player}, probably', when: played() },
+  { text: '“Our strategy is simple: be better.” — {org} coach, to a room of confused players', when: staff('coach') },
+  { text: '“Gear doesn’t make the player. It does make the player’s wallet cry.” — {org} accountant', when: (s) => s.stats.gearBought >= 5 },
+  { text: '“I’ve seen things. Clutches in the dark. Shoes that cost more than cars.” — retired {org} physio', when: staff('physio') },
   { text: '“We’ll win it next season.” — every esports fan, every season' },
   { text: '“It’s not a bug, it’s emergent gameplay.” — {game} developer' },
-  { text: '“You can’t buy chemistry. You can, however, buy a lot of pizza and hope.” — {org} team manager' },
-  { text: '“Lag is a state of mind.” — {org} network engineer, unconvincingly' },
-  { text: '“The crowd was so loud I heard my own thoughts for the first time.” — {player}' },
-  { text: '“I play every match like it’s my last. Mostly because I keep forgetting to save.” — {player}' },
-  { text: '“We came, we saw, we got third.” — {org} press release' },
-  { text: '“There is no I in team, but there is one in ‘I carried’.” — {player}, in the group chat' },
-  { text: '“Sleep is just offline progress for people.” — {org} sports scientist' },
-  { text: '“Rank is temporary. Screenshots are forever.” — {org} social media manager' },
-  { text: '“The best time to buy an upgrade was yesterday. The second best time is also yesterday.” — {org} CFO' },
+  { text: '“You can’t buy chemistry. You can, however, buy a lot of pizza and hope.” — {org} team manager', when: staff('manager') },
+  { text: '“Lag is a state of mind.” — {org} network engineer, unconvincingly', when: has('lan') },
+  { text: '“The crowd was so loud I heard my own thoughts for the first time.” — {player}', when: has('arena') },
+  { text: '“I play every match like it’s my last. Mostly because I keep forgetting to save.” — {player}', when: played() },
+  { text: '“We came, we saw, we got third.” — {org} press release', when: (s) => s.stats.tournamentsPlayed >= 1 },
+  { text: '“There is no I in team, but there is one in ‘I carried’.” — {player}, in the group chat', when: players(2) },
+  { text: '“Sleep is just offline progress for people.” — {org} sports scientist', when: staff('physio') },
+  { text: '“Rank is temporary. Screenshots are forever.” — {org} social media manager', when: staff('social') },
+  { text: '“The best time to buy an upgrade was yesterday. The second best time is also yesterday.” — {org} CFO', when: (s) => s.earnedRun >= 1e7 },
 
   // The roster, by name
   { text: '{player} spotted practising the victory pose in a mirror. Reportedly "looking crisp".', when: (s) => Object.keys(s.players).length >= 2 },
   { text: '{player} claims a new personal best: 14 hours without saying "gg go next".', when: (s) => Object.keys(s.players).length >= 2 },
-  { text: '{player} requests a cardboard cutout of themselves for the {org} house. Request granted, cutout already better at interviews.' },
-  { text: 'Fans vote {player} "most likely to fall asleep on stream". {player} did not see the vote.' },
+  { text: '{player} requests a cardboard cutout of themselves for the {org} house. Request granted, cutout already better at interviews.', when: house },
+  { text: 'Fans vote {player} "most likely to fall asleep on stream". {player} did not see the vote.', when: has('streamer') },
   { text: '{player} buys a second monitor to watch replays of the first monitor.', when: (s) => Object.keys(s.players).length >= 2 },
-  { text: '{player} tries a new warm-up routine: shouting at a wall until the wall apologises.' },
+  { text: '{player} tries a new warm-up routine: shouting at a wall until the wall apologises.', when: players() },
   { text: 'Commentators agree {player} has "the hands of a surgeon and the decision-making of a toddler".', when: (s) => s.stats.matchesWon >= 25 },
   { text: '{player} teaches the bench how to "flick". Bench now banned from the kitchen.', when: (s) => Object.values(s.teams).some((t) => t.bench.length > 0) },
-  { text: '{player} misses a sitter, then posts a 12-minute video explaining why it was actually correct.' },
+  { text: '{player} misses a sitter, then posts a 12-minute video explaining why it was actually correct.', when: played(5) },
   { text: 'Dating app bio of {player} reads: "Diamond 2, peaked Masters, looking for a duo".', when: (s) => Object.keys(s.players).length >= 3 },
-  { text: '{player} admits to naming their houseplant after the {game} final boss.' },
-  { text: '{player} reveals their pre-match meal: one banana and a stern look at the banana.' },
+  { text: '{player} admits to naming their houseplant after the {game} final boss.', when: players() },
+  { text: '{player} reveals their pre-match meal: one banana and a stern look at the banana.', when: played() },
   { text: 'Tabloids report {player} bought a sports car. It is a gaming chair with wheels.', when: (s) => s.earnedRun >= 1e9 },
   { text: '{player} celebrates 1,000 matches with {org}. Cake is shaped like a mouse. Nobody knows which kind.', when: (s) => s.stats.matchesWon >= 1000 },
 
@@ -270,4 +280,50 @@ export const NEWS: NewsItem[] = [
   { text: '{org} merchandise found on a probe returning from the outer planets. Size: medium.', when: (s) => s.earnedRun >= 1e21 },
   { text: 'The {org} fanbase is now large enough to have its own weather.', when: (s) => s.fans >= 1e12 },
   { text: '{org} opens a trophy museum. The museum needs its own trophy museum.', when: (s) => s.trophyCase.length >= 50 },
+
+  // Around the scene: whatever just happened in the world events log
+  { text: 'BREAKING: {event}. Pundits rush to explain why they saw it coming.', when: recentEvent, weight: 3 },
+  { text: 'Talk shows can only discuss one thing: {event}.', when: recentEvent, weight: 3 },
+  { text: 'Forum thread about "{event}" reaches 900 pages. Page one is still arguing about the title.', when: recentEvent, weight: 2 },
+
+  // Games rising and falling
+  { text: '{hotgame} viewership hits an all-time high. Streamers switch games mid-sentence.', when: (s) => unlockedCount(s) >= 1 && played()(s), weight: 2 },
+  { text: 'Every café in town now plays {hotgame}. One café tried chess. It is now a {hotgame} café.', when: (s) => unlockedCount(s) >= 2 },
+  { text: '{coldgame} player count dips. Developers promise "a huge update" and one new hat.', when: (s) => unlockedCount(s) >= 2, weight: 2 },
+  { text: '{coldgame} fans insist the game "is not dead, just resting its eyes".', when: (s) => unlockedCount(s) >= 2 },
+  { text: '{newgame} scene welcomes {org}. Existing teams "not worried at all", they say, worriedly.', when: (s) => unlockedCount(s) >= 2, weight: 2 },
+
+  // New releases
+  { text: 'Leaked footage of {nextgame} has the scene buzzing. Beta keys going for $400.', when: (s) => nextGame(s) && played()(s), weight: 2 },
+  { text: 'Analysts predict {nextgame} will be the next big esport. They said that about the last nine games.', when: (s) => nextGame(s) && played()(s) },
+  { text: '{nextgame} announces its first pro circuit. {org} "watching closely", says someone watching closely.', when: (s) => nextGame(s) && unlockedCount(s) >= 2 },
+  { text: '"Goat Tycoon 3" launches to rave reviews. Esports scene cautiously optimistic about competitive goat.' },
+  { text: 'Battle royale number 412 released. The map is a slightly smaller circle.' },
+  { text: '"Farming Simulator: Ranked Edition" announced. Pros begin practising tractor flicks.' },
+  { text: 'Surprise release of "Mega Kart Deluxe Ultra". Friendships ended worldwide within the hour.' },
+  { text: 'Hotly anticipated RPG delayed to "when it’s done". Fans relieved, then furious, then relieved.' },
+  { text: 'New fighting game launches with 140 characters. The tier list is already 140 characters long.' },
+  { text: 'Indie hit "Cozy Frog Café" gets a competitive mode. Top players call it "surprisingly sweaty".' },
+  { text: 'Retro console re-release sells out in 11 seconds, mostly to people who already own three.' },
+  { text: 'Open-world game map revealed to be 400km². Players immediately ask for fast travel.' },
+  { text: 'Mobile game with 2 billion downloads launches an esports league. Prize pool paid in gems.' },
+  { text: 'Survival game leaves early access after nine years. Nobody believes it.' },
+  { text: 'Game of the Year ceremony runs four hours. The actual awards take eleven minutes.' },
+  { text: 'Neural-link headsets hit the shelves. Early reviews: "I can taste the patch notes."', when: has('neural') },
+  { text: 'First game designed entirely by an AI released. It is a very good spreadsheet.', when: (s) => s.earnedRun >= 1e12 },
+
+  // The wider world
+  { text: 'Heatwave: LAN centres report record air-conditioning bills and zero complaints.' },
+  { text: 'Solar flare knocks ranked servers offline on three continents. Players go outside, report it is "too bright".' },
+  { text: 'Olympic committee considers esports for the ninth time. Decision postponed until after lunch.' },
+  { text: 'Global energy drink shortage enters week two. Productivity somehow up.' },
+  { text: 'Undersea internet cable repaired after a shark "just wanted to check the ping".' },
+  { text: 'Hardware expo opens. Every product is a keyboard. Some of the keyboards are also keyboards.' },
+  { text: 'Record snowfall closes schools. Ranked queue times drop to 0.2 seconds.' },
+  { text: 'Stock markets dip after a popular streamer takes a day off.' },
+  { text: 'Scientists name a newly discovered beetle after a pro’s gamer tag. The beetle is "kinda cracked".' },
+  { text: 'City council approves the world’s first esports-only bus lane.' },
+  { text: 'Government declares a national holiday for the Grand Final. Dentists report a mysterious surge in cancellations.', when: played(50) },
+  { text: 'Mars colony hosts its first LAN. Ping to Earth: fourteen minutes.', when: has('orbital') },
+  { text: 'United Nations adds "gg" to its list of official languages.', when: (s) => s.fans >= 1e8 },
 ];

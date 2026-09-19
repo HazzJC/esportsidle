@@ -166,8 +166,8 @@ describe('tabs that open as the org grows', () => {
   it('starts with only the basics open', () => {
     const s = createNewGame(0, 1);
     updateSections(s);
-    for (const id of ['hq', 'stats', 'options']) expect(sectionOpen(s, id), id).toBe(true);
-    for (const id of ['teams', 'market', 'house', 'staff', 'sponsors', 'studio', 'roster', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
+    for (const id of ['hq', 'teams', 'stats', 'options']) expect(sectionOpen(s, id), id).toBe(true);
+    for (const id of ['market', 'house', 'staff', 'sponsors', 'studio', 'roster', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
   });
 
   it('opens House with the second team, Staff with the third and Sponsors at 1,000 fans', () => {

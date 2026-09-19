@@ -137,6 +137,11 @@ import {
   Video,
   X,
   Zap,
+  Music,
+  Volume2,
+  VolumeX,
+  CircleHelp,
+  EyeOff,
 } from '@lucide/svelte';
 
 export const ICONS: Record<string, typeof Sparkles> = {
@@ -146,6 +151,11 @@ export const ICONS: Record<string, typeof Sparkles> = {
   'badge-check': BadgeCheck,
   bell: Bell,
   'bell-off': BellOff,
+  music: Music,
+  'volume-2': Volume2,
+  'volume-x': VolumeX,
+  help: CircleHelp,
+  'eye-off': EyeOff,
   circle: Circle,
   eraser: Eraser,
   'graduation-cap': GraduationCap,

@@ -7,6 +7,7 @@
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
   import { operationsOpen } from '../../engine/tutorial';
   import Icon from '../components/Icon.svelte';
+  import TutArrow from '../components/TutArrow.svelte';
   import { game } from '../game.svelte';
   import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
   import { tooltip, type TipContent } from '../tooltip.svelte';
@@ -185,6 +186,7 @@
         {#each shownOps as op (op.id)}
           {#if isOperationRevealed(s, op)}
             {@const info = rowInfo(op)}
+            {#if tutorialOp === op.id}<TutArrow label={s.ops[op.id].owned > 0 ? `Buy a ${op.name}` : `Buy your first ${op.name}`} />{/if}
             <button
               class="op"
               class:no={!info.ok}

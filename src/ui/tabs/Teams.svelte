@@ -8,12 +8,35 @@
   import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
   import { seasonSummary } from '../../engine/stories';
   import Avatar from '../components/Avatar.svelte';
+  import FirstPlayer from '../components/FirstPlayer.svelte';
   import Icon from '../components/Icon.svelte';
   import KitPicker from '../components/KitPicker.svelte';
   import Modal from '../components/Modal.svelte';
   import Sparkline from '../components/Sparkline.svelte';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
+  import Guide from '../components/Guide.svelte';
+  import { teamsGuide } from '../guides';
+  import { tick } from 'svelte';
+
+  const TEAMS_GUIDE = teamsGuide();
+
+  /** Brings the guide back and scrolls up to it. */
+  async function help() {
+    game.showGuide('teams');
+    await tick();
+    document.querySelector('.teams .guide')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  const planHelp = (): TipContent => ({
+    title: 'Season plan',
+    icon: 'activity',
+    lines: [
+      'How hard the team competes this season, how much the players learn and how fast they tire.',
+      { text: 'Development: grow players. Balanced: the default. Push: chase promotion now.', tone: 'muted' },
+      { text: 'Click for the full guide.', tone: 'cyan' },
+    ],
+  });
 
   const v = $derived(game.view);
   /** Game id whose kit is being edited. */
@@ -118,13 +141,9 @@
 </script>
 
 <div class="teams">
-  {#if v.s.draft && Object.keys(v.s.teams).length === 0}
-    <div class="no-team">
-      <Icon name="users" size={40} />
-      <h3>No team yet</h3>
-      <p class="muted">Sign your first player from the three prospects in HQ. They found your first team.</p>
-      <button class="btn primary" onclick={() => ((game.tab = 'hq'), (game.mobileView = 'center'))}><Icon name="user-plus" size={14} /> See the prospects</button>
-    </div>
+  <FirstPlayer />
+  {#if Object.keys(v.s.teams).length > 0 && v.s.tutorial.step === 'done'}
+    <Guide id="teams" title="How teams work" pages={TEAMS_GUIDE} />
   {/if}
   {#each GAMES as g (g.id)}
     {#if v.s.games[g.id]?.unlocked && v.s.teams[g.id]}
@@ -256,7 +275,7 @@
           <p class="last-season"><Icon name="calendar-clock" size={12} /> Last season: {seasonSummary(team.lastSeason)}</p>
         {/if}
         <div class="plan-row">
-          <span class="plan-label">Season plan</span>
+          <button class="plan-label" onclick={help} use:tooltip={planHelp}>Season plan <Icon name="help" size={12} /></button>
           <div class="plans" role="radiogroup" aria-label="{g.name} season plan">
             {#each SEASON_PLAN_ORDER as id (id)}
               {@const def = SEASON_PLANS[id]}
@@ -276,7 +295,20 @@
         </div>
 
         <footer>
-          <button class="btn small" disabled={team.tier === 0} onclick={() => game.changeTier(g.id, -1)}>
+          <button
+            class="btn small"
+            disabled={team.tier === 0}
+            onclick={() => game.changeTier(g.id, -1)}
+            use:tooltip={() => ({
+              title: 'Drop tier',
+              icon: 'arrow-down',
+              lines: [
+                'Move down a tier right now: easier opponents, smaller prizes.',
+                { text: 'The season starts again from zero.', tone: 'muted' },
+                { text: 'Winning too easily bores players and crowds, so staying low costs money in the long run.', tone: 'muted' },
+              ],
+            })}
+          >
             <Icon name="arrow-down" size={13} /> Drop tier
           </button>
           <button
@@ -285,16 +317,44 @@
             onclick={() => game.changeTier(g.id, 1)}
             use:tooltip={() => ({
               title: 'Challenge up',
+              icon: 'arrow-up',
               lines: [
-                'Move up a tier immediately.',
+                'Move up a tier right now: bigger prizes, tougher opponents.',
                 { text: `Available when you are winning at least ${Math.round(CHALLENGE_WIN_CHANCE * 100)}% of matches, or to return to a tier you already reached.`, tone: 'muted' },
+                { text: 'The season starts again from zero.', tone: 'muted' },
               ],
             })}
           >
             <Icon name="arrow-up" size={13} /> Challenge
           </button>
-          <label class="check"><input type="checkbox" checked={team.autoPromote} onchange={(e) => game.setTeamOption(g.id, 'autoPromote', e.currentTarget.checked)} /> Auto-promote</label>
-          <label class="check"><input type="checkbox" checked={team.autoSub} onchange={(e) => game.setTeamOption(g.id, 'autoSub', e.currentTarget.checked)} /> Auto-sub</label>
+          <label
+            class="check"
+            use:tooltip={() => ({
+              title: 'Auto-promote',
+              icon: 'trending-up',
+              lines: [
+                `On: a season with ${PROMOTE_WINS}+ wins moves the team up a tier.`,
+                'Off: the team stays in its tier until you challenge. Titles and relegation still happen.',
+              ],
+            })}
+          >
+            <input type="checkbox" checked={team.autoPromote} onchange={(e) => game.setTeamOption(g.id, 'autoPromote', e.currentTarget.checked)} /> Auto-promote
+          </label>
+          <label
+            class="check"
+            use:tooltip={() => ({
+              title: 'Auto-sub',
+              icon: 'refresh-cw',
+              lines: [
+                'On: tired, sick or injured starters swap out for the best rested bench player.',
+                { text: `With the ${SEASON_PLANS[team.plan].name} plan, starters rotate out below ${SEASON_PLANS[team.plan].subAt} energy.`, tone: 'muted' },
+                ...(team.bench.length === 0 ? [{ text: 'Nobody on the bench yet, so there is no one to bring on.', tone: 'bad' as const }] : []),
+              ],
+            })}
+          >
+            <input type="checkbox" checked={team.autoSub} onchange={(e) => game.setTeamOption(g.id, 'autoSub', e.currentTarget.checked)} /> Auto-sub
+          </label>
+          <button class="help-btn" onclick={help} aria-label="How teams work" title="How teams work"><Icon name="help" size={15} /></button>
           <span class="record muted small num">{fmt(team.wins)}W {fmt(team.losses)}L · {team.titles} titles · {money(team.earnings)}</span>
         </footer>
       </article>
@@ -342,23 +402,6 @@
 {/if}
 
 <style>
-  .no-team {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 28px 16px;
-    text-align: center;
-    color: var(--dim);
-  }
-  .no-team h3 {
-    margin: 0;
-    color: var(--text);
-  }
-  .no-team p {
-    margin: 0;
-    max-width: 360px;
-  }
   .last-season {
     display: flex;
     align-items: center;
@@ -374,6 +417,13 @@
     gap: 8px;
   }
   .plan-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: help;
     font-family: var(--font-ui);
     font-weight: 700;
     font-size: 12px;
@@ -760,6 +810,21 @@
     font-size: 12px;
     color: var(--muted);
     cursor: pointer;
+  }
+  .plan-label:hover,
+  .help-btn:hover {
+    color: var(--accent);
+  }
+  .help-btn {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: none;
+    color: var(--dim);
   }
   .record {
     margin-left: auto;

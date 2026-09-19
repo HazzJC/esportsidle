@@ -23,6 +23,7 @@
     { id: 'business', label: 'Sponsors & Merch' },
     { id: 'legacy', label: 'Legacy' },
     { id: 'misc', label: 'Miscellaneous' },
+    { id: 'secrets', label: 'Secrets' },
   ];
 
   const BY_GROUP = GROUPS.map((g) => ({ ...g, list: ACHIEVEMENTS.filter((a) => a.group === g.id) })).filter(
@@ -49,7 +50,8 @@
       icon: hidden ? 'lock' : a.icon,
       iconColor: got ? rarityColor(a.rarity) : 'var(--dim)',
       lines: [
-        hidden ? { text: 'A secret achievement.', tone: 'muted' } : a.desc(),
+        hidden ? { text: a.hint ? `"${a.hint}"` : 'A secret achievement.', tone: 'muted' } : a.desc(),
+        ...(hidden && a.hint ? [{ text: 'A secret achievement.', tone: 'muted' as const }] : []),
         ...(got ? [{ text: `Unlocked ${new Date(at).toLocaleString()}`, tone: 'muted' as const }] : []),
         ...(a.shadow ? [{ text: 'Shadow achievement: does not count towards the cabinet.', tone: 'muted' as const }] : []),
       ],

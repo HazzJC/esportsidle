@@ -20,7 +20,8 @@ export type AchievementGroup =
   | 'events'
   | 'business'
   | 'legacy'
-  | 'misc';
+  | 'misc'
+  | 'secrets';
 
 export interface AchievementDef {
   id: string;
@@ -32,6 +33,8 @@ export interface AchievementDef {
   shadow?: boolean;
   /** Secret achievements hide their description until unlocked. */
   secret?: boolean;
+  /** A cryptic nudge shown in place of a secret's description. */
+  hint?: string;
   check: (s: GameState, r: Rates) => boolean;
   /** Rarity band 0-5 (common to mythic), on the same colour ladder as gear and upgrades. */
   rarity: number;
@@ -922,6 +925,93 @@ add({
   check: (s) => s.stats.offlineSecondsTotal >= 8 * 3600,
 });
 
+// Secrets ------------------------------------------------------------------------
+// Hidden until unlocked; each shows a cryptic hint instead of its description.
+const SECRETS: (Omit<AchievementInput, 'group' | 'secret'> & { rarity: number })[] = [
+  {
+    id: 'one_man_army',
+    name: 'One-Man Army',
+    desc: () => 'Win a season title while your founding player is the only player in the org.',
+    hint: 'Who needs a roster?',
+    icon: 'user',
+    rarity: 2,
+    check: (s) => s.stats.soloFounderTitles >= 1,
+  },
+  {
+    id: 'flawless',
+    name: 'Flawless',
+    desc: () => 'Win every match of a season.',
+    hint: 'Sixteen out of sixteen.',
+    icon: 'sparkles',
+    rarity: 2,
+    check: (s) => s.stats.perfectSeasons >= 1,
+  },
+  {
+    id: 'giant_killer',
+    name: 'Giant Killer',
+    desc: () => 'Win a match you had less than a 10% chance of winning.',
+    hint: 'Nobody gave them a chance.',
+    icon: 'swords',
+    rarity: 2,
+    check: (s) => s.stats.upsetWins >= 1,
+  },
+  {
+    id: 'unstoppable',
+    name: 'Unstoppable',
+    desc: () => 'Win 25 matches in a row with one team.',
+    hint: 'Keep the streak alive.',
+    icon: 'flame',
+    rarity: 3,
+    check: (s) => s.stats.bestWinStreak >= 25,
+  },
+  {
+    id: 'rock_bottom',
+    name: 'Rock Bottom',
+    desc: () => 'Lose 10 matches in a row with one team.',
+    hint: 'It can only get better from here.',
+    icon: 'trending-down',
+    rarity: 1,
+    check: (s) => s.stats.worstLoseStreak >= 10,
+  },
+  {
+    id: 'night_owl',
+    name: 'Night Owl',
+    desc: () => 'Click your logo between 2am and 5am.',
+    hint: 'The grind never sleeps.',
+    icon: 'moon',
+    rarity: 1,
+    check: (s) => s.stats.lateNightClicks >= 1,
+  },
+  {
+    id: 'ride_or_die',
+    name: 'Ride or Die',
+    desc: () => 'Keep your founding player through 20 seasons in one run.',
+    hint: 'Loyalty is a two-way street.',
+    icon: 'heart',
+    rarity: 3,
+    check: (s) => Object.values(s.players).some((p) => p.founder && p.seasons >= 20),
+  },
+  {
+    id: 'hands_off',
+    name: 'Hands Off',
+    desc: () => `Earn ${fmt(1e6)} in a run without clicking your logo once.`,
+    hint: 'Look, no hands.',
+    icon: 'bot',
+    rarity: 3,
+    check: (s) => s.earnedRun >= 1e6 && s.stats.clicksRun === 0,
+  },
+  {
+    id: 'all_in',
+    name: 'All In',
+    desc: () => `Spend down to less than $1 after earning ${fmt(1e6)} in a run.`,
+    hint: 'Every last cent.',
+    icon: 'dollar-sign',
+    rarity: 1,
+    check: (s) => s.cash < 1 && s.earnedRun >= 1e6,
+  },
+];
+for (const { rarity: _rarity, ...def } of SECRETS) add({ ...def, group: 'secrets', secret: true });
+
 // Rarity ------------------------------------------------------------------------
 // Most achievements come in ladders (earn_0, earn_3 ... earn_33). Each ladder climbs from common
 // towards mythic by position; later operations start their ladders higher because even owning
@@ -988,6 +1078,7 @@ const RARITY_OVERRIDES: Record<string, number> = {
   ctrl_s: 1,
   backup: 0,
   touch_grass: 1,
+  ...Object.fromEntries(SECRETS.map((d) => [d.id, d.rarity])),
 };
 
 function assignRarity(all: AchievementDef[]): void {

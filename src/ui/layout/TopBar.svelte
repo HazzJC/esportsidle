@@ -84,6 +84,18 @@
     {/if}
   </div>
 
+  <button
+    class="bell music"
+    class:muted={!s.settings.musicOn}
+    aria-pressed={s.settings.musicOn}
+    aria-label={s.settings.musicOn ? 'Music on' : 'Music off'}
+    title={s.settings.musicOn ? 'Music on (click to turn off)' : 'Music off (click to turn on)'}
+    onclick={() => game.setSetting('musicOn', !s.settings.musicOn)}
+  >
+    <Icon name="music" size={15} />
+    {#if !s.settings.musicOn}<span class="strike" aria-hidden="true"></span>{/if}
+  </button>
+
   <div class="bell-wrap" bind:this={bellWrap}>
     <button
       class="bell"
@@ -222,6 +234,21 @@
   }
   .bell.muted {
     color: var(--dim);
+  }
+  .music {
+    flex: none;
+  }
+  .music:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  .strike {
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    background: currentColor;
+    transform: rotate(-45deg);
+    border-radius: 1px;
   }
   .badge {
     position: absolute;

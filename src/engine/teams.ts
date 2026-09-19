@@ -321,9 +321,21 @@ export function scoreline(genre: Genre, win: boolean, rng: Rng): string {
   }
 }
 
+/** A win at less than this chance counts as an upset. */
+export const UPSET_CHANCE = 0.1;
+
+/** Whether the founding player is the only player the org has signed. */
+function onlyFounder(s: GameState): boolean {
+  const players = Object.values(s.players);
+  return players.length === 1 && players[0].founder;
+}
+
 export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mods, rng: Rng): MatchRecord {
   const game = getGame(team.gameId);
-  const win = rng.next() < ev.winChance;
+  const roll = rng.next();
+  // An org's very first match is always a win, so the tutorial starts on a high.
+  const firstEver = s.stats.matchesWon + s.stats.matchesLost === 0;
+  const win = firstEver || roll < ev.winChance;
   const opponent = pickOpponent(s, rng);
   const prize = win ? ev.winPrize : ev.lossPrize;
   // Derby wins against the rival bring in extra fans.
@@ -355,6 +367,9 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     team.streak = team.streak <= 0 ? team.streak - 1 : -1;
     s.stats.matchesLost++;
   }
+  if (win && !firstEver && ev.winChance < UPSET_CHANCE) s.stats.upsetWins++;
+  s.stats.bestWinStreak = Math.max(s.stats.bestWinStreak, team.streak);
+  s.stats.worstLoseStreak = Math.max(s.stats.worstLoseStreak, -team.streak);
   s.stats.prizeMoneyTotal += prize;
   team.seasonPlayed++;
   if (win) team.seasonWins++;
@@ -401,6 +416,8 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   if (wins >= TITLE_WINS) {
     team.titles++;
     s.stats.seasonTitles++;
+    if (wins >= SEASON_LENGTH) s.stats.perfectSeasons++;
+    if (onlyFounder(s)) s.stats.soloFounderTitles++;
     gainTrophies(s, 1);
     addTrophy(s, { kind: 'title', gameId: team.gameId, tier: team.tier, season: team.seasonNumber, mvp: team.lastSeason?.mvp ?? null });
     const bonus = ev.winPrize * 3;

@@ -7,6 +7,8 @@ import { SPONSORS_UNLOCK_FANS } from '../data/sponsors';
 
 /** Fans needed before the Studio opens: enough of a following to care about the kit. */
 export const STUDIO_UNLOCK_FANS = 500;
+/** Cash in hand that opens the transfer market: enough to afford a second player. */
+export const MARKET_UNLOCK_CASH = 500;
 /** All-time earnings that open the Legacy tab, well before the first point, so the goal is visible. */
 export const LEGACY_TAB_EARNED = 1e12;
 
@@ -29,17 +31,14 @@ const playerCount = (s: GameState) => Object.keys(s.players).length;
  */
 export const SECTIONS: SectionDef[] = [
   { id: 'hq' },
-  {
-    id: 'teams',
-    unlock: (s) => playerCount(s) > 0,
-    requirement: () => 'Sign your first player',
-    announce: 'Your team, its season and every match result live here.',
-  },
+  // Teams is where a new org starts: the first player is signed there.
+  { id: 'teams' },
   {
     id: 'market',
-    unlock: (s) => playerCount(s) > 0 && !tutorialActive(s),
-    requirement: () => 'Finish the tutorial',
-    announce: 'Sign new players to fill your teams. New faces arrive every few minutes.',
+    unlock: (s) => playerCount(s) > 0 && !tutorialActive(s) && s.cash >= MARKET_UNLOCK_CASH,
+    requirement: (s) =>
+      tutorialActive(s) ? 'Finish the tutorial' : `Have ${money(MARKET_UNLOCK_CASH)} in the bank (${money(Math.floor(s.cash))} now)`,
+    announce: 'The transfer market is open. Sign players to fill your teams and bench. Open it for a quick guide to reading a player.',
   },
   {
     id: 'achievements',

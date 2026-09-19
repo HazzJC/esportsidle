@@ -46,7 +46,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'match',
     title: 'Your first match',
-    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Players, gear and seasons are the active side of your org.',
+    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Watch the bar fill: your first match is about to start. Players, gear and seasons are the active side of your org.',
     icon: 'swords',
     target: 'matches',
     progress: (s) => ({ value: Math.min(1, s.stats.matchesWon + s.stats.matchesLost), target: 1 }),

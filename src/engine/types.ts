@@ -648,6 +648,9 @@ export interface Settings {
   newsTicker: boolean;
   volume: number;
   muted: boolean;
+  /** Background music, synthesised in the browser. */
+  musicOn: boolean;
+  musicVolume: number;
   confirmPrestige: boolean;
   buyAmount: number;
   /** Which kinds of popup to show. Late game, match and player news can arrive every few seconds. */
@@ -710,6 +713,16 @@ export interface Stats {
   legacyNodes: number;
   challengesCompleted: number;
   derbyWins: number;
+  /** Season titles won while the founding player was the only player in the org. */
+  soloFounderTitles: number;
+  /** Seasons won without dropping a match. */
+  perfectSeasons: number;
+  /** Wins from matches the team was given little chance of winning. */
+  upsetWins: number;
+  bestWinStreak: number;
+  worstLoseStreak: number;
+  /** Logo clicks in the small hours, local time. */
+  lateNightClicks: number;
 }
 
 export interface GameState {
@@ -769,6 +782,8 @@ export interface GameState {
   sections: Record<string, number>;
   /** Sections the player has visited since they opened, so new ones can be flagged. */
   sectionsSeen: Record<string, boolean>;
+  /** Explainer cards the player has read and closed. */
+  guides: Record<string, boolean>;
   nextId: number;
   popularityClock: number;
   stats: Stats;

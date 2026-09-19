@@ -49,6 +49,7 @@ import { QUEST_MAP } from '../data/quests';
 import { claimQuest, describeReward, skipQuest } from '../engine/quests';
 import { skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
+import { pauseMusicForVisibility, setMusicVolume, startMusic, stopMusic } from './audio/music';
 
 export type TabId =
   | 'hq'
@@ -87,6 +88,8 @@ export interface Toast {
   achievements?: ToastAchievement[];
   /** The kind of news, so it can be muted from the popup itself. Absent for the player's own actions. */
   channel?: NotifyChannel;
+  /** A button that takes the player to the tab the popup is about. */
+  action?: { label: string; tab: TabId };
 }
 
 export type ToastInput = Omit<Toast, 'id' | 'tone' | 'duration'> & { tone?: Tone };
@@ -238,6 +241,9 @@ class GameStore {
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('pagehide', this.onPageHide);
     window.addEventListener('keydown', this.onKeyDown);
+    // Browsers only allow audio after a gesture, so the music waits for the first tap or key.
+    window.addEventListener('pointerdown', this.onFirstGesture, { once: true });
+    window.addEventListener('keydown', this.onFirstGesture, { once: true });
   }
 
   stop(): void {
@@ -248,6 +254,25 @@ class GameStore {
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('pagehide', this.onPageHide);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('pointerdown', this.onFirstGesture);
+    window.removeEventListener('keydown', this.onFirstGesture);
+    stopMusic();
+  }
+
+  private gestured = false;
+
+  private onFirstGesture = (): void => {
+    if (this.gestured) return;
+    this.gestured = true;
+    this.syncMusic();
+  };
+
+  /** Starts or stops the music to match the settings. Needs a user gesture first. */
+  private syncMusic(): void {
+    if (!this.gestured) return;
+    const { musicOn, musicVolume } = this.state.settings;
+    if (musicOn && musicVolume > 0) startMusic(musicVolume);
+    else stopMusic();
   }
 
   private frame = (now: number): void => {
@@ -301,6 +326,7 @@ class GameStore {
 
   private onVisibility = (): void => {
     if (document.hidden) this.save(false);
+    pauseMusicForVisibility(document.hidden);
   };
 
   private onPageHide = (): void => {
@@ -341,7 +367,16 @@ class GameStore {
         if (tutorialActive(this.state)) break;
         const tab = TAB_MAP.get(e.id);
         this.sfx('promote');
-        this.toast({ title: `New: ${tab?.label ?? e.id}`, body: e.text, icon: tab?.icon ?? 'sparkles', tone: 'gold' }, 7000);
+        this.toast(
+          {
+            title: `New: ${tab?.label ?? e.id}`,
+            body: e.text,
+            icon: tab?.icon ?? 'sparkles',
+            tone: 'gold',
+            action: tab ? { label: `Open ${tab.label}`, tab: tab.id as TabId } : undefined,
+          },
+          9000,
+        );
         break;
       }
       default:
@@ -387,6 +422,8 @@ class GameStore {
   // ---------------------------------------------------------------------------
   click(): ClickResult {
     const result = clickLogo(this.state);
+    const hour = new Date().getHours();
+    if (hour >= 2 && hour < 5) this.state.stats.lateNightClicks++;
     this.sfx('click');
     this.refresh();
     return result;
@@ -435,6 +472,24 @@ class GameStore {
   selectedPlayer = $state<string | null>(null);
   /** Game filter for the transfer market. */
   marketFilter = $state<string | null>(null);
+  /** A guide the player asked to see again after closing it. */
+  guideOpen = $state<string | null>(null);
+
+  dismissGuide(id: string): void {
+    this.state.guides[id] = true;
+    if (this.guideOpen === id) this.guideOpen = null;
+    this.refresh();
+  }
+
+  showGuide(id: string): void {
+    this.guideOpen = id;
+  }
+
+  /** Goes to a centre tab, on phones too. */
+  openTab(tab: TabId): void {
+    this.tab = tab;
+    this.mobileView = 'center';
+  }
 
   unlockGame(gameId: string): boolean {
     if (!unlockGame(this.state, gameId)) return false;
@@ -761,6 +816,9 @@ class GameStore {
   /** Finishes the first-run screen. The rules live in engine/org.ts. */
   completeOnboarding(name: string, tone: string, emblem: Emblem): void {
     completeOnboardingState(this.state, name, tone, emblem);
+    // A new org starts on the Teams page, where the first player is waiting to be signed.
+    this.tab = 'teams';
+    this.mobileView = 'clicker';
     this.save(false);
     this.refresh();
   }
@@ -826,6 +884,14 @@ class GameStore {
   setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
     this.state.settings[key] = value;
     if (key === 'numberFormat') setNumberFormat(value as NumberFormat);
+    if (key === 'musicOn') {
+      this.gestured = true; // flipping the switch is itself a gesture
+      this.syncMusic();
+    }
+    if (key === 'musicVolume') {
+      setMusicVolume(value as number);
+      this.syncMusic();
+    }
     this.refresh();
   }
 

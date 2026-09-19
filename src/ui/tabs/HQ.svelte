@@ -4,7 +4,6 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
-  import FirstPlayer from '../components/FirstPlayer.svelte';
   import Quests from '../components/Quests.svelte';
   import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
@@ -31,7 +30,6 @@
 </script>
 
 <div class="hq">
-  <FirstPlayer />
   <Quests />
   {#if s.tutorial.step === 'done'}
     <Agenda />

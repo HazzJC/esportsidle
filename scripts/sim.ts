@@ -40,6 +40,7 @@ import { Rng } from '../src/engine/rng';
 import { signOffer } from '../src/engine/sponsors';
 import { hireStaff, isStaffUnlocked, staffPrice } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
+import { sectionOpen } from '../src/engine/sections';
 import { unlockGame } from '../src/engine/teams';
 import { operationsOpen } from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
@@ -183,7 +184,7 @@ function ruleBasedActions(s: GameState): void {
   const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
   if (next && s.cash >= next.unlockCost * 2) unlockGame(s, next.id);
 
-  for (const team of Object.values(s.teams)) {
+  for (const team of sectionOpen(s, 'market') ? Object.values(s.teams) : []) {
     let guard = 0;
     while (team.lineup.includes(null) && guard++ < 6) {
       const listing = s.market.listings.filter((l) => l.player.gameId === team.gameId).sort((a, b) => a.price - b.price)[0];

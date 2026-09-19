@@ -20,14 +20,18 @@
    * On a wide screen the logo and the store are always visible, so only the highlight changes.
    */
   async function guide(target: TutorialTarget) {
-    if (target === 'logo') game.mobileView = 'clicker';
-    else if (target === 'store') game.mobileView = 'store';
+    if (target === 'logo') {
+      // On a wide screen the logo sits beside the Teams page, where the first player waits.
+      game.tab = 'teams';
+      game.mobileView = 'clicker';
+    } else if (target === 'store') game.mobileView = 'store';
     else {
-      game.tab = target === 'draft' ? 'hq' : 'teams';
+      game.tab = 'teams';
       game.mobileView = 'center';
     }
     await tick();
-    const el = document.querySelector('.tut-target');
+    // The arrow sits just above its target, so showing the arrow brings the target along with it.
+    const el = document.querySelector('.tut-arrow') ?? document.querySelector('.tut-target');
     if (el && el.getClientRects().length > 0) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
@@ -66,7 +70,7 @@
 
   const BACK_LABEL: Record<TutorialTarget, string> = {
     logo: 'Back to the logo',
-    draft: 'Back to the prospects',
+    draft: 'Back to your first player',
     matches: 'Back to my team',
     store: 'Back to the store',
   };

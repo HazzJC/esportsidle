@@ -126,6 +126,25 @@
         </button>
       </span>
     </label>
+    <label class="select-row">
+      <span>Music</span>
+      <span class="volume">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={settings.musicVolume}
+          disabled={!settings.musicOn}
+          aria-label="Music volume"
+          oninput={(e) => game.setSetting('musicVolume', Number(e.currentTarget.value))}
+        />
+        <button class="btn small" onclick={() => game.setSetting('musicOn', !settings.musicOn)} aria-label={settings.musicOn ? 'Turn music off' : 'Turn music on'}>
+          <Icon name={settings.musicOn ? 'volume-2' : 'volume-x'} size={14} />
+        </button>
+      </span>
+    </label>
+    <p class="muted small">"Night Shift", an original track generated live in your browser: industrial half-time drums, a growling reese bass and a slow build. It never loops quite the same way.</p>
     <Toggle checked={settings.newsTicker} label="News ticker" onchange={(v) => game.setSetting('newsTicker', v)} />
     <Toggle checked={settings.floatingText} label="Floating numbers" description="Show cash popping out when you click." onchange={(v) => game.setSetting('floatingText', v)} />
     <Toggle checked={settings.particles} label="Particles" onchange={(v) => game.setSetting('particles', v)} />

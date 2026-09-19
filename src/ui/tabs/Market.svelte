@@ -4,6 +4,7 @@
   import { fmtPct, fmtTime, money } from '../../engine/format';
   import { rerollCost } from '../../engine/market';
   import { ALL_STATS, STAT_LABEL } from '../../engine/players';
+  import { tick } from 'svelte';
   import { hasRosterSpace } from '../../engine/teams';
   import Icon from '../components/Icon.svelte';
   import PlayerCard from '../components/PlayerCard.svelte';
@@ -11,11 +12,22 @@
   import { previewSigning } from '../../engine/roster';
   import { game } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
+  import Guide from '../components/Guide.svelte';
+  import { marketGuide } from '../guides';
+  import { statTip } from '../statInfo';
 
   const v = $derived(game.view);
   const unlocked = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked));
   const listings = $derived(v.s.market.listings.filter((l) => !game.marketFilter || l.player.gameId === game.marketFilter));
   const cost = $derived(rerollCost(v.r.cpsNoBuffs, v.s.market.rerolls));
+
+  const guidePages = $derived(marketGuide(v.s));
+
+  async function help() {
+    game.showGuide('market');
+    await tick();
+    document.querySelector('.market .guide')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
 
   function openSlots(gameId: string): number {
     const team = v.s.teams[gameId];
@@ -24,14 +36,18 @@
 </script>
 
 <div class="market">
+  <Guide id="market" title="Market guide" pages={guidePages} />
   <header class="head">
     <div>
       <h2 class="section-title">Transfer Market</h2>
       <p class="muted small">New players arrive in <span class="num">{fmtTime(v.s.market.nextRefresh - v.s.time)}</span>. Signing fees are paid once; players take a cut of their prize money.</p>
     </div>
-    <button class="btn" disabled={v.s.cash < cost} onclick={() => game.rerollMarket()}>
-      <Icon name="refresh-cw" size={14} /> Scout now · {money(cost)}
-    </button>
+    <div class="head-actions">
+      <button class="btn" onclick={help} title="How to read the market and a player"><Icon name="help" size={14} /> Guide</button>
+      <button class="btn" disabled={v.s.cash < cost} onclick={() => game.rerollMarket()}>
+        <Icon name="refresh-cw" size={14} /> Scout now · {money(cost)}
+      </button>
+    </div>
   </header>
 
   <div class="filters">
@@ -62,7 +78,7 @@
           <RosterImpact preview={previewSigning(v.s, p, v.m)} />
           <div class="stats">
             {#each ALL_STATS as st (st)}
-              <div class="stat" title={STAT_LABEL[st]}>
+              <div class="stat" use:tooltip={() => statTip(st, getGame(p.gameId), p.stats[st])}>
                 <span class="sl">{STAT_LABEL[st].slice(0, 3)}</span>
                 <span class="sb"><i style="width:{Math.min(100, p.stats[st])}%"></i></span>
                 <span class="sv num">{p.stats[st]}</span>
@@ -81,7 +97,11 @@
             {/each}
           </div>
           <div class="foot">
-            <span class="muted small">Potential <b>{p.potential}</b> · Cut <b>{fmtPct(p.cut)}</b></span>
+            <span class="muted small">
+              <span use:tooltip={() => ({ title: 'Potential', icon: 'trending-up', lines: ['The ceiling for every stat. Each level raises a stat towards it.', { text: 'Players level up from match XP and bench training.', tone: 'muted' }] })}>Potential <b>{p.potential}</b></span>
+              ·
+              <span use:tooltip={() => ({ title: 'Cut', icon: 'handshake', lines: [`They keep ${fmtPct(p.cut)} of the prize money their team wins.`, { text: 'It comes out of winnings, never your bank. There are no wages.', tone: 'muted' }] })}>Cut <b>{fmtPct(p.cut)}</b></span>
+            </span>
             <button
               class="btn small"
               class:primary={afford && space}
@@ -103,6 +123,11 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+  .head-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   .head {
     display: flex;

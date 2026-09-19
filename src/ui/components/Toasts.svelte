@@ -14,7 +14,7 @@
 
 <!--
   Popups sit over the top-left corner and never take the pointer: clicks pass straight through to
-  whatever is underneath, so a popup can never block a purchase. Only the close button is clickable.
+  whatever is underneath, so a popup can never block a purchase. Only its small buttons are clickable.
   Entry-only transitions, because outros never finish in a background tab and would leave stale cards.
 -->
 <div class="toasts" aria-live="polite">
@@ -54,6 +54,12 @@
         <span class="text">
           <span class="title">{t.title}</span>
           {#if t.body}<span class="body">{t.body}</span>{/if}
+          {#if t.action}
+            {@const action = t.action}
+            <button class="go" onclick={() => (game.openTab(action.tab), game.dismissToast(t.id))}>
+              {action.label} <Icon name="arrow-right" size={12} />
+            </button>
+          {/if}
         </span>
       {/if}
       <button class="close" onclick={() => game.dismissToast(t.id)} aria-label="Dismiss notification">
@@ -234,6 +240,24 @@
     pointer-events: none;
   }
 
+  .go {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
+    background: color-mix(in srgb, var(--c) 16%, transparent);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    pointer-events: auto;
+  }
+  .go:hover {
+    background: color-mix(in srgb, var(--c) 30%, transparent);
+  }
   .close {
     position: absolute;
     top: 6px;
