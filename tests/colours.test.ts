@@ -32,6 +32,7 @@ describe('interface tone and team colours', () => {
     const s = foundedGame(0, 1);
     expect(s.settings.onboarded).toBe(false);
     expect(s.settings.uiAccent).toBe(DEFAULT_TONE);
+    expect(s.settings.musicOn).toBe(false);
     expect(s.org.primary).toBe(DEFAULT_KIT.primary);
     expect(s.teams.smash.kit).toBeNull();
   });

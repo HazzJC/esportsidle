@@ -35,7 +35,7 @@ export function createSettings(): Settings {
     newsTicker: true,
     volume: 0.5,
     muted: false,
-    musicOn: true,
+    musicOn: false,
     musicVolume: 0.35,
     confirmPrestige: true,
     buyAmount: 1,
