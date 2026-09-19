@@ -1,7 +1,11 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { SECTION_MAP, sectionOpen } from '../../engine/sections';
   import Icon from '../components/Icon.svelte';
   import PlayerDetail from '../components/PlayerDetail.svelte';
-  import { game, type TabId } from '../game.svelte';
+  import { game } from '../game.svelte';
+  import { TABS } from '../tabs';
+  import { tooltip } from '../tooltip.svelte';
   import Achievements from '../tabs/Achievements.svelte';
   import HQ from '../tabs/HQ.svelte';
   import Legacy from '../tabs/Legacy.svelte';
@@ -15,34 +19,48 @@
   import Stats from '../tabs/Stats.svelte';
   import Teams from '../tabs/Teams.svelte';
 
-  const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'hq', label: 'HQ', icon: 'building' },
-    { id: 'house', label: 'House', icon: 'house' },
-    { id: 'teams', label: 'Teams', icon: 'swords' },
-    { id: 'roster', label: 'Roster', icon: 'users' },
-    { id: 'market', label: 'Market', icon: 'user-plus' },
-    { id: 'staff', label: 'Staff', icon: 'briefcase' },
-    { id: 'studio', label: 'Studio', icon: 'palette' },
-    { id: 'sponsors', label: 'Sponsors', icon: 'handshake' },
-    { id: 'legacy', label: 'Legacy', icon: 'crown' },
-    { id: 'achievements', label: 'Trophies', icon: 'trophy' },
-    { id: 'stats', label: 'Stats', icon: 'chart-column' },
-    { id: 'options', label: 'Options', icon: 'settings' },
-  ];
+  const s = $derived(game.view.s);
+  /** Tabs open one at a time as the org grows (engine/sections); the rest wait behind a lock chip. */
+  const open = $derived(TABS.filter((t) => sectionOpen(s, t.id)));
+  const locked = $derived(TABS.filter((t) => !sectionOpen(s, t.id)));
+  const isNew = (id: string) => !!SECTION_MAP.get(id)?.unlock && !s.sectionsSeen[id];
 
   /** A finished quest or an open draft waits in HQ. */
-  const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft);
+  const hqWaiting = $derived(s.quests.active.some((q) => q.ready) || !!s.draft);
+
+  // Never leave the player on a tab that has not opened yet.
+  $effect(() => {
+    if (!sectionOpen(s, game.tab)) game.tab = 'hq';
+  });
+  // Visiting a tab clears its "new" flag.
+  $effect(() => {
+    const tab = game.tab;
+    untrack(() => game.markSectionSeen(tab));
+  });
+
+  function lockedTip() {
+    const st = game.view.s;
+    return {
+      title: 'Still to unlock',
+      icon: 'lock',
+      lines: locked.map((t) => `${t.label}: ${SECTION_MAP.get(t.id)?.requirement?.(st) ?? 'Keep playing'}`),
+    };
+  }
 </script>
 
 <div class="center panel">
   <nav class="tabs" aria-label="Sections">
-    {#each TABS as t (t.id)}
+    {#each open as t (t.id)}
       <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id}>
         <Icon name={t.icon} size={16} />
         <span>{t.label}</span>
         {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
+        {#if isNew(t.id) && game.tab !== t.id}<i class="new">New</i>{/if}
       </button>
     {/each}
+    {#if locked.length > 0}
+      <span class="locked" use:tooltip={lockedTip} aria-label="{locked.length} more tabs to unlock"><Icon name="lock" size={13} /> {locked.length}</span>
+    {/if}
   </nav>
   <div class="body">
     {#if game.tab === 'hq'}
@@ -134,6 +152,45 @@
     min-height: 0;
     overflow-y: auto;
     padding: 12px;
+  }
+  .new {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #1a1406;
+    font-family: var(--font-ui);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 9.5px;
+    line-height: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    animation: new-pop 0.4s ease-out;
+  }
+  .locked {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+    padding: 4px 9px;
+    align-self: center;
+    border-radius: 999px;
+    border: 1px dashed var(--line-2);
+    color: var(--dim);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: help;
+  }
+  @keyframes new-pop {
+    from {
+      transform: scale(0.4);
+      opacity: 0;
+    }
   }
   @media (max-width: 1280px) {
     .tab span {

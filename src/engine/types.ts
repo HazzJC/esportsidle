@@ -3,6 +3,7 @@ import type { GearSlot } from '../data/gear';
 import type { TrendId } from '../data/merch';
 import type { SponsorGoalKind } from '../data/sponsors';
 import type { TutorialStep } from '../data/tutorial';
+import type { Emblem } from '../data/emblems';
 import type { NumberFormat } from './format';
 
 export type Tone = 'good' | 'bad' | 'info' | 'gold';
@@ -213,6 +214,8 @@ export interface OrgState {
   jersey: string | null;
   primary: string;
   secondary: string;
+  /** Badge shape and mark: the logo until the player draws one. */
+  emblem: Emblem;
 }
 
 export interface Appearance {
@@ -762,6 +765,10 @@ export interface GameState {
   draft: MarketListing[] | null;
   tutorial: TutorialState;
   quests: QuestState;
+  /** Section (centre tab) id -> simulated time it opened. Sections open as the org grows. */
+  sections: Record<string, number>;
+  /** Sections the player has visited since they opened, so new ones can be flagged. */
+  sectionsSeen: Record<string, boolean>;
   nextId: number;
   popularityClock: number;
   stats: Stats;

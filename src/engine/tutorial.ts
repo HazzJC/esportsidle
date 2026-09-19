@@ -42,6 +42,16 @@ export function updateTutorial(s: GameState): boolean {
   return true;
 }
 
+/**
+ * Playtime on a brand-new org before random events begin: no Hype Drops, world news, illness or
+ * rival, so the first minutes follow the tutorial and the quests without interruptions.
+ */
+export const CALM_START_SECONDS = 480;
+
+export function calmStart(s: GameState): boolean {
+  return tutorialActive(s) || (s.prestige.runs === 0 && s.stats.playtimeTotal < CALM_START_SECONDS);
+}
+
 export function skipTutorial(s: GameState): void {
   s.tutorial.step = 'done';
 }

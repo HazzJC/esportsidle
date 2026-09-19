@@ -40,10 +40,14 @@ import { createNewGame } from '../engine/state';
 import type { GameState, Mods, NotifyChannel, Rates, Settings, Tone } from '../engine/types';
 import { rarityName } from './theme';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
-import { signDraftPick } from '../engine/draft';
+import { customiseDraft, signDraftPick, type DraftCustomisation } from '../engine/draft';
+import { isEmblem, type Emblem } from '../data/emblems';
+import { randomLook } from '../engine/players';
+import { TAB_MAP } from './tabs';
+import { updateSections } from '../engine/sections';
 import { QUEST_MAP } from '../data/quests';
 import { claimQuest, describeReward, skipQuest } from '../engine/quests';
-import { skipTutorial, updateTutorial } from '../engine/tutorial';
+import { skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
 
 export type TabId =
@@ -199,6 +203,9 @@ class GameStore {
 
   refresh(): void {
     this.view = this.makeView();
+    if (this.pendingAchievements.length > 0 && !this.achievementTimer && !tutorialActive(this.state)) {
+      this.achievementTimer = setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -317,7 +324,8 @@ class GameStore {
         break;
       case 'achievement': {
         this.pendingAchievements.push(e.id);
-        this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
+        // During the tutorial they wait, and arrive together once it is done (see refresh).
+        if (!tutorialActive(this.state)) this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
         break;
       }
       case 'crowd':
@@ -328,6 +336,14 @@ class GameStore {
       case 'drop':
         this.sfx('drop');
         break;
+      case 'section': {
+        // The tutorial already walks the player to new tabs; the tab's NEW badge is enough.
+        if (tutorialActive(this.state)) break;
+        const tab = TAB_MAP.get(e.id);
+        this.sfx('promote');
+        this.toast({ title: `New: ${tab?.label ?? e.id}`, body: e.text, icon: tab?.icon ?? 'sparkles', tone: 'gold' }, 7000);
+        break;
+      }
       default:
         break;
     }
@@ -455,6 +471,8 @@ class GameStore {
     const p = result.player;
     const g = getGame(p.gameId);
     refreshMarket(this.state, new Rng(this.state), mods);
+    // Open the Teams tab before the tutorial moves the player there.
+    updateSections(this.state);
     updateTutorial(this.state);
     this.sfx('promote');
     this.toast({ title: `${p.tag} signs for ${this.state.org.name}!`, body: `Your ${g.name} team is born. Matches start in a few seconds.`, icon: g.icon, tone: 'gold' }, 5000);
@@ -741,9 +759,32 @@ class GameStore {
   }
 
   /** Finishes the first-run screen. The rules live in engine/org.ts. */
-  completeOnboarding(name: string, tone: string): void {
-    completeOnboardingState(this.state, name, tone);
+  completeOnboarding(name: string, tone: string, emblem: Emblem): void {
+    completeOnboardingState(this.state, name, tone, emblem);
     this.save(false);
+    this.refresh();
+  }
+
+  /** Changes the org's badge shape or mark. */
+  setEmblem(emblem: Emblem): void {
+    if (!isEmblem(emblem)) return;
+    this.state.org.emblem = { shape: emblem.shape, mark: emblem.mark };
+    this.refresh();
+  }
+
+  /** Renames or restyles the first-player prospect before they sign. */
+  customiseDraft(fields: DraftCustomisation): void {
+    if (customiseDraft(this.state, fields)) this.refresh();
+  }
+
+  randomiseDraftLook(): void {
+    this.customiseDraft({ look: randomLook(new Rng({ rng: (Math.random() * 4294967296) >>> 0 })) });
+  }
+
+  /** Clears a tab's "new" flag once the player has opened it. */
+  markSectionSeen(id: string): void {
+    if (this.state.sectionsSeen[id]) return;
+    this.state.sectionsSeen[id] = true;
     this.refresh();
   }
 
@@ -859,7 +900,8 @@ class GameStore {
     const settings = this.state.settings;
     if (this.storage) clearSave(this.storage);
     this.state = createNewGame();
-    this.state.settings = settings;
+    // Display preferences carry over, but a fresh org starts at the founding screen again.
+    this.state.settings = { ...settings, onboarded: false };
     this.offlineReport = null;
     this.acc = 0;
     this.save(false);

@@ -6,6 +6,8 @@
   import type { Design } from '../../engine/types';
   import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
+  import EmblemPicker from '../components/EmblemPicker.svelte';
+  import OrgLogo from '../components/OrgLogo.svelte';
   import KitPicker from '../components/KitPicker.svelte';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
@@ -83,6 +85,20 @@
         Teams tab.{#if customKits > 0}<span class="dim"> {customKits} {customKits === 1 ? 'team uses' : 'teams use'} their own colours.</span>{/if}
       </p>
       <KitPicker primary={s.org.primary} secondary={s.org.secondary} onchange={(p, a) => game.setOrgKit(p, a)} />
+    </div>
+  </section>
+
+  <section class="colours">
+    <div class="kit-preview">
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={96} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
+    </div>
+    <div class="kit-main">
+      <h3 class="section-title">Logo</h3>
+      <p class="muted small">
+        Pick a badge and a mark.{#if s.org.logo}<span class="dim"> Your drawn logo sits inside the badge in place of the mark.</span>{:else}
+          Or draw a design below and set it as your logo to put it inside the badge.{/if}
+      </p>
+      <EmblemPicker emblem={s.org.emblem} name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} onchange={(e) => game.setEmblem(e)} />
     </div>
   </section>
 

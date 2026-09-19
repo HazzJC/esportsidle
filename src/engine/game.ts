@@ -14,7 +14,8 @@ import { checkChallenge } from './prestige';
 import { updateQuests } from './quests';
 import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
-import { tutorialActive, updateTutorial } from './tutorial';
+import { calmStart, updateTutorial } from './tutorial';
+import { updateSections } from './sections';
 import type { GameState, Mods, Rates } from './types';
 import { refreshUpgradeUnlocks } from './upgrades';
 import { earnCash, gainFans } from './wallet';
@@ -55,8 +56,11 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
     updateMarket(s, rng, mods);
     if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) runAutomation(s, mods);
     const ctx = { rng, mods, rates };
-    updateDrops(s, ctx);
-    if (!tutorialActive(s)) updateWorldEvents(s, ctx);
+    // A new org gets a calm start: no drops or world events while it finds its feet.
+    if (!calmStart(s)) {
+      updateDrops(s, ctx);
+      updateWorldEvents(s, ctx);
+    }
     decayHype(s, dt);
     if (rates.cpsNoBuffs > s.stats.bestCps) s.stats.bestCps = rates.cpsNoBuffs;
   }
@@ -68,6 +72,7 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
     checkAchievements(s, rates);
     updateTutorial(s);
     updateQuests(s);
+    updateSections(s);
   }
   return { mods, rates };
 }

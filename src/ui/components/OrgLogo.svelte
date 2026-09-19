@@ -1,15 +1,22 @@
 <script lang="ts">
+  import { DEFAULT_EMBLEM, EMBLEM_SHAPE_MAP, type EmblemShape } from '../../data/emblems';
   import { DEFAULT_KIT } from '../../data/palette';
-  import { shade } from '../color';
+  import { luminance, mix, shade } from '../color';
+  import Icon from './Icon.svelte';
+
   let {
     name,
     primary = DEFAULT_KIT.primary,
     secondary = DEFAULT_KIT.secondary,
     size = 160,
     logoUrl,
-  }: { name: string; primary?: string; secondary?: string; size?: number; logoUrl?: string } = $props();
+    shape = DEFAULT_EMBLEM.shape,
+    mark = DEFAULT_EMBLEM.mark,
+  }: { name: string; primary?: string; secondary?: string; size?: number; logoUrl?: string; shape?: EmblemShape; mark?: string } =
+    $props();
 
   const uid = $props.id();
+  const def = $derived(EMBLEM_SHAPE_MAP.get(shape) ?? EMBLEM_SHAPE_MAP.get('shield')!);
 
   const initials = $derived.by(() => {
     const words = name.trim().split(/\s+/).filter(Boolean);
@@ -21,6 +28,9 @@
       .join('')
       .toUpperCase();
   });
+
+  /** An icon mark takes the brighter team colour, lifted a little so it reads on the dark panel. */
+  const markColor = $derived(mix(luminance(primary) >= luminance(secondary) ? primary : secondary, '#ffffff', 0.15));
 </script>
 
 <svg width={size} height={size} viewBox="0 0 200 200" role="img" aria-label="{name} logo">
@@ -38,19 +48,17 @@
       <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
     </filter>
     <clipPath id="{uid}-clip">
-      <path d="M100 26 L160 48 V96 C160 132 136 158 100 174 C64 158 40 132 40 96 V48 Z" />
+      <path d={def.inner} />
     </clipPath>
   </defs>
-  <path
-    d="M100 12 L172 38 V96 C172 140 142 172 100 190 C58 172 28 140 28 96 V38 Z"
-    fill="url(#{uid}-fill)"
-    filter="url(#{uid}-glow)"
-  />
-  <path d="M100 26 L160 48 V96 C160 132 136 158 100 174 C64 158 40 132 40 96 V48 Z" fill="url(#{uid}-inner)" />
+  <path d={def.outer} fill="url(#{uid}-fill)" filter="url(#{uid}-glow)" />
+  <path d={def.inner} fill="url(#{uid}-inner)" />
   {#if logoUrl}
     <image href={logoUrl} x="46" y="46" width="108" height="108" clip-path="url(#{uid}-clip)" style="image-rendering: pixelated" />
-  {:else}
-    <path d="M52 62 L100 44 L148 62" stroke="url(#{uid}-fill)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7" />
+  {:else if mark === 'initials'}
+    {#if shape === 'shield'}
+      <path d="M52 62 L100 44 L148 62" stroke="url(#{uid}-fill)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7" />
+    {/if}
     <text
       x="100"
       y="118"
@@ -62,5 +70,9 @@
       letter-spacing="2">{initials}</text
     >
     <path d="M70 142 H130" stroke="url(#{uid}-fill)" stroke-width="4" stroke-linecap="round" opacity="0.6" />
+  {:else}
+    <g transform="translate(58 58)" filter="url(#{uid}-glow)">
+      <Icon name={mark} size={84} color={markColor} />
+    </g>
   {/if}
 </svg>

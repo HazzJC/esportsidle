@@ -5,6 +5,9 @@ import { sanitizeDesign } from './designs';
 import { createFounder } from './players';
 import { Rng } from './rng';
 import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state';
+import { createDraft } from './draft';
+import { isEmblem } from '../data/emblems';
+import { openAllSections, updateSections } from './sections';
 import { createTeam } from './teams';
 import type { GameState } from './types';
 
@@ -39,6 +42,11 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
   3: (raw) => {
     raw.tutorial = { step: 'done' };
     raw.draft = null;
+  },
+  // v4 -> v5 added sections that open as the org grows. Orgs past the tutorial have seen them all.
+  4: (raw) => {
+    const tutorial = raw.tutorial as { step?: string } | undefined;
+    if (tutorial?.step === 'done') raw.__openAllSections = true;
   },
 };
 
@@ -88,7 +96,13 @@ export function decodeSave(text: string): GameState {
   if (!isPlainObject(raw)) throw new Error('The save data is corrupted.');
   const migrated = migrate(raw, Number(match[1]));
   const createdAt = typeof migrated.createdAt === 'number' ? migrated.createdAt : Date.now();
+  const openAll = migrated.__openAllSections === true;
+  delete migrated.__openAllSections;
   const state = mergeDefaults(createBaseState(createdAt), migrated) as GameState;
+  if (openAll) {
+    openAllSections(state);
+    for (const id of Object.keys(state.sections)) state.sectionsSeen[id] = true;
+  }
   repairState(state);
   return state;
 }
@@ -101,6 +115,10 @@ export function repairState(s: GameState): void {
     if (s.tutorial.step === 'done' && s.prestige.runs === 0 && s.stats.playersSigned === 0) addFounder(s);
     else setupNewRun(s);
   }
+  // Drafts from when three prospects were offered become the single first-player prospect.
+  if (s.draft && s.draft.length !== 1) s.draft = createDraft(s, new Rng(s));
+  if (!isEmblem(s.org.emblem)) s.org.emblem = { shape: 'shield', mark: 'initials' };
+  updateSections(s, false);
   for (const [id, design] of Object.entries(s.designs)) {
     s.designs[id] = sanitizeDesign({ ...design, id });
   }

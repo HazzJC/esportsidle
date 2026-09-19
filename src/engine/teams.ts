@@ -32,6 +32,7 @@ import {
   traitsOf,
 } from './players';
 import { MOODS, STAKES_START, recordForm, resetFormForTier, stakesMult, teamMood } from './mood';
+import { calmStart } from './tutorial';
 import { Rng } from './rng';
 import type { GameState, MatchRecord, Mods, Player, StatKey, TeamEval, TeamKit, TeamState } from './types';
 import { RIVAL_FANS_MULT, addTrophy, checkPlayerMilestones, checkServiceMilestones, pickOpponent, recordRivalMatch, recordSeason } from './stories';
@@ -377,7 +378,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     checkPlayerMilestones(s, p, win, levels);
     applyMorale(p, win ? mood.moraleWin : mood.moraleLoss, mods);
     drainEnergy(p, mods, plan.drain);
-    rollHealth(s, p, mods, rng, hasBench);
+    if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench);
   }
   // Bench players train alongside; how much depends on the plan.
   if (plan.benchXp > 0) {

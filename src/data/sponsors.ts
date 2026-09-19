@@ -112,4 +112,4 @@ export const GOAL_INFO: Record<SponsorGoalKind, { label: (n: string) => string; 
   drops: { label: (n) => `Click ${n} Hype Drops`, targets: [3, 5, 8, 12, 20] },
 };
 
-export const SPONSORS_UNLOCK_FANS = 2_000;
+export const SPONSORS_UNLOCK_FANS = 1_000;

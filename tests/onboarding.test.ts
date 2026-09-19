@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { QUESTS, QUEST_MAP } from '../src/data/quests';
-import { TUTORIAL_CLICKS } from '../src/data/tutorial';
+import { FIRST_PLAYER_PRICE } from '../src/data/tutorial';
 import { clickLogo } from '../src/engine/clicker';
-import { FIRST_DRAFT, draftOutlook, signDraftPick } from '../src/engine/draft';
+import { customiseDraft, signDraftPick } from '../src/engine/draft';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { advance } from '../src/engine/game';
 import { signListing } from '../src/engine/market';
 import { buyOperation } from '../src/engine/operations';
+import { completeOnboarding } from '../src/engine/org';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
 import { QUEST_SKIP_SECONDS, QUEST_SLOTS, claimQuest, fillQuests, questPerkLabels, questProgress, skipQuest, updateQuests } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
+import { sectionOpen, updateSections } from '../src/engine/sections';
+import { hireStaff } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
-import { operationsOpen, skipTutorial, updateTutorial } from '../src/engine/tutorial';
+import { CALM_START_SECONDS, calmStart, operationsOpen, skipTutorial, updateTutorial } from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
 import { foundedGame } from './fixtures';
 
@@ -21,46 +24,70 @@ const ctx = (s: GameState) => {
   return { cps: r.cpsNoBuffs, fansPerSec: r.fansPerSec };
 };
 
-describe('a new org', () => {
-  it('starts with no team and no player, and three prospects to choose from', () => {
+/** Clicks the logo until the first player is affordable, as the tutorial asks. */
+function clickToFirstPlayer(s: GameState): number {
+  let clicks = 0;
+  while (s.cash < FIRST_PLAYER_PRICE && clicks < 1000) {
+    clickLogo(s);
+    clicks++;
+  }
+  return clicks;
+}
+
+describe('founding the org', () => {
+  it('sets the name, colour and logo on the first screen', () => {
+    const s = createNewGame(0, 1);
+    completeOnboarding(s, '  Night   Owls ', '#34d399', { shape: 'hex', mark: 'flame' });
+    expect(s.org.name).toBe('Night Owls');
+    expect(s.settings.uiAccent).toBe('#34d399');
+    expect(s.org.primary).toBe('#34d399');
+    expect(s.org.emblem).toEqual({ shape: 'hex', mark: 'flame' });
+    expect(s.settings.onboarded).toBe(true);
+  });
+
+  it('ignores a logo it does not know', () => {
+    const s = createNewGame(0, 1);
+    completeOnboarding(s, 'Org', '#34d399', { shape: 'blob', mark: 'nope' } as never);
+    expect(s.org.emblem).toEqual({ shape: 'shield', mark: 'initials' });
+  });
+});
+
+describe('the first player', () => {
+  it('starts with no team, no player and one rookie prospect for $25', () => {
     const s = createNewGame(0, 1);
     expect(Object.keys(s.players)).toHaveLength(0);
     expect(Object.keys(s.teams)).toHaveLength(0);
-    expect(s.draft).toHaveLength(3);
-    expect(s.draft!.map((l) => l.price)).toEqual(FIRST_DRAFT.map((d) => d.price));
-    expect(s.draft!.map((l) => l.player.rarity)).toEqual(FIRST_DRAFT.map((d) => d.rarity));
+    expect(s.draft).toHaveLength(1);
+    expect(s.draft![0].price).toBe(FIRST_PLAYER_PRICE);
+    expect(s.draft![0].player.rarity).toBe('rookie');
     expect(s.tutorial.step).toBe('click');
   });
 
-  it('prices the picks at $10, $25 and $50: a blank beginner, a rookie and a talent', () => {
+  it('is 25 clicks away at the start', () => {
     const s = createNewGame(0, 1);
-    const [blank, rookie, talent] = s.draft!;
-    expect([blank.price, rookie.price, talent.price]).toEqual([10, 25, 50]);
-    expect(Object.values(blank.player.stats).every((v) => v === 0)).toBe(true);
-    expect(rookie.player.rarity).toBe('rookie');
-    expect(talent.player.rarity).toBe('talent');
-    // The tutorial's clicks alone pay for the cheapest pick; the best is well under a minute more.
-    const click = computeRates(s).click;
-    expect(blank.price).toBeLessThanOrEqual(TUTORIAL_CLICKS * click);
-    expect(talent.price / click / 5).toBeLessThan(30);
+    expect(clickToFirstPlayer(s)).toBe(25);
   });
 
-  it('shows the blank beginner losing and the talent as the strongest start', () => {
+  it('can be renamed and restyled before signing', () => {
     const s = createNewGame(0, 1);
-    const [blank, rookie, talent] = s.draft!.map((l) => draftOutlook(s, l.player, computeMods(s)));
-    expect(blank.win).toBeLessThan(0.01);
-    expect(blank.reach).toBe(-1);
-    expect(talent.win).toBeGreaterThan(rookie.win);
+    const p = s.draft![0].player;
+    expect(customiseDraft(s, { tag: '  Ace  ', first: 'Sam', last: 'Rivera', look: { hair: 3, skin: 2 } })).toBe(true);
+    expect([p.tag, p.first, p.last, p.look.hair, p.look.skin]).toEqual(['Ace', 'Sam', 'Rivera', 3, 2]);
+    // Blank names are ignored rather than wiping the player's name.
+    customiseDraft(s, { tag: '   ' });
+    expect(p.tag).toBe('Ace');
   });
 
-  it('founds the first team with the first signing and closes the draft', () => {
+  it('becomes the founding player, founds the team and closes the draft', () => {
     const s = createNewGame(0, 1);
-    const pick = s.draft![1];
-    expect(signDraftPick(s, pick.player.id, computeMods(s))).toMatchObject({ ok: false });
-    s.cash = pick.price;
-    expect(signDraftPick(s, pick.player.id, computeMods(s)).ok).toBe(true);
+    customiseDraft(s, { tag: 'Ace' });
+    const id = s.draft![0].player.id;
+    expect(signDraftPick(s, id, computeMods(s))).toMatchObject({ ok: false });
+    s.cash = FIRST_PLAYER_PRICE;
+    expect(signDraftPick(s, id, computeMods(s)).ok).toBe(true);
     expect(s.cash).toBe(0);
-    expect(s.teams.smash.lineup[0]).toBe(pick.player.id);
+    expect(s.teams.smash.lineup[0]).toBe('founder');
+    expect(s.players.founder).toMatchObject({ tag: 'Ace', founder: true, cut: 0 });
     expect(s.draft).toBeNull();
     expect(s.stats.playersSigned).toBe(1);
   });
@@ -81,8 +108,9 @@ describe('the tutorial', () => {
     expect(operationsOpen(s)).toBe(false);
     s.cash = 1e6;
     expect(buyOperation(s, 'grinder', 1)).toBe(0);
+    s.cash = 0;
 
-    for (let i = 0; i < TUTORIAL_CLICKS; i++) clickLogo(s);
+    clickToFirstPlayer(s);
     updateTutorial(s);
     expect(s.tutorial.step).toBe('draft');
 
@@ -93,6 +121,7 @@ describe('the tutorial', () => {
     advance(s, 30);
     expect(s.tutorial.step).toBe('grinder');
     expect(operationsOpen(s)).toBe(true);
+    s.cash = 1e6;
     expect(buyOperation(s, 'grinder', 1)).toBe(1);
     buyOperation(s, 'streamer', 1);
     updateTutorial(s);
@@ -104,6 +133,88 @@ describe('the tutorial', () => {
     skipTutorial(s);
     expect(operationsOpen(s)).toBe(true);
     expect(s.draft).not.toBeNull();
+  });
+});
+
+describe('a calm start', () => {
+  it('holds random events back for the first minutes of a new org', () => {
+    const s = createNewGame(0, 1);
+    skipTutorial(s);
+    expect(calmStart(s)).toBe(true);
+    s.cash = 1e6;
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    advance(s, CALM_START_SECONDS - 10);
+    expect(s.drops.active).toHaveLength(0);
+    expect(s.stats.eventsSeen).toBe(0);
+    expect(s.stats.illnesses + s.stats.injuries + s.stats.burnouts).toBe(0);
+    expect(s.rival).toBeNull();
+    expect(calmStart(s)).toBe(true);
+    advance(s, 20);
+    expect(calmStart(s)).toBe(false);
+  });
+
+  it('never applies to established orgs or later runs', () => {
+    expect(calmStart(foundedGame(0, 1))).toBe(false);
+    const s = createNewGame(0, 1);
+    skipTutorial(s);
+    s.prestige.runs = 1;
+    expect(calmStart(s)).toBe(false);
+  });
+});
+
+describe('tabs that open as the org grows', () => {
+  it('starts with only the basics open', () => {
+    const s = createNewGame(0, 1);
+    updateSections(s);
+    for (const id of ['hq', 'stats', 'options']) expect(sectionOpen(s, id), id).toBe(true);
+    for (const id of ['teams', 'market', 'house', 'staff', 'sponsors', 'studio', 'roster', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
+  });
+
+  it('opens House with the second team, Staff with the third and Sponsors at 1,000 fans', () => {
+    const s = createNewGame(0, 1);
+    skipTutorial(s);
+    s.cash = 1e9;
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    updateSections(s);
+    expect(sectionOpen(s, 'teams')).toBe(true);
+    expect(sectionOpen(s, 'market')).toBe(true);
+    expect(sectionOpen(s, 'house')).toBe(false);
+
+    s.teams.rocket = { ...s.teams.smash, gameId: 'rocket' };
+    updateSections(s);
+    expect(sectionOpen(s, 'house')).toBe(true);
+    expect(sectionOpen(s, 'staff')).toBe(false);
+    s.stats.playersSigned = 5;
+    expect(hireStaff(s, 'coach', 1)).toBe(0);
+
+    s.teams.counter = { ...s.teams.smash, gameId: 'counter' };
+    updateSections(s);
+    expect(sectionOpen(s, 'staff')).toBe(true);
+    expect(hireStaff(s, 'coach', 1)).toBe(1);
+
+    expect(sectionOpen(s, 'sponsors')).toBe(false);
+    s.fansRun = 1_000;
+    updateSections(s);
+    expect(sectionOpen(s, 'sponsors')).toBe(true);
+  });
+
+  it('stays open once opened, even after selling the org', () => {
+    const s = foundedGame(0, 1);
+    expect(sectionOpen(s, 'staff')).toBe(true);
+    s.earnedTotal = LEGACY_DIVISOR;
+    sellOrg(s, { charter: 'operator' });
+    updateSections(s);
+    expect(sectionOpen(s, 'staff')).toBe(true);
+  });
+
+  it('opens everything for orgs that were already playing before tabs locked', () => {
+    const s = foundedGame(0, 1);
+    s.sections = {};
+    const old = { ...s, version: 4 } as unknown as Record<string, unknown>;
+    delete old.sections;
+    delete old.sectionsSeen;
+    const back = decodeSave(encodeSave(old as never).replace(/^ESI\d+/, 'ESI4'));
+    for (const id of ['house', 'staff', 'sponsors', 'studio', 'legacy']) expect(sectionOpen(back, id), id).toBe(true);
   });
 });
 
@@ -217,10 +328,19 @@ describe('quests', () => {
 describe('saves and sales', () => {
   it('keeps the tutorial, draft and quests through a save', () => {
     const s = createNewGame(0, 1);
+    customiseDraft(s, { tag: 'Ace' });
     const back = decodeSave(encodeSave(s));
     expect(back.tutorial.step).toBe('click');
-    expect(back.draft).toHaveLength(3);
+    expect(back.draft).toHaveLength(1);
+    expect(back.draft![0].player.tag).toBe('Ace');
     expect(back.teams.smash).toBeUndefined();
+  });
+
+  it('turns an old three-prospect draft into the single first player', () => {
+    const s = createNewGame(0, 1);
+    s.draft = [...s.draft!, ...createNewGame(0, 2).draft!, ...createNewGame(0, 3).draft!];
+    const back = decodeSave(encodeSave(s));
+    expect(back.draft).toHaveLength(1);
   });
 
   it('lets orgs from before the draft keep their founder and skip the tutorial', () => {
@@ -235,30 +355,37 @@ describe('saves and sales', () => {
     expect(back.players.founder).toBeDefined();
   });
 
-  it('offers a fresh draft after a sale, unless the charter already brings a player', () => {
+  it('brings the founding player back after a sale, name and look intact', () => {
     const s = createNewGame(0, 1);
     s.cash = 1e6;
+    customiseDraft(s, { tag: 'Ace', look: { hair: 4 } });
     expect(signDraftPick(s, s.draft![0].player.id, { benchSlots: 0 }).ok).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
     sellOrg(s, { charter: 'operator' });
-    expect(Object.keys(s.players)).toHaveLength(0);
-    expect(s.draft).toHaveLength(3);
-    expect(s.draft!.map((l) => l.player.rarity)).toEqual(['talent', 'pro', 'star']);
+    expect(s.players.founder).toMatchObject({ tag: 'Ace' });
+    expect(s.players.founder.look.hair).toBe(4);
+    expect(s.teams.smash.lineup[0]).toBe('founder');
+    expect(s.draft).toBeNull();
+  });
 
-    const t = createNewGame(0, 2);
-    t.cash = 1e6;
-    expect(signDraftPick(t, t.draft![0].player.id, { benchSlots: 0 }).ok).toBe(true);
-    t.earnedTotal = LEGACY_DIVISOR;
-    sellOrg(t, { charter: 'scout' });
-    expect(Object.keys(t.players).length).toBeGreaterThan(0);
-    expect(t.draft).toBeNull();
+  it('offers a better prospect after a sale for an org without a founder', () => {
+    const s = createNewGame(0, 1);
+    const listing = s.market.listings.find((l) => l.player.gameId === 'smash')!;
+    s.cash = 1e6;
+    expect(signListing(s, listing.player.id, computeMods(s)).ok).toBe(true);
+    s.earnedTotal = LEGACY_DIVISOR;
+    sellOrg(s, { charter: 'operator' });
+    expect(Object.keys(s.players)).toHaveLength(0);
+    expect(s.draft).toHaveLength(1);
+    expect(s.draft![0].player.rarity).toBe('talent');
   });
 
   it('founds the team for a franchise player kept through a sale', () => {
     const s = createNewGame(0, 3);
     s.cash = 1e6;
-    expect(signDraftPick(s, s.draft![0].player.id, { benchSlots: 0 }).ok).toBe(true);
-    const star = Object.values(s.players)[0];
+    const listing = s.market.listings.find((l) => l.player.gameId === 'smash')!;
+    expect(signListing(s, listing.player.id, computeMods(s)).ok).toBe(true);
+    const star = s.players[listing.player.id];
     s.prestige.nodes.keep_player = 1;
     s.earnedTotal = LEGACY_DIVISOR;
     sellOrg(s, { charter: 'operator', keepPlayerId: star.id });

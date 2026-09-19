@@ -7,7 +7,9 @@ export type GameEvent =
   | { type: 'buffEnd'; buff: Buff }
   | { type: 'crowd' }
   | { type: 'drop'; kind: 'hype' | 'drama' }
-  | { type: 'choice' };
+  | { type: 'choice' }
+  /** A centre tab has just opened. */
+  | { type: 'section'; id: string; text: string };
 
 type Listener = (event: GameEvent) => void;
 

@@ -1,6 +1,7 @@
 import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
 import { STAFF, STAFF_EXPONENT, STAFF_MAP, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
+import { sectionOpen } from './sections';
 import type { GameState, Mods } from './types';
 
 /** Applies a staff/decor stat bonus of the given strength to the modifier set. */
@@ -94,7 +95,7 @@ export function maxStaffAffordable(def: StaffDef, owned: number, cash: number, c
 export function hireStaff(s: GameState, id: string, amount: number, costMult = 1): number {
   const def = STAFF_MAP.get(id);
   // Skeleton Crew challenge: no hiring.
-  if (!def || !isStaffUnlocked(s, def) || s.prestige.challenge === 'nostaff') return 0;
+  if (!def || !sectionOpen(s, 'staff') || !isStaffUnlocked(s, def) || s.prestige.challenge === 'nostaff') return 0;
   const owned = s.staff[id] ?? 0;
   const n = amount < 0 ? maxStaffAffordable(def, owned, s.cash, costMult) : Math.floor(amount);
   if (n <= 0) return 0;
@@ -122,7 +123,7 @@ export function roomLevel(s: GameState): number {
 
 export function buyDecor(s: GameState, id: string): boolean {
   const def = DECOR_MAP.get(id);
-  if (!def || s.decor[id] || roomLevel(s) < def.room || s.cash < def.cost) return false;
+  if (!def || !sectionOpen(s, 'house') || s.decor[id] || roomLevel(s) < def.room || s.cash < def.cost) return false;
   s.cash -= def.cost;
   s.decor[id] = true;
   s.stats.decorBought++;

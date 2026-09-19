@@ -1,3 +1,4 @@
+import { DEFAULT_EMBLEM } from '../data/emblems';
 import { DEFAULT_KIT, DEFAULT_TONE } from '../data/palette';
 import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
@@ -10,7 +11,7 @@ import { Rng, randomSeed } from './rng';
 import { addToTeam, createTeam, ensureTeam } from './teams';
 import type { AutomationSettings, GameProgress, GameState, OperationState, Player, Settings, Stats } from './types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const GAME_VERSION = '0.7.0';
 
 /** Every routine starts switched off; the player opts in once it unlocks. */
@@ -132,6 +133,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
       jersey: null,
       primary: DEFAULT_KIT.primary,
       secondary: DEFAULT_KIT.secondary,
+      emblem: { ...DEFAULT_EMBLEM },
     },
     cash: 0,
     earnedRun: 0,
@@ -182,6 +184,8 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     draft: null,
     tutorial: { step: 'click' },
     quests: { active: [], done: {}, picks: {}, skipped: {}, claimed: 0 },
+    sections: {},
+    sectionsSeen: {},
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),

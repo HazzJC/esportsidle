@@ -8,8 +8,10 @@ You start with nothing but a logo to click in a garage. You end up running leagu
 
 ## What you actually do
 
-- **Get started** — a short guided tutorial: click your logo, pick your first player from three prospects
-  (a rookie in seconds or a pro after a few minutes of clicking), watch them compete, then open the store.
+- **Found your org**: name it, pick its colour and design a logo (a badge and a mark, or draw your own
+  later). Then a short tutorial: click your way to $25, sign and customise your founding player, watch
+  them compete, then open the store. The first few minutes are calm, with no random events, and new
+  tabs open as the org grows.
 - **Two sides to every org** — players, gear and seasons are the active side; operations are the passive
   side that earns every second, even while the game is closed.
 - **Chase quests** — two milestone quests at a time (gear up, take a sponsor, design a shirt, hit a hype

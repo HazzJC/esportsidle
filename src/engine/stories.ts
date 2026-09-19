@@ -4,6 +4,7 @@ import { RIVAL_ORGS } from '../data/names';
 import { emit } from './bus';
 import { money } from './format';
 import type { Rng } from './rng';
+import { calmStart } from './tutorial';
 import type { GameState, Player, RivalState, SeasonRecap, TeamState, TrophyEntry } from './types';
 
 /** Share of matches played against the rival once one has emerged. */
@@ -36,7 +37,7 @@ function newRival(s: GameState, rng: Rng): RivalState {
 
 /** Picks the opponent for a match, establishing a rival once the org has some history. */
 export function pickOpponent(s: GameState, rng: Rng): { name: string; rival: boolean } {
-  if (!s.rival && s.stats.matchesWon + s.stats.matchesLost >= RIVAL_AFTER_MATCHES) {
+  if (!s.rival && s.stats.matchesWon + s.stats.matchesLost >= RIVAL_AFTER_MATCHES && !calmStart(s)) {
     s.rival = newRival(s, rng);
     emit({ type: 'toast', title: 'A rivalry begins', body: `${s.rival.name} have noticed ${s.org.name}. Expect to see a lot of them.`, icon: 'swords', tone: 'info', channel: 'matches' });
   }

@@ -9,10 +9,9 @@
  *           only briefly when a session starts, catches a drop only if one is on screen when they look,
  *           and closes the game between sessions, earning at the offline rate.
  *
- * Both start the way a real player does: no team, three draft prospects and operations locked until
- * the first signing. The active model clicks for the prospect it wants (--draft=0|1|2, default the
- * $50 talent); the casual model signs whoever it can afford. Quests with a choice are claimed for
- * cash (--quest=perk takes the permanent perk instead).
+ * Both start the way a real player does: no team, clicking to $25 for the first player, operations
+ * locked until the first signing, a calm start with no random events, and tabs that open as the org
+ * grows. Quests with a choice are claimed for cash (--quest=perk takes the permanent perk instead).
  *
  *   npm run sim -- --mode=active --hours=5
  *   npm run sim -- --mode=casual --days=5 --prestige
@@ -63,8 +62,6 @@ const MAX_RUNS = Number(args.runs ?? 2);
 const CHARTER = String(args.charter ?? 'operator');
 const MANDATE = String(args.mandate ?? 'first');
 const AUTOMATION = args.automation !== undefined ? args.automation === 'true' : MODE === 'casual';
-/** Which of the three first-player prospects the active model clicks for: 0 rookie, 1 talent, 2 pro. */
-const DRAFT_PICK = Number(args.draft ?? 2);
 /** Which kind of quest reward to take when a quest offers a choice: cash or perk. */
 const QUEST_PICK = String(args.quest ?? 'cash');
 const SIM_SKIPS = ['design_shirt', 'plan_1'];
@@ -170,12 +167,8 @@ function candidates(s: GameState, base: number): Candidate[] {
 
 function ruleBasedActions(s: GameState): void {
   const mods = computeMods(s);
-  if (s.draft) {
-    const wanted = s.draft[Math.min(DRAFT_PICK, s.draft.length - 1)];
-    const affordable = s.draft.filter((l) => l.price <= s.cash);
-    const pick = MODE === 'active' ? (wanted.price <= s.cash ? wanted : null) : affordable[affordable.length - 1];
-    if (pick) signDraftPick(s, pick.player.id, mods);
-  }
+  const prospect = s.draft?.[0];
+  if (prospect && prospect.price <= s.cash) signDraftPick(s, prospect.player.id, mods);
   const rates = computeRates(s, mods);
   for (const q of [...s.quests.active]) {
     // The sim never draws a jersey or changes season plan, so it sets those quests aside.
@@ -305,6 +298,7 @@ function checkMilestones(): void {
   for (const tier of [3, 6, 9, 12]) if (bestTier() >= tier) mark(`reach ${tierName(tier)}`);
   if (pendingLegacy(s) >= 1) mark('first legacy point');
   if (s.tutorial.step === 'done') mark('tutorial done');
+  for (const id of Object.keys(s.sections)) mark(`tab: ${id}`);
   if (s.quests.claimed >= 5) mark('5 quests claimed');
 }
 

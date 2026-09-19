@@ -2,7 +2,9 @@
   import { tick, untrack } from 'svelte';
   import { fly } from 'svelte/transition';
   import { TUTORIAL_STEPS, type TutorialTarget } from '../../data/tutorial';
+  import { OPERATIONS } from '../../data/operations';
   import { fmt } from '../../engine/format';
+  import { unitPrice } from '../../engine/operations';
   import { currentStep } from '../../engine/tutorial';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
@@ -31,10 +33,13 @@
 
   // Each new step moves the player once; after that they are free to look around.
   let guided = '';
+  /** Phones can fold the explanation away; every new step opens unfolded. */
+  let folded = $state(false);
   $effect(() => {
     const id = active ? step?.id : undefined;
     if (!id || id === guided) return;
     guided = id;
+    folded = false;
     untrack(() => guide(step!.target));
   });
 
@@ -48,6 +53,17 @@
     return !el || el.getClientRects().length === 0;
   });
 
+  /** What the current step wants to buy, so "Keep clicking" only shows when the cash is not there yet. */
+  const shortOfCash = $derived.by(() => {
+    if (!step) return false;
+    if (step.id === 'draft') return (s.draft?.[0]?.price ?? 0) > s.cash;
+    if (step.id === 'grinder' || step.id === 'streamer') {
+      const op = OPERATIONS.find((o) => o.id === step.id)!;
+      return unitPrice(op, s.ops[op.id].owned, game.view.m.opCostMult) > s.cash;
+    }
+    return false;
+  });
+
   const BACK_LABEL: Record<TutorialTarget, string> = {
     logo: 'Back to the logo',
     draft: 'Back to the prospects',
@@ -57,11 +73,11 @@
 </script>
 
 {#if active && step}
-  <aside class="coach" aria-live="polite" in:fly={{ y: -10, duration: 240 }}>
+  <aside class="coach" class:folded aria-live="polite" in:fly={{ y: -10, duration: 240 }}>
     <span class="icon"><Icon name={step.icon} size={26} /></span>
-    <div class="main">
+    <div class="head">
       <div class="eyebrow">
-        <span>Getting started · step {index + 1} of {TUTORIAL_STEPS.length}</span>
+        <span><span class="wide-only">Getting started · </span>Step {index + 1} of {TUTORIAL_STEPS.length}</span>
         <span class="dots" aria-hidden="true">
           {#each TUTORIAL_STEPS as d, i (d.id)}
             <i class:done={i < index} class:now={i === index}></i>
@@ -71,27 +87,38 @@
       {#key step.id}
         <h2 in:fly={{ x: 12, duration: 220 }}>{step.title}</h2>
       {/key}
-      <p>{step.body}</p>
-      <div class="foot">
-        <span class="bar"><i style="width:{Math.min(100, (progress.value / progress.target) * 100)}%"></i></span>
-        {#if progress.target > 1}<span class="num count">{fmt(Math.min(progress.value, progress.target))}/{fmt(progress.target)}</span>{/if}
-        {#if targetHidden}
-          <button class="back" onclick={() => guide(step.target)}><Icon name="arrow-right" size={14} /> {BACK_LABEL[step.target]}</button>
-        {:else if step.id === 'draft' || step.target === 'store'}
-          <!-- On phones the logo is on another screen: an easy way back to click for more cash. -->
-          <button class="back phone-only" onclick={() => (game.mobileView = 'clicker')}><Icon name="mouse-pointer-click" size={14} /> Keep clicking</button>
-        {/if}
-      </div>
     </div>
-    <button class="skip" onclick={() => game.skipTutorial()} title="Skip the tutorial. Quests start straight away.">Skip tutorial</button>
+    <div class="corner">
+      <button class="skip" onclick={() => game.skipTutorial()} title="Skip the tutorial. Quests start straight away.">Skip<span class="wide-only"> tutorial</span></button>
+      <button class="fold phone-only" onclick={() => (folded = !folded)} aria-expanded={!folded} aria-label={folded ? 'Show the explanation' : 'Hide the explanation'}>
+        <Icon name={folded ? 'chevron-down' : 'chevron-up'} size={16} />
+      </button>
+    </div>
+    <p>{step.body}</p>
+    <div class="foot">
+      <span class="bar"><i style="width:{Math.min(100, (progress.value / progress.target) * 100)}%"></i></span>
+      {#if progress.target > 1}<span class="num count">{fmt(Math.min(progress.value, progress.target))}/{fmt(progress.target)}</span>{/if}
+      {#if targetHidden}
+        <button class="back" onclick={() => guide(step.target)}><Icon name="arrow-right" size={14} /> {BACK_LABEL[step.target]}</button>
+      {:else if shortOfCash}
+        <!-- On phones the logo is on another screen: an easy way back to click for more cash. -->
+        <button class="back phone-only" onclick={() => (game.mobileView = 'clicker')}><Icon name="mouse-pointer-click" size={14} /> Keep clicking</button>
+      {/if}
+    </div>
   </aside>
 {/if}
 
 <style>
+  /* Icon on the left spanning the text on wide screens; on phones the text takes the full width. */
   .coach {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon head skip'
+      'icon body body'
+      'icon foot foot';
+    column-gap: 14px;
+    row-gap: 4px;
     padding: 14px 18px;
     border-radius: var(--radius);
     background:
@@ -101,6 +128,7 @@
     box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 10%, transparent);
   }
   .icon {
+    grid-area: icon;
     display: grid;
     place-items: center;
     flex: none;
@@ -110,12 +138,12 @@
     color: var(--on-accent);
     background: var(--accent);
   }
-  .main {
-    flex: 1;
+  .head {
+    grid-area: head;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
   }
   .eyebrow {
     display: flex;
@@ -127,6 +155,9 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+  .eyebrow > span:first-child {
+    white-space: nowrap;
   }
   .dots {
     display: inline-flex;
@@ -152,6 +183,7 @@
     line-height: 1.15;
   }
   p {
+    grid-area: body;
     margin: 0;
     max-width: 880px;
     font-size: 15px;
@@ -159,6 +191,7 @@
     color: var(--muted);
   }
   .foot {
+    grid-area: foot;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -194,8 +227,24 @@
   .phone-only {
     display: none;
   }
+  .corner {
+    grid-area: skip;
+    align-self: start;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .fold {
+    display: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+  }
   .skip {
-    flex: none;
     padding: 4px 10px;
     border: none;
     border-radius: 6px;
@@ -209,8 +258,16 @@
   }
   @media (max-width: 860px) {
     .coach {
-      gap: 10px;
+      grid-template-areas:
+        'icon head skip'
+        'body body body'
+        'foot foot foot';
+      column-gap: 10px;
+      row-gap: 6px;
       padding: 10px 12px;
+    }
+    .wide-only {
+      display: none;
     }
     .icon {
       width: 40px;
@@ -229,6 +286,19 @@
     }
     .phone-only {
       display: inline-flex;
+    }
+    .fold {
+      display: grid;
+    }
+    .dots {
+      display: none;
+    }
+    .folded p {
+      display: none;
+    }
+    .folded .icon {
+      width: 32px;
+      height: 32px;
     }
   }
 </style>

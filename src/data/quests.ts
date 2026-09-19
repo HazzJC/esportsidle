@@ -1,6 +1,7 @@
 import { isMerchUnlocked } from '../engine/merch';
 import { pendingLegacy } from '../engine/prestige';
 import { sponsorsUnlocked } from '../engine/sponsors';
+import { sectionOpen } from '../engine/sections';
 import { isStaffUnlocked } from '../engine/staff';
 import type { Effect, GameState } from '../engine/types';
 import { STAFF } from './staff';
@@ -122,7 +123,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.staffHired,
     target: 1,
     mode: 'delta',
-    available: (s) => STAFF.some((d) => isStaffUnlocked(s, d)),
+    available: (s) => sectionOpen(s, 'staff') && STAFF.some((d) => isStaffUnlocked(s, d)),
     rewards: [cash(8, 1_500)],
   },
   {
@@ -146,6 +147,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => (s.org.jersey ? 1 : 0),
     target: 1,
     mode: 'absolute',
+    available: (s) => sectionOpen(s, 'studio'),
     rewards: [cash(8, 3_000), perk('+10% fans from everything', { kind: 'fansMult', mult: 1.1 })],
   },
   {
@@ -188,6 +190,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.decorBought,
     target: 1,
     mode: 'delta',
+    available: (s) => sectionOpen(s, 'house'),
     rewards: [cash(10, 25_000), fans(20, 2_000)],
   },
   {

@@ -201,7 +201,7 @@
       />
     </svg>
     <button class="logo" class:crowd={!!crowd} class:tut-target={s.tutorial.step === 'click'} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
-      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} {logoUrl} />
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} {logoUrl} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
     </button>
     {#each particles as p (p.id)}
       <i class="particle" style="left:{p.x}px; top:{p.y}px; --dx:{p.dx}px; --dy:{p.dy}px; --h:{p.hue}"></i>

@@ -1,60 +1,72 @@
 import { getGame } from '../data/games';
+import { FIRST_PLAYER_PRICE } from '../data/tutorial';
 import { signingFee } from './market';
 import { generatePlayer } from './players';
 import type { Rng } from './rng';
 import { addToTeam, createTeam, ensureTeam, evaluateTeam } from './teams';
-import type { GameState, MarketListing, Mods, Player, Rarity } from './types';
+import type { Appearance, GameState, MarketListing, Mods, Player, Rarity } from './types';
 
 /** The first team is always the solo game, so one signing makes a full lineup. */
 export const DRAFT_GAME = 'smash';
 
-export interface DraftSlot {
-  rarity: Rarity;
-  price: number;
-  /** A complete beginner: every stat at zero. Cheap, and loses until trained. */
-  blank?: boolean;
-}
+/** A brand-new org's first player: an ordinary rookie, reached after 25 clicks. */
+export { FIRST_PLAYER_PRICE };
+export const FIRST_PLAYER_RARITY: Rarity = 'rookie';
+/** Later runs without a founder start with a better prospect, priced like the market. */
+export const LATER_PLAYER_RARITY: Rarity = 'talent';
 
-/**
- * A brand-new org's three prospects, all within a minute of clicking: a complete beginner for $10,
- * an ordinary rookie for $25 and an uncommon talent for $50. Clicking a little longer buys a much
- * better start.
- */
-export const FIRST_DRAFT: DraftSlot[] = [
-  { rarity: 'rookie', price: 10, blank: true },
-  { rarity: 'rookie', price: 25 },
-  { rarity: 'talent', price: 50 },
-];
+export const MAX_TAG = 16;
+export const MAX_NAME = 20;
 
-/** Later runs start with a reputation, so the prospects are better and priced like the market. */
-export const LATER_DRAFT: Rarity[] = ['talent', 'pro', 'star'];
-
+/** The run's first-player prospect. The player can rename and restyle them before signing. */
 export function createDraft(s: GameState, rng: Rng): MarketListing[] {
   const firstRun = s.prestige.runs === 0;
-  const picks: DraftSlot[] = firstRun ? FIRST_DRAFT : LATER_DRAFT.map((rarity) => ({ rarity, price: 0 }));
-  return picks.map(({ rarity, price, blank }) => {
-    const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: DRAFT_GAME, time: s.time, rarity });
-    if (blank) makeBlank(player);
-    return { player, price: firstRun ? price : signingFee(player) };
-  });
+  const rarity = firstRun ? FIRST_PLAYER_RARITY : LATER_PLAYER_RARITY;
+  const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: DRAFT_GAME, time: s.time, rarity });
+  return [{ player, price: firstRun ? FIRST_PLAYER_PRICE : signingFee(player) }];
 }
 
-/** Wipes a prospect back to a complete beginner: no stats at all, but they learn fast. */
-function makeBlank(p: Player): void {
-  for (const k of Object.keys(p.stats) as (keyof Player['stats'])[]) p.stats[k] = 0;
-  p.traits = ['grinder'];
+export interface DraftCustomisation {
+  tag?: string;
+  first?: string;
+  last?: string;
+  look?: Partial<Appearance>;
+}
+
+const clean = (text: string, max: number) => text.replace(/\s+/g, ' ').trim().slice(0, max);
+
+/** Renames or restyles the prospect before they sign. Blank names are ignored. */
+export function customiseDraft(s: GameState, fields: DraftCustomisation): boolean {
+  const p = s.draft?.[0]?.player;
+  if (!p) return false;
+  if (fields.tag !== undefined && clean(fields.tag, MAX_TAG)) p.tag = clean(fields.tag, MAX_TAG);
+  if (fields.first !== undefined && clean(fields.first, MAX_NAME)) p.first = clean(fields.first, MAX_NAME);
+  if (fields.last !== undefined && clean(fields.last, MAX_NAME)) p.last = clean(fields.last, MAX_NAME);
+  if (fields.look) Object.assign(p.look, fields.look);
+  return true;
 }
 
 export type DraftResult = { ok: true; player: Player } | { ok: false; reason: string };
 
-/** Signs one of the draft prospects. The first signing founds the team; the draft then closes. */
+/**
+ * Signs the prospect, which founds the team. An org's first signing becomes its founding player:
+ * they take no cut of prize money, cannot be sold, and return with the same name and look every
+ * time the org is sold and starts again.
+ */
 export function signDraftPick(s: GameState, playerId: string, mods: Pick<Mods, 'benchSlots'>): DraftResult {
   const pick = s.draft?.find((l) => l.player.id === playerId);
   if (!pick) return { ok: false, reason: 'That prospect is no longer available.' };
   if (s.cash < pick.price) return { ok: false, reason: `Not enough cash yet. ${getGame(pick.player.gameId).name} prospects sign for their listed fee.` };
   s.cash -= pick.price;
   ensureTeam(s, pick.player.gameId);
-  const player: Player = { ...pick.player, fee: pick.price, signedAt: s.time, signedLevel: pick.player.level };
+  const founding = !s.players.founder;
+  const player: Player = {
+    ...pick.player,
+    ...(founding ? { id: 'founder', founder: true, cut: 0 } : {}),
+    fee: pick.price,
+    signedAt: s.time,
+    signedLevel: pick.player.level,
+  };
   s.players[player.id] = player;
   addToTeam(s, player, mods);
   s.stats.playersSigned++;

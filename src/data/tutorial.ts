@@ -15,7 +15,8 @@ export interface TutorialStepDef {
   progress: (s: GameState) => { value: number; target: number };
 }
 
-export const TUTORIAL_CLICKS = 15;
+/** What the first player costs: 25 clicks at $1 each. */
+export const FIRST_PLAYER_PRICE = 25;
 
 const players = (s: GameState) => Object.keys(s.players).length;
 
@@ -28,16 +29,16 @@ const players = (s: GameState) => Object.keys(s.players).length;
 export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'click',
-    title: 'Click your logo',
-    body: 'Every click earns cash and builds hype. Your org starts with nothing else, so get clicking.',
+    title: `Click your way to $${FIRST_PLAYER_PRICE}`,
+    body: `Every click on your logo earns $1 and builds hype. Your first player costs $${FIRST_PLAYER_PRICE}, so get clicking.`,
     icon: 'mouse-pointer-click',
     target: 'logo',
-    progress: (s) => ({ value: s.stats.clicksRun, target: TUTORIAL_CLICKS }),
+    progress: (s) => ({ value: players(s) > 0 ? FIRST_PLAYER_PRICE : Math.min(FIRST_PLAYER_PRICE, Math.floor(s.cash)), target: FIRST_PLAYER_PRICE }),
   },
   {
     id: 'draft',
     title: 'Sign your first player',
-    body: 'Three prospects want to play for you, and whoever you sign founds your first team. The $10 beginner has never played, the $25 rookie is ready to compete, and the $50 talent is the pick of the three if you click a little longer.',
+    body: 'Sign a rookie to found your first team. Name them and change their look if you like: your first player is your founding player and stays for good.',
     icon: 'user-plus',
     target: 'draft',
     progress: (s) => ({ value: Math.min(1, players(s)), target: 1 }),
