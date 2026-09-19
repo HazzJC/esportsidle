@@ -6,6 +6,8 @@ You start with nothing but a logo to click in a garage. You end up running leagu
 
 **Play it here: https://hazzjc.github.io/esportsidle/**
 
+![Esports Idle Gameplay Screenshot](docs/screenshot.png)
+
 ## What you actually do
 
 - **Found your org**: name it, pick its colour and design a logo (a badge and a mark, or draw your own
