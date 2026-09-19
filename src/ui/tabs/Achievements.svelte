@@ -6,6 +6,7 @@
   import { game } from '../game.svelte';
   import type { TipContent } from '../tooltip.svelte';
   import { tooltip } from '../tooltip.svelte';
+  import { RARITY_BANDS, rarityColor, rarityName } from '../theme';
 
   const GROUPS: { id: AchievementGroup; label: string }[] = [
     { id: 'earnings', label: 'Earnings' },
@@ -30,6 +31,13 @@
 
   const s = $derived(game.view.s);
   const unlocked = $derived(Object.keys(s.achievements).length);
+  /** Unlocked / total per rarity band, for the summary strip. */
+  const byRarity = $derived(
+    Array.from({ length: RARITY_BANDS }, (_, b) => {
+      const list = ACHIEVEMENTS.filter((a) => a.rarity === b);
+      return { band: b, total: list.length, got: list.filter((a) => s.achievements[a.id] !== undefined).length };
+    }),
+  );
 
   function tip(a: AchievementDef): TipContent {
     const at = game.view.s.achievements[a.id];
@@ -37,9 +45,9 @@
     const hidden = !got && a.secret;
     return {
       title: hidden ? '???' : a.name,
-      subtitle: got ? 'Unlocked' : 'Locked',
+      subtitle: `${rarityName(a.rarity)} · ${got ? 'Unlocked' : 'Locked'}`,
       icon: hidden ? 'lock' : a.icon,
-      iconColor: got ? 'var(--gold)' : 'var(--dim)',
+      iconColor: got ? rarityColor(a.rarity) : 'var(--dim)',
       lines: [
         hidden ? { text: 'A secret achievement.', tone: 'muted' } : a.desc(),
         ...(got ? [{ text: `Unlocked ${new Date(at).toLocaleString()}`, tone: 'muted' as const }] : []),
@@ -56,6 +64,13 @@
       <div class="big num">{unlocked} / {ACHIEVEMENTS.length}</div>
       <div class="muted">Trophy Cabinet {fmtPct(game.view.r.cabinet)} · every achievement adds 4%</div>
     </div>
+    <div class="rarities">
+      {#each byRarity as r (r.band)}
+        <span class="rar num" style="--c:{rarityColor(r.band)}" title="{rarityName(r.band)}: {r.got} of {r.total}">
+          <i></i>{r.got}/{r.total}
+        </span>
+      {/each}
+    </div>
   </div>
 
   <TrophyCabinet />
@@ -67,7 +82,7 @@
       <div class="grid">
         {#each g.list as a (a.id)}
           {@const got = s.achievements[a.id] !== undefined}
-          <div class="ach" class:got class:shadow={a.shadow} use:tooltip={() => tip(a)}>
+          <div class="ach" class:got class:shadow={a.shadow} style="--c:{rarityColor(a.rarity)}" use:tooltip={() => tip(a)}>
             <Icon name={got || !a.secret ? a.icon : 'lock'} size={20} />
           </div>
         {/each}
@@ -101,6 +116,29 @@
     grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
     gap: 5px;
   }
+  .summary {
+    flex-wrap: wrap;
+  }
+  .rarities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .rar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rar i {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    background: var(--c);
+  }
+  /* Locked tiles keep a faint rarity edge, so you can see what kind of prize is left. */
   .ach {
     aspect-ratio: 1;
     display: grid;
@@ -108,19 +146,19 @@
     border-radius: 8px;
     background: var(--bg-2);
     border: 1px solid var(--line);
+    border-bottom: 2px solid color-mix(in srgb, var(--c) 35%, var(--line));
     color: var(--dim);
     opacity: 0.55;
   }
   .ach.got {
     opacity: 1;
-    color: var(--gold);
-    border-color: color-mix(in srgb, var(--gold) 55%, transparent);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 18%, transparent), color-mix(in srgb, var(--gold) 4%, transparent));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 15%, transparent);
+    color: var(--c);
+    border-color: color-mix(in srgb, var(--c) 55%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, transparent), color-mix(in srgb, var(--c) 4%, transparent));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--c) 15%, transparent);
   }
-  .ach.got.shadow {
-    color: var(--accent-2);
-    border-color: color-mix(in srgb, var(--accent-2) 55%, transparent);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 18%, transparent), color-mix(in srgb, var(--accent-2) 4%, transparent));
+  /* Shadow achievements do not count towards the cabinet: same rarity colour, dashed frame. */
+  .ach.shadow {
+    border-style: dashed;
   }
 </style>

@@ -95,7 +95,7 @@ export function rotateTrend(s: GameState, rng: Rng, announce: boolean): void {
   s.merch.trendEndsAt = s.time + TREND_SECONDS;
   if (announce && isMerchUnlocked(s)) {
     const trend = TREND_MAP.get(s.merch.trend);
-    emit({ type: 'toast', title: `Merch trend: ${trend?.name}`, body: trend?.desc, icon: trend?.icon ?? 'shirt', tone: 'info' });
+    emit({ type: 'toast', title: `Merch trend: ${trend?.name}`, body: trend?.desc, icon: trend?.icon ?? 'shirt', tone: 'info', channel: 'business' });
   }
 }
 

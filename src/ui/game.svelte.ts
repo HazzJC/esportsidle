@@ -20,7 +20,7 @@ import {
 } from '../engine/designs';
 import { setLineDesign, setLinePrice, unlockProduct } from '../engine/merch';
 import { cancelContract, signOffer } from '../engine/sponsors';
-import { buyNode, sellOrg, type SellOptions } from '../engine/prestige';
+import { buyDynasty, buyNode, sellOrg, type SellOptions } from '../engine/prestige';
 import { LEGACY_NODE_MAP } from '../data/legacy';
 import { BRAND_MAP } from '../data/sponsors';
 import { PRODUCT_MAP } from '../data/merch';
@@ -37,7 +37,8 @@ import { isHexColor } from '../data/palette';
 import { cleanOrgName, completeOnboarding as completeOnboardingState } from '../engine/org';
 import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, writeSave, type StorageLike } from '../engine/save';
 import { createNewGame } from '../engine/state';
-import type { GameState, Mods, Rates, Settings, Tone } from '../engine/types';
+import type { GameState, Mods, NotifyChannel, Rates, Settings, Tone } from '../engine/types';
+import { rarityName } from './theme';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
 import { playSound, type SoundId } from './sound';
 
@@ -62,6 +63,8 @@ export interface ToastAchievement {
   icon: string;
   /** Counts towards the trophy cabinet income bonus. */
   cabinet: boolean;
+  /** Rarity band 0-5. */
+  rarity: number;
 }
 
 export interface Toast {
@@ -74,6 +77,8 @@ export interface Toast {
   duration: number;
   /** Present on achievement popups, which get their own card. */
   achievements?: ToastAchievement[];
+  /** The kind of news, so it can be muted from the popup itself. Absent for the player's own actions. */
+  channel?: NotifyChannel;
 }
 
 export type ToastInput = Omit<Toast, 'id' | 'tone' | 'duration'> & { tone?: Tone };
@@ -301,7 +306,8 @@ class GameStore {
   private onEvent(e: GameEvent): void {
     switch (e.type) {
       case 'toast':
-        this.toast({ title: e.title, body: e.body, icon: e.icon, tone: e.tone ?? 'info' });
+        if (e.channel && !this.state.settings.notify[e.channel]) break;
+        this.toast({ title: e.title, body: e.body, icon: e.icon, tone: e.tone ?? 'info', channel: e.channel });
         if (e.tone === 'gold') this.sfx('win');
         else if (e.tone === 'bad') this.sfx('error');
         break;
@@ -311,8 +317,9 @@ class GameStore {
         break;
       }
       case 'crowd':
-        this.toast({ title: 'The crowd goes wild!', body: 'Income ×2 while the hype lasts.', icon: 'megaphone', tone: 'good' });
         this.sfx('crowd');
+        if (!this.state.settings.notify.events) break;
+        this.toast({ title: 'The crowd goes wild!', body: 'Income ×2 while the hype lasts.', icon: 'megaphone', tone: 'good', channel: 'events' });
         break;
       case 'drop':
         this.sfx('drop');
@@ -333,11 +340,14 @@ class GameStore {
     this.achievementTimer = undefined;
     const defs = this.pendingAchievements.map((id) => ACHIEVEMENT_MAP.get(id)).filter((d) => d !== undefined);
     this.pendingAchievements = [];
-    if (defs.length === 0) return;
+    if (defs.length === 0 || !this.state.settings.notify.achievements) return;
     this.sfx('achievement');
-    const achievements = defs.map((d) => ({ name: d.name, desc: d.desc(), icon: d.icon, cabinet: !d.shadow }));
-    const title = defs.length === 1 ? 'Achievement unlocked' : `${defs.length} achievements unlocked`;
-    this.toast({ title, icon: defs[0].icon, tone: 'gold', achievements }, defs.length === 1 ? 6000 : 8000);
+    // Rarest first, so the card takes the colour of the best one.
+    const achievements = defs
+      .map((d) => ({ name: d.name, desc: d.desc(), icon: d.icon, cabinet: !d.shadow, rarity: d.rarity }))
+      .sort((a, b) => b.rarity - a.rarity);
+    const title = defs.length === 1 ? `${rarityName(achievements[0].rarity)} achievement` : `${defs.length} achievements unlocked`;
+    this.toast({ title, icon: achievements[0].icon, tone: 'gold', achievements, channel: 'achievements' }, defs.length === 1 ? 6000 : 8000);
   }
 
   toast(t: ToastInput, durationMs = 5000): void {
@@ -607,6 +617,13 @@ class GameStore {
     this.refresh();
   }
 
+  /** Buys one Dynasty rank, or as many as the points allow. */
+  buyDynasty(id: string, max = false): void {
+    if (buyDynasty(this.state, id, max) === 0) return;
+    this.sfx('upgrade');
+    this.refresh();
+  }
+
   signSponsor(offerId: number): void {
     const result = signOffer(this.state, offerId, computeMods(this.state));
     if (!result.ok) {
@@ -710,6 +727,13 @@ class GameStore {
     if (!team) return;
     if (kit && (!isHexColor(kit.primary) || !isHexColor(kit.secondary))) return;
     team.kit = kit ? { primary: kit.primary.toLowerCase(), secondary: kit.secondary.toLowerCase() } : null;
+    this.refresh();
+  }
+
+  /** Shows or mutes one kind of popup. Muting also clears any of that kind already on screen. */
+  setNotify(channel: NotifyChannel, on: boolean): void {
+    this.state.settings.notify[channel] = on;
+    if (!on) this.toasts = this.toasts.filter((t) => t.channel !== channel);
     this.refresh();
   }
 

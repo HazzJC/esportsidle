@@ -1,7 +1,7 @@
-import type { Buff, Tone } from './types';
+import type { Buff, NotifyChannel, Tone } from './types';
 
 export type GameEvent =
-  | { type: 'toast'; title: string; body?: string; icon?: string; tone?: Tone }
+  | { type: 'toast'; title: string; body?: string; icon?: string; tone?: Tone; channel?: NotifyChannel }
   | { type: 'achievement'; id: string }
   | { type: 'buffStart'; buff: Buff }
   | { type: 'buffEnd'; buff: Buff }

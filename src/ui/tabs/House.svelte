@@ -7,13 +7,18 @@
   import { teamKit } from '../../engine/teams';
   import { roomLevel } from '../../engine/staff';
   import type { Player } from '../../engine/types';
-  import { mix, shade } from '../color';
+  import { mix } from '../color';
+  import DecorIcon from '../components/DecorIcon.svelte';
   import Icon from '../components/Icon.svelte';
   import Station from '../components/Station.svelte';
+  import { decorArtMarkup } from '../decorArt';
   import { game } from '../game.svelte';
+  import { rarityName, roomColor } from '../theme';
   import { tooltip } from '../tooltip.svelte';
 
   const MAX_STATIONS = 10;
+  /** Trophies drawn on the house shelf, newest first. */
+  const SHELF_TROPHIES = 9;
 
   let filter = $state<string | null>(null);
 
@@ -63,8 +68,6 @@
     return [...spread(back, 312, 0.78, 0), ...spread(n - back, 414, 0.95, back)];
   });
 
-  const trophies = $derived(Math.min(10, Math.floor(v.s.trophies)));
-
   // Neutral surfaces per room, getting darker and sleeker as the org grows. The org's team colours
   // are mixed in at render time, so the house is dressed in the player's own colours.
   const WALLS = [
@@ -76,26 +79,70 @@
     ['#161618', '#0a0a0b'],
   ];
   const FLOORS = ['#48484c', '#3a3a3f', '#303035', '#26262a', '#1f1f23', '#18181b'];
-  const kit = $derived(v.s.org);
-  const wallTop = $derived(mix(WALLS[level][0], kit.primary, 0.1));
-  const wallBottom = $derived(mix(WALLS[level][1], kit.primary, 0.06));
-  const floor = $derived(mix(FLOORS[level], kit.primary, 0.05));
+  const primary = $derived(v.s.org.primary);
+  const secondary = $derived(v.s.org.secondary);
+  const orgName = $derived(v.s.org.name);
+  const wallTop = $derived(mix(WALLS[level][0], primary, 0.1));
+  const wallBottom = $derived(mix(WALLS[level][1], primary, 0.06));
+  const floor = $derived(mix(FLOORS[level], primary, 0.05));
   /** The skyline glows in the team colour at night. */
-  const skyGlow = $derived(level >= 5 ? '#121216' : mix('#24242a', kit.primary, 0.3));
-  const POSTERS: { x: number; y: number; tone: 'primary' | 'secondary' | 'gold' }[] = [
-    { x: 330, y: 60, tone: 'primary' },
-    { x: 410, y: 50, tone: 'secondary' },
-    { x: 490, y: 64, tone: 'gold' },
+  const skyGlow = $derived(level >= 5 ? '#121216' : mix('#24242a', primary, 0.3));
+
+  /**
+   * Where each item stands in the 960x460 scene: top-left corner and scale of its 48x48 drawing.
+   * Wall items hang behind everything; back items stand against the wall behind the players; front
+   * items sit on the floor in front of them.
+   */
+  interface Placement {
+    x: number;
+    y: number;
+    s: number;
+    layer: 'wall' | 'back' | 'front';
+  }
+  const PLACES: Record<string, Placement> = {
+    posters: { x: 292, y: 70, s: 2.2, layer: 'wall' },
+    whiteboard: { x: 570, y: 64, s: 2.6, layer: 'wall' },
+    arcade: { x: -22, y: 150, s: 3.1, layer: 'back' },
+    napPods: { x: 150, y: 170, s: 2.6, layer: 'back' },
+    holotable: { x: 420, y: 178, s: 2.5, layer: 'back' },
+    aquarium: { x: 690, y: 164, s: 2.8, layer: 'back' },
+    fridge: { x: 858, y: 168, s: 2.7, layer: 'back' },
+    beanbags: { x: 58, y: 340, s: 2.7, layer: 'front' },
+    cat: { x: 626, y: 372, s: 1.9, layer: 'front' },
+    massage: { x: 770, y: 356, s: 2.3, layer: 'front' },
+  };
+  const PLANT_SPOTS = [
+    { x: -14, y: 360 },
+    { x: 880, y: 360 },
   ];
-  const posterColor = (tone: 'primary' | 'secondary' | 'gold') => (tone === 'gold' ? '#f5c451' : kit[tone]);
+  const placedIn = (layer: Placement['layer']) => Object.entries(PLACES).filter(([id, p]) => p.layer === layer && has(id));
+
+  // Built only from constants in decorArt.ts and the org's validated hex colour, so {@html} is safe.
+  const sceneArt = $derived.by(() => {
+    const out: Record<string, string> = {};
+    for (const d of DECOR) out[d.id] = decorArtMarkup(d.id, primary, true);
+    return out;
+  });
+
+  const shelfTrophies = $derived(v.s.trophyCase.slice(0, SHELF_TROPHIES));
+  /** Metal by league tier, as on the trophy cabinet. */
+  const metal = (tier: number) =>
+    tier >= 9 ? ['#e2f4ff', '#8fb8cf'] : tier >= 6 ? ['#f5c451', '#c99a2e'] : tier >= 3 ? ['#d2d5d9', '#9ea2a8'] : ['#d08f58', '#9a6436'];
+  /** The neon sign squeezes long names instead of running off its board. */
+  const NEON_MAX = 230;
+  const neonWidth = $derived(Math.min(NEON_MAX, orgName.length * 21));
+
+  function effectsText(d: DecorDef): string {
+    return d.effects.map((e) => STAT_DESCRIPTIONS[e.stat](e.amount)).join(' · ');
+  }
 
   function decorTip(d: DecorDef) {
     const owned = !!game.view.s.decor[d.id];
     return {
       title: d.name,
-      subtitle: owned ? 'Installed' : `Needs the ${ROOMS[d.room].name}`,
+      subtitle: `${rarityName(d.room)} decor · ${owned ? 'Installed' : `for the ${ROOMS[d.room].name}`}`,
       icon: d.icon,
-      iconColor: owned ? 'var(--green)' : 'var(--gold)',
+      iconColor: roomColor(d.room),
       cost: owned ? undefined : money(d.cost),
       costOk: game.view.s.cash >= d.cost,
       lines: [{ text: d.desc, tone: 'muted' as const }, ...d.effects.map((e) => ({ text: STAT_DESCRIPTIONS[e.stat](e.amount), tone: 'good' as const }))],
@@ -106,13 +153,13 @@
 <div class="house">
   <header class="head">
     <div>
-      <h2 class="section-title">{room.name}</h2>
+      <h2 class="section-title room-title" style="--rc:{roomColor(level)}"><i></i>{room.name} <span class="rar">{rarityName(level)}</span></h2>
       <p class="muted small">{room.desc}</p>
     </div>
     {#if next}
-      <div class="next" use:tooltip={() => ({ title: `Next: ${next.name}`, icon: 'house', lines: [next.desc, `Earn ${money(next.threshold)} this run to move in.`] })}>
+      <div class="next" use:tooltip={() => ({ title: `Next: ${next.name}`, icon: 'house', iconColor: roomColor(level + 1), lines: [next.desc, `Earn ${money(next.threshold)} this run to move in.`] })}>
         <span class="muted small">Next: {next.name}</span>
-        <span class="bar"><i style="width:{Math.min(100, (v.s.earnedRun / next.threshold) * 100)}%"></i></span>
+        <span class="bar" style="--bar:{roomColor(level + 1)}"><i style="width:{Math.min(100, (v.s.earnedRun / next.threshold) * 100)}%"></i></span>
         <span class="num small">{fmtPct(Math.min(1, v.s.earnedRun / next.threshold))}</span>
       </div>
     {/if}
@@ -142,10 +189,14 @@
           <stop offset="1" stop-color={skyGlow} />
         </linearGradient>
         <linearGradient id="house-rgb" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color={kit.primary} />
-          <stop offset="0.5" stop-color={kit.secondary} />
-          <stop offset="1" stop-color={kit.primary} />
+          <stop offset="0" stop-color={primary} />
+          <stop offset="0.5" stop-color={secondary} />
+          <stop offset="1" stop-color={primary} />
         </linearGradient>
+        <radialGradient id="house-pool" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#000" stop-opacity="0.4" />
+          <stop offset="1" stop-color="#000" stop-opacity="0" />
+        </radialGradient>
         <filter id="house-glow" x="-20%" y="-50%" width="140%" height="200%">
           <feGaussianBlur stdDeviation="4" result="b" />
           <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -174,14 +225,14 @@
         {#each [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as i (i)}
           <rect x={i * 80} y="0" width="40" height="290" fill="rgba(255,255,255,0.025)" />
         {/each}
-        <rect x="70" y="50" width="220" height="150" rx="4" fill="url(#house-sky)" stroke="#5b4a3f" stroke-width="8" />
-        {#each [[90, 130, 26, 70], [122, 110, 20, 90], [148, 145, 34, 55], [188, 120, 24, 80], [218, 140, 40, 60], [262, 125, 22, 75]] as [bx, by, bw, bh] (bx)}
+        <rect x="70" y="50" width="200" height="140" rx="4" fill="url(#house-sky)" stroke="#5b4a3f" stroke-width="8" />
+        {#each [[90, 125, 26, 65], [122, 105, 20, 85], [148, 140, 34, 50], [188, 115, 24, 75], [218, 135, 40, 55]] as [bx, by, bw, bh] (bx)}
           <rect x={bx} y={by} width={bw} height={bh} fill="#141733" />
         {/each}
-        <path d="M180 50 V200 M70 125 H290" stroke="#5b4a3f" stroke-width="5" />
+        <path d="M170 50 V190 M70 120 H270" stroke="#5b4a3f" stroke-width="5" />
       {:else if level === 2}
-        <rect x="60" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
-        <rect x="740" y="40" width="160" height="130" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
+        <rect x="60" y="40" width="160" height="120" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
+        <rect x="740" y="40" width="160" height="120" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
         <circle cx="850" cy="80" r="14" fill="#f5f0d8" opacity="0.85" />
       {:else if level === 3 || level === 4}
         <rect x="0" y="20" width="960" height="250" fill="url(#house-sky)" opacity="0.9" />
@@ -211,62 +262,67 @@
       {#if has('rgb')}
         <rect x="0" y="4" width="960" height="4" fill="url(#house-rgb)" filter="url(#house-glow)" class="rgb" />
         <rect x="0" y="286" width="960" height="3" fill="url(#house-rgb)" filter="url(#house-glow)" class="rgb" />
-      {/if}
-      {#if has('posters')}
-        {#each POSTERS as poster (poster.x)}
-          <rect x={poster.x} y={poster.y} width="58" height="80" rx="2" fill="#141417" stroke={posterColor(poster.tone)} stroke-width="2" />
-          <circle cx={poster.x + 29} cy={poster.y + 32} r="14" fill={posterColor(poster.tone)} opacity="0.6" />
-          <rect x={poster.x + 10} y={poster.y + 58} width="38" height="4" fill="#fff" opacity="0.5" />
+        {#each [120, 360, 600, 840] as lx (lx)}
+          <circle cx={lx} cy="6" r="3" fill="#fff" opacity="0.8" class="rgb" />
         {/each}
-      {/if}
-      {#if has('whiteboard')}
-        <rect x="580" y="54" width="120" height="80" rx="3" fill="#eef0f5" stroke="#a3a09a" stroke-width="3" />
-        <path d="M596 110 q 20 -30 40 -10 t 40 -20 M600 76 l 20 10 M650 70 a 10 10 0 1 0 0.1 0" stroke="#f0525f" stroke-width="2" fill="none" />
       {/if}
       {#if has('neon')}
-        <text x="480" y="44" text-anchor="middle" class="neon" fill={kit.primary} filter="url(#house-glow)">{v.s.org.name}</text>
+        <g class="neon-sign">
+          <path d="M{480 - neonWidth / 2 - 10} 0 V16 M{480 + neonWidth / 2 + 10} 0 V16" stroke="#3d3e45" stroke-width="2" />
+          <rect x={480 - neonWidth / 2 - 22} y="14" width={neonWidth + 44} height="46" rx="10" fill="#0e0e11" stroke="#2c2d33" stroke-width="2" />
+          <rect x={480 - neonWidth / 2 - 14} y="20" width={neonWidth + 28} height="34" rx="7" fill={primary} opacity="0.08" />
+          <text
+            x="480"
+            y="48"
+            text-anchor="middle"
+            class="neon"
+            fill={primary}
+            filter="url(#house-glow)"
+            textLength={orgName.length * 21 > NEON_MAX ? NEON_MAX : undefined}
+            lengthAdjust="spacingAndGlyphs">{orgName}</text
+          >
+        </g>
       {/if}
+      {#each placedIn('wall') as [id, p] (id)}
+        <g transform="translate({p.x} {p.y}) scale({p.s})">{@html sceneArt[id]}</g>
+      {/each}
       {#if has('shelf')}
-        <rect x="80" y="210" width="200" height="8" fill="#3a3a40" />
-        {#each Array.from({ length: trophies }, (_, i) => i) as i (i)}
-          <g transform="translate({92 + i * 19} 188)">
-            <path d="M0 0 H14 V6 Q14 14 7 14 Q0 14 0 6 Z" fill="#f5c451" />
-            <rect x="5" y="14" width="4" height="5" fill="#d9a441" />
-            <rect x="2" y="19" width="10" height="3" fill="#b8862f" />
-          </g>
-        {/each}
-      {/if}
-      {#if has('aquarium')}
-        <rect x="720" y="190" width="140" height="90" rx="4" fill="rgba(34,168,255,0.35)" stroke="#9ad4ff" stroke-width="3" />
-        <ellipse cx="760" cy="230" rx="10" ry="5" fill="#ff9a3c" class="fish" />
-        <ellipse cx="820" cy="250" rx="8" ry="4" fill="#f5c451" class="fish slow" />
-        <circle cx="840" cy="210" r="3" fill="none" stroke="#fff" opacity="0.6" />
+        <g class="shelf">
+          <path d="M800 70 L716 170 H884 Z" fill={primary} opacity="0.06" />
+          {#each shelfTrophies as t, i (t.id)}
+            {@const [fill, shadeColor] = metal(t.tier)}
+            <g transform="translate({716 + i * 19} {t.kind === 'title' ? 144 : 148})">
+              {#if t.kind === 'title'}
+                <path d="M0 0 H14 V6 Q14 14 7 14 Q0 14 0 6 Z" fill={fill} />
+                <path d="M7 0 H14 V6 Q14 14 7 14 Z" fill={shadeColor} opacity="0.4" />
+                <rect x="5.5" y="14" width="3" height="6" fill={shadeColor} />
+                <rect x="2" y="20" width="10" height="4" rx="1" fill={fill} />
+              {:else}
+                <path d="M7 0 L9.2 4.6 L14 5.2 L10.4 8.6 L11.4 13.4 L7 11 L2.6 13.4 L3.6 8.6 L0 5.2 L4.8 4.6 Z" fill={fill} stroke={shadeColor} stroke-width="0.8" />
+                <rect x="5.8" y="13" width="2.4" height="7" fill={shadeColor} />
+                <rect x="2" y="20" width="10" height="3" rx="1" fill={fill} />
+              {/if}
+            </g>
+          {/each}
+          {#if shelfTrophies.length === 0}
+            <text x="800" y="162" text-anchor="middle" class="shelf-empty">Your trophies go here</text>
+          {/if}
+          <rect x="708" y="168" width="184" height="7" rx="1.5" fill="#a8764b" />
+          <rect x="708" y="175" width="184" height="2" fill="#7d5535" />
+          <path d="M718 177 H726 L718 186 Z M874 177 H882 V186 Z" fill="#6d7077" />
+        </g>
       {/if}
 
-      <!-- Floor decor (back) -->
-      {#if has('fridge')}
-        <rect x="900" y="200" width="50" height="110" rx="5" fill="#d7dbe3" />
-        <path d="M900 240 H950" stroke="#aeb3bd" stroke-width="2" />
-        <rect x="940" y="214" width="3" height="18" fill="#8d929c" />
-      {/if}
-      {#if has('arcade')}
-        <path d="M20 180 H90 L96 320 H14 Z" fill="#1d1d21" stroke={kit.secondary} stroke-width="2" />
-        <rect x="30" y="196" width="50" height="40" fill={kit.primary} opacity="0.6" filter="url(#house-glow)" />
-      {/if}
+      <!-- Floor decor at the back, behind the players -->
       {#if has('espresso')}
-        <rect x="600" y="262" width="60" height="30" fill="#2a2a2e" />
-        <rect x="612" y="236" width="36" height="28" rx="3" fill="#b9bec7" />
+        <rect x="590" y="244" width="100" height="48" rx="3" fill="#232327" />
+        <rect x="586" y="240" width="108" height="7" rx="2" fill="#3d3e45" />
+        <g transform="translate(606 186) scale(1.45)">{@html sceneArt.espresso}</g>
       {/if}
-      {#if has('massage')}
-        <path d="M860 330 Q880 260 930 280 L940 360 H860 Z" fill={shade(kit.primary, -0.55)} />
-      {/if}
-      {#if has('napPods')}
-        <ellipse cx="60" cy="350" rx="44" ry="60" fill="#ecebe6" stroke={kit.primary} stroke-width="2" />
-        <ellipse cx="60" cy="340" rx="28" ry="36" fill="#1d1d21" />
-      {/if}
-      {#if has('holotable')}
-        <path d="M430 300 L400 270 H560 L530 300 Z" fill={kit.primary} fill-opacity="0.25" filter="url(#house-glow)" />
-      {/if}
+      {#each placedIn('back') as [id, p] (id)}
+        <ellipse cx={p.x + 24 * p.s} cy={p.y + 44 * p.s} rx={16 * p.s} ry={2.6 * p.s} fill="url(#house-pool)" />
+        <g transform="translate({p.x} {p.y}) scale({p.s})">{@html sceneArt[id]}</g>
+      {/each}
 
       <!-- Stations -->
       {#each placed as pos (pos.seat.player.id)}
@@ -282,32 +338,31 @@
         />
       {/each}
 
-      <!-- Front decor -->
+      <!-- Floor decor at the front -->
       {#if has('plants')}
-        {#each [24, 920] as px (px)}
-          <g transform="translate({px} 400)">
-            <path d="M-14 0 H14 L10 40 H-10 Z" fill="#a0522d" />
-            <path d="M0 0 Q-24 -30 -8 -60 M0 0 Q20 -40 6 -70 M0 0 Q-4 -40 14 -50" stroke="#4ade80" stroke-width="6" fill="none" stroke-linecap="round" />
-          </g>
+        {#each PLANT_SPOTS as spot (spot.x)}
+          <ellipse cx={spot.x + 24 * 2.1} cy={spot.y + 44 * 2.1} rx="34" ry="6" fill="url(#house-pool)" />
+          <g transform="translate({spot.x} {spot.y}) scale(2.1)">{@html sceneArt.plants}</g>
         {/each}
       {/if}
-      {#if has('beanbags')}
-        <ellipse cx="180" cy="440" rx="54" ry="24" fill={v.s.org.secondary} opacity="0.85" />
-        <ellipse cx="250" cy="448" rx="44" ry="20" fill={v.s.org.primary} opacity="0.85" />
-      {/if}
-      {#if has('cat')}
-        <g transform="translate(690 432)" class="cat">
-          <ellipse cx="0" cy="0" rx="20" ry="12" fill="#1b1b22" />
-          <circle cx="18" cy="-12" r="9" fill="#1b1b22" />
-          <path d="M12 -18 L14 -28 L19 -20 Z M20 -20 L25 -28 L26 -17 Z" fill="#1b1b22" />
-          <circle cx="21" cy="-13" r="1.6" fill="#c5e84a" />
-          <path d="M-20 0 Q-36 -6 -30 -22" stroke="#1b1b22" stroke-width="4" fill="none" stroke-linecap="round" />
-        </g>
-      {/if}
+      {#each placedIn('front') as [id, p] (id)}
+        <ellipse cx={p.x + 24 * p.s} cy={p.y + 44 * p.s} rx={18 * p.s} ry={2.6 * p.s} fill="url(#house-pool)" />
+        <!-- The CSS animation sits on an inner group: it would replace the outer group's transform. -->
+        <g transform="translate({p.x} {p.y}) scale({p.s})"><g class="decor-{id}">{@html sceneArt[id]}</g></g>
+      {/each}
       {#if has('zeroG')}
-        {#each [[140, 120], [480, 90], [820, 140]] as [ox, oy] (ox)}
-          <circle cx={ox} cy={oy} r="10" fill="#a97bff" opacity="0.5" filter="url(#house-glow)" class="float" />
-        {/each}
+        <g class="float">
+          <ellipse cx="170" cy="120" rx="34" ry="11" fill="#ecebe6" transform="rotate(-12 170 120)" />
+          <ellipse cx="170" cy="116" rx="26" ry="6" fill={primary} opacity="0.7" transform="rotate(-12 170 116)" />
+        </g>
+        <g class="float slow">
+          <circle cx="820" cy="110" r="12" fill={primary} opacity="0.55" filter="url(#house-glow)" />
+          <ellipse cx="820" cy="110" rx="22" ry="5" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-width="1.5" />
+        </g>
+        <g class="float">
+          <circle cx="520" cy="100" r="6" fill="#4ade80" opacity="0.8" />
+          <circle cx="532" cy="90" r="3" fill="#4ade80" opacity="0.6" />
+        </g>
       {/if}
 
       {#if seats.length === 0}
@@ -318,25 +373,44 @@
 
   <section>
     <h3 class="section-title">Decor</h3>
-    <div class="decor">
-      {#each DECOR as d (d.id)}
-        {@const owned = has(d.id)}
-        {@const fits = level >= d.room}
-        <button
-          class="item"
-          class:owned
-          class:locked={!fits}
-          class:poor={!owned && fits && v.s.cash < d.cost}
-          disabled={owned || !fits || v.s.cash < d.cost}
-          onclick={() => game.buyDecor(d.id)}
-          use:tooltip={() => decorTip(d)}
-        >
-          <span class="dicon"><Icon name={fits ? d.icon : 'lock'} size={20} /></span>
-          <span class="dname">{fits ? d.name : '???'}</span>
-          <span class="dcost num">{owned ? 'Installed' : fits ? money(d.cost) : ROOMS[d.room].name}</span>
-        </button>
-      {/each}
-    </div>
+    <p class="muted small">Every room unlocks a rarer set of decor. Items keep their room's rarity colour, from Garage common to Orbital mythic.</p>
+    {#each ROOMS as rm, ri (rm.name)}
+      {@const items = DECOR.filter((d) => d.room === ri)}
+      {#if items.length > 0}
+        <div class="room-group" class:closed={level < ri} style="--rc:{roomColor(ri)}">
+          <div class="room-label">
+            <i></i>
+            <span>{rm.name}</span>
+            <span class="rar">{rarityName(ri)}</span>
+            {#if level < ri}<span class="dim small"><Icon name="lock" size={11} /> Earn {money(rm.threshold)} this run to move in</span>{/if}
+          </div>
+          <div class="decor">
+            {#each items as d (d.id)}
+              {@const owned = has(d.id)}
+              {@const fits = level >= d.room}
+              {@const poor = !owned && fits && v.s.cash < d.cost}
+              <button
+                class="item"
+                class:owned
+                class:locked={!fits}
+                class:poor
+                disabled={owned || !fits || v.s.cash < d.cost}
+                onclick={() => game.buyDecor(d.id)}
+                use:tooltip={() => decorTip(d)}
+              >
+                <DecorIcon id={d.id} rarity={d.room} size={50} locked={!fits} dim={poor} />
+                <span class="info">
+                  <span class="dname">{fits ? d.name : '???'}</span>
+                  <span class="deffect">{fits ? effectsText(d) : `Fits in the ${rm.name}`}</span>
+                  <span class="dcost num">{owned ? 'Installed' : money(d.cost)}</span>
+                </span>
+                {#if owned}<span class="tick" aria-label="Installed"><Icon name="check" size={12} /></span>{/if}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    {/each}
   </section>
 </div>
 
@@ -357,6 +431,30 @@
     font-size: 12.5px;
     margin: 0;
   }
+  .room-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .room-title i,
+  .room-label i {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--rc);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--rc) 60%, transparent);
+  }
+  .rar {
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--rc) 50%, transparent);
+    color: var(--rc);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
   .next {
     display: flex;
     align-items: center;
@@ -365,6 +463,9 @@
   }
   .next .bar {
     flex: 1;
+  }
+  .next .bar :global(i) {
+    background: var(--bar);
   }
   .filters {
     display: flex;
@@ -405,6 +506,14 @@
     font-size: 30px;
     letter-spacing: 4px;
   }
+  .neon-sign {
+    animation: flicker 7s linear infinite;
+  }
+  .shelf-empty {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    fill: var(--dim);
+  }
   .empty {
     font-family: var(--font-ui);
     font-size: 20px;
@@ -413,91 +522,150 @@
   .rgb {
     animation: hue 6s linear infinite;
   }
-  .fish {
-    animation: swim 6s ease-in-out infinite;
-  }
-  .fish.slow {
-    animation-duration: 9s;
-  }
   .float {
     animation: float 4s ease-in-out infinite;
   }
+  .float.slow {
+    animation-duration: 6s;
+  }
+  .decor-cat {
+    animation: breathe 3.5s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+  }
+
+  .room-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .room-label {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .room-group.closed .room-label > span:first-of-type {
+    color: var(--muted);
+  }
   .decor {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 6px;
   }
   .item {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    padding: 8px 10px;
-    border-radius: 9px;
-    border: 1px solid var(--line-2);
-    background: var(--bg-2);
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px 7px 7px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--rc) 30%, var(--line-2));
+    background: linear-gradient(100deg, color-mix(in srgb, var(--rc) 9%, transparent), transparent 60%), var(--bg-2);
     text-align: left;
   }
   .item:hover:not(:disabled) {
-    border-color: var(--gold);
+    border-color: var(--rc);
+    transform: translateY(-1px);
   }
   .item:disabled {
     cursor: default;
   }
   .item.owned {
-    border-color: color-mix(in srgb, var(--green) 45%, transparent);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--green) 10%, transparent), transparent), var(--bg-2);
+    border-color: color-mix(in srgb, var(--rc) 60%, transparent);
+    background: linear-gradient(100deg, color-mix(in srgb, var(--rc) 16%, transparent), transparent 70%), var(--bg-2);
   }
   .item.locked {
-    opacity: 0.45;
+    opacity: 0.6;
   }
-  /* Framed like gear and staff icons so every purchasable in the game reads the same way. */
-  .dicon {
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    margin-bottom: 3px;
-    border-radius: 8px;
-    color: var(--gold);
-    border: 1.5px solid color-mix(in srgb, var(--gold) 40%, transparent);
-    background: linear-gradient(145deg, color-mix(in srgb, var(--gold) 18%, transparent), transparent 60%), var(--bg);
+  .item.owned .info {
+    padding-right: 16px;
   }
-  .item.owned .dicon {
-    color: var(--green);
-    border-color: color-mix(in srgb, var(--green) 55%, transparent);
-    background: linear-gradient(145deg, color-mix(in srgb, var(--green) 20%, transparent), transparent 60%), var(--bg);
-  }
-  .item.poor .dicon {
-    color: var(--dim);
-    border-color: var(--line-2);
-    background: var(--bg);
-  }
-  .item.poor .dcost {
-    color: var(--red);
+  .info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
   }
   .dname {
     font-family: var(--font-ui);
     font-weight: 700;
     font-size: 14px;
+    line-height: 1.15;
+  }
+  .deffect {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .dcost {
     font-size: 12px;
+    color: var(--green);
+  }
+  .item.owned .dcost {
+    color: var(--rc);
+  }
+  .item.poor .dcost {
+    color: var(--red);
+  }
+  .item.locked .dcost {
     color: var(--muted);
+  }
+  .tick {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    color: #0c0c0e;
+    background: var(--rc);
   }
   @keyframes hue {
     to {
       filter: hue-rotate(360deg);
     }
   }
-  @keyframes swim {
-    50% {
-      transform: translateX(40px);
-    }
-  }
   @keyframes float {
     50% {
       transform: translateY(-12px);
+    }
+  }
+  @keyframes breathe {
+    50% {
+      transform: scaleY(1.03);
+    }
+  }
+  @keyframes flicker {
+    0%,
+    91%,
+    94%,
+    100% {
+      opacity: 1;
+    }
+    92%,
+    95% {
+      opacity: 0.55;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rgb,
+    .float,
+    .decor-cat,
+    .neon-sign {
+      animation: none;
     }
   }
 </style>

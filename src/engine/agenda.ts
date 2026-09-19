@@ -3,6 +3,7 @@ import { RELEGATE_WINS, SEASON_LENGTH, tierName } from '../data/leagues';
 import { SPONSORS_UNLOCK_FANS } from '../data/sponsors';
 import { fmt, fmtTime, money } from './format';
 import { MERCH_UNLOCK_FANS, isMerchUnlocked } from './merch';
+import { teamMood } from './mood';
 import { isAvailable, transferValue } from './players';
 import { pendingLegacy } from './prestige';
 import { previewSigning } from './roster';
@@ -149,6 +150,20 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
           title: `${p.tag} is playing ${g.roles[slot]} off-role`,
           detail: `They are a ${g.roles[p.role]}, and off-role players perform at 85%.`,
           action: { label: 'Fix lineup', target: { kind: 'player', id: p.id } },
+        };
+      }
+      return null;
+    },
+    // Coasting through a league the team has outgrown.
+    () => {
+      for (const { g, team } of teams) {
+        if (teamMood(team) !== 'bored') continue;
+        const lost = 1 - (rates.teams[g.id]?.stakes ?? 1);
+        return {
+          icon: 'face-slightly-frowning',
+          title: `${g.name} is bored in the ${tierName(team.tier)}`,
+          detail: `With auto-promote off they win almost every match, so players lose morale and learn little${lost >= 0.05 ? `, and a foregone conclusion pays ${Math.round(lost * 100)}% less` : ''}. Challenge up a tier.`,
+          action: { label: 'Teams', target: { kind: 'tab', tab: 'teams' } },
         };
       }
       return null;

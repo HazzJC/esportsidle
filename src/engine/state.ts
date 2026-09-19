@@ -35,7 +35,7 @@ export function createSettings(): Settings {
     muted: false,
     confirmPrestige: true,
     buyAmount: 1,
-    matchToasts: false,
+    notify: { matches: true, players: true, events: true, business: true, achievements: true },
     uiAccent: DEFAULT_TONE,
     onboarded: false,
   };
@@ -169,6 +169,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
       runBaseline: { seasonTitles: 0, tournamentsWon: 0, matchesWon: 0 },
       charter: null,
       mandate: null,
+      dynasty: {},
     },
     automation: createAutomation(),
     automationLog: [],

@@ -2,6 +2,8 @@
   import { fly } from 'svelte/transition';
   import { CABINET_PER_ACHIEVEMENT } from '../../engine/economy';
   import { game, type Toast } from '../game.svelte';
+  import { NOTIFY_LABEL } from '../notify';
+  import { rarityColor } from '../theme';
   import Icon from './Icon.svelte';
 
   /** Achievements named in a batched popup before collapsing into "and N more". */
@@ -17,7 +19,12 @@
 -->
 <div class="toasts" aria-live="polite">
   {#each game.toasts as t (t.id)}
-    <div class="toast {t.tone}" class:ach={t.achievements} style="--life:{t.duration}ms" in:fly={{ x: -28, duration: 260 }}>
+    <div
+      class="toast {t.tone}"
+      class:ach={t.achievements}
+      style="--life:{t.duration}ms; {t.achievements ? `--ac:${rarityColor(t.achievements[0].rarity)}` : ''}"
+      in:fly={{ x: -28, duration: 260 }}
+    >
       {#if t.achievements}
         {@const list = t.achievements}
         <span class="medal" aria-hidden="true">
@@ -32,7 +39,7 @@
           {:else}
             <span class="names">
               {#each list.slice(0, MAX_LISTED) as a, i (i)}
-                <span class="row"><Icon name={a.icon} size={13} /><span>{a.name}</span></span>
+                <span class="row" style="--rc:{rarityColor(a.rarity)}"><Icon name={a.icon} size={13} /><span>{a.name}</span></span>
               {/each}
               {#if list.length > MAX_LISTED}<span class="more">and {list.length - MAX_LISTED} more</span>{/if}
             </span>
@@ -52,6 +59,12 @@
       <button class="close" onclick={() => game.dismissToast(t.id)} aria-label="Dismiss notification">
         <Icon name="x" size={13} />
       </button>
+      {#if t.channel}
+        {@const channel = t.channel}
+        <button class="mute" onclick={() => game.setNotify(channel, false)} aria-label="Mute {NOTIFY_LABEL[channel].toLowerCase()} popups" title="Stop showing {NOTIFY_LABEL[channel].toLowerCase()}. Turn them back on from the bell.">
+          <Icon name="bell-off" size={12} />
+        </button>
+      {/if}
       <i class="life" aria-hidden="true"></i>
     </div>
   {/each}
@@ -123,11 +136,13 @@
   }
 
   /* Achievement card */
+  /* Tinted by the rarest achievement in the popup, on the shared rarity ladder. */
   .ach {
+    --c: var(--ac);
     padding: 12px 34px 14px 12px;
-    border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+    border-color: color-mix(in srgb, var(--ac) 45%, transparent);
     background:
-      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 60%),
+      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ac) 16%, transparent), transparent 60%),
       color-mix(in srgb, var(--panel-2) 97%, transparent);
   }
   .medal {
@@ -138,17 +153,17 @@
     width: 46px;
     height: 46px;
     border-radius: 50%;
-    color: #2a1e05;
-    background: radial-gradient(circle at 35% 30%, #fff4cc, var(--gold) 45%, #b8862f);
+    color: color-mix(in srgb, var(--ac) 22%, #0c0c0e);
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ac) 30%, #fff), var(--ac) 45%, color-mix(in srgb, var(--ac) 70%, #000));
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--gold) 35%, transparent),
-      0 0 18px color-mix(in srgb, var(--gold) 40%, transparent);
+      0 0 0 2px color-mix(in srgb, var(--ac) 35%, transparent),
+      0 0 18px color-mix(in srgb, var(--ac) 40%, transparent);
   }
   .burst {
     position: absolute;
     inset: -6px;
     border-radius: 50%;
-    border: 2px solid var(--gold);
+    border: 2px solid var(--ac);
     opacity: 0;
     animation: burst 0.9s ease-out 0.1s 1;
   }
@@ -158,7 +173,7 @@
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--ac);
   }
   .name {
     font-family: var(--font-ui);
@@ -188,7 +203,7 @@
   }
   .row :global(svg) {
     flex: none;
-    color: var(--gold);
+    color: var(--rc);
   }
   .row span {
     overflow: hidden;
@@ -234,9 +249,26 @@
     color: var(--dim);
     pointer-events: auto;
   }
-  .close:hover {
+  .close:hover,
+  .mute:hover {
     color: var(--text);
     background: var(--panel-3);
+  }
+  .mute {
+    position: absolute;
+    top: 30px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dim);
+    opacity: 0.7;
+    pointer-events: auto;
   }
   /* Countdown to auto-dismiss. */
   .life {

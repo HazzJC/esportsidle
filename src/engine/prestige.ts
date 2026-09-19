@@ -1,6 +1,16 @@
 import { emptyGear } from '../data/gear';
 import { GAMES, getGame } from '../data/games';
-import { CHALLENGE_MAP, LEGACY_NODES, LEGACY_NODE_MAP, type ChallengeDef, type LegacySpecial } from '../data/legacy';
+import {
+  CHALLENGE_MAP,
+  DYNASTY,
+  DYNASTY_BASE_COST,
+  DYNASTY_COST_GROWTH,
+  DYNASTY_MAP,
+  LEGACY_NODES,
+  LEGACY_NODE_MAP,
+  type ChallengeDef,
+  type LegacySpecial,
+} from '../data/legacy';
 import { CHARTER_MAP } from '../data/charters';
 import { tierName } from '../data/leagues';
 import { MANDATES, MANDATE_CHOICES, MANDATE_MAP, type MandateDef } from '../data/mandates';
@@ -80,6 +90,49 @@ export function buyNode(s: GameState, id: string): boolean {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Dynasty ranks (repeatable)
+// ---------------------------------------------------------------------------
+export function dynastyRank(s: GameState, id: string): number {
+  return s.prestige.dynasty[id] ?? 0;
+}
+
+/** Cost of the next rank, given the ranks already owned in that track. */
+export function dynastyCost(rank: number): number {
+  return Math.ceil(DYNASTY_BASE_COST * Math.pow(DYNASTY_COST_GROWTH, rank));
+}
+
+/** Dynasty ranks open with the root node, so there is always somewhere to put a point. */
+export function dynastyUnlocked(s: GameState): boolean {
+  return hasNode(s, 'legacy');
+}
+
+export function treeComplete(s: GameState): boolean {
+  return LEGACY_NODES.every((n) => hasNode(s, n.id));
+}
+
+/** Buys ranks in one track: one, or as many as the points allow. Returns how many were bought. */
+export function buyDynasty(s: GameState, id: string, max = false): number {
+  if (!DYNASTY_MAP.has(id) || !dynastyUnlocked(s)) return 0;
+  let bought = 0;
+  while (true) {
+    const cost = dynastyCost(dynastyRank(s, id));
+    if (s.prestige.points < cost) break;
+    s.prestige.points -= cost;
+    s.prestige.spent += cost;
+    s.prestige.dynasty[id] = dynastyRank(s, id) + 1;
+    bought++;
+    if (!max) break;
+  }
+  return bought;
+}
+
+export function dynastyTotal(s: GameState): number {
+  let n = 0;
+  for (const d of DYNASTY) n += dynastyRank(s, d.id);
+  return n;
+}
+
 export interface LegacyBonuses {
   effects: Effect[];
   gameRating: Record<string, number>;
@@ -96,6 +149,10 @@ export function legacyBonuses(s: GameState): LegacyBonuses {
   for (const id in s.prestige.challengesDone) {
     const def = CHALLENGE_MAP.get(id);
     if (def) out.effects.push(...def.rewardEffects);
+  }
+  for (const d of DYNASTY) {
+    const rank = dynastyRank(s, d.id);
+    if (rank > 0) out.effects.push(...d.effects(rank));
   }
   const charter = s.prestige.charter ? CHARTER_MAP.get(s.prestige.charter) : undefined;
   if (charter?.effects) out.effects.push(...charter.effects);

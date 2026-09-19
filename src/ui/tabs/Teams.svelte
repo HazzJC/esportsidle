@@ -5,6 +5,7 @@
   import { fmt, fmtPct, money } from '../../engine/format';
   import { isAvailable, skillRating } from '../../engine/players';
   import { CHALLENGE_WIN_CHANCE, teamKit } from '../../engine/teams';
+  import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
   import { seasonSummary } from '../../engine/stories';
   import Avatar from '../components/Avatar.svelte';
   import Icon from '../components/Icon.svelte';
@@ -76,6 +77,28 @@
     };
   }
 
+  function moodTip(g: GameDef): TipContent {
+    const { s, r } = game.view;
+    const team = s.teams[g.id];
+    const ev = r.teams[g.id];
+    const m = MOODS[teamMood(team)];
+    const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+    return {
+      title: m.name,
+      subtitle: `Team mood · form ${Math.round(team.form * 100)}%`,
+      icon: m.icon,
+      iconColor: m.tone === 'good' ? 'var(--green)' : m.tone === 'bad' ? 'var(--red)' : undefined,
+      lines: [
+        m.summary,
+        { text: `Starters: XP ${times(m.xp)} · morale ${signed(m.moraleWin)} per win, ${signed(m.moraleLoss)} per loss`, tone: m.tone === 'bad' ? 'bad' : m.tone === 'good' ? 'good' : 'muted' },
+        ...(ev && ev.stakes < 0.995
+          ? [{ text: `Crowds ×${ev.stakes.toFixed(2)}: at ${Math.round(ev.winChance * 100)}% to win, matches are a foregone conclusion, so prize money and fans shrink.`, tone: 'bad' as const }]
+          : []),
+        { text: `Form follows roughly the last season. Players are fired up when they win ${Math.round(ENGAGED_MIN * 100)}–${Math.round(ENGAGED_MAX * 100)}% of matches and bored from ${Math.round(BORED_FORM * 100)}%.`, tone: 'muted' },
+      ],
+    };
+  }
+
   function playerTip(id: string): TipContent {
     const { s } = game.view;
     const p = s.players[id];
@@ -136,11 +159,19 @@
             </div>
           </div>
           {#if ev}
+            {@const mood = teamMood(team)}
             <div class="numbers">
+              <span class="mood {MOODS[mood].tone}" use:tooltip={() => moodTip(g)}>
+                <Icon name={MOODS[mood].icon} size={12} />
+                {MOODS[mood].name}
+              </span>
               <span use:tooltip={() => ({ title: 'Win chance', lines: ['Based on your lineup rating against this tier.'] })}>
                 <b class="num" class:good={ev.winChance >= 0.6} class:bad={ev.winChance < 0.4}>{fmtPct(ev.winChance)}</b> win
               </span>
-              <span><b class="num gold-text">{money(ev.winPrize)}</b> /win</span>
+              <span>
+                <b class="num gold-text">{money(ev.winPrize)}</b> /win
+                {#if ev.stakes < 0.995}<span class="crowd bad num" use:tooltip={() => moodTip(g)}>×{ev.stakes.toFixed(2)}</span>{/if}
+              </span>
               <span><b class="num accent-text">{money(ev.cps, 1)}</b> /s</span>
             </div>
           {/if}
@@ -514,6 +545,36 @@
     margin-left: auto;
     font-size: 12px;
     color: var(--muted);
+  }
+  .numbers {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .mood {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line-2);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .mood.good {
+    color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 45%, transparent);
+    background: color-mix(in srgb, var(--green) 8%, transparent);
+  }
+  .mood.bad {
+    color: var(--red);
+    border-color: color-mix(in srgb, var(--red) 45%, transparent);
+    background: color-mix(in srgb, var(--red) 8%, transparent);
+  }
+  .crowd {
+    margin-left: 2px;
+    font-size: 11px;
   }
   .numbers b {
     font-family: var(--font-ui);

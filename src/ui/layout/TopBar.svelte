@@ -3,10 +3,24 @@
   import { fmtTime } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import NotifyToggles from '../components/NotifyToggles.svelte';
   import { game } from '../game.svelte';
+  import { NOTIFY_CHANNELS } from '../notify';
 
   let renaming = $state(false);
   let draft = $state('');
+  let bellOpen = $state(false);
+  let bellWrap: HTMLDivElement | undefined = $state();
+
+  const muted = $derived(NOTIFY_CHANNELS.filter((c) => !game.view.s.settings.notify[c.id]).length);
+
+  function onWindowClick(e: MouseEvent) {
+    if (bellOpen && bellWrap && !bellWrap.contains(e.target as Node)) bellOpen = false;
+  }
+
+  function onWindowKey(e: KeyboardEvent) {
+    if (bellOpen && e.key === 'Escape') bellOpen = false;
+  }
 
   const s = $derived(game.view.s);
 
@@ -70,11 +84,33 @@
     {/if}
   </div>
 
+  <div class="bell-wrap" bind:this={bellWrap}>
+    <button
+      class="bell"
+      class:muted={muted > 0}
+      aria-expanded={bellOpen}
+      aria-label={muted > 0 ? `Notifications: ${muted} kind${muted === 1 ? '' : 's'} muted` : 'Notifications'}
+      title="Choose which popups to show"
+      onclick={() => (bellOpen = !bellOpen)}
+    >
+      <Icon name={muted === NOTIFY_CHANNELS.length ? 'bell-off' : 'bell'} size={15} />
+      {#if muted > 0 && muted < NOTIFY_CHANNELS.length}<span class="badge num">{muted}</span>{/if}
+    </button>
+    {#if bellOpen}
+      <div class="bell-pop panel" role="dialog" aria-label="Notifications">
+        <h3 class="section-title">Popups</h3>
+        <NotifyToggles />
+      </div>
+    {/if}
+  </div>
+
   <button class="save" class:error={!!game.saveError} onclick={() => game.save(true)} title="Save now (Ctrl+S)">
     <Icon name="save" size={15} />
     <span class="save-text">{savedLabel}</span>
   </button>
 </header>
+
+<svelte:window onclick={onWindowClick} onkeydown={onWindowKey} />
 
 {#if renaming}
   <Modal title="Rename your org" onclose={() => (renaming = false)} width={380}>
@@ -89,7 +125,10 @@
 {/if}
 
 <style>
+  /* Above the centre panel and the mobile nav, so the popups menu is never painted over. */
   .topbar {
+    position: relative;
+    z-index: 800;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -160,6 +199,60 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .bell-wrap {
+    position: relative;
+    flex: none;
+  }
+  .bell {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--line-2);
+    background: var(--bg-2);
+    color: var(--muted);
+  }
+  .bell:hover,
+  .bell[aria-expanded='true'] {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  .bell.muted {
+    color: var(--dim);
+  }
+  .badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--panel-3);
+    border: 1px solid var(--line-2);
+    color: var(--text);
+    font-size: 10px;
+    line-height: 13px;
+    text-align: center;
+  }
+  .bell-pop {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 60;
+    width: min(340px, calc(100vw - 32px));
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    padding: 10px 14px 12px;
+    background: var(--panel-2);
+    border-color: var(--line-2);
+    box-shadow: var(--shadow);
+  }
+  .bell-pop .section-title {
+    margin: 0 0 2px;
   }
   .save {
     display: flex;

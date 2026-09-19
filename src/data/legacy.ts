@@ -219,6 +219,41 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
 
 export const LEGACY_NODE_MAP: Map<string, LegacyNodeDef> = new Map(LEGACY_NODES.map((n) => [n.id, n]));
 
+/**
+ * Dynasty ranks: repeatable legacy purchases with no cap, so legacy points always have a use and
+ * selling the org is always worth something, even once the tree is complete. Each rank is a small
+ * boost to a base rate; the cost grows geometrically, so ranks track the log of points earned.
+ */
+export interface DynastyDef {
+  id: string;
+  name: string;
+  icon: string;
+  /** What one rank adds, for display. */
+  perRank: string;
+  effects: (rank: number) => Effect[];
+}
+
+export const DYNASTY_BASE_COST = 5;
+export const DYNASTY_COST_GROWTH = 1.15;
+
+export const DYNASTY: DynastyDef[] = [
+  { id: 'renown', name: 'Renown', icon: 'crown', perRank: '+3% income', effects: (r) => [{ kind: 'globalPct', pct: 0.03 * r }] },
+  { id: 'pedigree', name: 'Pedigree', icon: 'trophy', perRank: '+6% prize money', effects: (r) => [{ kind: 'prizeMult', mult: 1 + 0.06 * r }] },
+  { id: 'following', name: 'Following', icon: 'heart', perRank: '+6% fans', effects: (r) => [{ kind: 'fansMult', mult: 1 + 0.06 * r }] },
+  {
+    id: 'academy',
+    name: 'Academy',
+    icon: 'dumbbell',
+    perRank: '+1% team rating and +5% XP',
+    effects: (r) => [
+      { kind: 'teamRating', mult: 1 + 0.01 * r },
+      { kind: 'xpMult', mult: 1 + 0.05 * r },
+    ],
+  },
+];
+
+export const DYNASTY_MAP: Map<string, DynastyDef> = new Map(DYNASTY.map((d) => [d.id, d]));
+
 export interface ChallengeDef {
   id: string;
   name: string;

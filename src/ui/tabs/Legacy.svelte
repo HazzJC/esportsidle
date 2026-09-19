@@ -3,7 +3,8 @@
   import { CHARTERS, CHARTER_MAP } from '../../data/charters';
   import { GAME_MAP } from '../../data/games';
   import { MANDATE_MAP } from '../../data/mandates';
-  import { CHALLENGES, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
+  import { CHALLENGES, DYNASTY, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
+  import { describeEffect } from '../../engine/describe';
   import { tierName } from '../../data/leagues';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
@@ -11,12 +12,17 @@
     LEGACY_DIVISOR,
     activeChallenge,
     canSell,
+    dynastyCost,
+    dynastyRank,
+    dynastyTotal,
+    dynastyUnlocked,
     hasSpecial,
     legacyFor,
     mandateOffers,
     nextLegacyThreshold,
     nodeState,
     pendingLegacy,
+    treeComplete,
   } from '../../engine/prestige';
   import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
@@ -57,6 +63,7 @@
   const charter = $derived(p.charter ? CHARTER_MAP.get(p.charter) : undefined);
   const mandate = $derived(p.mandate ? MANDATE_MAP.get(p.mandate) : undefined);
   const offers = $derived(mandateOffers(s));
+  const complete = $derived(treeComplete(s));
   /** The charter is required the first time it can be chosen. */
   const needsCharter = $derived(!p.charter);
 
@@ -183,6 +190,37 @@
         {/each}
       </svg>
     </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Dynasty <span class="dim">{dynastyTotal(s)} rank{dynastyTotal(s) === 1 ? '' : 's'}</span></h3>
+    {#if complete}
+      <div class="tree-done"><Icon name="crown" size={16} color="var(--gold)" /> The tree is complete. Every point from here goes into Dynasty ranks, which never run out, so selling the org always pays.</div>
+    {:else}
+      <p class="muted small">Repeatable ranks with no cap. Each one is a small permanent boost to a base rate, and the price rises with every rank, so tree nodes are usually the better buy first.</p>
+    {/if}
+    {#if !dynastyUnlocked(s)}
+      <p class="dim small">Opens with Legacy of Champions, your first sale.</p>
+    {:else}
+      <div class="dynasty">
+        {#each DYNASTY as d (d.id)}
+          {@const rank = dynastyRank(s, d.id)}
+          {@const cost = dynastyCost(rank)}
+          <div class="dyn" class:owned={rank > 0}>
+            <span class="dyn-icon"><Icon name={d.icon} size={20} /></span>
+            <div class="dyn-main">
+              <span class="dyn-name"><b>{d.name}</b> <span class="num dim">rank {fmt(rank)}</span></span>
+              <span class="small muted">{d.perRank} per rank</span>
+              {#if rank > 0}<span class="small good">{d.effects(rank).map((e) => describeEffect(e)).join(' ')}</span>{/if}
+            </div>
+            <div class="dyn-buy">
+              <button class="btn small gold" disabled={p.points < cost} onclick={() => game.buyDynasty(d.id)} aria-label="Buy one {d.name} rank for {fmt(cost)} legacy points">+1 · {fmt(cost)} pts</button>
+              <button class="btn small" disabled={p.points < cost} onclick={() => game.buyDynasty(d.id, true)} aria-label="Buy as many {d.name} ranks as you can afford">Max</button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </section>
 
   {#if hasSpecial(s, 'challenges')}
@@ -556,6 +594,62 @@
   }
   .node.affordable .cost {
     fill: var(--accent);
+  }
+  .tree-done {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    background: color-mix(in srgb, var(--gold) 9%, transparent);
+    font-size: 13px;
+  }
+  .dynasty {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+  .dyn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .dyn.owned {
+    border-color: color-mix(in srgb, var(--gold) 35%, transparent);
+  }
+  .dyn-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: var(--gold);
+    border: 1.5px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    background: radial-gradient(circle, color-mix(in srgb, var(--gold) 16%, transparent), transparent 70%), var(--bg);
+  }
+  .dyn-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .dyn-name {
+    font-family: var(--font-ui);
+    font-size: 15px;
+  }
+  .dyn-buy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: none;
   }
   .challenges {
     display: grid;

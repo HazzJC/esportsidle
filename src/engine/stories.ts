@@ -38,7 +38,7 @@ function newRival(s: GameState, rng: Rng): RivalState {
 export function pickOpponent(s: GameState, rng: Rng): { name: string; rival: boolean } {
   if (!s.rival && s.stats.matchesWon + s.stats.matchesLost >= RIVAL_AFTER_MATCHES) {
     s.rival = newRival(s, rng);
-    emit({ type: 'toast', title: 'A rivalry begins', body: `${s.rival.name} have noticed ${s.org.name}. Expect to see a lot of them.`, icon: 'swords', tone: 'info' });
+    emit({ type: 'toast', title: 'A rivalry begins', body: `${s.rival.name} have noticed ${s.org.name}. Expect to see a lot of them.`, icon: 'swords', tone: 'info', channel: 'matches' });
   }
   if (s.rival && rng.chance(RIVAL_CHANCE)) return { name: s.rival.name, rival: true };
   const others = RIVAL_ORGS.filter((n) => n !== s.rival?.name);
@@ -63,6 +63,7 @@ export function recordRivalMatch(s: GameState, win: boolean, gameId: string): vo
       body: `The first derby, in ${game}. It will not be the last.`,
       icon: 'swords',
       tone: win ? 'good' : 'bad',
+      channel: 'matches',
     });
   } else if (Math.abs(r.streak) === 3 || Math.abs(r.streak) === 5) {
     emit({
@@ -71,12 +72,13 @@ export function recordRivalMatch(s: GameState, win: boolean, gameId: string): vo
       body: `Head to head: ${r.wins}-${r.losses}.`,
       icon: 'swords',
       tone: win ? 'good' : 'bad',
+      channel: 'matches',
     });
   }
   if (r.wins - r.losses >= RIVAL_VANQUISH_LEAD) {
     s.rivalHistory.unshift({ name: r.name, wins: r.wins, losses: r.losses, until: s.time });
     if (s.rivalHistory.length > RIVAL_HISTORY_SIZE) s.rivalHistory.length = RIVAL_HISTORY_SIZE;
-    emit({ type: 'toast', title: `${r.name} left behind`, body: `A ${r.wins}-${r.losses} rivalry, settled. Someone new will step up.`, icon: 'crown', tone: 'gold' });
+    emit({ type: 'toast', title: `${r.name} left behind`, body: `A ${r.wins}-${r.losses} rivalry, settled. Someone new will step up.`, icon: 'crown', tone: 'gold', channel: 'matches' });
     s.rival = null;
   }
 }
@@ -138,7 +140,7 @@ export function addMilestone(s: GameState, p: Player, id: string, label: string,
   if (p.milestones.some((m) => m.id === id)) return false;
   p.milestones.unshift({ id, label, time: s.time, run: s.prestige.runs + 1 });
   if (p.milestones.length > MILESTONE_LOG_SIZE) p.milestones.length = MILESTONE_LOG_SIZE;
-  if (announce) emit({ type: 'toast', title: `${p.tag}: ${label}`, body: `A career milestone with ${s.org.name}.`, icon: 'medal', tone: 'gold' });
+  if (announce) emit({ type: 'toast', title: `${p.tag}: ${label}`, body: `A career milestone with ${s.org.name}.`, icon: 'medal', tone: 'gold', channel: 'players' });
   return true;
 }
 

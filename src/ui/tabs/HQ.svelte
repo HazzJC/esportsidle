@@ -7,7 +7,7 @@
   import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
-  import { laneHue } from '../theme';
+  import { opColor } from '../theme';
   import { tooltip } from '../tooltip.svelte';
 
   const MAX_UNITS = 40;
@@ -119,11 +119,11 @@
           {@const cost = operationLevelCost(st.level)}
           <div
             class="lane"
-            style="--h:{laneHue(op.index)}"
+            style="--c:{opColor(op.index)}"
             use:tooltip={() => ({
               title: op.plural,
               icon: op.icon,
-              iconColor: `hsl(${laneHue(op.index)} 90% 65%)`,
+              iconColor: opColor(op.index),
               lines: [
                 { text: op.desc, tone: 'muted' },
                 `${fmt(game.view.s.ops[op.id].owned)} producing ${money(game.view.r.opCps[op.id], 1)}/s`,
@@ -326,16 +326,16 @@
   .lane {
     border-radius: 9px;
     padding: 6px 10px 8px;
-    border: 1px solid hsl(var(--h) 60% 50% / 0.3);
+    border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
     background:
-      repeating-linear-gradient(90deg, hsl(var(--h) 60% 50% / 0.05) 0 1px, transparent 1px 28px),
-      linear-gradient(90deg, hsl(var(--h) 80% 50% / 0.14), hsl(var(--h) 80% 50% / 0.03));
+      repeating-linear-gradient(90deg, color-mix(in srgb, var(--c) 5%, transparent) 0 1px, transparent 1px 28px),
+      linear-gradient(90deg, color-mix(in srgb, var(--c) 13%, transparent), color-mix(in srgb, var(--c) 3%, transparent));
   }
   .lane-head {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: hsl(var(--h) 90% 72%);
+    color: var(--c);
     font-family: var(--font-ui);
     font-weight: 700;
     font-size: 14px;
@@ -378,8 +378,8 @@
   .unit {
     display: grid;
     place-items: center;
-    color: hsl(var(--h) 90% 70%);
-    filter: drop-shadow(0 0 3px hsl(var(--h) 90% 60% / 0.6));
+    color: var(--c);
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--c) 60%, transparent));
     animation: pop-in 0.25s ease-out both;
   }
   .more {

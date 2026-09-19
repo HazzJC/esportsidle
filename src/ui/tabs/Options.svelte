@@ -3,6 +3,7 @@
   import { GAME_VERSION } from '../../engine/state';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import NotifyToggles from '../components/NotifyToggles.svelte';
   import { UI_TONES } from '../../data/palette';
   import ToneSwatches from '../components/ToneSwatches.svelte';
   import Toggle from '../components/Toggle.svelte';
@@ -90,6 +91,12 @@
   </section>
 
   <section>
+    <h3 class="section-title">Popups</h3>
+    <p class="muted small">Late in a run, several teams can finish matches every few seconds. Mute the kinds you do not need. The bell in the top bar has the same switches, and every popup has its own mute button.</p>
+    <NotifyToggles />
+  </section>
+
+  <section>
     <h3 class="section-title">Display</h3>
     <label class="select-row">
       <span>Number format</span>
@@ -97,6 +104,7 @@
         <option value="short">Short (1.23 M)</option>
         <option value="long">Long (1.23 million)</option>
         <option value="scientific">Scientific (1.23e6)</option>
+        <option value="power">Powers of ten (1.23 × 10⁶)</option>
       </select>
     </label>
     <label class="select-row">

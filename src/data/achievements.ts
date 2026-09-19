@@ -33,11 +33,15 @@ export interface AchievementDef {
   /** Secret achievements hide their description until unlocked. */
   secret?: boolean;
   check: (s: GameState, r: Rates) => boolean;
+  /** Rarity band 0-5 (common to mythic), on the same colour ladder as gear and upgrades. */
+  rarity: number;
 }
 
+type AchievementInput = Omit<AchievementDef, 'rarity'>;
+
 const list: AchievementDef[] = [];
-const add = (def: AchievementDef): void => {
-  list.push(def);
+const add = (def: AchievementInput): void => {
+  list.push({ ...def, rarity: 0 });
 };
 
 const totalOwned = (s: GameState): number => OPERATIONS.reduce((n, op) => n + s.ops[op.id].owned, 0);
@@ -811,6 +815,22 @@ add({
   group: 'legacy',
   check: (s) => LEGACY_NODES.every((n) => s.prestige.nodes[n.id] !== undefined),
 });
+const DYNASTY_RANKS: [number, string][] = [
+  [1, 'Old Family Name'],
+  [25, 'House of Champions'],
+  [100, 'Esports Aristocracy'],
+  [250, 'Eternal Dynasty'],
+];
+for (const [n, name] of DYNASTY_RANKS) {
+  add({
+    id: `dynasty_${n}`,
+    name,
+    desc: () => `Own ${fmt(n)} Dynasty rank${n === 1 ? '' : 's'} in total.`,
+    icon: 'crown',
+    group: 'legacy',
+    check: (s) => Object.values(s.prestige.dynasty).reduce((a, b) => a + b, 0) >= n,
+  });
+}
 for (const c of CHALLENGES) {
   add({
     id: `challenge_${c.id}`,
@@ -901,6 +921,91 @@ add({
   secret: true,
   check: (s) => s.stats.offlineSecondsTotal >= 8 * 3600,
 });
+
+// Rarity ------------------------------------------------------------------------
+// Most achievements come in ladders (earn_0, earn_3 ... earn_33). Each ladder climbs from common
+// towards mythic by position; later operations start their ladders higher because even owning
+// one is an achievement. One-offs are rated by hand.
+
+/** The ladder an achievement belongs to: its id without the trailing threshold. */
+const seriesOf = (id: string): string => id.replace(/_[^_]*\d[^_]*$/, '');
+
+const OP_INDEX = new Map(OPERATIONS.map((op) => [`op_${op.id}`, op.index]));
+
+/** First and last band of a ladder, where the default 0-5 would mislead. */
+const SERIES_RANGE: Record<string, [number, number]> = {
+  ops_all: [2, 5],
+  drama: [2, 4],
+  oplevel: [1, 3],
+  events: [1, 3],
+  design: [0, 2],
+  train: [2, 4],
+  games: [1, 5],
+  room: [1, 5],
+  nodes: [2, 4],
+  sold: [1, 4],
+  crowd: [0, 3],
+};
+
+/** Hand-rated one-offs. */
+const RARITY_OVERRIDES: Record<string, number> = {
+  sign_legend: 4,
+  fully_kitted: 3,
+  sneakerhead: 3,
+  maxed_slot: 4,
+  potato: 1,
+  makeover: 0,
+  staff_coach_50: 2,
+  staff_chef_25: 2,
+  staff_physio_25: 2,
+  staff_psych_25: 2,
+  staff_ai_10: 3,
+  sick_day: 1,
+  walk_it_off: 2,
+  decor_1: 0,
+  decor_all: 4,
+  tourney_played: 0,
+  choices_10: 1,
+  too_slow: 1,
+  logo_set: 0,
+  jersey_set: 0,
+  merch_units: 2,
+  merch_all: 4,
+  logo_soup: 2,
+  rug_pulled: 2,
+  nodes_all: 5,
+  challenge_solo: 3,
+  challenge_potato: 3,
+  challenge_nostaff: 3,
+  challenge_nodrops: 3,
+  challenge_drama: 3,
+  challenge_all: 5,
+  legend_retired: 3,
+  franchise_tag: 3,
+  rename: 0,
+  sell_grinder: 1,
+  speedrun_1m: 4,
+  ctrl_s: 1,
+  backup: 0,
+  touch_grass: 1,
+};
+
+function assignRarity(all: AchievementDef[]): void {
+  const series = new Map<string, AchievementDef[]>();
+  for (const a of all) {
+    const key = seriesOf(a.id);
+    series.set(key, [...(series.get(key) ?? []), a]);
+  }
+  for (const [key, items] of series) {
+    const opIndex = OP_INDEX.get(key);
+    const [lo, hi] = SERIES_RANGE[key] ?? (opIndex !== undefined ? [Math.min(3, Math.floor((opIndex * 4) / OPERATIONS.length)), 5] : [0, 5]);
+    items.forEach((a, i) => {
+      a.rarity = items.length === 1 ? 2 : Math.round(lo + ((hi - lo) * i) / (items.length - 1));
+    });
+  }
+  for (const a of all) if (RARITY_OVERRIDES[a.id] !== undefined) a.rarity = RARITY_OVERRIDES[a.id];
+}
+assignRarity(list);
 
 export const ACHIEVEMENTS: AchievementDef[] = list;
 export const ACHIEVEMENT_MAP: Map<string, AchievementDef> = new Map(list.map((a) => [a.id, a]));

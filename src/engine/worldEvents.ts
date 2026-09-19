@@ -41,7 +41,7 @@ export function logEvent(s: GameState, entry: Omit<EventLogEntry, 'time'>, toast
   s.events.log.unshift({ time: s.time, ...entry });
   if (s.events.log.length > LOG_LENGTH) s.events.log.length = LOG_LENGTH;
   s.stats.eventsSeen++;
-  if (toast) emit({ type: 'toast', title: entry.title, body: entry.body, icon: entry.icon, tone: entry.tone });
+  if (toast) emit({ type: 'toast', title: entry.title, body: entry.body, icon: entry.icon, tone: entry.tone, channel: 'events' });
 }
 
 export function offerChoice(s: GameState, choice: Omit<PendingChoice, 'id' | 'expiresAt'>): PendingChoice {

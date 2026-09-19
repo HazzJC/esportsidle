@@ -1,4 +1,4 @@
-export type NumberFormat = 'short' | 'long' | 'scientific';
+export type NumberFormat = 'short' | 'long' | 'scientific' | 'power';
 
 let currentFormat: NumberFormat = 'short';
 
@@ -71,6 +71,25 @@ function scientific(v: number): string {
   return `${m.toFixed(2)}e${e}`;
 }
 
+const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+
+function superscript(n: number): string {
+  return String(n)
+    .replace(/\d/g, (d) => SUPERSCRIPT[Number(d)])
+    .replace('-', '⁻');
+}
+
+/** 1.23 × 10¹⁵. The mantissa rounds down, like the suffix formats, so it never overstates. */
+function powerOfTen(v: number): string {
+  let e = Math.floor(Math.log10(v));
+  let m = Math.floor((v / Math.pow(10, e)) * 100 + 1e-9) / 100;
+  if (m >= 10) {
+    m /= 10;
+    e += 1;
+  }
+  return `${m.toFixed(2)} × 10${superscript(e)}`;
+}
+
 /**
  * Formats a number for display.
  * @param decimals decimals shown for small values (< 100)
@@ -89,6 +108,9 @@ export function fmt(value: number, decimals = 0, format: NumberFormat = currentF
   }
   if (format === 'scientific') {
     return sign + (v < 1e6 ? withCommas(v) : scientific(v));
+  }
+  if (format === 'power') {
+    return sign + (v < 1e6 ? withCommas(v) : powerOfTen(v));
   }
   if (v < 1e6) return sign + withCommas(v);
 

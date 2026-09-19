@@ -151,7 +151,7 @@ export function updateSponsors(s: GameState, ctx: SponsorContext, dt: number, of
       endContract(s, c, 'expired');
       if (!offline) {
         const brand = BRAND_MAP.get(c.brandId);
-        emit({ type: 'toast', title: `${brand?.name ?? 'Sponsor'} contract ended`, body: 'A sponsor slot is free again.', icon: 'handshake', tone: 'info' });
+        emit({ type: 'toast', title: `${brand?.name ?? 'Sponsor'} contract ended`, body: 'A sponsor slot is free again.', icon: 'handshake', tone: 'info', channel: 'business' });
       }
     }
   }
@@ -174,6 +174,7 @@ export function updateSponsors(s: GameState, ctx: SponsorContext, dt: number, of
         body: `+${money(reward)}${trophies ? ' and a trophy' : ''}.`,
         icon: 'handshake',
         tone: 'gold',
+        channel: 'business',
       });
     }
   }
@@ -185,6 +186,6 @@ export function updateSponsors(s: GameState, ctx: SponsorContext, dt: number, of
     endContract(s, c, 'crashed');
     s.stats.cryptoCrashes++;
     addBuff(s, { id: 'crypto_crash', name: 'Crypto Crash', icon: 'trending-down', tone: 'bad', desc: 'Income ×0.5', duration: 300, effects: [{ kind: 'income', mult: 0.5 }] });
-    emit({ type: 'toast', title: `${brand.name} collapsed!`, body: 'The token went to zero. Income ×0.5 for 5 minutes while you deal with the fallout.', icon: 'trending-down', tone: 'bad' });
+    emit({ type: 'toast', title: `${brand.name} collapsed!`, body: 'The token went to zero. Income ×0.5 for 5 minutes while you deal with the fallout.', icon: 'trending-down', tone: 'bad', channel: 'business' });
   }
 }

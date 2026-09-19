@@ -7,7 +7,7 @@
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
-  import { TIER_COLORS, laneHue, tierColor } from '../theme';
+  import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   const GROUP_LABEL: Record<UpgradeGroup, string> = {
@@ -60,7 +60,7 @@
     const price = upgradePrice(def, m);
     return {
       title: def.name,
-      subtitle: GROUP_LABEL[def.group],
+      subtitle: `${rarityName(upgradeBand(def.tier))} ${GROUP_LABEL[def.group].toLowerCase()}`,
       icon: def.icon,
       iconColor: tierColor(def.tier),
       cost: def.currency === 'cash' ? money(price) : `${fmt(price)} trophies`,
@@ -88,9 +88,9 @@
     if (op.id === 'grinder') lines.push({ text: 'Grinder upgrades also power up your clicks.', tone: 'gold' });
     return {
       title: op.name,
-      subtitle: `Owned: ${fmt(st.owned)}`,
+      subtitle: `${rarityName(opBand(op.index))} operation · owned: ${fmt(st.owned)}`,
       icon: op.icon,
-      iconColor: `hsl(${laneHue(op.index)} 90% 65%)`,
+      iconColor: opColor(op.index),
       lines,
     };
   }
@@ -135,7 +135,7 @@
             class="upgrade"
             class:ok
             class:hi={def.tier >= 7}
-            style="--c:{tierColor(def.tier)}; --rank:{Math.min(1, (def.tier + 1) / TIER_COLORS.length)}"
+            style="--c:{tierColor(def.tier)}; --rank:{tierRank(def.tier)}"
             onclick={() => game.buyUpgrade(def.id)}
             use:tooltip={() => upgradeTip(def)}
             aria-label="{def.name}, costs {money(upgradePrice(def, v.m))}"
@@ -178,7 +178,7 @@
             class="op"
             class:no={!info.ok}
             class:selling={mode === 'sell'}
-            style="--h:{laneHue(op.index)}"
+            style="--c:{opColor(op.index)}"
             onclick={() => onOp(op)}
             use:tooltip={() => opTip(op)}
           >
@@ -372,9 +372,9 @@
     padding: 6px 10px 6px 6px;
     border-radius: 9px;
     text-align: left;
-    border: 1px solid hsl(var(--h, 220) 60% 50% / 0.35);
+    border: 1px solid color-mix(in srgb, var(--c, var(--line-2)) 35%, transparent);
     background:
-      linear-gradient(90deg, hsl(var(--h, 220) 80% 55% / 0.16), transparent 70%),
+      linear-gradient(90deg, color-mix(in srgb, var(--c, var(--line-2)) 15%, transparent), transparent 70%),
       var(--bg-2);
     transition:
       border-color 0.12s,
@@ -382,7 +382,7 @@
       filter 0.12s;
   }
   button.op:hover {
-    border-color: hsl(var(--h) 90% 65%);
+    border-color: var(--c);
   }
   button.op:active {
     transform: scale(0.99);
@@ -396,8 +396,11 @@
     width: 42px;
     height: 42px;
     border-radius: 8px;
-    color: hsl(var(--h, 220) 90% 70%);
-    background: hsl(var(--h, 220) 70% 50% / 0.15);
+    color: var(--c, var(--muted));
+    border: 1.5px solid color-mix(in srgb, var(--c, var(--line-2)) 40%, transparent);
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--c, var(--line-2)) 22%, transparent), transparent 60%),
+      var(--bg);
     flex: none;
   }
   .op-main {
@@ -433,11 +436,11 @@
     font-family: var(--font-display);
     font-weight: 900;
     font-size: 24px;
-    color: hsl(var(--h, 220) 30% 80% / 0.55);
+    color: color-mix(in srgb, var(--c, var(--muted)) 45%, var(--muted));
+    opacity: 0.8;
   }
   .op.mystery {
     opacity: 0.45;
-    --h: 230;
   }
   .op.mystery .op-price {
     color: var(--muted);

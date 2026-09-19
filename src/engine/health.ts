@@ -84,6 +84,7 @@ export function inflict(
     body: `Out for ${fmtTime(duration)}. ${hasBench ? 'A substitute will step in.' : 'A stand-in will play badly until they recover.'}`,
     icon: HEALTH_ICON[kind],
     tone: 'bad',
+    channel: 'players',
   });
 }
 

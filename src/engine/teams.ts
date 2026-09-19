@@ -31,6 +31,7 @@ import {
   skillRating,
   traitsOf,
 } from './players';
+import { MOODS, STAKES_START, recordForm, resetFormForTier, stakesMult, teamMood } from './mood';
 import { Rng } from './rng';
 import type { GameState, MatchRecord, Mods, Player, StatKey, TeamEval, TeamKit, TeamState } from './types';
 import { RIVAL_FANS_MULT, addTrophy, checkPlayerMilestones, checkServiceMilestones, pickOpponent, recordRivalMatch, recordSeason } from './stories';
@@ -38,8 +39,11 @@ import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
 export const MAX_MATCHES_PER_TICK = 20;
-/** Win chance needed to challenge into a tier the team has never reached. */
-export const CHALLENGE_WIN_CHANCE = 0.75;
+/**
+ * Win chance needed to challenge into a tier the team has never reached. The same point where crowds
+ * start losing interest, so the button lights up exactly when staying put starts to cost money.
+ */
+export const CHALLENGE_WIN_CHANCE = STAKES_START;
 
 export function createTeam(gameId: string): TeamState {
   const game = getGame(gameId);
@@ -62,6 +66,7 @@ export function createTeam(gameId: string): TeamState {
     autoPromote: true,
     autoSub: true,
     chemistry: 0,
+    form: 0.5,
     history: [],
     wins: 0,
     losses: 0,
@@ -247,6 +252,8 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
     teamPlan(team).rating;
   const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
+  // Foregone conclusions draw smaller crowds and purses (see mood.ts).
+  const stakes = stakesMult(chance);
   const popularity = s.games[team.gameId]?.popularity ?? 1;
   const cut = available > 0 ? cutSum / available : 0;
   // Prize upgrades multiply the flat tier prize only. The income-linked share exists to keep matches
@@ -255,15 +262,16 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const flat = game.basePrize * Math.pow(PRIZE_GROWTH, team.tier) * mods.prizeMult * (mods.gamePrizeMult[game.id] ?? 1);
   const share = ctx.cpsNoBuffs * prizeSeconds(team.tier);
   const gross = (flat + share) * popularity * ctx.incomeBuff;
-  const winPrize = gross * (1 - cut);
+  const winPrize = gross * (1 - cut) * stakes;
   const lossPrize = winPrize * LOSS_PRIZE_RATIO;
-  const fansWin = FAN_BASE * Math.pow(FAN_GROWTH, team.tier) * popularity * ctx.fansMult * (available > 0 ? fansSum / available : 1);
+  const fansWin = FAN_BASE * Math.pow(FAN_GROWTH, team.tier) * popularity * ctx.fansMult * (available > 0 ? fansSum / available : 1) * stakes;
   const interval = game.matchSeconds / mods.matchSpeed;
   return {
     gameId: team.gameId,
     rating,
     opponent,
     winChance: chance,
+    stakes,
     winPrize,
     lossPrize,
     fansWin,
@@ -346,6 +354,9 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
 
   const hasBench = team.bench.length > 0;
   const plan = teamPlan(team);
+  // Mood reflects the run of results before this match; this result then joins the form.
+  const mood = MOODS[teamMood(team)];
+  recordForm(team, win);
   const baseXp = (win ? 15 : 10) * mods.xpMult;
   for (const id of team.lineup) {
     const p = id ? s.players[id] : undefined;
@@ -355,9 +366,9 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
       p.wins++;
       team.seasonStats[p.id] = (team.seasonStats[p.id] ?? 0) + 1;
     }
-    const levels = grantXp(p, baseXp * plan.xp * playerXpMult(p), rng);
+    const levels = grantXp(p, baseXp * plan.xp * mood.xp * playerXpMult(p), rng);
     checkPlayerMilestones(s, p, win, levels);
-    applyMorale(p, win ? 3 : -4, mods);
+    applyMorale(p, win ? mood.moraleWin : mood.moraleLoss, mods);
     drainEnergy(p, mods, plan.drain);
     rollHealth(s, p, mods, rng, hasBench);
   }
@@ -392,16 +403,19 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
       body: `${record} in the ${tierName(team.tier)}. +1 trophy and ${money(bonus)} bonus.`,
       icon: 'trophy',
       tone: 'gold',
+      channel: 'matches',
     });
   }
   if (wins >= PROMOTE_WINS && team.autoPromote) {
     team.tier++;
+    resetFormForTier(team);
     team.bestTier = Math.max(team.bestTier, team.tier);
     s.stats.promotions++;
-    emit({ type: 'toast', title: `${game.name}: promoted!`, body: `${record} season. Welcome to the ${tierName(team.tier)}.`, icon: 'trending-up', tone: 'good' });
+    emit({ type: 'toast', title: `${game.name}: promoted!`, body: `${record} season. Welcome to the ${tierName(team.tier)}.`, icon: 'trending-up', tone: 'good', channel: 'matches' });
   } else if (wins <= RELEGATE_WINS && team.tier > 0) {
     team.tier--;
-    emit({ type: 'toast', title: `${game.name}: relegated`, body: `${record} season. Back down to the ${tierName(team.tier)}.`, icon: 'trending-down', tone: 'bad' });
+    resetFormForTier(team);
+    emit({ type: 'toast', title: `${game.name}: relegated`, body: `${record} season. Back down to the ${tierName(team.tier)}.`, icon: 'trending-down', tone: 'bad', channel: 'matches' });
   }
   ageSquad(s, team, rng);
   if (team.nextPlan) {
@@ -442,6 +456,7 @@ function ageSquad(s: GameState, team: TeamState, rng: Rng): void {
         body: `Aged ${p.age}. Sell before then if you want a fee for them.`,
         icon: 'calendar-clock',
         tone: 'info',
+        channel: 'players',
       });
     }
   }
@@ -457,6 +472,7 @@ export function retirePlayer(s: GameState, p: Player): void {
     body: `${p.seasons} seasons and ${fmt(p.wins)} wins with ${s.org.name}. Thanks for everything.`,
     icon: 'heart',
     tone: 'gold',
+    channel: 'players',
   });
 }
 
@@ -472,6 +488,7 @@ export function changeTier(s: GameState, gameId: string, delta: number, winChanc
   if (delta === 1 && next > team.bestTier && winChance < CHALLENGE_WIN_CHANCE) return false;
   team.tier = next;
   team.bestTier = Math.max(team.bestTier, next);
+  resetFormForTier(team);
   team.seasonPlayed = 0;
   team.seasonWins = 0;
   team.progress = 0;
@@ -526,7 +543,7 @@ export function updatePlayers(s: GameState, dt: number, mods: Mods): void {
     if (p.status.kind !== 'healthy') {
       if (p.status.until <= s.time) {
         p.status = { kind: 'healthy', until: 0, reason: '' };
-        emit({ type: 'toast', title: `${p.tag} is back`, body: 'Recovered and ready to compete.', icon: 'heart-pulse', tone: 'good' });
+        emit({ type: 'toast', title: `${p.tag} is back`, body: 'Recovered and ready to compete.', icon: 'heart-pulse', tone: 'good', channel: 'players' });
       } else {
         unavailable++;
       }

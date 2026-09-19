@@ -34,6 +34,15 @@ describe('fmt', () => {
     expect(fmt(1.5e20, 0, 'scientific')).toBe('1.50e20');
   });
 
+  it('writes powers of ten with a superscript exponent', () => {
+    expect(fmt(1.5e20, 0, 'power')).toBe('1.50 × 10²⁰');
+    expect(fmt(2.5e6, 0, 'power')).toBe('2.50 × 10⁶');
+    // Rounds down, so a price never looks affordable when it is not.
+    expect(fmt(9.999e11, 0, 'power')).toBe('9.99 × 10¹¹');
+    expect(fmt(-3e9, 0, 'power')).toBe('-3.00 × 10⁹');
+    expect(fmt(12_345, 0, 'power')).toBe('12,345');
+  });
+
   it('falls back to scientific beyond centillion', () => {
     expect(suffixFor(101, false)).toBe('Ce');
     expect(fmt(1e306)).toBe('1.00e306');

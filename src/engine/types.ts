@@ -150,6 +150,8 @@ export interface TeamEval {
   rating: number;
   opponent: number;
   winChance: number;
+  /** Prize and fan multiplier: lopsided matches draw smaller crowds. */
+  stakes: number;
   winPrize: number;
   lossPrize: number;
   fansWin: number;
@@ -361,6 +363,8 @@ export interface TeamState {
   autoPromote: boolean;
   autoSub: boolean;
   chemistry: number;
+  /** Recent results as a moving average from 0 (all losses) to 1 (all wins). Drives team mood. */
+  form: number;
   history: MatchRecord[];
   wins: number;
   losses: number;
@@ -600,7 +604,12 @@ export interface PrestigeState {
   charter: string | null;
   /** Run Mandate for the current run, chosen when the org was last sold. */
   mandate: string | null;
+  /** Dynasty track id -> ranks owned. Repeatable, so legacy points never run out of uses. */
+  dynasty: Record<string, number>;
 }
+
+/** Popup categories the player can mute. Anything the player did themselves is always shown. */
+export type NotifyChannel = 'matches' | 'players' | 'events' | 'business' | 'achievements';
 
 export interface Settings {
   numberFormat: NumberFormat;
@@ -614,7 +623,8 @@ export interface Settings {
   muted: boolean;
   confirmPrestige: boolean;
   buyAmount: number;
-  matchToasts: boolean;
+  /** Which kinds of popup to show. Late game, match and player news can arrive every few seconds. */
+  notify: Record<NotifyChannel, boolean>;
   /** Interface highlight colour, chosen at the start and changeable in Options. */
   uiAccent: string;
   /** Whether the first-run screen (org name and interface tone) has been completed. */

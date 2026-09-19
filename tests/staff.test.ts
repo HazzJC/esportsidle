@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { DECOR, ROOMS } from '../src/data/decor';
 import { STAFF } from '../src/data/staff';
 import { computeMods, computeRates } from '../src/engine/economy';
-import { advance } from '../src/engine/game';
 import { healthChances, rollHealth } from '../src/engine/health';
 import { refreshMarket, signListing } from '../src/engine/market';
 import { isAvailable } from '../src/engine/players';
@@ -95,7 +94,11 @@ describe('health', () => {
     expect(autoSubstitute(s, s.teams.smash)).toBe(true);
     expect(s.teams.smash.lineup[0]).toBe(sub!.player.id);
 
-    advance(s, 1000);
+    // Recovery is on a timer. Step straight past it without playing matches, so a fresh random
+    // illness later in the window cannot make this depend on the RNG sequence.
+    s.time = founder.status.until + 1;
+    updatePlayers(s, 1, computeMods(s));
+    expect(founder.status.kind).toBe('healthy');
     expect(isAvailable(founder, s.time)).toBe(true);
   });
 

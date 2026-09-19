@@ -16,6 +16,7 @@ export const PALETTE = {
  * that ordering is a convention players read instantly, so it carries meaning rather than decoration.
  */
 export const RARITY_COLORS = ['#a3a3a6', '#4ade80', '#4f9dff', '#a97bff', '#f5c451', '#ff5f7e'] as const;
+export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'] as const;
 
 export interface Swatch {
   id: string;
