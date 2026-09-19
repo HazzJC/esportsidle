@@ -168,6 +168,12 @@
       description="Keep earning (at reduced efficiency) while the game is closed."
       onchange={(v) => game.setSetting('offlineProgress', v)}
     />
+    <Toggle
+      checked={settings.confirmPrestige}
+      label="Confirm before selling org"
+      description="Show a confirmation dialogue detailing what is kept and what resets before prestige."
+      onchange={(v) => game.setSetting('confirmPrestige', v)}
+    />
   </section>
 
   <section class="danger">

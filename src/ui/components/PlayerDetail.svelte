@@ -2,7 +2,7 @@
   import { GENRE_WEIGHTS, getGame } from '../../data/games';
   import { GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
   import { NATIONS } from '../../data/names';
-  import { fmt, fmtPct, money } from '../../engine/format';
+  import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
     ALL_STATS,
     RARITY_MAP,
@@ -49,8 +49,16 @@
   const v = $derived(game.view);
   const p = $derived(game.selectedPlayer ? v.s.players[game.selectedPlayer] : undefined);
 
+  $effect(() => {
+    game.viewingGear = !!(game.selectedPlayer && tab === 'gear');
+    return () => {
+      game.viewingGear = false;
+    };
+  });
+
   function close() {
     game.selectedPlayer = null;
+    game.viewingGear = false;
     confirmSell = false;
   }
 
@@ -73,7 +81,7 @@
     <div class="detail" style="--rc:{rarity.color}; --gc:{g.color}">
       <aside class="side">
         <div class="stage">
-          <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={132} number={p.jersey} />
+          <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={132} number={p.jersey} tag={p.tag} />
         </div>
         <div class="chips">
           <span class="chip rarity">{p.founder ? 'Founder' : rarity.name}</span>
@@ -98,7 +106,13 @@
           <span class="bar morale"><i style="width:{p.morale}%"></i></span>
         </div>
         {#if !isAvailable(p, v.s.time)}
-          <div class="status bad"><Icon name="thermometer" size={14} /> {p.status.reason || 'Unavailable'}</div>
+          <div class="status bad">
+            <Icon name="thermometer" size={14} />
+            <div>
+              <b>{p.status.reason || 'Unavailable'}</b> · Recovers in {fmtTime(Math.max(0, p.status.until - v.s.time))}
+              <div class="dim small">Purely time-based — no benching required.</div>
+            </div>
+          </div>
         {/if}
 
         <dl>

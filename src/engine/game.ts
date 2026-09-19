@@ -27,8 +27,14 @@ export interface TickResult {
   rates: Rates;
 }
 
+export interface TickOptions {
+  pauseMarket?: boolean;
+  pauseTeams?: boolean;
+  pauseGear?: boolean;
+}
+
 /** Advances the simulation by `dt` seconds. */
-export function tick(s: GameState, dt: number, offline = false): TickResult {
+export function tick(s: GameState, dt: number, offline = false, options?: TickOptions): TickResult {
   const prevTime = s.time;
   s.time += dt;
   s.stats.playtimeTotal += dt;
@@ -48,13 +54,15 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
 
   earnCash(s, rates.merchCps * dt * factor);
   updateMerch(s, dt, factor, rates, rng, offline);
-  updateTeams(s, dt, offline, factor, mods, rates.teams, rng);
+  updateTeams(s, dt, offline, factor, mods, rates.teams, rng, options?.pauseTeams);
   updatePlayers(s, dt, mods);
   updateSponsors(s, { rng, mods, rates }, dt, offline);
 
   if (!offline) {
     updateMarket(s, rng, mods);
-    if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) runAutomation(s, mods);
+    if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) {
+      runAutomation(s, mods, { pauseMarket: options?.pauseMarket, pauseGear: options?.pauseGear });
+    }
     const ctx = { rng, mods, rates };
     // A new org gets a calm start: no drops or world events while it finds its feet.
     if (!calmStart(s)) {

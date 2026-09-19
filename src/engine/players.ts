@@ -21,6 +21,7 @@ import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { FIRST_NAMES, LAST_NAMES, NATIONS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
+import { playerEasterEgg } from './easterEggs';
 import type { Appearance, GameState, Mods, Player, PlayerStats, Rarity, StatKey } from './types';
 
 export const ALL_STATS: StatKey[] = ['mechanics', 'gameSense', 'teamwork', 'composure', 'charisma', 'stamina'];
@@ -236,9 +237,21 @@ export function traitsOf(p: Player): TraitDef[] {
   return out;
 }
 
+export function effectivePotential(p: Player): number {
+  if (playerEasterEgg(p) === 'nijacat22') return 99;
+  return p.potential;
+}
+
 export function baseStat(p: Player, stat: StatKey): number {
   let v = p.stats[stat];
   for (const t of traitsOf(p)) v += t.statAdd?.[stat] ?? 0;
+  const egg = playerEasterEgg(p);
+  if (egg === 'varantha' && stat === 'teamwork') {
+    v += 35;
+  }
+  if (egg === 'mrkonradical' && stat === 'teamwork') {
+    v = Math.round(1.5 * v);
+  }
   return Math.max(1, v);
 }
 
@@ -259,7 +272,15 @@ export function gearStatMult(p: Player, stat: StatKey): number {
 }
 
 export function effectiveStat(p: Player, stat: StatKey): number {
-  return baseStat(p, stat) * gearStatMult(p, stat);
+  let val = baseStat(p, stat) * gearStatMult(p, stat);
+  const egg = playerEasterEgg(p);
+  if (egg === 'bubbystr' && stat === 'composure') {
+    val *= 0.7;
+  }
+  if (egg === 'faker' && p.gameId !== 'lanes') {
+    val *= 0.5;
+  }
+  return Math.max(1, val);
 }
 
 export function conditionMult(p: Player): number {
@@ -286,7 +307,10 @@ export function skillRating(p: Player, game: GameDef = getGame(p.gameId)): numbe
 export function playerRating(p: Player, game: GameDef, tier: number, slot: number | null): number {
   let rating = skillRating(p, game) * conditionMult(p);
   for (const t of traitsOf(p)) if (t.bigStage && tier >= t.bigStage.minTier) rating *= t.bigStage.mult;
-  if (slot !== null && game.teamSize > 1 && slot !== p.role) rating *= 0.85;
+  if (slot !== null && game.teamSize > 1 && slot !== p.role) {
+    const egg = playerEasterEgg(p);
+    rating *= egg === 'mrkonradical' ? 0.3 : 0.85;
+  }
   return rating;
 }
 
@@ -299,6 +323,9 @@ export function playerFansMult(p: Player): number {
 export function playerXpMult(p: Player): number {
   let m = 1;
   for (const t of traitsOf(p)) m *= t.xpMult ?? 1;
+  const egg = playerEasterEgg(p);
+  if (egg === 'nijacat22') m *= 0.25;
+  if (egg === 'mrkonradical') m *= 1.5;
   return m;
 }
 
@@ -359,12 +386,15 @@ export function grantXp(p: Player, amount: number, rng: Rng): number {
 }
 
 export function levelUpStats(p: Player, rng: Rng): void {
-  const weights = GENRE_WEIGHTS[getGame(p.gameId).genre] as Record<string, number>;
+  const weights = { ...(GENRE_WEIGHTS[getGame(p.gameId).genre] as Record<string, number>) };
+  const pot = effectivePotential(p);
+  const egg = playerEasterEgg(p);
   for (let i = 0; i < 3; i++) {
-    const growable = ALL_STATS.filter((st) => p.stats[st] < p.potential);
+    const growable = ALL_STATS.filter((st) => p.stats[st] < pot);
     if (growable.length === 0) return;
     const stat = rng.weighted(growable, (st) => (weights[st] ?? 0) + 0.15) ?? growable[0];
-    p.stats[stat] = Math.min(p.potential, p.stats[stat] + 1);
+    const inc = egg === 'mrkonradical' && stat === 'teamwork' ? 2 : 1;
+    p.stats[stat] = Math.min(pot, p.stats[stat] + inc);
   }
 }
 

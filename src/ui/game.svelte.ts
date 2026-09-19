@@ -3,7 +3,7 @@ import { subscribe, type GameEvent } from '../engine/bus';
 import { clickLogo, type ClickResult } from '../engine/clicker';
 import { computeMods, computeRates } from '../engine/economy';
 import { money, setNumberFormat, type NumberFormat } from '../engine/format';
-import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport } from '../engine/game';
+import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
 import { pickNews } from '../engine/news';
 import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
@@ -152,6 +152,7 @@ class GameStore {
   mobileView = $state<MobileView>('clicker');
   lastSavedAt = $state(0);
   saveError = $state<string | null>(null);
+  viewingGear = $state(false);
 
   private storage = getStorage();
   private pendingToasts: ToastInput[] = [];
@@ -291,8 +292,13 @@ class GameStore {
       } else {
         this.acc += dt;
         let steps = 0;
+        const options: TickOptions = {
+          pauseMarket: this.tab === 'market',
+          pauseTeams: this.tab === 'teams',
+          pauseGear: this.viewingGear,
+        };
         while (this.acc >= TICK_SECONDS && steps < 40) {
-          tick(this.state, TICK_SECONDS);
+          tick(this.state, TICK_SECONDS, false, options);
           this.acc -= TICK_SECONDS;
           steps++;
         }

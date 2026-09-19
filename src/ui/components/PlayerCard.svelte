@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { getGame } from '../../data/games';
-  import { fmt } from '../../engine/format';
+  import { fmt, fmtTime } from '../../engine/format';
   import { RARITY_MAP, isAvailable, skillRating } from '../../engine/players';
   import type { Player } from '../../engine/types';
   import { teamKit } from '../../engine/teams';
@@ -32,8 +32,12 @@
 
 {#snippet body()}
   <div class="portrait">
-    <Avatar look={player.look} gear={player.gear} primary={kit.primary} secondary={kit.secondary} size={50} mode="bust" />
-    {#if out}<span class="status" title={player.status.reason}><Icon name="thermometer" size={12} /></span>{/if}
+    <Avatar look={player.look} gear={player.gear} primary={kit.primary} secondary={kit.secondary} size={50} mode="bust" tag={player.tag} />
+    {#if out}
+      <span class="status" title="{player.status.reason} (Recovers in {fmtTime(Math.max(0, player.status.until - game.view.s.time))} · purely time-based)">
+        <Icon name="thermometer" size={12} />
+      </span>
+    {/if}
   </div>
   <div class="info">
     <div class="top">
@@ -42,7 +46,11 @@
     </div>
     <div class="sub muted">{player.founder ? 'Org founder' : `${player.first} ${player.last}`} · {player.nation}</div>
     <div class="meta">
-      <Icon name={title.icon} size={12} color={title.color} />
+      <span class="game-badge" style="color: {title.color}">
+        <Icon name={title.icon} size={12} color={title.color} />
+        <b>{title.name}</b>
+      </span>
+      <span class="dim">·</span>
       <span>{title.roles[player.role]}</span>
       <span class="dim">·</span>
       <span>Lv {player.level}</span>
@@ -157,6 +165,12 @@
     gap: 4px;
     font-size: 11.5px;
     color: var(--muted);
+  }
+  .game-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 600;
   }
   .bars {
     display: flex;

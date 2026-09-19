@@ -723,6 +723,7 @@ export interface Stats {
   worstLoseStreak: number;
   /** Logo clicks in the small hours, local time. */
   lateNightClicks: number;
+  bubbystrLosses: number;
 }
 
 export interface GameState {

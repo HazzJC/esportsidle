@@ -34,6 +34,8 @@ import {
 import { MOODS, STAKES_START, recordForm, resetFormForTier, stakesMult, teamMood } from './mood';
 import { calmStart } from './tutorial';
 import { Rng } from './rng';
+import { automationActive } from './automation';
+import { playerEasterEgg } from './easterEggs';
 import type { GameState, MatchRecord, Mods, Player, StatKey, TeamEval, TeamKit, TeamState } from './types';
 import { RIVAL_FANS_MULT, addTrophy, checkPlayerMilestones, checkServiceMilestones, pickOpponent, recordRivalMatch, recordSeason } from './stories';
 import { earnCash, gainFans, gainTrophies } from './wallet';
@@ -194,6 +196,7 @@ export function autoSubstitute(s: GameState, team: TeamState): boolean {
   for (let slot = 0; slot < team.lineup.length; slot++) {
     const id = team.lineup[slot];
     const starter = id ? s.players[id] : undefined;
+    if (!starter && !automationActive(s, 'roster')) continue;
     const needsSub = !starter || !isAvailable(starter, s.time) || starter.energy < teamPlan(team).subAt;
     if (!needsSub) continue;
     let best: Player | undefined;
@@ -243,6 +246,7 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
       cutSum += p.cut;
       fansSum += playerFansMult(p);
       for (const t of traitsOf(p)) if (t.teamMult) teamMult *= t.teamMult;
+      if (playerEasterEgg(p) === 'faker' && team.gameId === 'lanes') teamMult *= 1.25;
     } else {
       ratings.push(STAND_IN_RATING);
     }
@@ -335,7 +339,14 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   const roll = rng.next();
   // An org's very first match is always a win, so the tutorial starts on a high.
   const firstEver = s.stats.matchesWon + s.stats.matchesLost === 0;
-  const win = firstEver || roll < ev.winChance;
+  let win = firstEver || roll < ev.winChance;
+  const hasBubbystr = team.lineup.some((id) => id && playerEasterEgg(s.players[id]) === 'bubbystr');
+  if (!win && hasBubbystr) {
+    s.stats.bubbystrLosses = (s.stats.bubbystrLosses ?? 0) + 1;
+    if (s.stats.bubbystrLosses % 5 === 0) {
+      win = true;
+    }
+  }
   const opponent = pickOpponent(s, rng);
   const prize = win ? ev.winPrize : ev.lossPrize;
   // Derby wins against the rival bring in extra fans.
@@ -520,7 +531,7 @@ export function changeTier(s: GameState, gameId: string, delta: number, winChanc
   return true;
 }
 
-export function updateTeams(s: GameState, dt: number, offline: boolean, factor: number, mods: Mods, teams: Record<string, TeamEval>, rng: Rng): void {
+export function updateTeams(s: GameState, dt: number, offline: boolean, factor: number, mods: Mods, teams: Record<string, TeamEval>, rng: Rng, pauseTeams = false): void {
   for (const game of GAMES) {
     const team = s.teams[game.id];
     const ev = teams[game.id];
@@ -534,14 +545,14 @@ export function updateTeams(s: GameState, dt: number, offline: boolean, factor: 
     }
     if (!ev.active) {
       team.progress = 0;
-      if (team.bench.length > 0) autoSubstitute(s, team);
+      if (!pauseTeams && team.bench.length > 0) autoSubstitute(s, team);
       continue;
     }
     team.progress += dt;
     let played = 0;
     while (team.progress >= ev.interval && played < MAX_MATCHES_PER_TICK) {
       team.progress -= ev.interval;
-      autoSubstitute(s, team);
+      if (!pauseTeams) autoSubstitute(s, team);
       playMatch(s, team, ev, mods, rng);
       played++;
     }

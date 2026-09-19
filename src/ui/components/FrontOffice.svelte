@@ -60,9 +60,10 @@
         {:else if a.id === 'sponsors'}
           <div class="rule small">
             <label>
-              Minimum tier
+              Target tier
               <select value={s.automation.sponsors.minTier} onchange={(e) => game.setAutomation('sponsors', { minTier: Number(e.currentTarget.value) })}>
-                {#each SPONSOR_TIERS as _, i (i)}<option value={i}>{i === 0 ? 'Any' : `Tier ${i + 1}+`}</option>{/each}
+                <option value={0}>Any tier</option>
+                {#each SPONSOR_TIERS as _, i (i)}<option value={i + 1}>Tier {i + 1}</option>{/each}
               </select>
             </label>
             <label class="check">

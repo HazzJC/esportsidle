@@ -251,7 +251,7 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'rival_1',
     title: 'Derby day',
-    desc: 'Beat your rival in a derby.',
+    desc: 'Beat your rival in a derby (matches against your rival are derbies, awarding double fans).',
     icon: 'swords',
     metric: (s) => s.stats.derbyWins,
     target: 1,

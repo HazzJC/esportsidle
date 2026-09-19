@@ -44,7 +44,14 @@
     if (!id || id === guided) return;
     guided = id;
     folded = false;
-    untrack(() => guide(step!.target));
+    untrack(() => {
+      // Don't auto-redirect away from clicker on mobile when unlocking the first player
+      if (step?.id === 'draft' && game.mobileView === 'clicker') {
+        game.tab = 'teams';
+        return;
+      }
+      guide(step!.target);
+    });
   });
 
   /** Whether the highlighted target is on screen, so a way back only appears when it is needed. */
@@ -70,7 +77,7 @@
 
   const BACK_LABEL: Record<TutorialTarget, string> = {
     logo: 'Back to the logo',
-    draft: 'Back to your first player',
+    draft: 'Go to your first player',
     matches: 'Back to my team',
     store: 'Back to the store',
   };

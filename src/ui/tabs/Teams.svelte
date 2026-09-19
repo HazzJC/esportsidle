@@ -2,7 +2,7 @@
   import { GAMES, GENRE_LABEL, type GameDef } from '../../data/games';
   import { SEASON_PLANS, SEASON_PLAN_ORDER, type SeasonPlan } from '../../data/seasonPlans';
   import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, TITLE_WINS, prizeSeconds, tierName } from '../../data/leagues';
-  import { fmt, fmtPct, money } from '../../engine/format';
+  import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { isAvailable, skillRating } from '../../engine/players';
   import { CHALLENGE_WIN_CHANCE, teamKit } from '../../engine/teams';
   import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
@@ -133,7 +133,9 @@
       lines: [
         `Rating ${fmt(skillRating(p))} · Level ${p.level}`,
         `Energy ${Math.round(p.energy)} · Morale ${Math.round(p.morale)}`,
-        ...(isAvailable(p, s.time) ? [] : [{ text: p.status.reason || 'Unavailable', tone: 'bad' as const }]),
+        ...(isAvailable(p, s.time)
+          ? []
+          : [{ text: `${p.status.reason || 'Unavailable'} · Recovers in ${fmtTime(Math.max(0, p.status.until - s.time))} (time-based, no benching required)`, tone: 'bad' as const }]),
         { text: 'Click to manage.', tone: 'muted' },
       ],
     };
@@ -217,7 +219,7 @@
                   onclick={() => (game.selectedPlayer = p.id)}
                   use:tooltip={() => playerTip(p.id)}
                 >
-                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={54} mode="bust" />
+                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={54} mode="bust" tag={p.tag} />
                   <span class="ptag">{p.tag}</span>
                   {#if p.retiring}<span class="retiring" title="Retiring after this season"><Icon name="calendar-clock" size={11} /></span>{/if}
                   <span class="prtg num">{fmt(skillRating(p, g))}</span>
@@ -240,7 +242,7 @@
               {@const p = v.s.players[id]}
               {#if p}
                 <button class="bench-player" onclick={() => (game.selectedPlayer = p.id)} use:tooltip={() => playerTip(p.id)}>
-                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={26} mode="bust" />
+                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={26} mode="bust" tag={p.tag} />
                   <span>{p.tag}</span>
                 </button>
               {/if}
