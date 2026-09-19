@@ -7,13 +7,13 @@ import { refreshMarket } from '../src/engine/market';
 import { FOUNDING_POINTS, LEGACY_DIVISOR, mandateOffers, sellOrg } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
 import { generateOffer, sponsorsUnlocked } from '../src/engine/sponsors';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import type { GameState } from '../src/engine/types';
 import { refreshUpgradeUnlocks } from '../src/engine/upgrades';
 
 /** A first-run org with enough lifetime earnings to sell for `points` legacy. */
 function sellable(points = 1): GameState {
-  const s = createNewGame(0, 7);
+  const s = foundedGame(0, 7);
   s.earnedTotal = Math.pow(points, 3) * LEGACY_DIVISOR;
   s.earnedRun = s.earnedTotal;
   return s;
@@ -108,7 +108,7 @@ describe('run mandates', () => {
     const m = computeMods(s);
     expect(m.xpMult).toBeCloseTo(2);
     expect(m.feeMult).toBeCloseTo(1.5);
-    const plain = createNewGame(0, 7);
+    const plain = foundedGame(0, 7);
     refreshMarket(plain, new Rng({ rng: 3 }), computeMods(plain));
     refreshMarket(s, new Rng({ rng: 3 }), m);
     expect(s.market.listings[0].price).toBeGreaterThan(plain.market.listings[0].price);
@@ -121,7 +121,7 @@ describe('run mandates', () => {
 
 describe('front office automation', () => {
   it('does nothing while a routine is locked, even if switched on', () => {
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.ops.grinder.owned = 1;
     refreshUpgradeUnlocks(s);
     s.cash = 1e6;
@@ -131,7 +131,7 @@ describe('front office automation', () => {
   });
 
   it('buys upgrades only under the chosen share of cash', () => {
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.prestige.charter = 'operator';
     s.ops.grinder.owned = 1;
     refreshUpgradeUnlocks(s);
@@ -146,7 +146,7 @@ describe('front office automation', () => {
   });
 
   it('fills an empty lineup slot from the market', () => {
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.prestige.charter = 'scout';
     s.cash = 1e9;
     s.games.rocket.unlocked = true;
@@ -159,7 +159,7 @@ describe('front office automation', () => {
   });
 
   it('upgrades gear within one budget per pass, never more', () => {
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.prestige.charter = 'coach';
     s.cash = 5_000;
     s.automation.gear.on = true;
@@ -172,7 +172,7 @@ describe('front office automation', () => {
   });
 
   it('signs sponsors by the rules: best offer first, no crypto, one per category', () => {
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.prestige.charter = 'promoter';
     s.fansRun = 1e9;
     s.automation.sponsors.on = true;

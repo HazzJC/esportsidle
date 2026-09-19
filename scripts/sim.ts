@@ -9,6 +9,10 @@
  *           only briefly when a session starts, catches a drop only if one is on screen when they look,
  *           and closes the game between sessions, earning at the offline rate.
  *
+ * Both start the way a real player does: no team, three draft prospects and operations locked until
+ * the first signing. The active model clicks for the prospect it wants (--draft=0|1|2, default the
+ * middle one); the casual model signs whoever it can afford. Finished quests are claimed for cash.
+ *
  *   npm run sim -- --mode=active --hours=5
  *   npm run sim -- --mode=casual --days=5 --prestige
  */
@@ -20,6 +24,7 @@ import { OPERATIONS } from '../src/data/operations';
 import { STAFF } from '../src/data/staff';
 import { clickLogo } from '../src/engine/clicker';
 import { addDesign, generateDesign } from '../src/engine/designs';
+import { signDraftPick } from '../src/engine/draft';
 import { clickDrop } from '../src/engine/drops';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { fmt, fmtTime } from '../src/engine/format';
@@ -29,11 +34,13 @@ import { optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../src
 import { buyOperation, isOperationRevealed, unitPrice } from '../src/engine/operations';
 import { buyGear, gearUpgradeCost, playerRating } from '../src/engine/players';
 import { buyNode, legacyFor, mandateOffers, pendingLegacy, sellOrg } from '../src/engine/prestige';
+import { claimQuest } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { signOffer } from '../src/engine/sponsors';
 import { hireStaff, isStaffUnlocked, staffPrice } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
 import { unlockGame } from '../src/engine/teams';
+import { operationsOpen } from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
 import { buyUpgrade, storeUpgrades, upgradePrice } from '../src/engine/upgrades';
 
@@ -54,6 +61,8 @@ const MAX_RUNS = Number(args.runs ?? 2);
 const CHARTER = String(args.charter ?? 'operator');
 const MANDATE = String(args.mandate ?? 'first');
 const AUTOMATION = args.automation !== undefined ? args.automation === 'true' : MODE === 'casual';
+/** Which of the three first-player prospects the active model clicks for: 0 rookie, 1 talent, 2 pro. */
+const DRAFT_PICK = Number(args.draft ?? 1);
 const HOURS = Number(args.hours ?? 5);
 const DAYS = Number(args.days ?? 4);
 /** Seconds between decisions: constant attention at the keyboard, or glancing in every few minutes. */
@@ -98,7 +107,7 @@ function candidates(s: GameState, base: number): Candidate[] {
   const affordableSoon = (cost: number) => cost <= Math.max(s.cash * 10, base * 600);
 
   for (const op of OPERATIONS) {
-    if (!isOperationRevealed(s, op)) continue;
+    if (!operationsOpen(s) || !isOperationRevealed(s, op)) continue;
     const st = s.ops[op.id];
     const cost = unitPrice(op, st.owned, mods.opCostMult);
     if (!affordableSoon(cost)) continue;
@@ -154,6 +163,17 @@ function candidates(s: GameState, base: number): Candidate[] {
 
 function ruleBasedActions(s: GameState): void {
   const mods = computeMods(s);
+  if (s.draft) {
+    const wanted = s.draft[Math.min(DRAFT_PICK, s.draft.length - 1)];
+    const affordable = s.draft.filter((l) => l.price <= s.cash);
+    const pick = MODE === 'active' ? (wanted.price <= s.cash ? wanted : null) : affordable[affordable.length - 1];
+    if (pick) signDraftPick(s, pick.player.id, mods);
+  }
+  const rates = computeRates(s, mods);
+  for (const q of [...s.quests.active]) {
+    if (q.ready) claimQuest(s, q.id, 0, { cps: rates.cpsNoBuffs, fansPerSec: rates.fansPerSec }, new Rng(s));
+  }
+
   const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
   if (next && s.cash >= next.unlockCost * 2) unlockGame(s, next.id);
 
@@ -271,6 +291,8 @@ function checkMilestones(): void {
   if (Object.keys(s.merch.unlocked).length > 0) mark('merch launched');
   for (const tier of [3, 6, 9, 12]) if (bestTier() >= tier) mark(`reach ${tierName(tier)}`);
   if (pendingLegacy(s) >= 1) mark('first legacy point');
+  if (s.tutorial.step === 'done') mark('tutorial done');
+  if (s.quests.claimed >= 5) mark('5 quests claimed');
 }
 
 function snapshot(label: string): void {

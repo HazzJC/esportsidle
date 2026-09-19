@@ -4,7 +4,7 @@ import { computeRates } from '../src/engine/economy';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import {
   RIVAL_AFTER_MATCHES,
   RIVAL_CHANCE,
@@ -19,14 +19,14 @@ import { endSeason } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
 
 function experienced(): GameState {
-  const s = createNewGame(0, 6);
+  const s = foundedGame(0, 6);
   s.stats.matchesWon = RIVAL_AFTER_MATCHES;
   return s;
 }
 
 describe('the rival', () => {
   it('only takes notice once the org has some history', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     pickOpponent(s, new Rng({ rng: 1 }));
     expect(s.rival).toBeNull();
     s.stats.matchesWon = RIVAL_AFTER_MATCHES;
@@ -76,7 +76,7 @@ describe('the rival', () => {
 
 describe('season recaps and the trophy shelf', () => {
   it('records each season with its outcome and MVP', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const team = s.teams.smash;
     team.seasonWins = TITLE_WINS;
     team.seasonPlayed = 16;
@@ -91,7 +91,7 @@ describe('season recaps and the trophy shelf', () => {
   });
 
   it('puts a trophy on the shelf for a title, and keeps it through a sale', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const team = s.teams.smash;
     team.seasonWins = TITLE_WINS;
     team.seasonPlayed = 16;
@@ -106,7 +106,7 @@ describe('season recaps and the trophy shelf', () => {
 
 describe('player milestones', () => {
   it('marks a first win and crossing level thresholds', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const p = s.players.founder;
     p.wins = 1;
     checkPlayerMilestones(s, p, true, 0);
@@ -116,7 +116,7 @@ describe('player milestones', () => {
   });
 
   it('never records the same milestone twice', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const p = s.players.founder;
     expect(addMilestone(s, p, 'x', 'Something', false)).toBe(true);
     expect(addMilestone(s, p, 'x', 'Something', false)).toBe(false);
@@ -124,7 +124,7 @@ describe('player milestones', () => {
   });
 
   it('marks long service', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const p = generatePlayer(new Rng({ rng: 3 }), { id: 'px', gameId: 'smash', time: 0 });
     p.seasons = 10;
     checkServiceMilestones(s, p);

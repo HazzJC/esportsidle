@@ -76,6 +76,13 @@ export function createTeam(gameId: string): TeamState {
   };
 }
 
+/** Gives a game its team if it has none yet: the first signing in a game founds the team. */
+export function ensureTeam(s: GameState, gameId: string): TeamState {
+  s.games[gameId].unlocked = true;
+  s.teams[gameId] ??= createTeam(gameId);
+  return s.teams[gameId];
+}
+
 export function teamPlan(team: TeamState) {
   return SEASON_PLANS[team.plan] ?? SEASON_PLANS.balanced;
 }

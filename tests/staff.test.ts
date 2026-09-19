@@ -7,7 +7,7 @@ import { refreshMarket, signListing } from '../src/engine/market';
 import { isAvailable } from '../src/engine/players';
 import type { Rng } from '../src/engine/rng';
 import { buyDecor, hireStaff, roomLevel, staffPrice } from '../src/engine/staff';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { autoSubstitute, updatePlayers } from '../src/engine/teams';
 
 /** An RNG stub that always rolls the given value. */
@@ -32,7 +32,7 @@ describe('staff hiring', () => {
   });
 
   it('only hires unlocked staff and deducts cash', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     s.cash = 1e9;
     expect(hireStaff(s, 'coach', 1)).toBe(0);
     s.stats.playersSigned = 1;
@@ -43,7 +43,7 @@ describe('staff hiring', () => {
   });
 
   it('coaches raise ratings and analysts weaken opponents', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     const before = computeRates(s).teams.smash;
     s.staff.coach = 20;
     s.staff.analyst = 20;
@@ -54,8 +54,8 @@ describe('staff hiring', () => {
   });
 
   it('chefs speed up energy recovery', () => {
-    const slow = createNewGame(0, 3);
-    const fast = createNewGame(0, 3);
+    const slow = foundedGame(0, 3);
+    const fast = foundedGame(0, 3);
     fast.staff.chef = 40;
     slow.players.founder.energy = 20;
     fast.players.founder.energy = 20;
@@ -67,7 +67,7 @@ describe('staff hiring', () => {
 
 describe('health', () => {
   it('chefs, physios and chairs lower illness and injury chances', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     const p = s.players.founder;
     const base = healthChances(p, computeMods(s));
     s.staff.chef = 30;
@@ -79,7 +79,7 @@ describe('health', () => {
   });
 
   it('a bad roll sidelines a player and a bench player subs in', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     s.cash = 1e9;
     refreshMarket(s, fixedRng(0.9), { scoutLuck: 0, marketSize: 6 });
     const sub = s.market.listings.find((l) => l.player.gameId === 'smash');
@@ -103,7 +103,7 @@ describe('health', () => {
   });
 
   it('a lucky roll changes nothing', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     expect(rollHealth(s, s.players.founder, computeMods(s), fixedRng(0.999), false)).toBeNull();
     expect(s.players.founder.status.kind).toBe('healthy');
   });
@@ -111,14 +111,14 @@ describe('health', () => {
 
 describe('gaming house', () => {
   it('moves into bigger rooms as the org earns', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     expect(roomLevel(s)).toBe(0);
     s.earnedRun = ROOMS[2].threshold;
     expect(roomLevel(s)).toBe(2);
   });
 
   it('decor needs enough room and cash, and applies its bonus', () => {
-    const s = createNewGame(0, 3);
+    const s = foundedGame(0, 3);
     const fridge = DECOR.find((d) => d.id === 'fridge')!;
     s.cash = 1e9;
     expect(buyDecor(s, 'fridge')).toBe(false);

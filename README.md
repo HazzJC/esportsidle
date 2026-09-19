@@ -2,12 +2,18 @@
 
 An incremental (idle/clicker) game about building an esports empire, inspired by the depth of Cookie Clicker.
 
-You start as one player grinding ranked in a garage. You end up running leagues in orbit.
+You start with nothing but a logo to click in a garage. You end up running leagues in orbit.
 
 **Play it here: https://hazzjc.github.io/esportsidle/**
 
 ## What you actually do
 
+- **Get started** — a short guided tutorial: click your logo, pick your first player from three prospects
+  (a rookie in seconds or a pro after a few minutes of clicking), watch them compete, then open the store.
+- **Two sides to every org** — players, gear and seasons are the active side; operations are the passive
+  side that earns every second, even while the game is closed.
+- **Chase quests** — two milestone quests at a time (gear up, take a sponsor, design a shirt, hit a hype
+  streak, win a tournament, sell a player and more). Finish one and pick one of two rewards.
 - **Click your logo** to grind ranked and fill the hype meter. A full meter sends the crowd wild (income ×2).
 - **Buy operations** — 16 businesses from Ranked Grinders and Streamers up to Simulation Servers and the
   Multiverse Championship, each with tiered upgrades, collabs and cross-synergies.

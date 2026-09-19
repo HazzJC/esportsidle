@@ -2,7 +2,7 @@ import { GAMES, getGame } from '../data/games';
 import { RARITY_MAP, generatePlayer, transferValue } from './players';
 import type { Rng } from './rng';
 import type { GameState, MarketListing, Mods, Player } from './types';
-import { addToTeam, hasRosterSpace, removeFromTeams } from './teams';
+import { addToTeam, ensureTeam, hasRosterSpace, removeFromTeams } from './teams';
 
 export const MARKET_BASE_SIZE = 6;
 export const MARKET_REFRESH_SECONDS = 180;
@@ -73,7 +73,9 @@ export function signListing(s: GameState, playerId: string, mods: Pick<Mods, 'be
   if (index < 0) return { ok: false, reason: 'That player is no longer available.' };
   const listing = s.market.listings[index];
   const gameId = listing.player.gameId;
-  if (!s.games[gameId]?.unlocked || !s.teams[gameId]) return { ok: false, reason: `You don't have a ${getGame(gameId).name} team yet.` };
+  if (!s.games[gameId]?.unlocked) return { ok: false, reason: `You don't have a ${getGame(gameId).name} team yet.` };
+  // The first signing in an unlocked game founds its team.
+  if (!s.teams[gameId]) ensureTeam(s, gameId);
   if (!hasRosterSpace(s, gameId, mods)) return { ok: false, reason: 'That roster is full. Sell a player or buy more bench space.' };
   if (s.cash < listing.price) return { ok: false, reason: 'Not enough cash.' };
   s.cash -= listing.price;
@@ -82,6 +84,7 @@ export function signListing(s: GameState, playerId: string, mods: Pick<Mods, 'be
   addToTeam(s, player, mods);
   s.market.listings.splice(index, 1);
   s.stats.playersSigned++;
+  s.draft = null;
   return { ok: true, player };
 }
 

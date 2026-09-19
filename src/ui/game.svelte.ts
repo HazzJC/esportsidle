@@ -40,6 +40,10 @@ import { createNewGame } from '../engine/state';
 import type { GameState, Mods, NotifyChannel, Rates, Settings, Tone } from '../engine/types';
 import { rarityName } from './theme';
 import { buyAllUpgrades, buyUpgrade, refreshUpgradeUnlocks } from '../engine/upgrades';
+import { signDraftPick } from '../engine/draft';
+import { QUEST_MAP } from '../data/quests';
+import { claimQuest, describeReward } from '../engine/quests';
+import { skipTutorial, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
 
 export type TabId =
@@ -438,6 +442,41 @@ class GameStore {
     this.toast({ title: `Signed ${p.tag}!`, body: `${p.first} ${p.last} joins your ${getGame(p.gameId).name} roster.`, icon: 'user-plus', tone: 'good' }, 3500);
     this.refresh();
     return true;
+  }
+
+  /** Signs one of the three first-player prospects, which founds the first team. */
+  signDraft(playerId: string): boolean {
+    const mods = computeMods(this.state);
+    const result = signDraftPick(this.state, playerId, mods);
+    if (!result.ok) {
+      this.toast({ title: 'Not yet', body: result.reason, icon: 'user-plus', tone: 'bad' }, 3000);
+      return false;
+    }
+    const p = result.player;
+    const g = getGame(p.gameId);
+    refreshMarket(this.state, new Rng(this.state), mods);
+    updateTutorial(this.state);
+    this.sfx('promote');
+    this.toast({ title: `${p.tag} signs for ${this.state.org.name}!`, body: `Your ${g.name} team is born. Matches start in a few seconds.`, icon: g.icon, tone: 'gold' }, 5000);
+    this.refresh();
+    return true;
+  }
+
+  skipTutorial(): void {
+    skipTutorial(this.state);
+    this.refresh();
+  }
+
+  /** Pays one of a finished quest's two rewards. */
+  claimQuest(id: string, choice: 0 | 1): void {
+    const r = this.view.r;
+    const ctx = { cps: r.cpsNoBuffs, fansPerSec: r.fansPerSec };
+    const def = QUEST_MAP.get(id);
+    const reward = def ? describeReward(def.rewards[choice], ctx) : '';
+    if (!claimQuest(this.state, id, choice, ctx, new Rng(this.state))) return;
+    this.sfx('win');
+    this.toast({ title: `Reward: ${reward}`, body: def?.title, icon: def?.icon ?? 'flag', tone: 'gold' }, 3000);
+    this.refresh();
   }
 
   sellPlayer(playerId: string): number {

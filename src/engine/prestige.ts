@@ -22,8 +22,8 @@ import { refreshMarket } from './market';
 import { generatePlayer, skillRating } from './players';
 import { gainFans } from './wallet';
 import { Rng } from './rng';
-import { createGames, createOps, createStaff, setupNewRun } from './state';
-import { addToTeam, createTeam } from './teams';
+import { addFounder, createGames, createOps, createStaff, setupNewRun } from './state';
+import { addToTeam, createTeam, ensureTeam } from './teams';
 import type { Effect, GameState, HallOfFameEntry, Player, Rarity } from './types';
 
 /**
@@ -403,16 +403,20 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
 
   // New run -------------------------------------------------------------------
   setupNewRun(s);
-  if (founderIdentity) Object.assign(s.players.founder, founderIdentity);
+  if (founderIdentity) addFounder(s, founderIdentity);
   startBonuses(s);
   if (kept) {
-    if (s.games[kept.gameId]?.unlocked && s.teams[kept.gameId]) {
+    // Runs start with no teams, so a franchise player in an unlocked game founds theirs.
+    if (s.games[kept.gameId]?.unlocked) {
+      ensureTeam(s, kept.gameId);
       s.players[kept.id] = kept;
       addToTeam(s, kept, { benchSlots: 1 });
     } else {
       s.prestige.reserve.push(kept);
     }
   }
+  // A run that already has a player (founder, charter signing or franchise player) skips the draft.
+  if (Object.keys(s.players).length > 0) s.draft = null;
   refreshMarket(s, new Rng(s), { scoutLuck: 0, marketSize: 0 });
 
   const best = bestGame ? `${getGame(bestGame).name}, ${tierName(bestTier)}` : 'no teams';

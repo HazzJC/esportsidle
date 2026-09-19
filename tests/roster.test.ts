@@ -4,14 +4,14 @@ import { signListing } from '../src/engine/market';
 import { generatePlayer } from '../src/engine/players';
 import { previewAssign, previewSigning } from '../src/engine/roster';
 import { Rng } from '../src/engine/rng';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { evaluateTeam, unlockGame } from '../src/engine/teams';
 import type { GameState, Player } from '../src/engine/types';
 
 const CTX = { cpsNoBuffs: 0, incomeBuff: 1, fansMult: 1 };
 
 function rocketGame(): GameState {
-  const s = createNewGame(0, 4);
+  const s = foundedGame(0, 4);
   s.cash = 1e12;
   unlockGame(s, 'rocket');
   return s;

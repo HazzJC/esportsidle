@@ -7,7 +7,7 @@ import { refreshMarket, signListing } from '../src/engine/market';
 import { levelUpOperation } from '../src/engine/operations';
 import { gearUpgradeCost } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { runTournament } from '../src/engine/tournament';
 import { unlockGame } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
@@ -20,7 +20,7 @@ function ctxFor(s: GameState) {
 
 /** A mid-game state with several players, operations and a ranked team. */
 function richState(): GameState {
-  const s = createNewGame(0, 17);
+  const s = foundedGame(0, 17);
   s.cash = 1e12;
   s.ops.streamer.owned = 30;
   s.ops.creator.owned = 12;
@@ -36,7 +36,7 @@ function richState(): GameState {
 
 describe('hype drops', () => {
   it('schedules, spawns and expires drops', () => {
-    const s = createNewGame(0, 9);
+    const s = foundedGame(0, 9);
     updateDrops(s, ctxFor(s));
     expect(s.drops.nextAt).toBeGreaterThan(0);
     s.time = s.drops.nextAt;
@@ -75,7 +75,7 @@ describe('hype drops', () => {
   });
 
   it('drama drops only appear after drama upgrades', () => {
-    const s = createNewGame(0, 9);
+    const s = foundedGame(0, 9);
     expect(dramaShare(s, computeMods(s))).toBe(0);
     s.upgrades.drama_0 = 0;
     expect(dramaShare(s, computeMods(s))).toBeCloseTo(0.33);
@@ -86,7 +86,7 @@ describe('hype drops', () => {
 
 describe('tournaments', () => {
   it('a dominant team wins and earns trophies', () => {
-    const s = createNewGame(0, 21);
+    const s = foundedGame(0, 21);
     const founder = s.players.founder;
     for (const slot of GEAR_SLOTS) founder.gear[slot.id] = 15;
     const result = runTournament(s, ctxFor(s));
@@ -98,7 +98,7 @@ describe('tournaments', () => {
   });
 
   it('a hopeless team is knocked out early', () => {
-    const s = createNewGame(0, 21);
+    const s = foundedGame(0, 21);
     for (const key of Object.keys(s.players.founder.stats)) s.players.founder.stats[key as keyof typeof s.players.founder.stats] = 1;
     s.teams.smash.tier = 12;
     const result = runTournament(s, ctxFor(s));
@@ -169,7 +169,7 @@ describe('world events', () => {
 
 describe('trophies', () => {
   it('level up operations for +1% each', () => {
-    const s = createNewGame(0, 4);
+    const s = foundedGame(0, 4);
     s.ops.grinder.owned = 10;
     s.teams.smash.lineup = [null];
     const before = computeRates(s).cps;

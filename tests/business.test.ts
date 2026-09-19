@@ -27,7 +27,7 @@ import {
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { cancelContract, generateOffer, goalProgress, refreshOffers, signOffer, updateSponsors } from '../src/engine/sponsors';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import type { Design, GameState, SponsorOffer } from '../src/engine/types';
 
 function design(size: number, fill: (x: number, y: number) => number, handmade = true): Design {
@@ -86,7 +86,7 @@ describe('designs', () => {
   });
 
   it('limits and cleans up designs', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     const id = addDesign(s, { name: 'Logo', size: 16, palette: [...DESIGN_PALETTE], pixels: blankPixels(16), handmade: true })!;
     expect(setOrgLogo(s, id)).toBe(true);
     expect(s.stats.designsCreated).toBe(1);
@@ -97,7 +97,7 @@ describe('designs', () => {
   });
 
   it('designs survive a save round trip', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     const d = generateDesign(new Rng({ rng: 9 }), 32, 'Round trip');
     const id = addDesign(s, d)!;
     s.org.jersey = id;
@@ -124,7 +124,7 @@ describe('merch', () => {
   });
 
   it('a product line with a design earns money', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.cash = 1e9;
     s.fansRun = 1e6;
     s.fans = 1e6;
@@ -147,7 +147,7 @@ describe('merch', () => {
   });
 
   it('products need fans and cash to unlock', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.cash = 1e12;
     expect(unlockProduct(s, 'tee')).toBe(false);
     s.fansRun = PRODUCTS.find((p) => p.id === 'tee')!.unlockFans;
@@ -171,7 +171,7 @@ describe('sponsors', () => {
   });
 
   it('generates offers once fans arrive', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.fansRun = 2_000;
     refreshOffers(s, new Rng(s));
     expect(s.sponsors.offers).toHaveLength(3);
@@ -179,7 +179,7 @@ describe('sponsors', () => {
   });
 
   it('signing respects requirements, slots and category exclusivity', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     const mods = computeMods(s);
     const a = offerFor(s, 'monstar');
     expect(signOffer(s, a.id, mods).ok).toBe(false);
@@ -196,7 +196,7 @@ describe('sponsors', () => {
   });
 
   it('active sponsors raise income and apply perks', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.ops.grinder.owned = 20;
     s.teams.smash.lineup = [null];
     s.fansRun = 1e6;
@@ -211,7 +211,7 @@ describe('sponsors', () => {
   });
 
   it('completing a goal pays out and contracts expire', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.fansRun = 1e6;
     const offer = offerFor(s, 'monstar');
     offer.goal = { kind: 'wins', target: 3, rewardSeconds: 300 };
@@ -232,7 +232,7 @@ describe('sponsors', () => {
   });
 
   it('contracts can be cancelled', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.fansRun = 1e6;
     const offer = offerFor(s, 'snorvpn');
     signOffer(s, offer.id, computeMods(s));

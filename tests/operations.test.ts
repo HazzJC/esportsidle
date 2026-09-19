@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getOp } from '../src/data/operations';
 import { bulkPrice, buyOperation, maxAffordable, sellOperation, sellRefund, unitPrice } from '../src/engine/operations';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 
 const grinder = getOp('grinder');
 
@@ -34,7 +34,7 @@ describe('operation pricing', () => {
 
 describe('buying and selling', () => {
   it('buys when affordable and deducts cash', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.cash = 100;
     expect(buyOperation(s, 'grinder', 1)).toBe(1);
     expect(s.cash).toBe(85);
@@ -42,14 +42,14 @@ describe('buying and selling', () => {
   });
 
   it('refuses purchases it cannot afford', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.cash = 10;
     expect(buyOperation(s, 'grinder', 1)).toBe(0);
     expect(s.cash).toBe(10);
   });
 
   it('buys max and sells all', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.cash = 10_000;
     const n = buyOperation(s, 'grinder', -1);
     expect(n).toBeGreaterThan(10);

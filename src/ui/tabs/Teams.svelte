@@ -118,13 +118,21 @@
 </script>
 
 <div class="teams">
+  {#if v.s.draft && Object.keys(v.s.teams).length === 0}
+    <div class="no-team">
+      <Icon name="users" size={40} />
+      <h3>No team yet</h3>
+      <p class="muted">Sign your first player from the three prospects in HQ. They found your first team.</p>
+      <button class="btn primary" onclick={() => ((game.tab = 'hq'), (game.mobileView = 'center'))}><Icon name="user-plus" size={14} /> See the prospects</button>
+    </div>
+  {/if}
   {#each GAMES as g (g.id)}
     {#if v.s.games[g.id]?.unlocked && v.s.teams[g.id]}
       {@const team = v.s.teams[g.id]}
       {@const ev = v.r.teams[g.id]}
       {@const pop = v.s.games[g.id].popularity}
       {@const kit = teamKit(v.s, g.id)}
-      <article class="team" style="--gc:{g.color}">
+      <article class="team" class:tut-target={v.s.tutorial.step === 'match' && g.index === 0} style="--gc:{g.color}">
         <header>
           <span class="gicon"><Icon name={g.icon} size={20} /></span>
           <div class="titles">
@@ -290,7 +298,7 @@
           <span class="record muted small num">{fmt(team.wins)}W {fmt(team.losses)}L · {team.titles} titles · {money(team.earnings)}</span>
         </footer>
       </article>
-    {:else if g.id === nextLocked?.id}
+    {:else if g.id === nextLocked?.id && !v.s.draft}
       <article class="team locked" style="--gc:{g.color}">
         <header>
           <span class="gicon"><Icon name={g.icon} size={20} /></span>
@@ -334,6 +342,23 @@
 {/if}
 
 <style>
+  .no-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--dim);
+  }
+  .no-team h3 {
+    margin: 0;
+    color: var(--text);
+  }
+  .no-team p {
+    margin: 0;
+    max-width: 360px;
+  }
   .last-season {
     display: flex;
     align-items: center;

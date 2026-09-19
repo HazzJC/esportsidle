@@ -16,7 +16,7 @@ import {
 } from '../src/engine/mood';
 import { buyDynasty, dynastyCost, dynastyRank, legacyBonuses, treeComplete } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { changeTier, playMatch } from '../src/engine/teams';
 
 describe('stakes', () => {
@@ -43,7 +43,7 @@ describe('stakes', () => {
   });
 
   it('shrinks prize money and fans in a lopsided league', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const even = computeRates(s).teams.smash;
     // Crush the league: an enormous rating makes every match a certainty.
     s.players.founder.stats.mechanics = 400;
@@ -65,7 +65,7 @@ describe('team mood', () => {
   });
 
   it('gets bored only when held back with auto-promote off', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const team = s.teams.smash;
     for (let i = 0; i < 30; i++) recordForm(team, true);
     expect(team.form).toBeGreaterThan(BORED_FORM);
@@ -76,7 +76,7 @@ describe('team mood', () => {
 
   it('bored players lose morale and learn less, even while winning', () => {
     const run = (autoPromote: boolean) => {
-      const s = createNewGame(0, 6);
+      const s = foundedGame(0, 6);
       const team = s.teams.smash;
       team.autoPromote = autoPromote;
       team.form = 0.95;
@@ -96,7 +96,7 @@ describe('team mood', () => {
   });
 
   it('a new tier freshens form up', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     const team = s.teams.smash;
     team.form = 0.95;
     team.bestTier = 3;
@@ -109,7 +109,7 @@ describe('team mood', () => {
 
 describe('dynasty ranks', () => {
   it('open with the root node and cost more each rank', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     s.prestige.points = 1e6;
     expect(buyDynasty(s, 'renown')).toBe(0);
     s.prestige.nodes.legacy = 1;
@@ -120,7 +120,7 @@ describe('dynasty ranks', () => {
   });
 
   it('buy max spends as far as the points go and never below zero', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     s.prestige.nodes.legacy = 1;
     s.prestige.points = 1000;
     const bought = buyDynasty(s, 'pedigree', true);
@@ -130,7 +130,7 @@ describe('dynasty ranks', () => {
   });
 
   it('adds its effects to the legacy bonuses', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     s.prestige.nodes.legacy = 1;
     const before = computeMods(s).globalMult;
     s.prestige.dynasty.renown = 10;
@@ -140,7 +140,7 @@ describe('dynasty ranks', () => {
   });
 
   it('keeps legacy points useful after the whole tree is bought', () => {
-    const s = createNewGame(0, 6);
+    const s = foundedGame(0, 6);
     for (const n of LEGACY_NODES) s.prestige.nodes[n.id] = 1;
     expect(treeComplete(s)).toBe(true);
     s.prestige.points = 50;

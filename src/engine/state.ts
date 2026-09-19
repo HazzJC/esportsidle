@@ -2,14 +2,15 @@ import { DEFAULT_KIT, DEFAULT_TONE } from '../data/palette';
 import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { STAFF } from '../data/staff';
+import { createDraft } from './draft';
 import { refreshMarket } from './market';
 import { createFounder } from './players';
 import { createGameProgress } from './popularity';
 import { Rng, randomSeed } from './rng';
-import { addToTeam, createTeam } from './teams';
-import type { AutomationSettings, GameProgress, GameState, OperationState, Settings, Stats } from './types';
+import { addToTeam, createTeam, ensureTeam } from './teams';
+import type { AutomationSettings, GameProgress, GameState, OperationState, Player, Settings, Stats } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const GAME_VERSION = '0.7.0';
 
 /** Every routine starts switched off; the player opts in once it unlocks. */
@@ -44,6 +45,7 @@ export function createSettings(): Settings {
 export function createStats(): Stats {
   return {
     playersRetired: 0,
+    derbyWins: 0,
     clicksRun: 0,
     clicksTotal: 0,
     clickCashRun: 0,
@@ -177,6 +179,9 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     rivalHistory: [],
     seasonLog: [],
     trophyCase: [],
+    draft: null,
+    tutorial: { step: 'click' },
+    quests: { active: [], done: {}, claimed: 0 },
     nextId: 1,
     popularityClock: 0,
     stats: createStats(),
@@ -184,18 +189,31 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
   };
 }
 
-/** Gives a run its founder, starting team and first market listings. */
+/**
+ * Starts a run with an empty roster and the first-player draft. Teams exist only for games that
+ * are already unlocked beyond the first; the first signing founds the Smash Siblings team.
+ */
 export function setupNewRun(s: GameState): void {
   const rng = new Rng(s);
-  const founder = createFounder(rng, s.org.name);
-  s.players[founder.id] = founder;
   for (const g of GAMES) {
-    if (s.games[g.id]?.unlocked && !s.teams[g.id]) s.teams[g.id] = createTeam(g.id);
+    if (g.index > 0 && s.games[g.id]?.unlocked && !s.teams[g.id]) s.teams[g.id] = createTeam(g.id);
   }
-  if (!s.teams.smash) s.teams.smash = createTeam('smash');
-  s.games.smash.unlocked = true;
-  addToTeam(s, founder, { benchSlots: 1 });
+  s.draft = createDraft(s, rng);
   refreshMarket(s, rng, { scoutLuck: 0, marketSize: 0 });
+}
+
+/**
+ * Orgs from before the draft began with a founder who played Smash Siblings solo. Their saves keep
+ * that founder, who returns in every new run with the same look and tag.
+ */
+export function addFounder(s: GameState, identity?: Partial<Player>): Player {
+  const founder = createFounder(new Rng(s), s.org.name);
+  if (identity) Object.assign(founder, identity);
+  s.players[founder.id] = founder;
+  ensureTeam(s, 'smash');
+  addToTeam(s, founder, { benchSlots: 1 });
+  s.draft = null;
+  return founder;
 }
 
 export function createNewGame(now: number = Date.now(), seed: number = randomSeed()): GameState {

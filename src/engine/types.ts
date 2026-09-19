@@ -2,6 +2,7 @@ import type { SeasonPlan } from '../data/seasonPlans';
 import type { GearSlot } from '../data/gear';
 import type { TrendId } from '../data/merch';
 import type { SponsorGoalKind } from '../data/sponsors';
+import type { TutorialStep } from '../data/tutorial';
 import type { NumberFormat } from './format';
 
 export type Tone = 'good' | 'bad' | 'info' | 'gold';
@@ -608,6 +609,25 @@ export interface PrestigeState {
   dynasty: Record<string, number>;
 }
 
+export interface ActiveQuest {
+  id: string;
+  /** The quest's metric when it was offered; delta quests count from here. */
+  base: number;
+  /** Finished and announced, waiting for the player to pick a reward. */
+  ready: boolean;
+}
+
+export interface QuestState {
+  active: ActiveQuest[];
+  /** Quest id -> simulated time it was claimed. Kept across sales. */
+  done: Record<string, number>;
+  claimed: number;
+}
+
+export interface TutorialState {
+  step: TutorialStep;
+}
+
 /** Popup categories the player can mute. Anything the player did themselves is always shown. */
 export type NotifyChannel = 'matches' | 'players' | 'events' | 'business' | 'achievements';
 
@@ -682,6 +702,7 @@ export interface Stats {
   orgsSold: number;
   legacyNodes: number;
   challengesCompleted: number;
+  derbyWins: number;
 }
 
 export interface GameState {
@@ -733,6 +754,10 @@ export interface GameState {
   rivalHistory: RivalRecord[];
   seasonLog: SeasonRecap[];
   trophyCase: TrophyEntry[];
+  /** The three first-player prospects offered when a run starts with an empty roster. */
+  draft: MarketListing[] | null;
+  tutorial: TutorialState;
+  quests: QuestState;
   nextId: number;
   popularityClock: number;
   stats: Stats;

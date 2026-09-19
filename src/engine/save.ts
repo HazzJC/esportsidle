@@ -4,7 +4,7 @@ import { GAMES } from '../data/games';
 import { sanitizeDesign } from './designs';
 import { createFounder } from './players';
 import { Rng } from './rng';
-import { SAVE_VERSION, createBaseState, setupNewRun } from './state';
+import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state';
 import { createTeam } from './teams';
 import type { GameState } from './types';
 
@@ -33,6 +33,12 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
       org.primary = DEFAULT_KIT.primary;
       org.secondary = DEFAULT_KIT.secondary;
     }
+  },
+  // v3 -> v4 added the tutorial, the first-player draft and quests. Orgs from before then are well
+  // past the tutorial and keep their founder; their quest board starts fresh.
+  3: (raw) => {
+    raw.tutorial = { step: 'done' };
+    raw.draft = null;
   },
 };
 
@@ -87,11 +93,13 @@ export function decodeSave(text: string): GameState {
   return state;
 }
 
-/** Fills defaults inside dynamic records and restores invariants (founder, starting team). */
+/** Fills defaults inside dynamic records and restores invariants. */
 export function repairState(s: GameState): void {
-  if (!s.players.founder && !s.teams.smash) {
-    setupNewRun(s);
-    return;
+  // An org with no roster and no teams always has a way to start: saves from before the draft get
+  // the founder they would have had, and anything newer gets the draft.
+  if (Object.keys(s.players).length === 0 && !s.draft && Object.keys(s.teams).length === 0) {
+    if (s.tutorial.step === 'done' && s.prestige.runs === 0 && s.stats.playersSigned === 0) addFounder(s);
+    else setupNewRun(s);
   }
   for (const [id, design] of Object.entries(s.designs)) {
     s.designs[id] = sanitizeDesign({ ...design, id });
@@ -109,7 +117,8 @@ export function repairState(s: GameState): void {
   for (const game of GAMES) {
     const team = s.teams[game.id];
     if (team) s.teams[game.id] = mergeDefaults(createTeam(game.id), team) as GameState['teams'][string];
-    else if (s.games[game.id]?.unlocked) s.teams[game.id] = createTeam(game.id);
+    // While the draft is open the org has no team yet; the first signing founds it.
+    else if (s.games[game.id]?.unlocked && !s.draft) s.teams[game.id] = createTeam(game.id);
   }
 }
 

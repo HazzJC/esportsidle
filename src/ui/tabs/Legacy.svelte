@@ -345,7 +345,8 @@
             <li>Org name, logo, jersey and all designs</li>
             <li>Achievements and all-time stats</li>
             <li>Trophies, operation levels and trophy upgrades</li>
-            <li>Your founder's look and tag</li>
+            {#if s.players.founder}<li>Your founder's look and tag</li>{/if}
+            <li>Quest progress, trophy shelf and your rival</li>
             {#if hasSpecial(s, 'keepDecor')}<li>Gaming House decor</li>{/if}
             {#if hasSpecial(s, 'keepMerch')}<li>Unlocked merch products</li>{/if}
           </ul>

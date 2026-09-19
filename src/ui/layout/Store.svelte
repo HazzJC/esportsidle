@@ -5,6 +5,7 @@
   import { fmt, fmtPct, money } from '../../engine/format';
   import { bulkPrice, isOperationRevealed, maxAffordable, sellRefund } from '../../engine/operations';
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
+  import { operationsOpen } from '../../engine/tutorial';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
@@ -54,6 +55,9 @@
     return last;
   });
   const shownOps = $derived(OPERATIONS.slice(0, Math.min(OPERATIONS.length, lastRevealed + 2)));
+  const opsOpen = $derived(operationsOpen(s));
+  /** The operation the tutorial is asking for, which pulses until it is bought. */
+  const tutorialOp = $derived(s.tutorial.step === 'grinder' ? 'grinder' : s.tutorial.step === 'streamer' ? 'streamer' : null);
 
   function upgradeTip(def: UpgradeDef): TipContent {
     const { s, m } = game.view;
@@ -171,37 +175,46 @@
     </header>
 
     <div class="op-list">
-      {#each shownOps as op (op.id)}
-        {#if isOperationRevealed(s, op)}
-          {@const info = rowInfo(op)}
-          <button
-            class="op"
-            class:no={!info.ok}
-            class:selling={mode === 'sell'}
-            style="--c:{opColor(op.index)}"
-            onclick={() => onOp(op)}
-            use:tooltip={() => opTip(op)}
-          >
-            <span class="op-icon"><Icon name={op.icon} size={24} /></span>
-            <span class="op-main">
-              <span class="op-name">{op.name}</span>
-              <span class="op-price num">
-                {mode === 'sell' ? '+' : ''}{money(info.price)}
-                {#if info.n !== 1}<span class="qty">×{fmt(info.n)}</span>{/if}
+      {#if !opsOpen}
+        <div class="ops-locked">
+          <Icon name="lock" size={22} />
+          <b>Operations</b>
+          <span class="muted">Businesses that earn money every second, even while you are away. They open once you have signed your first player.</span>
+        </div>
+      {:else}
+        {#each shownOps as op (op.id)}
+          {#if isOperationRevealed(s, op)}
+            {@const info = rowInfo(op)}
+            <button
+              class="op"
+              class:no={!info.ok}
+              class:selling={mode === 'sell'}
+              class:tut-target={tutorialOp === op.id}
+              style="--c:{opColor(op.index)}"
+              onclick={() => onOp(op)}
+              use:tooltip={() => opTip(op)}
+            >
+              <span class="op-icon"><Icon name={op.icon} size={24} /></span>
+              <span class="op-main">
+                <span class="op-name">{op.name}</span>
+                <span class="op-price num">
+                  {mode === 'sell' ? '+' : ''}{money(info.price)}
+                  {#if info.n !== 1}<span class="qty">×{fmt(info.n)}</span>{/if}
+                </span>
               </span>
-            </span>
-            {#if s.ops[op.id].owned > 0}<span class="op-owned num">{fmt(s.ops[op.id].owned)}</span>{/if}
-          </button>
-        {:else}
-          <div class="op mystery">
-            <span class="op-icon"><Icon name="lock" size={20} /></span>
-            <span class="op-main">
-              <span class="op-name">???</span>
-              <span class="op-price num">{money(op.baseCost)}</span>
-            </span>
-          </div>
-        {/if}
-      {/each}
+              {#if s.ops[op.id].owned > 0}<span class="op-owned num">{fmt(s.ops[op.id].owned)}</span>{/if}
+            </button>
+          {:else}
+            <div class="op mystery">
+              <span class="op-icon"><Icon name="lock" size={20} /></span>
+              <span class="op-main">
+                <span class="op-name">???</span>
+                <span class="op-price num">{money(op.baseCost)}</span>
+              </span>
+            </div>
+          {/if}
+        {/each}
+      {/if}
     </div>
   </section>
 </div>
@@ -438,6 +451,23 @@
     font-size: 24px;
     color: color-mix(in srgb, var(--c, var(--muted)) 45%, var(--muted));
     opacity: 0.8;
+  }
+  .ops-locked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 24px 16px;
+    text-align: center;
+    border: 1px dashed var(--line-2);
+    border-radius: 10px;
+    color: var(--dim);
+    font-size: 12.5px;
+  }
+  .ops-locked b {
+    font-family: var(--font-ui);
+    font-size: 16px;
+    color: var(--muted);
   }
   .op.mystery {
     opacity: 0.45;

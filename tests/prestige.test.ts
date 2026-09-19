@@ -19,12 +19,12 @@ import {
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { hireStaff } from '../src/engine/staff';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { hasRosterSpace, unlockGame } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
 
 function wealthy(level = 3): GameState {
-  const s = createNewGame(0, 31);
+  const s = foundedGame(0, 31);
   s.earnedTotal = Math.pow(level, 3) * LEGACY_DIVISOR;
   s.earnedRun = s.earnedTotal;
   return s;
@@ -48,7 +48,7 @@ describe('legacy points', () => {
   });
 
   it('legacy levels boost income by 1% each', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     s.ops.grinder.owned = 20;
     s.teams.smash.lineup = [null];
     const before = computeRates(s).cps;
@@ -66,7 +66,7 @@ describe('the legacy tree', () => {
   });
 
   it('requires parents and points', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     expect(buyNode(s, 'legacy')).toBe(false);
     s.prestige.points = 10;
     expect(nodeState(s, 'income_1')).toBe('locked');
@@ -123,7 +123,7 @@ describe('selling the org', () => {
   });
 
   it('refuses to sell without pending legacy', () => {
-    const s = createNewGame(0, 2);
+    const s = foundedGame(0, 2);
     expect(sellOrg(s)).toBeNull();
   });
 

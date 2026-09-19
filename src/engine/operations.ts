@@ -1,6 +1,7 @@
 import { OPERATIONS, getOp, type OperationDef } from '../data/operations';
 import { computeMods } from './economy';
 import { PRICE_GROWTH, geometricMax, geometricPrice } from './pricing';
+import { operationsOpen } from './tutorial';
 import type { GameState } from './types';
 
 export { PRICE_GROWTH };
@@ -32,6 +33,7 @@ export function sellRefund(def: Pick<OperationDef, 'baseCost'>, owned: number, a
  * Returns the number bought (0 if unaffordable).
  */
 export function buyOperation(s: GameState, id: string, amount: number): number {
+  if (!operationsOpen(s)) return 0;
   const def = getOp(id);
   const st = s.ops[id];
   const { opCostMult } = computeMods(s);

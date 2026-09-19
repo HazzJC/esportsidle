@@ -200,7 +200,7 @@
         stroke-dasharray="{Math.max(0, Math.min(1, ringPct)) * 100} 100"
       />
     </svg>
-    <button class="logo" class:crowd={!!crowd} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
+    <button class="logo" class:crowd={!!crowd} class:tut-target={s.tutorial.step === 'click'} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
       <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} {logoUrl} />
     </button>
     {#each particles as p (p.id)}

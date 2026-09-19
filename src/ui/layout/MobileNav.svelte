@@ -7,6 +7,8 @@
     { id: 'center', label: 'Manage', icon: 'house' },
     { id: 'store', label: 'Store', icon: 'store' },
   ];
+
+  const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft);
 </script>
 
 <nav class="mobile-nav panel" aria-label="Views">
@@ -14,11 +16,22 @@
     <button class:active={game.mobileView === item.id} onclick={() => (game.mobileView = item.id)}>
       <Icon name={item.icon} size={20} />
       <span>{item.label}</span>
+      {#if item.id === 'center' && hqWaiting && game.mobileView !== 'center'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
     </button>
   {/each}
 </nav>
 
 <style>
+  .dot {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 20px);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
+  }
   .mobile-nav {
     display: none;
   }
@@ -35,6 +48,7 @@
       box-shadow: var(--shadow);
     }
     button {
+      position: relative;
       flex: 1;
       display: flex;
       flex-direction: column;

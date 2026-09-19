@@ -9,7 +9,8 @@ import { refreshMarket, sellPlayer, signListing } from '../src/engine/market';
 import { buyGear, generatePlayer, gearUpgradeCost, grantXp, skillRating } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { createBaseState, createNewGame } from '../src/engine/state';
+import { createBaseState } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { assignSlot, changeTier, endSeason, evaluateTeam, unlockGame } from '../src/engine/teams';
 
 describe('player generation', () => {
@@ -47,7 +48,7 @@ describe('player generation', () => {
 
 describe('ratings and gear', () => {
   it('gear raises rating and gets more expensive', () => {
-    const s = createNewGame(0, 11);
+    const s = foundedGame(0, 11);
     const founder = s.players.founder;
     const mods = computeMods(s);
     const base = skillRating(founder);
@@ -69,7 +70,7 @@ describe('ratings and gear', () => {
 
 describe('teams and matches', () => {
   it('starts with an active solo team', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const r = computeRates(s);
     expect(r.teams.smash.active).toBe(true);
     expect(r.teams.smash.winChance).toBeGreaterThan(0.5);
@@ -77,7 +78,7 @@ describe('teams and matches', () => {
   });
 
   it('plays matches over time and records history', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     advance(s, 120);
     const team = s.teams.smash;
     expect(team.wins + team.losses).toBeGreaterThanOrEqual(7);
@@ -87,13 +88,13 @@ describe('teams and matches', () => {
   });
 
   it('keeps a solo starter from burning out completely', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     advance(s, 600);
     expect(s.players.founder.energy).toBeGreaterThan(40);
   });
 
   it('promotes after a strong season and relegates after a poor one', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const team = s.teams.smash;
     const ev = computeRates(s).teams.smash;
     team.seasonWins = PROMOTE_WINS;
@@ -108,7 +109,7 @@ describe('teams and matches', () => {
   });
 
   it('prize upgrades do not multiply the income-linked share of prizes', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const mods = computeMods(s);
     const ctx = { cpsNoBuffs: 1e9, incomeBuff: 1, fansMult: 1 };
     const plain = evaluateTeam(s, s.teams.smash, mods, ctx);
@@ -120,7 +121,7 @@ describe('teams and matches', () => {
   });
 
   it('empty teams do not play', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     s.cash = 1e6;
     expect(unlockGame(s, 'rocket')).toBe(true);
     const ev = evaluateTeam(s, s.teams.rocket, computeMods(s), { cpsNoBuffs: 0, incomeBuff: 1, fansMult: 1 });
@@ -129,7 +130,7 @@ describe('teams and matches', () => {
   });
 
   it('requires unlocking games in order', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     s.cash = 1e30;
     expect(unlockGame(s, 'counter')).toBe(false);
     expect(unlockGame(s, 'rocket')).toBe(true);
@@ -139,7 +140,7 @@ describe('teams and matches', () => {
 
 describe('transfer market', () => {
   it('signs players into open slots and respects capacity', () => {
-    const s = createNewGame(0, 21);
+    const s = foundedGame(0, 21);
     s.cash = 1e12;
     unlockGame(s, 'rocket');
     const mods = computeMods(s);
@@ -158,7 +159,7 @@ describe('transfer market', () => {
   });
 
   it('sells players for part of their fee but never the founder', () => {
-    const s = createNewGame(0, 21);
+    const s = foundedGame(0, 21);
     s.cash = 1e9;
     const listing = s.market.listings.find((l) => l.player.gameId === 'smash')!;
     const result = signListing(s, listing.player.id, computeMods(s));
@@ -171,7 +172,7 @@ describe('transfer market', () => {
   });
 
   it('can move bench players into the lineup', () => {
-    const s = createNewGame(0, 21);
+    const s = foundedGame(0, 21);
     s.cash = 1e9;
     const listing = s.market.listings.find((l) => l.player.gameId === 'smash')!;
     signListing(s, listing.player.id, computeMods(s));

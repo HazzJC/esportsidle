@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_KIT, DEFAULT_TONE, LEGACY_KIT, RARITY_COLORS, TEAM_KITS, UI_TONES, isHexColor } from '../src/data/palette';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { cleanOrgName, completeOnboarding } from '../src/engine/org';
 import { teamKit, unlockGame } from '../src/engine/teams';
 import { mix, readableOn, shade } from '../src/ui/color';
@@ -29,7 +29,7 @@ describe('palette data', () => {
 
 describe('interface tone and team colours', () => {
   it('starts new games un-onboarded, in the neutral tone and default kit', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     expect(s.settings.onboarded).toBe(false);
     expect(s.settings.uiAccent).toBe(DEFAULT_TONE);
     expect(s.org.primary).toBe(DEFAULT_KIT.primary);
@@ -37,7 +37,7 @@ describe('interface tone and team colours', () => {
   });
 
   it('teams follow the org colours until given their own', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.org.primary = '#112233';
     s.org.secondary = '#445566';
     expect(teamKit(s, 'smash')).toEqual({ primary: '#112233', secondary: '#445566' });
@@ -58,7 +58,7 @@ describe('interface tone and team colours', () => {
 
 describe('v2 -> v3 migration', () => {
   it('moves saves still wearing the original neon kit onto the new default', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.org.primary = LEGACY_KIT.primary;
     s.org.secondary = LEGACY_KIT.secondary;
     const loaded = decodeSave(asVersion(encodeSave(s), 2));
@@ -67,7 +67,7 @@ describe('v2 -> v3 migration', () => {
   });
 
   it('leaves any other kit alone', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.org.primary = LEGACY_KIT.primary;
     s.org.secondary = '#123456';
     const loaded = decodeSave(asVersion(encodeSave(s), 2));
@@ -76,7 +76,7 @@ describe('v2 -> v3 migration', () => {
   });
 
   it('gives old teams no kit of their own and asks old players to pick a tone', () => {
-    const s = createNewGame(0, 1) as unknown as { teams: Record<string, Record<string, unknown>>; settings: Record<string, unknown> };
+    const s = foundedGame(0, 1) as unknown as { teams: Record<string, Record<string, unknown>>; settings: Record<string, unknown> };
     delete s.teams.smash.kit;
     delete s.settings.onboarded;
     delete s.settings.uiAccent;
@@ -107,7 +107,7 @@ describe('colour helpers', () => {
 describe('onboarding', () => {
   it('keeps the org name intact', () => {
     // Regression: a mangled whitespace regex once stripped every letter "s".
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     completeOnboarding(s, 'Garage Gamers', '#34d399');
     expect(s.org.name).toBe('Garage Gamers');
     expect(cleanOrgName('  Sassy   Snipers  ')).toBe('Sassy Snipers');
@@ -115,20 +115,20 @@ describe('onboarding', () => {
   });
 
   it('sets the tone and seeds untouched team colours from it', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     completeOnboarding(s, 'Org', '#34D399');
     expect(s.settings.onboarded).toBe(true);
     expect(s.settings.uiAccent).toBe('#34d399');
     expect(s.org.primary).toBe('#34d399');
     // A light tone gets a dark accent, a dark tone a light one, so the kit always has contrast.
     expect(s.org.secondary).toBe('#26262b');
-    const dark = createNewGame(0, 1);
+    const dark = foundedGame(0, 1);
     completeOnboarding(dark, 'Org', '#2c4aa0');
     expect(dark.org.secondary).toBe('#f1f1f0');
   });
 
   it('never overwrites team colours the player already chose', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.org.primary = '#c8283c';
     s.org.secondary = '#f1f1f0';
     completeOnboarding(s, 'Org', '#34d399');
@@ -137,7 +137,7 @@ describe('onboarding', () => {
   });
 
   it('ignores an invalid tone and a blank name', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     const name = s.org.name;
     completeOnboarding(s, '   ', 'url(evil)');
     expect(s.org.name).toBe(name);

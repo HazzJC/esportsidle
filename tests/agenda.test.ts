@@ -5,7 +5,7 @@ import { computeMods, computeRates } from '../src/engine/economy';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { unlockGame } from '../src/engine/teams';
 import type { GameState, Player } from '../src/engine/types';
 
@@ -22,7 +22,7 @@ function player(id: string, gameId: string, role: number, seed = 1, rarity: 'roo
 
 /** A Rocket Soccar team with every slot filled on-role. */
 function fullRocket(): GameState {
-  const s = createNewGame(0, 4);
+  const s = foundedGame(0, 4);
   s.cash = 1e6;
   unlockGame(s, 'rocket');
   s.cash = 0;
@@ -37,7 +37,7 @@ function fullRocket(): GameState {
 
 describe('HQ agenda', () => {
   it('offers to found the next team as soon as it is affordable', () => {
-    const s = createNewGame(0, 4);
+    const s = foundedGame(0, 4);
     s.cash = getGame('rocket').unlockCost;
     const growth = agenda(s).growth;
     expect(growth.title).toContain('Rocket Soccar');
@@ -45,7 +45,7 @@ describe('HQ agenda', () => {
   });
 
   it('flags empty lineup slots and points at the right market', () => {
-    const s = createNewGame(0, 4);
+    const s = foundedGame(0, 4);
     s.cash = 1e6;
     unlockGame(s, 'rocket');
     const concern = agenda(s).concern!;
@@ -84,7 +84,7 @@ describe('HQ agenda', () => {
   });
 
   it('points out an affordable player who would lift a team', () => {
-    const s = createNewGame(0, 4);
+    const s = foundedGame(0, 4);
     s.cash = 1e6;
     unlockGame(s, 'rocket');
     s.market.listings = [{ player: player('star', 'rocket', 0, 99, 'star'), price: 500 }];
@@ -94,7 +94,7 @@ describe('HQ agenda', () => {
   });
 
   it('ignores market players the org cannot afford', () => {
-    const s = createNewGame(0, 4);
+    const s = foundedGame(0, 4);
     s.cash = 1e6;
     unlockGame(s, 'rocket');
     s.cash = 100;

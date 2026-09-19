@@ -50,6 +50,7 @@ export function recordRivalMatch(s: GameState, win: boolean, gameId: string): vo
   if (!r) return;
   if (win) {
     r.wins++;
+    s.stats.derbyWins++;
     r.streak = r.streak >= 0 ? r.streak + 1 : 1;
   } else {
     r.losses++;

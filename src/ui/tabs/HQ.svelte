@@ -4,6 +4,8 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
+  import Draft from '../components/Draft.svelte';
+  import Quests from '../components/Quests.svelte';
   import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
@@ -29,8 +31,12 @@
 </script>
 
 <div class="hq">
-  <Agenda />
-  <Stories />
+  <Draft />
+  <Quests />
+  {#if s.tutorial.step === 'done'}
+    <Agenda />
+    {#if Object.keys(s.teams).length > 0}<Stories />{/if}
+  {/if}
 
   <div class="cards">
     <div class="card">
@@ -106,8 +112,8 @@
       <Icon name="gamepad-2" size={46} />
       <h3>It's just you and a dream</h3>
       <p class="muted">
-        Click your logo to earn your first cash, then recruit a <b>Ranked Grinder</b> from the store. Every operation you buy
-        shows up here.
+        Operations earn money every second, even while the game is closed. Start with a <b>Ranked Grinder</b> from the store;
+        every operation you own shows up here.
       </p>
     </div>
   {:else}

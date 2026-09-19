@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { money } from './engine/format';
   import ChoicePanel from './ui/components/ChoicePanel.svelte';
+  import Coach from './ui/components/Coach.svelte';
   import DropLayer from './ui/components/DropLayer.svelte';
   import Onboarding from './ui/components/Onboarding.svelte';
   import Toasts from './ui/components/Toasts.svelte';
@@ -30,7 +31,7 @@
   });
 </script>
 
-<div class="app" class:reduced-motion={s.settings.reducedMotion} data-view={game.mobileView}>
+<div class="app" class:reduced-motion={s.settings.reducedMotion} class:tutoring={s.settings.onboarded && s.tutorial.step !== 'done'} data-view={game.mobileView}>
   <TopBar />
   <div class="columns">
     <aside class="col col-left"><ClickerPanel /></aside>
@@ -41,6 +42,7 @@
   <DropLayer />
   <ChoicePanel />
   <TournamentModal />
+  <Coach />
   <Toasts />
   <Tooltip />
   {#if !s.settings.onboarded}
@@ -68,6 +70,17 @@
   .col {
     min-height: 0;
     min-width: 0;
+  }
+  /* The tutorial coach floats over the bottom of the screen; let scrolling content clear it. */
+  .tutoring :global(.center .body),
+  .tutoring :global(.op-list) {
+    padding-bottom: 190px;
+  }
+  @media (max-width: 860px) {
+    .tutoring :global(.center .body),
+    .tutoring :global(.op-list) {
+      padding-bottom: 70px;
+    }
   }
   @media (max-width: 1100px) {
     .columns {

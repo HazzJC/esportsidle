@@ -29,6 +29,9 @@
     { id: 'stats', label: 'Stats', icon: 'chart-column' },
     { id: 'options', label: 'Options', icon: 'settings' },
   ];
+
+  /** A finished quest or an open draft waits in HQ. */
+  const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft);
 </script>
 
 <div class="center panel">
@@ -37,6 +40,7 @@
       <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id}>
         <Icon name={t.icon} size={16} />
         <span>{t.label}</span>
+        {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
       </button>
     {/each}
   </nav>
@@ -74,6 +78,16 @@
 {/if}
 
 <style>
+  .dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
+  }
   .center {
     height: 100%;
     display: flex;
@@ -90,6 +104,7 @@
     scrollbar-width: none;
   }
   .tab {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 6px;

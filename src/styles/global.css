@@ -216,6 +216,25 @@ textarea {
   background: linear-gradient(90deg, var(--accent), var(--gold));
 }
 
+/* Whatever the tutorial is pointing at pulses gently until the step is done. */
+.tut-target {
+  position: relative;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  animation: tut-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tut-pulse {
+  0%,
+  100% {
+    outline-color: color-mix(in srgb, var(--accent) 90%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    box-shadow: 0 0 22px 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

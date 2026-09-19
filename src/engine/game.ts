@@ -11,8 +11,10 @@ import { updateMerch } from './merch';
 import { updateSponsors } from './sponsors';
 import { updatePopularity } from './popularity';
 import { checkChallenge } from './prestige';
+import { updateQuests } from './quests';
 import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
+import { tutorialActive, updateTutorial } from './tutorial';
 import type { GameState, Mods, Rates } from './types';
 import { refreshUpgradeUnlocks } from './upgrades';
 import { earnCash, gainFans } from './wallet';
@@ -54,7 +56,7 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
     if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) runAutomation(s, mods);
     const ctx = { rng, mods, rates };
     updateDrops(s, ctx);
-    updateWorldEvents(s, ctx);
+    if (!tutorialActive(s)) updateWorldEvents(s, ctx);
     decayHype(s, dt);
     if (rates.cpsNoBuffs > s.stats.bestCps) s.stats.bestCps = rates.cpsNoBuffs;
   }
@@ -64,6 +66,8 @@ export function tick(s: GameState, dt: number, offline = false): TickResult {
     refreshUpgradeUnlocks(s);
     checkChallenge(s);
     checkAchievements(s, rates);
+    updateTutorial(s);
+    updateQuests(s);
   }
   return { mods, rates };
 }

@@ -5,7 +5,7 @@ import { sellPlayer } from '../src/engine/market';
 import { generatePlayer, sellValue, transferValue } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { endSeason, evaluateTeam, playMatch, setSeasonPlan } from '../src/engine/teams';
 import type { GameState, Player } from '../src/engine/types';
 
@@ -13,7 +13,7 @@ const CTX = { cpsNoBuffs: 0, incomeBuff: 1, fansMult: 1 };
 
 /** A new game with one extra Smash player on the bench. */
 function withBenchPlayer(age = 24): { s: GameState; p: Player } {
-  const s = createNewGame(0, 5);
+  const s = foundedGame(0, 5);
   const p = generatePlayer(new Rng({ rng: 3 }), { id: 'px', gameId: 'smash', time: 0 });
   p.age = age;
   s.players.px = p;
@@ -28,7 +28,7 @@ function finishSeasons(s: GameState, n: number): void {
 
 describe('season plans', () => {
   it('trade results now against growth later', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const team = s.teams.smash;
     const mods = computeMods(s);
     const rating = () => evaluateTeam(s, team, mods, CTX).rating;
@@ -41,7 +41,7 @@ describe('season plans', () => {
   });
 
   it('are season-level: a mid-season change waits for the next season', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const team = s.teams.smash;
     expect(setSeasonPlan(s, 'smash', 'push')).toBe(true);
     expect(team.plan).toBe('push');
@@ -56,7 +56,7 @@ describe('season plans', () => {
   });
 
   it('switching back to the current plan cancels a queued change', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     s.teams.smash.seasonPlayed = 3;
     setSeasonPlan(s, 'smash', 'push');
     setSeasonPlan(s, 'smash', 'balanced');
@@ -77,7 +77,7 @@ describe('season plans', () => {
 
   it('Push tires starters faster than Development', () => {
     const energyAfter = (plan: 'development' | 'push') => {
-      const s = createNewGame(0, 5);
+      const s = foundedGame(0, 5);
       s.teams.smash.plan = plan;
       const mods = computeMods(s);
       playMatch(s, s.teams.smash, computeRates(s, mods).teams.smash, mods, new Rng({ rng: 2 }));
@@ -117,7 +117,7 @@ describe('ageing and retirement', () => {
   });
 
   it('the founder never ages or retires', () => {
-    const s = createNewGame(0, 5);
+    const s = foundedGame(0, 5);
     const age = s.players.founder.age;
     finishSeasons(s, SEASONS_PER_YEAR * 20);
     expect(s.players.founder).toBeDefined();

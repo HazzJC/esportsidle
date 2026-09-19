@@ -5,7 +5,7 @@ import { UPGRADES } from '../src/data/upgrades';
 import { addBuff } from '../src/engine/buffs';
 import { clickLogo, CROWD_BUFF_ID, HYPE_MAX, HYPE_PER_CLICK } from '../src/engine/clicker';
 import { MAX_FAME_EXP, computeMods, computeRates, fameMultiplier } from '../src/engine/economy';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 import { buyUpgrade, refreshUpgradeUnlocks, storeUpgrades } from '../src/engine/upgrades';
 
 describe('content integrity', () => {
@@ -29,7 +29,7 @@ describe('content integrity', () => {
 
 describe('rates', () => {
   it('sums operation production', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.grinder.owned = 10;
     s.ops.streamer.owned = 2;
     const r = computeRates(s);
@@ -38,7 +38,7 @@ describe('rates', () => {
   });
 
   it('applies grinder doublings to grinders and clicks', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.grinder.owned = 1;
     s.upgrades.grind_0 = 0;
     s.upgrades.grind_1 = 0;
@@ -48,7 +48,7 @@ describe('rates', () => {
   });
 
   it('adds the thousand-game bonus per non-grinder operation', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.grinder.owned = 2;
     s.ops.streamer.owned = 10;
     s.upgrades.grind_3 = 0;
@@ -59,7 +59,7 @@ describe('rates', () => {
   });
 
   it('applies per-owned synergies', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.streamer.owned = 10;
     s.ops.creator.owned = 1;
     s.upgrades.collab_creator = 0;
@@ -69,7 +69,7 @@ describe('rates', () => {
   });
 
   it('caps the fame exponent however many fame upgrades are owned', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     for (const u of UPGRADES) if (u.effects.some((e) => e.kind === 'fameExp')) s.upgrades[u.id] = 0;
     const m = computeMods(s);
     expect(m.fameExp).toBeLessThanOrEqual(MAX_FAME_EXP);
@@ -79,7 +79,7 @@ describe('rates', () => {
   });
 
   it('scales with fans and buffs', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.streamer.owned = 1;
     s.fans = 900;
     const r = computeRates(s);
@@ -91,7 +91,7 @@ describe('rates', () => {
 
 describe('upgrades', () => {
   it('reveals and buys upgrades', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.grinder.owned = 1;
     refreshUpgradeUnlocks(s);
     const store = storeUpgrades(s);
@@ -106,7 +106,7 @@ describe('upgrades', () => {
 
 describe('clicking', () => {
   it('earns cash and fills the hype meter into a crowd buff', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     const clicksNeeded = Math.ceil(HYPE_MAX / HYPE_PER_CLICK);
     let crowd = false;
     for (let i = 0; i < clicksNeeded; i++) crowd = clickLogo(s).crowd || crowd;

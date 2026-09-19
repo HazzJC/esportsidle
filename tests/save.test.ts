@@ -12,7 +12,7 @@ import {
   writeSave,
   type StorageLike,
 } from '../src/engine/save';
-import { createNewGame } from '../src/engine/state';
+import { foundedGame } from './fixtures';
 
 class MemoryStorage implements StorageLike {
   data = new Map<string, string>();
@@ -29,7 +29,7 @@ class MemoryStorage implements StorageLike {
 
 describe('save encoding', () => {
   it('round-trips a game state', () => {
-    const s = createNewGame(1000, 42);
+    const s = foundedGame(1000, 42);
     s.cash = 123456.5;
     s.ops.streamer.owned = 12;
     s.upgrades.grind_0 = 5;
@@ -39,7 +39,7 @@ describe('save encoding', () => {
   });
 
   it('tolerates whitespace in pasted saves', () => {
-    const s = createNewGame(1000, 42);
+    const s = foundedGame(1000, 42);
     const text = encodeSave(s);
     const spaced = `  ${text.slice(0, 20)}\n${text.slice(20)}  `;
     // New games consume RNG while generating the founder and market, so compare to the saved value.
@@ -52,7 +52,7 @@ describe('save encoding', () => {
   });
 
   it('rejects saves from the future', () => {
-    const text = encodeSave(createNewGame(0, 1)).replace(/^ESI\d+/, 'ESI999');
+    const text = encodeSave(foundedGame(0, 1)).replace(/^ESI\d+/, 'ESI999');
     expect(() => decodeSave(text)).toThrow(/newer/);
   });
 
@@ -68,7 +68,7 @@ describe('save encoding', () => {
 describe('storage', () => {
   it('writes, rotates backups and reads back', () => {
     const storage = new MemoryStorage();
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     writeSave(storage, s, 1_000_000);
     expect(storage.getItem(SAVE_KEY)).toBeTruthy();
     expect(storage.getItem(BACKUP_KEYS[0])).toBeTruthy();
@@ -80,7 +80,7 @@ describe('storage', () => {
 
   it('falls back to a backup when the main save is corrupted', () => {
     const storage = new MemoryStorage();
-    const s = createNewGame(0, 7);
+    const s = foundedGame(0, 7);
     s.cash = 99;
     writeSave(storage, s, 1_000_000);
     storage.setItem(SAVE_KEY, 'ESI1.corrupted');
@@ -93,7 +93,7 @@ describe('storage', () => {
 
 describe('progress over time', () => {
   it('advances production online', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     // Grinders generate no fans, so income stays constant over the interval.
     s.ops.grinder.owned = 10;
     // Bench the founder so match prize money doesn't add to operations income.
@@ -104,7 +104,7 @@ describe('progress over time', () => {
   });
 
   it('credits offline progress at the offline rate, capped', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.ops.streamer.owned = 10;
     s.lastSaved = 0;
     const cps = computeRates(s).cps;
@@ -113,14 +113,14 @@ describe('progress over time', () => {
     expect(report!.countedSeconds).toBe(3600);
     expect(s.cash).toBeGreaterThan(cps * 3600 * 0.2 * 0.99);
 
-    const t = createNewGame(0, 1);
+    const t = foundedGame(0, 1);
     t.lastSaved = 0;
     const capped = applyOfflineProgress(t, 48 * 3600 * 1000);
     expect(capped!.countedSeconds).toBe(12 * 3600);
   });
 
   it('ignores short absences', () => {
-    const s = createNewGame(0, 1);
+    const s = foundedGame(0, 1);
     s.lastSaved = 0;
     expect(applyOfflineProgress(s, 5000)).toBeNull();
   });
