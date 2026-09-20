@@ -6,7 +6,11 @@
 >    - Add a new entry under the top **Pending Changes** section marked with `[Status: Pending]`.
 >    - Clearly explain **The Issue / Motivation** (what problem or feature request is being addressed).
 >    - Clearly explain **What Changed** (the exact code, balance, UI, tests, or mechanical changes made).
-> 2. **When beginning or finishing work on top of merged/committed work**:
+> 2. **When modifying, tuning, or replacing existing mechanics**:
+>    - Search earlier patch note entries that introduced or altered that system.
+>    - Apply a markdown strikethrough `~~...~~` over the superseded behavior, number, or rule.
+>    - Add or increment a bracketed note indicating how many times it has evolved: `*(Changed N times since: ...)*`.
+> 3. **When beginning or finishing work on top of merged/committed work**:
 >    - Check if there are any existing `[Status: Pending]` entries that have now been committed to the branch/main history.
 >    - Update their status to `[Status: Committed]` with their commit hash and date.
 >    - Add your new work as `[Status: Pending]`.
@@ -24,6 +28,8 @@
   * Replaced `docs/screenshot.png` with an authentic, high-resolution 1600x920 screenshot rendered directly from the running Svelte 5 engine with live teams, custom kit, operations, and match progression.
   * Rewrote `README.md` to focus on player engagement, core loops (Active Roster vs Commercial Empire), and web play, while completely eliminating em dashes and corporate phrasing.
   * Streamlined local setup instructions to a compact section at the end of the document.
+  * Conducted a historical review across `PATCH_NOTES.md` adding strikethroughs and bracketed evolution counts (`*(Changed N times since: ...)*`) to superseded systems and numbers.
+  * Updated AI contributor instructions in `AGENTS.md` and `PATCH_NOTES.md` to mandate maintaining evolution strikethroughs on prior entries.
 
 ---
 
@@ -91,7 +97,7 @@
   * Stacking hundreds of coaches warped match win probabilities to 100%.
   * Lineup management was cumbersome on both mobile and desktop screens.
 * **What Changed**:
-  * **Interactive Click Chain**: Reduced hype fill requirement from 200 to ~50 clicks. Reaching full hype initiates an interactive chain of popping bubbles granting escalating multipliers up to 20x for 200 seconds.
+  * **Interactive Click Chain**: Reduced hype fill requirement from 200 to ~~50 clicks~~ *(Changed 1 time since: rebalanced to ~80 clicks with decay buffer in de1e324)*. Reaching full hype initiates an interactive chain of popping bubbles granting escalating multipliers up to 20x for 200 seconds.
   * **Staff Soft Cap**: Applied diminishing-return soft caps to Coaches and Analysts after 10 hires, preventing runaway rating spikes.
   * **Role-Based Coaching**: Coaches now automatically promote bench substitutes when the stat benefit exceeds the chemistry penalty.
   * **Squad Drag-and-Drop**: Implemented full drag-and-drop and tap-to-swap lineup interactions with live win-rate preview tooltips.
@@ -108,7 +114,7 @@
 * **What Changed**:
   * **Drop Canvas Clamping**: Clamped Hype Drop coordinates strictly within visible viewports and prevented drops from overlapping.
   * **Prospect Pinning**: Allowed players to pin favorite transfer prospects through market refreshes (1 per game/role).
-  * **Sponsor Payout Formula**: Changed goal payouts to scale based on actual income earned during the contract duration.
+  * **Sponsor Payout Formula**: Changed goal payouts to scale based on ~~20% of actual income earned during the contract duration~~ *(Changed 1 time since: settled at 25% of earned revenue in ef74a7b)*.
   * **Drama Survival**: Allowed orgs to "ride out" drama events over 5 minutes with temporary debuffs instead of forcing a cash buyout.
 
 ---
@@ -201,6 +207,7 @@
   * New players were dropped into an overwhelming interface with all systems unlocked at once, leading to confusion and decision paralysis.
 * **What Changed**:
   * **Step-by-Step Tutorial**: 5-step non-modal guided banner walking through initial clicking, player signing, match viewing, and opening operations.
+  * **First-Player Draft**: ~~Offered 3 tiered Smash Siblings draft prospects ($10, $25, $50)~~ *(Changed 1 time since: replaced in 16e999b with 1 customizable permanent founding player)*.
   * **Quest Board**: Added 22 milestone quests offering choices between cash injections or permanent account-wide perks, with a "Later" deferral option.
 
 ---
@@ -276,7 +283,7 @@
 * **What Changed**:
   * **Founding Charters**: First reset awards 4 Founding Points to pick a permanent archetype (*The Operator*, *The Scout*, *The Promoter*, or *The Coach*).
   * **Run Mandates**: Each prestige run presents 3 random trade-off contracts (e.g., *Esports Academy*: $2\times$ XP at the cost of higher contract fees).
-  * **Front-Office Automation**: Added configurable background automated routines to buy upgrades, auto-fill rosters, auto-equip gear, and auto-sign qualifying sponsors within spend caps.
+  * **Front-Office Automation**: Added configurable background automated routines to buy upgrades, auto-fill rosters, auto-equip gear, and auto-sign qualifying sponsors within spend caps ~~running unconditionally in the background~~ *(Changed 2 times since: automatically paused while browsing store/market tabs in c0174cd, and operations manager upgraded to target priciest affordable building in de1e324)*.
   * **Casual Simulation Model**: Added an offline simulation profile to test game balance for players who check in only a few times daily.
 
 ---
@@ -325,7 +332,7 @@
 * **What Changed**:
   * **Unified Rarity Ladder**: Standardized gear, players, and upgrades across 6 clear color tiers (Common, Uncommon, Rare, Epic, Legendary, Mythic).
   * **Character Detail**: Added ink outlines, radial face shading, idle breathing animation loops, and rendered the *Lucky Charm* directly on jersey sprites.
-  * **Toast Anchoring**: Shifted notifications away from interactive purchase columns to prevent click hijacking.
+  * **Toast Anchoring**: ~~Shifted notifications away from interactive purchase columns to prevent click hijacking~~ *(Changed 2 times since: relocated to top-left with pointer-events pass-through in 402dd94, season end batching in de1e324)*.
 
 ---
 
@@ -359,7 +366,7 @@
 * **The Issue / Motivation**:
   * The game reached a natural ceiling with no long-term meta-reset mechanic, replayability incentives, or persistent progression between runs.
 * **What Changed**:
-  * **Sell the Org**: Prestige reset mechanic awarding Legacy Points based on all-time earnings via a cube-root formula.
+  * **Sell the Org**: Prestige reset mechanic awarding Legacy Points based on all-time earnings via a cube-root formula ~~with a fixed 1e15 (1 Quadrillion) unlock threshold and linear single-point progression~~ *(Changed 3 times since: Founding Charters in 226cf8b, Dynasty Ranks in 4fb61ec, and divisor reduced to 1e12 in c0174cd)*.
   * **37-Node Legacy Tree**: Branching persistent upgrades boosting income, starting capital, scouting range, drop frequency, offline gains, and unlocking automation.
   * **Franchise Players & Legends**: Players could designate franchise players to carry across runs or retire veterans into permanent Legend Coaches.
   * **Hall of Fame & Challenges**: Challenge modes (*Solo Queue*, *Potato League*, *Skeleton Crew*, *No Hype*, *Tabloid Darling*) offering permanent game-wide perks.
@@ -373,8 +380,8 @@
   * Orgs had no creative identity or visual branding, and monetization lacked merchandise sales and commercial brand sponsorships.
 * **What Changed**:
   * **Pixel Art Studio**: Integrated full 16/32/64 canvas editor featuring pencil, fill bucket, line, rectangle, ellipse, color picker, symmetry modes, undo/redo, and automated design appeal scoring.
-  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves.
-  * **Sponsorship Board**: 36 parody sponsors across 12 categories with signing bonuses, passive yields, category perks, bonus goals, and volatile crypto sponsors.
+  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves ~~with static product quality~~ *(Changed 1 time since: merchandise quality upgrade tiers and visual store preview in de1e324)*.
+  * **Sponsorship Board**: 36 parody sponsors across 12 categories with signing bonuses, passive yields, category perks, bonus goals, and volatile crypto sponsors ~~paying flat percentage instant bonuses~~ *(Changed 4 times since: contract payout preview in c0174cd, duration-based calculation in 1e42876, 25% earnings cap in ef74a7b, and front-office auto-sign budget limits in de1e324)*.
 
 ---
 
@@ -384,7 +391,7 @@
 * **The Issue / Motivation**:
   * Active players lacked surprise mini-events, high-stakes tournament bracket experiences, and unpredictable macro events.
 * **What Changed**:
-  * **Hype Drops**: Introduced clickable drops (*LAN Frenzy*, *Prize Pool*, *Clutch Mode*, *Viral Clips*, *Operation Rushes*, and *Hype Train* chains).
+  * **Hype Drops**: Introduced clickable drops (*LAN Frenzy*, *Prize Pool*, *Clutch Mode*, *Viral Clips*, *Operation Rushes*, and *Hype Train* chains) ~~spawning immediately from game start and unconstrained on viewport~~ *(Changed 2 times since: calm start 8-minute early delay in 16e999b, screen boundary clamping and anti-overlap in 1e42876)*.
   * **Tournament Brackets**: Added 3-round bracket tournaments offering trophy rewards, high cash prizes, and fan influxes.
   * **Drama Mechanics**: Optional high-risk rage-bait upgrades turning benign drops into volatile *Drama Drops* requiring costly PR cleanups.
   * **Dynamic World Events**: 23 global world events with interactive decision prompts.
@@ -398,8 +405,8 @@
 * **The Issue / Motivation**:
   * Players suffered no friction or wear-and-tear; orgs had no back-office infrastructure or physical progression space.
 * **What Changed**:
-  * **Staff Department**: Added 9 hireable staff roles with diminishing-return bonus curves ($\text{strength} \times \text{hires}^{0.8}$).
-  * **Player Well-being**: Added match-triggered illness, physical injury, and psychological burnout conditions, managed by staff and bench rotations.
+  * **Staff Department**: Added 9 hireable staff roles with diminishing-return bonus curves ($\text{strength} \times \text{hires}^{0.8}$) ~~scaling indefinitely without soft caps~~ *(Changed 1 time since: soft-capped at 10 hires with role coaching in 28d2f1a)*.
+  * **Player Well-being**: Added match-triggered illness, physical injury, and psychological burnout conditions, ~~requiring manual benching for flu recovery~~ *(Changed 2 times since: calm start early immunity in 16e999b, converted to pure elapsed-time recovery without benching in c0174cd)*.
   * **Interactive Gaming House**: Developed a visual SVG environment upgrading from a cramped *Garage* up to an *Orbital HQ*, complete with real-time desk stations and 16 functional decor items.
 
 ---
@@ -412,8 +419,8 @@
 * **What Changed**:
   * **Parody Games**: Added 12 esports titles across genres with genre stat weights and dynamic popularity walks.
   * **Procedural Players**: Implemented dynamic player generation with 6 core attributes, potential ratings, 32 gameplay traits, morale, energy, and progression levels.
-  * **Match Engine & Leagues**: Team rating calculated as a genre-weighted geometric mean of player stats + gear. Added 10-match seasons, simulated round scoring, promotions, relegations, and prize money scaling.
-  * **Gear System**: 10 distinct gear slots across 15 equipment tiers.
+  * **Match Engine & Leagues**: Team rating calculated as a genre-weighted geometric mean of player stats + gear. Added ~~10-match seasons~~ *(Changed 1 time since: expanded to 16-match seasons in 9692ec7 / M7)*, simulated round scoring, promotions, relegations, and ~~prize money scaling with an operations-linked multiplier~~ *(Changed 2 times since: decoupled from operations share in 9692ec7, and lopsided match smurfing penalty applied in 4fb61ec)*.
+  * **Gear System**: 10 distinct gear slots across 15 equipment tiers ~~using generic placeholder glyphs~~ *(Changed 2 times since: standardized rarity frames in a7e9806, bespoke 160-item SVG vector artwork and 16 tiers in 47f34b4)*.
   * **Transfer Market**: Scouting system with timed market refreshes, contract buyouts, and roster/bench management.
   * **SVG Avatars**: Layered procedural avatar generator with 14 customizable appearance options.
 
@@ -428,9 +435,10 @@
   * **Tick Simulation**: Implemented a fixed-step engine accumulator handling delta times and offline earnings.
   * **Operations**: Created 16 tiered revenue generators with bulk buying (`1x`, `10x`, `100x`, `Max`).
   * **Upgrades**: Generated over 280 procedural and curated upgrades.
-  * **Hype Engine**: Interactive logo clicker with clicking power calculations, hype meter accumulation, and *"Crowd Goes Wild"* burst multipliers.
+  * **Hype Engine**: Interactive logo clicker with clicking power calculations, hype meter accumulation, and *"Crowd Goes Wild"* burst multipliers ~~requiring 200 uninterrupted clicks with rapid 4%/s drain~~ *(Changed 2 times since: redesigned click chain in 28d2f1a, decay buffer and ~80 click tuning in de1e324)*.
   * **Persistence**: Implemented `lz-string` compressed LocalStorage saves, auto-migration hooks, schema versioning, and export/import.
-  * **UI Foundation**: 3-column neon dashboard layout with floating numbers and particle effects.
+  * **UI Foundation**: ~~3-column neon dashboard layout with fixed navy/cyan styling~~ *(Changed 2 times since: standardized 6-rarity theme in a7e9806, custom team kits and semantic interface tone in 3a511e1)*.
+  * **News Ticker**: ~~Static initial headline pool~~ *(Changed 5 times since: 40 state-aware lines in 9692ec7, 110+ jokes in 4fb61ec, unlocked infrastructure lines in 2f5e522, satire flavor in c0174cd, rookie headline retirement in de1e324)*.
 
 ---
 

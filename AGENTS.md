@@ -14,4 +14,5 @@ When changing a timed event, update the activity log `endsAt` alongside the effe
 
 Whenever you complete work or prepare changes for a PR/review, you MUST update `PATCH_NOTES.md`:
 1. Add an entry under `## Pending Changes` marked as `[Status: Pending]`. Detail both **The Issue / Motivation** (what was broken, missing, or requested) and **What Changed** (the exact code, balance, UI, or mechanical updates).
-2. When starting or finishing work on top of previously committed work, inspect `PATCH_NOTES.md` for any remaining `[Status: Pending]` entries that are now committed in git, and update their header to `[Status: Committed]` (including their commit hash and date).
+2. When modifying, tuning, or replacing existing mechanics, locate the earlier patch note entries describing that system, apply a markdown strikethrough `~~...~~` to the superseded behavior, and add/increment a bracketed note indicating how many times it has evolved: `*(Changed N times since: ...)*`.
+3. When starting or finishing work on top of previously committed work, inspect `PATCH_NOTES.md` for any remaining `[Status: Pending]` entries that are now committed in git, and update their header to `[Status: Committed]` (including their commit hash and date).
