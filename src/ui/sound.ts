@@ -11,6 +11,7 @@ export type SoundId =
   | 'achievement'
   | 'drop'
   | 'dropClick'
+  | 'dramaBad'
   | 'crowd'
   | 'win'
   | 'promote'
@@ -187,6 +188,13 @@ export function playSound(id: SoundId, volume: number): void {
       [84, 88, 91, 96].forEach((m, i) => bell(g, midiHz(m), t + i * 0.035, 0.35, 0.08, 2.0, 1.5, 0.35, (i - 1.5) * 0.25));
       thump(g, t, 160, 60, 0.18, 0.25);
       break;
+    case 'dramaBad': {
+      // Bad drama outcome: a descending, gritty minor dissonance and heavy sub thump.
+      thump(g, t, 140, 45, 0.45, 0.4, 2.5);
+      hiss(g, t, 0.25, 0.14, 2200, 400, 2.5, 0.3, 0, 0.01);
+      [63, 60, 56, 51].forEach((m, i) => pluck(g, midiHz(m), t + i * 0.06, 0.3, 0.12, 1800 - i * 300, 0.3, i % 2 === 0 ? -0.2 : 0.2));
+      break;
+    }
     case 'crowd': {
       // The crowd goes wild: a roar that swells and fades, over a riser and a boom.
       hiss(g, t, 1.6, 0.22, 700, 1400, 0.6, 0.4, -0.3, 0.35);

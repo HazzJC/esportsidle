@@ -18,7 +18,7 @@ import {
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
 import { GEAR_COST_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
-import { FIRST_NAMES, LAST_NAMES, NATIONS, SCENE_TAGS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
+import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
 import { playerEasterEgg } from './easterEggs';
@@ -79,8 +79,12 @@ export const STAND_IN_RATING = 5;
 // Generation
 // ---------------------------------------------------------------------------
 
-export function rollRarity(rng: Rng, luck = 0): Rarity {
-  const def = rng.weighted(RARITIES, (r, ) => (r.id === 'rookie' ? r.weight * Math.max(0.2, 1 - luck) : r.weight * (1 + luck * 2)));
+export function rollRarity(rng: Rng, luck = 0, rarityBias?: Rarity): Rarity {
+  const def = rng.weighted(RARITIES, (r) => {
+    let w = r.id === 'rookie' ? r.weight * Math.max(0.2, 1 - luck) : r.weight * (1 + luck * 2);
+    if (rarityBias && r.id === rarityBias) w *= 3.5;
+    return w;
+  });
   return def?.id ?? 'rookie';
 }
 
@@ -88,10 +92,13 @@ export function rollRarity(rng: Rng, luck = 0): Rarity {
 const SCENE_TAG_CHANCE = 0.45;
 
 /**
- * A gamer tag. Most of the time it comes from the scene the player competes in, and often from the
- * pool for their role, so a market listing reads like a real transfer rumour.
+ * A gamer tag. Has a 10% chance to pull a game-specific parody handle based on famous players in that scene.
+ * Most of the remaining time it comes from the scene pool or generic word list.
  */
 export function randomTag(rng: Rng, gameId?: string, role?: number): string {
+  if (gameId && PARODY_TAGS[gameId]?.length && rng.chance(0.1)) {
+    return rng.pick(PARODY_TAGS[gameId]);
+  }
   const scene = gameId ? SCENE_TAGS[gameId] : undefined;
   if (scene && rng.chance(SCENE_TAG_CHANCE)) {
     const forRole = role !== undefined ? scene.byRole?.[role] : undefined;
@@ -141,11 +148,11 @@ export function randomLook(rng: Rng): Appearance {
   };
 }
 
-function rollTraits(rng: Rng, count: number): string[] {
+export function rollTraits(rng: Rng, count: number, traitFocus?: string | null): string[] {
   const chosen: string[] = [];
   let guard = 0;
   while (chosen.length < count && guard++ < 50) {
-    const t = rng.weighted(TRAITS, (x) => x.weight);
+    const t = rng.weighted(TRAITS, (x) => (traitFocus && x.id === traitFocus ? x.weight * 2 : x.weight));
     if (!t || chosen.includes(t.id)) continue;
     const conflict = TRAIT_CONFLICTS.some(([a, b]) => (a === t.id && chosen.includes(b)) || (b === t.id && chosen.includes(a)));
     if (conflict) continue;
@@ -160,11 +167,13 @@ export interface GenerateOptions {
   time: number;
   rarity?: Rarity;
   luck?: number;
+  rarityBias?: Rarity | null;
+  traitFocus?: string | null;
 }
 
 export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
   const game = getGame(opts.gameId);
-  const rarity = RARITY_MAP.get(opts.rarity ?? rollRarity(rng, opts.luck ?? 0))!;
+  const rarity = RARITY_MAP.get(opts.rarity ?? rollRarity(rng, opts.luck ?? 0, opts.rarityBias ?? undefined))!;
   const weights = GENRE_WEIGHTS[game.genre];
   const stats = {} as PlayerStats;
   for (const stat of ['mechanics', 'gameSense', 'teamwork', 'composure', 'charisma', 'stamina'] as StatKey[]) {
@@ -174,7 +183,7 @@ export function generatePlayer(rng: Rng, opts: GenerateOptions): Player {
     stats[stat] = Math.round(value);
   }
   const role = rng.int(0, game.roles.length - 1);
-  const traits = rollTraits(rng, rng.int(rarity.traitMin, rarity.traitMax));
+  const traits = rollTraits(rng, rng.int(rarity.traitMin, rarity.traitMax), opts.traitFocus);
   let potential = Math.round(rng.range(rarity.potMin, rarity.potMax));
   let cut = rarity.cut;
   for (const id of traits) {

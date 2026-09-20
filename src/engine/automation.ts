@@ -154,15 +154,20 @@ function autoUpgrades(s: GameState, mods: Mods): void {
   if (bought) log(s, `Upgrade desk bought ${bought} upgrade${bought === 1 ? '' : 's'}.`);
 }
 
-function autoRoster(s: GameState, mods: Mods): void {
+export function autoRoster(s: GameState, mods: Mods): void {
+  const allowBench = s.prestige.nodes.coach_bench !== undefined && s.automation.roster.buyBench !== false;
   for (const team of Object.values(s.teams)) {
-    if (!team.lineup.includes(null)) continue;
+    const hasLineupSlot = team.lineup.includes(null);
+    const hasBenchSlot = allowBench && team.bench.length < mods.benchSlots;
+    if (!hasLineupSlot && !hasBenchSlot) continue;
     const budget = s.cash * s.automation.roster.maxCostPct;
     const pick = s.market.listings
-      .filter((l) => l.player.gameId === team.gameId && l.price <= budget)
+      .filter((l) => (l.currency ?? 'cash') === 'cash' && l.player.gameId === team.gameId && l.price <= budget)
       .sort((a, b) => skillRating(b.player) - skillRating(a.player))[0];
     if (pick && signListing(s, pick.player.id, mods).ok) {
-      log(s, `Scouts signed ${pick.player.tag} to ${getGame(team.gameId).name} for ${money(pick.price)}.`);
+      const dest = hasLineupSlot ? '' : ' to the bench';
+      const actor = hasLineupSlot ? 'Scouts' : 'Coaches';
+      log(s, `${actor} signed ${pick.player.tag}${dest} for ${getGame(team.gameId).name} for ${money(pick.price)}.`);
     }
   }
 }

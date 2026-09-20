@@ -177,6 +177,12 @@ export function repairState(s: GameState): void {
       addToTeam(s, p, { benchSlots: 100 });
     }
   }
+  if (!s.market.scouting) {
+    s.market.scouting = { gameBias: null, rarityBias: null, traitFocus: null };
+  }
+  if (s.automation.roster.buyBench === undefined) {
+    s.automation.roster.buyBench = false;
+  }
 }
 
 /** Writes the save, rotating backups at most every 10 minutes. */

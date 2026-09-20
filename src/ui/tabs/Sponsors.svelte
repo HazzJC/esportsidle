@@ -33,7 +33,10 @@
   <header class="head">
     <div>
       <h2 class="section-title">Sponsors <span class="dim">{s.sponsors.active.length}/{slots} slots</span></h2>
-      <p class="muted small">Sponsors boost all income and each brand category adds a perk. Only one sponsor per category.</p>
+      <p class="muted small">
+        Sponsors boost income and grant perks during active contracts (<span class="temp-text">Temporary</span>).
+        Completing contract goals awards permanent cash payouts and permanent trophies (<span class="perm-text">Permanent</span>).
+      </p>
     </div>
     {#if unlocked}
       <span class="dim small num">New offers in {fmtTime(Math.max(0, s.sponsors.nextRefresh - s.time))}</span>
@@ -74,12 +77,18 @@
                     <div class="bname">{brand.name}</div>
                     <div class="dim small">{info.label} · {stars(c.tier)}</div>
                   </div>
-                  <span class="bonus num">+{fmtPct(c.incomePct * v.m.sponsorIncomeMult, false, 1)}</span>
+                  <div class="bonus-box">
+                    <span class="tag temp-tag" title="Temporary contract bonus"><Icon name="clock" size={10} /> Temp</span>
+                    <span class="bonus num">+{fmtPct(c.incomePct * v.m.sponsorIncomeMult, false, 1)}</span>
+                  </div>
                 </div>
-                <div class="perk"><Icon name={info.icon} size={13} /> {info.perk}</div>
+                <div class="perk"><span class="tag temp-tag"><Icon name="clock" size={10} /> Temp</span> <Icon name={info.icon} size={13} /> {info.perk}</div>
                 <div class="goal" class:done={c.completed}>
                   <div class="goal-head">
-                    <span>{c.completed ? '✓ ' : ''}{goalLabel(c.goal.kind, c.goal.target)}</span>
+                    <div class="goal-title-wrap">
+                      <span class="tag perm-tag"><Icon name="trophy" size={10} /> Perm</span>
+                      <span>{c.completed ? '✓ ' : ''}{goalLabel(c.goal.kind, c.goal.target)}</span>
+                    </div>
                     <span class="num dim">{fmt(Math.min(progress, c.goal.target))}/{fmt(c.goal.target)}</span>
                   </div>
                   <span class="bar"><i style="width:{Math.min(100, (progress / c.goal.target) * 100)}%"></i></span>
@@ -89,19 +98,20 @@
                     <div
                       class="payout-row small"
                       use:tooltip={() => ({
-                        title: 'Bonus payout',
+                        title: 'Bonus payout (Permanent)',
                         icon: 'handshake',
                         lines: [
-                          `Finishing this goal now pays ${money(payout)}.`,
+                          `Finishing this goal now pays ${money(payout)} into your permanent run cash.`,
                           { text: `It is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of run earnings during the deal${goalDifficultyBonus(c.goal.kind) > 1 ? `, multiplied by ${goalDifficultyBonus(c.goal.kind)} for this harder goal` : ''}, up to ${money(potential)}.`, tone: 'muted' },
                           { text: `A goal finished early pays proportionally less, so let the deal run its ${fmtTime(c.goal.rewardSeconds)}.`, tone: 'muted' },
-                        ],
+                          c.tier >= 2 ? { text: '+1 Permanent trophy to your cabinet on completion.', tone: 'gold' } : '',
+                        ].filter(Boolean) as any,
                       })}
                     >
-                      <span class="dim">Bonus payout now:</span>
+                      <span class="dim">Permanent payout:</span>
                       <b class="payout-val num">{money(payout)}</b>
                       <span class="dim">of {money(potential)}</span>
-                      {#if c.tier >= 2}<span class="dim">· +1 trophy</span>{/if}
+                      {#if c.tier >= 2}<span class="perm-trophy"><Icon name="trophy" size={11} /> +1 trophy</span>{/if}
                     </div>
                   {/if}
                 </div>
@@ -139,25 +149,29 @@
                     <div class="bname">{brand.name}</div>
                     <div class="dim small">{info.label} · {stars(offer.tier)}</div>
                   </div>
-                  <span class="bonus num">+{fmtPct(offer.incomePct * v.m.sponsorIncomeMult, false, 1)}</span>
+                  <div class="bonus-box">
+                    <span class="tag temp-tag" title="Temporary contract bonus"><Icon name="clock" size={10} /> Temp</span>
+                    <span class="bonus num">+{fmtPct(offer.incomePct * v.m.sponsorIncomeMult, false, 1)}</span>
+                  </div>
                 </div>
                 <p class="slogan small">“{brand.slogan}”</p>
-                <div class="perk"><Icon name={info.icon} size={13} /> {info.perk}</div>
+                <div class="perk"><span class="tag temp-tag"><Icon name="clock" size={10} /> Temp</span> <Icon name={info.icon} size={13} /> {info.perk}</div>
                 <div
                   class="goal-offer small"
                   use:tooltip={() => ({
-                    title: 'Bonus goal',
+                    title: 'Bonus goal (Permanent reward)',
                     lines: [
-                      `Worth up to ${money(payout)}${offer.tier >= 2 ? ' and a trophy' : ''}.`,
+                      `Worth up to ${money(payout)} permanent cash${offer.tier >= 2 ? ' and a permanent trophy' : ''}.`,
                       { text: `The bonus is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of run earnings during the deal${goalDifficultyBonus(offer.goal.kind) > 1 ? `, multiplied by ${goalDifficultyBonus(offer.goal.kind)} for difficulty` : ''}. Finishing too early reduces it.`, tone: 'muted' },
                     ],
                   })}
                 >
                   <div class="goal-offer-main">
+                    <span class="tag perm-tag"><Icon name="trophy" size={10} /> Perm</span>
                     <Icon name="badge-check" size={13} />
                     <span>{goalLabel(offer.goal.kind, offer.goal.target)}</span>
                   </div>
-                  <span class="payout-badge num">up to +{money(payout)}</span>
+                  <span class="payout-badge num">up to +{money(payout)}{offer.tier >= 2 ? ' + 🏆' : ''}</span>
                 </div>
                 <div class="foot">
                   <span class="dim small">{fmtTime(offer.duration)} contract</span>
@@ -232,6 +246,55 @@
   }
   .total b {
     color: var(--text);
+  }
+  .temp-text {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .perm-text {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .bonus-box {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    line-height: 1.2;
+  }
+  .tag.temp-tag {
+    color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  }
+  .tag.perm-tag {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .goal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .perm-trophy {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--gold);
+    font-weight: 700;
   }
   .cards {
     display: grid;
