@@ -6,6 +6,32 @@ export const FIRST_NAMES = [
   'Giulia', 'Pablo', 'Lucía', 'Kenji', 'Aiko', 'Riku', 'Sora', 'Tae-yang', 'Ji-woo', 'Bao', 'Linh', 'Nattapong', 'Mali',
   'Rafael', 'Beatriz', 'Mehmet', 'Elif', 'Dmitri', 'Katya', 'Vikram', 'Ananya', 'Tariq', 'Noor', 'Jonas', 'Maja', 'Eero',
   'Aino', 'Casey', 'Riley', 'Quinn', 'Skyler', 'Devon', 'Morgan',
+  'Aaron', 'Abel', 'Adam', 'Adrian', 'Agustín', 'Alan', 'Albert', 'Alberto', 'Alec', 'Alejandro', 'Alessandro', 'Alessio',
+  'Alexander', 'Alfred', 'Ali', 'Alonso', 'Alvaro', 'Amir', 'Anders', 'Andre', 'Andreas', 'Andrei', 'Andrés', 'Angel',
+  'Anthony', 'Antoine', 'Anton', 'Antonio', 'Arthur', 'Artur', 'Asher', 'Astrid', 'August', 'Axel', 'Balthazar', 'Baran',
+  'Bas', 'Bastian', 'Beau', 'Ben', 'Benjamin', 'Björn', 'Bo', 'Bram', 'Brandon', 'Brian', 'Bruno', 'Callum', 'Calvin',
+  'Cameron', 'Can', 'Carlos', 'Casper', 'Cedric', 'Cesar', 'Charles', 'Chris', 'Christian', 'Christos', 'Cillian', 'Clara',
+  'Cole', 'Colin', 'Connor', 'Conrad', 'Cristian', 'Cyril', 'Da-hee', 'Da-won', 'Damian', 'Dan', 'Daniel', 'Danilo',
+  'Dante', 'Dario', 'David', 'Dean', 'Denis', 'Dennis', 'Derrick', 'Dexter', 'Dominic', 'Dong-hyun', 'Dylan', 'Edgar',
+  'Edoardo', 'Eduard', 'Eduardo', 'Edward', 'Elias', 'Eliot', 'Elise', 'Elliot', 'Enzo', 'Eric', 'Erik', 'Ernesto',
+  'Ethan', 'Evan', 'Ezra', 'Fabian', 'Fabio', 'Farhan', 'Felix', 'Fernando', 'Filip', 'Flavio', 'Florian', 'Francesco',
+  'Francisco', 'Franco', 'Gabriel', 'Gaël', 'Gareth', 'Gavin', 'Geoffrey', 'George', 'Giacomo', 'Goran', 'Goran', 'Gregory',
+  'Guilherme', 'Guillermo', 'Gustav', 'Ha-eun', 'Hamza', 'Hao', 'Haris', 'Harrison', 'Haruki', 'Haruto', 'Hector', 'Henrik',
+  'Henry', 'Hiroshi', 'Holden', 'Hunter', 'Hyun-woo', 'Ian', 'Ibrahim', 'Ignacio', 'Igor', 'Iker', 'Ilan', 'Ilya',
+  'Isaac', 'Isaiah', 'Ismael', 'Jaden', 'Jaime', 'James', 'Jamie', 'Jan', 'Jari', 'Jasper', 'Javier', 'Jayden',
+  'Jean', 'Jesse', 'Ji-ho', 'Jin', 'Joao', 'Joaquin', 'Joel', 'Johan', 'Johannes', 'John', 'Jonathan', 'Jose',
+  'Joseph', 'Josh', 'Joshua', 'Josiah', 'Jozef', 'Juan', 'Jules', 'Julian', 'Julio', 'Jun', 'Jung-hoon', 'Justin',
+  'Juho', 'Kacper', 'Kaito', 'Kalle', 'Kasper', 'Keanu', 'Keith', 'Kenta', 'Kevin', 'Kian', 'Kieran', 'Klaus',
+  'Koen', 'Kristian', 'Krzysztof', 'Kuba', 'Kyle', 'Kyung-soo', 'Lance', 'Laurent', 'Lawrence', 'Leandro', 'Leon', 'Leonardo',
+  'Leonid', 'Lev', 'Lewis', 'Liam', 'Linus', 'Logan', 'Louis', 'Luc', 'Lucas', 'Ludwig', 'Luigi', 'Luis',
+  'Maksym', 'Manuel', 'Marc', 'Marcel', 'Marcus', 'Marek', 'Mario', 'Mark', 'Markus', 'Martin', 'Marvin', 'Mason',
+  'Massimo', 'Matias', 'Matteo', 'Matthew', 'Matthias', 'Maurice', 'Max', 'Maxim', 'Maxime', 'Maxwell', 'Micah', 'Michael',
+  'Michal', 'Michel', 'Miguel', 'Mikhail', 'Miles', 'Milo', 'Min-ho', 'Miran', 'Mirko', 'Mohamed', 'Mustafa', 'Nathan',
+  'Niels', 'Nikita', 'Nils', 'Nino', 'Oliver', 'Ollie', 'Orion', 'Otto', 'Pascal', 'Patrik', 'Paul', 'Pedro',
+  'Per', 'Peter', 'Petr', 'Philip', 'Pierre', 'Quentin', 'Raheem', 'Rasmus', 'Ren', 'Ricardo', 'Robin', 'Roman',
+  'Ruben', 'Sacha', 'Santiago', 'Sebastian', 'Sergei', 'Seth', 'Simon', 'Stefan', 'Stian', 'Sven', 'Taiki', 'Taro',
+  'Thiago', 'Thomas', 'Tian', 'Tobias', 'Tristan', 'Valentin', 'Victor', 'Vincent', 'Vlad', 'Wesley', 'Xavier', 'Yannick',
+  'Yosef', 'Yusuf', 'Zachary', 'Zane',
 ];
 
 export const LAST_NAMES = [
@@ -16,6 +42,43 @@ export const LAST_NAMES = [
   'Wilson', 'Evans', 'Clarke', 'Hughes', 'Yilmaz', 'Kaya', 'Horvat', 'Kovač', 'Popescu', 'Nagy', 'Svoboda', 'Andersson',
   'Berg', 'Dahl', 'Moreau', 'Fontaine', 'Reyes', 'Cruz', 'Morales', 'Takahashi', 'Suzuki', 'Choi', 'Jung', 'Huang', 'Liu',
   'Zhang', 'Singh', 'Gupta', 'Rahman', 'Aziz', 'Castillo', 'Vega', 'Fischer', 'Wagner', 'Bauer', 'Lindqvist',
+  'Abadi', 'Abe', 'Adler', 'Ahlstrom', 'Ahmed', 'Aitken', 'Akerman', 'Al-Mansoor', 'Al-Sayed', 'Almeida', 'Alonso', 'Alvarez',
+  'Amari', 'Andersen', 'Andreasson', 'Angelov', 'Antonov', 'Araujo', 'Arvidsson', 'Asher', 'Asplund', 'Auer', 'Babin',
+  'Backman', 'Bakker', 'Balodis', 'Baranov', 'Barbosa', 'Barone', 'Barros', 'Bartlett', 'Basurto', 'Baumann', 'Becker',
+  'Benoit', 'Benson', 'Berglund', 'Bergman', 'Bernat', 'Bielik', 'Blom', 'Blomqvist', 'Bogdanov', 'Bohm', 'Borges',
+  'Borowski', 'Boucher', 'Boyko', 'Brahimi', 'Brandt', 'Braun', 'Brezina', 'Brink', 'Broberg', 'Broch', 'Brun',
+  'Brunner', 'Buday', 'Bustos', 'Calderon', 'Campos', 'Cardoso', 'Carlsen', 'Carvalho', 'Castro', 'Cerny', 'Chambers',
+  'Chang', 'Chatterjee', 'Chauhan', 'Chehab', 'Chowdhury', 'Christensen', 'Christodoulou', 'Clement', 'Colombo', 'Conti', 'Correa',
+  'Cote', 'Coutinho', 'Cruz', 'Csikos', 'Cvetkovic', 'Dae-jung', 'Dahlberg', 'Damgard', 'Danielsson', 'David', 'De Bruyn',
+  'De Jong', 'De Luca', 'De Smet', 'De Vos', 'Delaunay', 'Delgado', 'Demir', 'Deng', 'Deville', 'Di Marco',
+  'Diallo', 'Dias', 'Dimitrov', 'Dobre', 'Doherty', 'Domínguez', 'Donovan', 'Dostál', 'Dragic', 'Duarte', 'Dumont',
+  'Dupont', 'Dvorak', 'Eberhardt', 'Eckert', 'Eder', 'Ek', 'Eklund', 'Ekstrom', 'El-Amin', 'Eliasson', 'Eller',
+  'Englund', 'Engstrom', 'Enoksen', 'Erdogan', 'Eriksson', 'Esposito', 'Esteves', 'Falck', 'Falk', 'Farah', 'Farkas',
+  'Faure', 'Ferrari', 'Ferreira', 'Figueroa', 'Filipovic', 'Finch', 'Flannery', 'Flores', 'Fodor', 'Fomin', 'Forsberg',
+  'Fouquet', 'Fox', 'Fransson', 'Fredriksson', 'Frei', 'Frey', 'Fridman', 'Friis', 'Fuentes', 'Fujimoto', 'Fukuda',
+  'Gagnon', 'Gal', 'Gallo', 'Gao', 'Garcia', 'Gartner', 'Gaspar', 'Gauthier', 'Gavrilov', 'Geiger', 'Geller',
+  'Gheorghe', 'Giacometti', 'Giamatti', 'Giese', 'Gimenez', 'Glaser', 'Gomes', 'Gomez', 'Goncalves', 'Gonzales', 'Gonzalez',
+  'Gordon', 'Gorski', 'Gottlieb', 'Goulet', 'Graf', 'Grant', 'Green', 'Gruber', 'Guerin', 'Guerrero', 'Guevara',
+  'Gustafsson', 'Gutierrez', 'Haas', 'Hadjiev', 'Hagen', 'Hahn', 'Hakala', 'Hakansson', 'Halvorsen', 'Hamalainen', 'Han',
+  'Harada', 'Harju', 'Hartmann', 'Hasan', 'Haugen', 'Hedlund', 'Heikkinen', 'Heine', 'Helminen', 'Hendrix', 'Henning',
+  'Hermansen', 'Hernández', 'Herrmann', 'Hess', 'Heuser', 'Hille', 'Hirsch', 'Hoang', 'Hoffmann', 'Holm', 'Holmberg',
+  'Holst', 'Holt', 'Hopkins', 'Hosek', 'Hruska', 'Huber', 'Huhtala', 'Hulme', 'Hussein', 'Ibragimov', 'Ilic',
+  'Ilyin', 'Imai', 'Inoue', 'Ionescu', 'Irvine', 'Ishikawa', 'Iversen', 'Jablonski', 'Jacobsen', 'Jaervinen', 'Jager',
+  'Jahn', 'Jakobsen', 'Jankovic', 'Janssen', 'Jansson', 'Jazbec', 'Jensen', 'Jeon', 'Jepsen', 'Jiménez', 'Jokinen',
+  'Jonsson', 'Jorgensen', 'Jovanovic', 'Jung', 'Kaczmarek', 'Kadlec', 'Kaestner', 'Kallio', 'Kaminski', 'Kaneko', 'Kang',
+  'Karlsson', 'Katz', 'Kaufmann', 'Kavcic', 'Kecskes', 'Keller', 'Kennedy', 'Kerner', 'Kerr', 'Khalil', 'Khoury',
+  'Kinoshita', 'Kjaer', 'Klausen', 'Klein', 'Klima', 'Kling', 'Klopp', 'Knutsen', 'Kobayashi', 'Koch', 'Kocsis',
+  'Koenig', 'Kohler', 'Koivisto', 'Kokkonen', 'Kolar', 'Kollmann', 'Komarov', 'Kondo', 'Kone', 'Konishi', 'Konrad',
+  'Kopriva', 'Koprivica', 'Korenev', 'Korhonen', 'Kornilov', 'Kos', 'Koskinen', 'Kovacevic', 'Koval', 'Kovalenko', 'Kovaleva',
+  'Kraemer', 'Kraft', 'Kramer', 'Kratky', 'Kraus', 'Krause', 'Krejcí', 'Kresic', 'Kreutzer', 'Kriz', 'Kroll',
+  'Kruger', 'Kruspe', 'Krylov', 'Kucera', 'Kuhn', 'Kulikov', 'Kumar', 'Kunz', 'Kuroda', 'Kurtz', 'Kuznetsov',
+  'Kvaran', 'Laaksonen', 'Laine', 'Lam', 'Lamarre', 'Lambert', 'Lang', 'Lange', 'Larsson', 'Lassila', 'Laursen',
+  'Lavigne', 'Le Roux', 'Lebedev', 'Lebrun', 'Lechner', 'Leclerc', 'Lefebvre', 'Legrand', 'Lehtinen', 'Lehto', 'Leitner',
+  'Lemaitre', 'Lemoine', 'Lenormand', 'Lenz', 'Leonov', 'Leroy', 'Levine', 'Lewandowski', 'Lie', 'Lieb', 'Lind',
+  'Lindberg', 'Lindgren', 'Lindholm', 'Linna', 'Lombardi', 'Longo', 'Lorenz', 'Lovato', 'Lozano', 'Lucas', 'Lund',
+  'Lundberg', 'Lundqvist', 'Lupu', 'Lutz', 'Lyng', 'MacDonald', 'Machado', 'Macias', 'Madsen', 'Maeda', 'Magnusson',
+  'Mahler', 'Maier', 'Makarov', 'Malik', 'Malm', 'Malone', 'Mancini', 'Mandic', 'Mansour', 'Marcello', 'Marchand',
+  'Marchetti', 'Marin', 'Marinescu', 'Marino', 'Markovic', 'Marques', 'Marquez', 'Marsalek', 'Marshall', 'Martelli', 'Martens',
 ];
 
 export const TAG_WORDS = [
@@ -129,6 +192,72 @@ export const SCENE_TAGS: Record<string, SceneTags> = {
       ['Startac', 'Callsign', 'Admiralish', 'Voxcom', 'Vaccum'],
     ],
   },
+};
+
+/**
+ * Parody gamer tags inspired by real famous players in each game's scene.
+ * Has a 10% chance to be selected for any player generated in that game.
+ */
+export const PARODY_TAGS: Record<string, string[]> = {
+  smash: [
+    'Womg0', 'HungryBocks', 'Armadill0', 'Mew2Prince', 'Leffing', 'Zainy', 'aMSaLad',
+    'DrPPM', 'Pluppy', 'AxeBody', 'MkLeopard', 'Sparg00', 'Tweeker', 'Dabooz', 'Lighter',
+    'Rhyddler', 'Sonixx', 'Glutonnee', 'Kenshiro', 'Isaii', 'Wizzrobot', 'CodySchwarm', 'SFAT-free',
+  ],
+  rocket: [
+    'Squishee', 'Jknappy', 'Turbopolka', 'Kaydrop', 'GarrettGG', 'JSTNott', 'MonkeyM00',
+    'Vatiro', 'Zennith', 'DanYell', 'BeastM0de', 'Firstchiller', 'Scrubchiller', 'Kronovio',
+    'Kuxir99', 'ObviouslyJack', 'Rizey', 'Joyyo', 'Ahmaad', 'Itachee', 'Alpaca54',
+  ],
+  counter: [
+    's0mple', 'ZywOoh', 'dev0ce', 'NoKo', 'warmzera', 'Risen', 'GeT_LeFt', 'd0rest',
+    'olofmonster', 'shr00d', 'stewie3k', 'Ropz2', 'm0N3Y', 'shameF', 'prot0Nic',
+    'kenny5', 'flushaa', 'snaxxx', 'pashaTriceps', 'WardiaN', 'capseN', 'SkreaM',
+    'Tw1stz', 'cadiaNo', 'br0ky', 'EliJAY',
+  ],
+  lanes: [
+    'F4ker', 'Capz', 'Perky', 'R00kie', 'Shoemaker', 'Chovvy', 'TheSly', 'Oozy', 'Daft',
+    'Rulez', 'Reckless', 'Jankoz', 'Burgersen', 'Triplelift', 'xPoke', 'DoInB', 'Vypur',
+    'CanYon', 'Owner', 'Zoos', 'Kyria', 'Skout', 'Meik0', 'Gumayoosi', 'TigerHu',
+  ],
+  apex: [
+    'ImperialPal', 'Sweetnightmares', 'Genburger', 'Albralele', 'Reppz', 'Verhulst-ish',
+    'Shivv', 'ace_u', 'Dizzie', 'L0u', 'Monsooner', 'Zer00', 'Hardecky', 'Droppr',
+    'Snipe4down', 'Mandee', 'HerWattson', 'Kn0qd', 'Nafen-ish', 'Gildy',
+  ],
+  valorunt: [
+    'TenX', 'y4y', 'cNeddy', 'Roaster', 'ScreeM', 'Chronicler', 'Derky', 'Aspaz',
+    'Jingggy', 'f0rsak3n', 'Shaw', 'moongetsu', 'Eth4n', 'Dem0n', 'Lesser', 'Smashies',
+    'Vict0r', 'Jamppz', 'ShahZ', 'Alfajam', 'gNats', 'Mak0',
+  ],
+  fortnight: [
+    'Ninjato', 'Booga', 'Mongrel', 'Benjyfishe', 'T-few', 'Clax', 'MrSavvy', 'Aquaa',
+    'EpikOrca', 'Mitr00', 'TaySon-ish', 'Settie', 'Kamii', 'Chapp', 'Vividd', 'Zaytt',
+    'Saff', 'Wolfee', 'Psalmist', 'Bizzler',
+  ],
+  starcrafty: [
+    'Flasher', 'Jaedonger', 'Bisou', 'BoxeD', 'NaDaa', 'Maruu', 'Feral', 'Rainor',
+    'R0gue', 'Renovashun', 'Darkish', 'ByuNny', 'Clemmy', 'Lyfe', 'T-Why', 'Statz',
+    'S0S', 'BigMC', 'MVPro', 'IceTea', 'TeaJa',
+  ],
+  overclock: [
+    'Ryu-je-wrong', 'Proffit', 'JJoSnack', 'Sinatrap', 'Carp', 'Feta', 'Decaye',
+    'Lipp', 'Pelicann', 'Proppr', 'Souper', 'Jester', 'Spayce', 'Furiez', 'Twilite',
+    'Vio12t', 'M0th', 'Alarmer', 'Meero', 'Gulli',
+  ],
+  hearthstoned: [
+    'Deathcoach', 'Thajs', 'Polento', 'Firecat', 'Trumpet', 'Kibbler', 'Reynadd',
+    'Rdoh', 'Savjazz', 'StrifeCrow', 'Amnesiax', 'Pavell', 'Four-sen', 'Haffu',
+    'Toastyy', 'Doggie', 'StanCafka', 'Sjowtime', 'HyperJJ',
+  ],
+  pong: [
+    'No-Lan', 'Allcorn', 'Brushnell', 'Rolf', 'Bear', 'Toruu', 'Miyamotot', 'Carnack',
+    'Romereo', 'Yamaguti', 'Dabnee', 'Slugs', 'Bared', 'Bushy', 'Cassar',
+  ],
+  galactic: [
+    'Wingboy', 'Maverique', 'Starbux', 'Sol0', 'Skytalker', 'Enderr', 'Shep', 'Pickard',
+    'Kurk', 'Adama-ish', 'Apoll0', 'SpaceLord', 'Sledge', 'Dameron', 'Celchu',
+  ],
 };
 
 export const TAG_SUFFIXES = ['', '', '', '', '', 'X', 'TV', 'GG', '99', 'EZ', 'Pro', 'Jr', '1337', 'Main', 'Z', 'Prime', 'OP', '7'];

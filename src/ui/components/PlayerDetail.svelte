@@ -45,6 +45,9 @@
 
   let tab = $state<Tab>('stats');
   let confirmSell = $state(false);
+  let initialLook = $state<Appearance | null>(null);
+  let hasLookChanges = $state(false);
+  let confirmDiscard = $state(false);
 
   const v = $derived(game.view);
   const p = $derived(game.selectedPlayer ? v.s.players[game.selectedPlayer] : undefined);
@@ -56,15 +59,54 @@
     };
   });
 
+  $effect(() => {
+    if (p && !initialLook) {
+      initialLook = { ...p.look };
+    }
+  });
+
   function close() {
     game.selectedPlayer = null;
     game.viewingGear = false;
     confirmSell = false;
+    initialLook = null;
+    hasLookChanges = false;
+    confirmDiscard = false;
+  }
+
+  function handleLookChange(patch: Partial<Appearance>) {
+    if (!p) return;
+    hasLookChanges = true;
+    game.updateLook(p.id, patch);
   }
 
   function randomise() {
     if (!p) return;
+    hasLookChanges = true;
     game.updateLook(p.id, randomLook(new Rng({ rng: (Math.random() * 4294967296) >>> 0 })));
+  }
+
+  function saveAndClose() {
+    hasLookChanges = false;
+    confirmDiscard = false;
+    close();
+  }
+
+  function requestClose() {
+    if (tab === 'look' && hasLookChanges) {
+      confirmDiscard = true;
+      return;
+    }
+    close();
+  }
+
+  function discardAndClose() {
+    if (initialLook && p) {
+      Object.assign(p.look, initialLook);
+    }
+    hasLookChanges = false;
+    confirmDiscard = false;
+    close();
   }
 
   function nationName(code: string): string {
@@ -77,7 +119,23 @@
   {@const rarity = RARITY_MAP.get(p.rarity)!}
   {@const team = v.s.teams[p.gameId]}
   {@const slot = team ? team.lineup.indexOf(p.id) : -1}
-  <Modal title={p.founder ? `${p.tag} · Founder` : `${p.first} “${p.tag}” ${p.last}`} onclose={close} width={860}>
+  <Modal title={p.founder ? `${p.tag} · Founder` : `${p.first} “${p.tag}” ${p.last}`} onclose={requestClose} width={860}>
+    {#snippet headerExtra()}
+      {#if tab === 'look'}
+        <button class="tick-btn" onclick={saveAndClose} title="Save look & close" aria-label="Save visual changes and close">
+          <Icon name="check" size={18} />
+        </button>
+      {/if}
+    {/snippet}
+    {#if confirmDiscard}
+      <div class="discard-banner">
+        <span>Discard visual changes?</span>
+        <div class="discard-actions">
+          <button class="btn danger small" onclick={discardAndClose}>Discard</button>
+          <button class="btn small" onclick={() => (confirmDiscard = false)}>Keep editing</button>
+        </div>
+      </div>
+    {/if}
     <div class="detail" style="--rc:{rarity.color}; --gc:{g.color}">
       <aside class="side">
         <div class="stage">
@@ -236,7 +294,7 @@
             {/if}
             <label class="short">No. <input type="number" min="0" max="99" value={p.jersey} onchange={(e) => game.renamePlayer(p.id, { jersey: Number(e.currentTarget.value) })} /></label>
           </div>
-          <LookEditor look={p.look} onchange={(patch) => game.updateLook(p.id, patch)} onrandomise={randomise} />
+          <LookEditor look={p.look} onchange={handleLookChange} onrandomise={randomise} />
         {:else if tab === 'lineup'}
           {#if team}
             <p>
@@ -607,6 +665,37 @@
   .slot-btn.current {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .tick-btn {
+    border: none;
+    background: transparent;
+    color: var(--green);
+    display: grid;
+    place-items: center;
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .tick-btn:hover {
+    background: color-mix(in srgb, var(--green) 18%, transparent);
+  }
+  .discard-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--red) 12%, var(--panel-2));
+    border: 1px solid color-mix(in srgb, var(--red) 40%, var(--line));
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .discard-actions {
+    display: flex;
+    gap: 8px;
   }
   @media (max-width: 720px) {
     .detail {

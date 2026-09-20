@@ -25,10 +25,50 @@ function takenTags(s: GameState): Set<string> {
   return new Set([...Object.values(s.players).map((p) => p.tag), ...s.market.listings.map((l) => l.player.tag)]);
 }
 
+export const EASTER_EGG_CANDIDATES = [
+  { tag: 'Faker', first: 'Sang-hyeok', last: 'Lee', gameId: 'lanes', nation: 'KR', rarity: 'legend' as const },
+  { tag: 'TheOnlyCook', first: 'The', last: 'Cook', gameId: 'smash', nation: 'GB', rarity: 'legend' as const },
+  { tag: 'Varantha', first: 'Victor', last: 'Varantha', gameId: 'counter', nation: 'CA', rarity: 'star' as const },
+  { tag: 'Bubbystr', first: 'Bubby', last: 'Star', gameId: 'rocket', nation: 'US', rarity: 'star' as const },
+  { tag: 'Nijacat22', first: 'Nija', last: 'Neko', gameId: 'apex', nation: 'JP', rarity: 'star' as const },
+  { tag: 'MrKonRadical', first: 'Konrad', last: 'Radical', gameId: 'valorunt', nation: 'AU', rarity: 'star' as const },
+];
+
+function makeEasterEggListing(s: GameState, rng: Rng, candidate: typeof EASTER_EGG_CANDIDATES[0]): MarketListing {
+  const player = generatePlayer(rng, {
+    id: `p${s.nextId++}`,
+    gameId: candidate.gameId,
+    time: s.time,
+    rarity: candidate.rarity,
+  });
+  player.tag = candidate.tag;
+  player.first = candidate.first;
+  player.last = candidate.last;
+  player.nation = candidate.nation;
+  return {
+    player,
+    price: 5,
+    currency: 'legacy',
+    isEasterEgg: true,
+  };
+}
+
 function makeListing(s: GameState, rng: Rng, gameId: string, mods: ListingMods): MarketListing {
-  const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId, time: s.time, luck: mods.scoutLuck });
+  const hasBias = s.prestige.nodes.scout_bias !== undefined;
+  const hasTrait = s.prestige.nodes.scout_trait !== undefined;
+  const rarityBias = hasBias ? s.market.scouting?.rarityBias : null;
+  const traitFocus = hasTrait ? s.market.scouting?.traitFocus : null;
+
+  const player = generatePlayer(rng, {
+    id: `p${s.nextId++}`,
+    gameId,
+    time: s.time,
+    luck: mods.scoutLuck,
+    rarityBias,
+    traitFocus,
+  });
   player.tag = makeTagUnique(takenTags(s), player.tag);
-  return { player, price: Math.ceil(signingFee(player) * (mods.feeMult ?? 1)) };
+  return { player, price: Math.ceil(signingFee(player) * (mods.feeMult ?? 1)), currency: 'cash' };
 }
 
 /** A pin slot: one per role of one game, so a roster's worth of prospects can be held at most. */
@@ -70,15 +110,33 @@ export function prunePins(s: GameState): void {
 export function refreshMarket(s: GameState, rng: Rng, mods: ListingMods & Pick<Mods, 'marketSize'>): void {
   const unlocked = GAMES.filter((g) => s.games[g.id]?.unlocked);
   if (unlocked.length === 0) return;
+
+  const hasBias = s.prestige.nodes.scout_bias !== undefined;
+  const gameBias = hasBias ? s.market.scouting?.gameBias : null;
+
+  // Very low chance for an easter egg player to appear as a legacy purchase
+  const takenEggTags = new Set([...Object.values(s.players).map((p) => p.tag.toLowerCase()), ...s.market.listings.map((l) => l.player.tag.toLowerCase())]);
+  const availableEggs = EASTER_EGG_CANDIDATES.filter((c) => !takenEggTags.has(c.tag.toLowerCase()) && s.games[c.gameId]?.unlocked);
+  const spawnEgg = availableEggs.length > 0 && rng.chance(0.01);
+  let eggAdded = false;
+
   // Pinned prospects wait out the refresh; the rest of the board is new.
   const held = s.market.listings.filter((l) => isPinned(s, l.player.id));
   const listings: MarketListing[] = [...held];
   for (let i = held.length; i < marketSize(mods); i++) {
+    if (spawnEgg && !eggAdded) {
+      const eggCandidate = rng.pick(availableEggs);
+      listings.push(makeEasterEggListing(s, rng, eggCandidate));
+      eggAdded = true;
+      continue;
+    }
     const game =
       rng.weighted(unlocked, (g) => {
         const team = s.teams[g.id];
         const open = team ? team.lineup.filter((id) => id === null).length : 0;
-        return 1 + open * 2 + g.index * 0.5;
+        let weight = 1 + open * 2 + g.index * 0.5;
+        if (gameBias && g.id === gameBias) weight *= 5;
+        return weight;
       }) ?? unlocked[0];
     listings.push(makeListing(s, rng, game.id, mods));
   }
@@ -126,8 +184,17 @@ export function signListing(s: GameState, playerId: string, mods: Pick<Mods, 'be
   // The first signing in an unlocked game founds its team.
   if (!s.teams[gameId]) ensureTeam(s, gameId);
   if (!hasRosterSpace(s, gameId, mods)) return { ok: false, reason: 'That roster is full. Sell a player or buy more bench space.' };
-  if (s.cash < listing.price) return { ok: false, reason: 'Not enough cash.' };
-  s.cash -= listing.price;
+
+  const isLegacy = listing.currency === 'legacy';
+  if (isLegacy) {
+    if (s.prestige.points < listing.price) return { ok: false, reason: 'Not enough legacy points.' };
+    s.prestige.points -= listing.price;
+    s.prestige.spent += listing.price;
+  } else {
+    if (s.cash < listing.price) return { ok: false, reason: 'Not enough cash.' };
+    s.cash -= listing.price;
+  }
+
   const player: Player = { ...listing.player, fee: listing.price, signedAt: s.time, signedLevel: listing.player.level };
   s.players[player.id] = player;
   addToTeam(s, player, mods);

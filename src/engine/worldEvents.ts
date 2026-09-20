@@ -60,7 +60,12 @@ export function logEvent(s: GameState, entry: Omit<EventLogEntry, 'time'>, toast
 
 export function offerChoice(s: GameState, choice: Omit<PendingChoice, 'id' | 'expiresAt'>): PendingChoice {
   const pending: PendingChoice = { ...choice, id: s.nextId++, expiresAt: s.time + CHOICE_LIFETIME };
-  s.events.pending.push(pending);
+  // Transfer offers (e.g. player poaching) take immediate priority at the top of the queue
+  if (choice.eventId.startsWith('poaching') || choice.eventId.startsWith('contract')) {
+    s.events.pending.unshift(pending);
+  } else {
+    s.events.pending.push(pending);
+  }
   s.stats.eventsSeen++;
   emit({ type: 'choice' });
   return pending;

@@ -9,7 +9,8 @@
     width = 460,
     children,
     footer,
-  }: { title: string; onclose: () => void; width?: number; children: Snippet; footer?: Snippet } = $props();
+    headerExtra,
+  }: { title: string; onclose: () => void; width?: number; children: Snippet; footer?: Snippet; headerExtra?: Snippet } = $props();
 
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') onclose();
@@ -32,7 +33,10 @@
   >
     <header>
       <h2>{title}</h2>
-      <button class="close" onclick={onclose} aria-label="Close"><Icon name="x" size={18} /></button>
+      <div class="header-actions">
+        {#if headerExtra}{@render headerExtra()}{/if}
+        <button class="close" onclick={onclose} aria-label="Close"><Icon name="x" size={18} /></button>
+      </div>
     </header>
     <div class="body">{@render children()}</div>
     {#if footer}<footer>{@render footer()}</footer>{/if}
@@ -64,6 +68,11 @@
     justify-content: space-between;
     padding: 12px 14px;
     border-bottom: 1px solid var(--line);
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   h2 {
     margin: 0;

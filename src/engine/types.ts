@@ -396,6 +396,8 @@ export interface GameProgress {
 export interface MarketListing {
   player: Player;
   price: number;
+  currency?: 'cash' | 'legacy';
+  isEasterEgg?: boolean;
 }
 
 export interface MarketState {
@@ -404,6 +406,11 @@ export interface MarketState {
   rerolls: number;
   /** Player ids held through market refreshes: at most one per game and role. */
   pinned: string[];
+  scouting?: {
+    gameBias: string | null;
+    rarityBias: Rarity | null;
+    traitFocus: string | null;
+  };
 }
 
 export type DropKind = 'hype' | 'drama';
@@ -602,7 +609,7 @@ export interface HallOfFameEntry {
 export interface AutomationSettings {
   operations: { on: boolean; maxCostPct: number };
   upgrades: { on: boolean; maxCostPct: number };
-  roster: { on: boolean; maxCostPct: number };
+  roster: { on: boolean; maxCostPct: number; buyBench?: boolean };
   gear: { on: boolean; maxCostPct: number };
   sponsors: { on: boolean; minTier: number; avoidCrypto: boolean };
   roles: { on: boolean };

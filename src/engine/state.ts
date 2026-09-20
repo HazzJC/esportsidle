@@ -20,7 +20,7 @@ export function createAutomation(): AutomationSettings {
   return {
     operations: { on: false, maxCostPct: 0.1 },
     upgrades: { on: false, maxCostPct: 0.25 },
-    roster: { on: false, maxCostPct: 0.5 },
+    roster: { on: false, maxCostPct: 0.5, buyBench: false },
     gear: { on: false, maxCostPct: 0.01 },
     sponsors: { on: false, minTier: 0, avoidCrypto: true },
     roles: { on: false },
@@ -167,7 +167,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     games: createGames(),
     teams: {},
     players: {},
-    market: { listings: [], nextRefresh: 0, rerolls: 0, pinned: [] },
+    market: { listings: [], nextRefresh: 0, rerolls: 0, pinned: [], scouting: { gameBias: null, rarityBias: null, traitFocus: null } },
     staff: createStaff(),
     decor: {},
     drops: { nextAt: 0, active: [] },

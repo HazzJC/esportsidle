@@ -1,9 +1,12 @@
 <script lang="ts">
   import { AUTOMATIONS, type AutomationId } from '../../data/automation';
   import { CHARTER_MAP } from '../../data/charters';
+  import { GAMES } from '../../data/games';
   import { SPONSOR_TIERS } from '../../data/sponsors';
+  import { TRAITS } from '../../data/traits';
   import { automationUnlocked } from '../../engine/automation';
   import { fmtTime } from '../../engine/format';
+  import { RARITIES } from '../../engine/players';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
 
@@ -25,6 +28,18 @@
   const s = $derived(v.s);
   const charter = $derived(s.prestige.charter ? CHARTER_MAP.get(s.prestige.charter) : undefined);
   const pct = (x: number) => `${parseFloat((x * 100).toFixed(1))}%`;
+
+  const gearShares = $derived.by(() => {
+    const list = [0.005, 0.01, 0.025, 0.05];
+    if (s.prestige.nodes.gear_gear_gear_1 !== undefined) list.push(0.10);
+    if (s.prestige.nodes.gear_gear_gear_2 !== undefined) list.push(0.25);
+    if (s.prestige.nodes.gear_gear_gear_3 !== undefined) list.push(0.50);
+    return list;
+  });
+
+  function sharesFor(id: Exclude<AutomationId, 'sponsors' | 'roles'>): number[] {
+    return id === 'gear' ? gearShares : SHARES[id];
+  }
 </script>
 
 <section class="front-office">
@@ -80,12 +95,68 @@
           <div class="rule small">
             <span>{SHARE_LABEL[a.id]}</span>
             <span class="seg">
-              {#each SHARES[a.id] as share (share)}
+              {#each sharesFor(a.id) as share (share)}
                 <button class:active={current === share} onclick={() => game.setAutomation(a.id, { maxCostPct: share })}>{pct(share)}</button>
               {/each}
             </span>
             <span>of cash {a.id === 'roster' ? 'per signing' : 'each round'}</span>
           </div>
+          {#if a.id === 'roster' && s.prestige.nodes.coach_bench !== undefined}
+            <div class="rule small">
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={s.automation.roster.buyBench ?? false}
+                  onchange={(e) => game.setAutomation('roster', { buyBench: e.currentTarget.checked })}
+                />
+                Buy for bench
+              </label>
+            </div>
+          {/if}
+          {#if a.id === 'roster' && (s.prestige.nodes.scout_bias !== undefined || s.prestige.nodes.scout_trait !== undefined)}
+            <div class="rule small scout-rule">
+              {#if s.prestige.nodes.scout_bias !== undefined}
+                <label>
+                  Game
+                  <select
+                    value={s.market.scouting?.gameBias ?? ''}
+                    onchange={(e) => game.setScouting({ gameBias: e.currentTarget.value || null })}
+                  >
+                    <option value="">Any</option>
+                    {#each GAMES.filter((g) => s.games[g.id]?.unlocked) as g (g.id)}
+                      <option value={g.id}>{g.name}</option>
+                    {/each}
+                  </select>
+                </label>
+                <label>
+                  Tier
+                  <select
+                    value={s.market.scouting?.rarityBias ?? ''}
+                    onchange={(e) => game.setScouting({ rarityBias: (e.currentTarget.value || null) as any })}
+                  >
+                    <option value="">Any</option>
+                    {#each RARITIES as r (r.id)}
+                      <option value={r.id}>{r.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+              {#if s.prestige.nodes.scout_trait !== undefined}
+                <label>
+                  Trait
+                  <select
+                    value={s.market.scouting?.traitFocus ?? ''}
+                    onchange={(e) => game.setScouting({ traitFocus: e.currentTarget.value || null })}
+                  >
+                    <option value="">Any</option>
+                    {#each TRAITS as t (t.id)}
+                      <option value={t.id}>{t.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+            </div>
+          {/if}
         {/if}
       </article>
     {/each}

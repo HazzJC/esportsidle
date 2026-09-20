@@ -34,7 +34,7 @@ import { buyDecor, hireStaff } from '../engine/staff';
 import { Rng } from '../engine/rng';
 import { assignSlot, benchPlayer, changeTier, setSeasonPlan, unlockGame } from '../engine/teams';
 import type { SeasonPlan } from '../data/seasonPlans';
-import type { Appearance, AutomationSettings, TeamKit } from '../engine/types';
+import type { Appearance, AutomationSettings, MarketState, TeamKit } from '../engine/types';
 import { isHexColor } from '../data/palette';
 import { cleanOrgName, completeOnboarding as completeOnboardingState } from '../engine/org';
 import { clearSave, decodeSave, encodeSave, readSave, saveFileName, SAVE_KEY, writeSave, type StorageLike } from '../engine/save';
@@ -426,15 +426,23 @@ class GameStore {
     this.toast({ title, icon: achievements[0].icon, tone: 'gold', achievements, channel: 'achievements' }, defs.length === 1 ? 6000 : 8000);
   }
 
-  toast(t: ToastInput, durationMs = 5000): void {
+  toast(t: ToastInput, durationMs?: number): void {
+    let duration = durationMs;
+    if (duration === undefined) {
+      const text = `${t.title ?? ''} ${t.body ?? ''}`.trim();
+      duration = Math.max(3500, Math.min(12000, 2800 + text.length * 45));
+    }
+    if (t.title?.toLowerCase().includes('season champions')) {
+      duration *= 2;
+    }
     if (t.dedupeKey) {
       if ((this.toastDedupeUntil.get(t.dedupeKey) ?? 0) > Date.now()) return;
-      this.toastDedupeUntil.set(t.dedupeKey, Date.now() + durationMs);
+      this.toastDedupeUntil.set(t.dedupeKey, Date.now() + duration);
     }
     const id = ++this.toastId;
-    this.toasts.push({ ...t, tone: t.tone ?? 'info', id, duration: durationMs });
+    this.toasts.push({ ...t, tone: t.tone ?? 'info', id, duration });
     if (this.toasts.length > MAX_TOASTS) this.toasts.splice(0, this.toasts.length - MAX_TOASTS);
-    setTimeout(() => this.dismissToast(id), durationMs);
+    setTimeout(() => this.dismissToast(id), duration);
   }
 
   dismissToast(id: number): void {
@@ -706,7 +714,7 @@ class GameStore {
   clickDrop(id: number): void {
     const result = clickDrop(this.state, id, this.eventContext());
     if (result) {
-      this.sfx('dropClick');
+      this.sfx(result.tone === 'bad' ? 'dramaBad' : 'dropClick');
       refreshUpgradeUnlocks(this.state);
       this.refresh();
     }
@@ -963,6 +971,18 @@ class GameStore {
   /** Updates one standing order for the front office. */
   setAutomation<K extends keyof AutomationSettings>(id: K, patch: Partial<AutomationSettings[K]>): void {
     Object.assign(this.state.automation[id], patch);
+    this.refresh();
+  }
+
+  /** Updates market scouting preferences (bias towards game, tier, or trait). */
+  setScouting(patch: Partial<NonNullable<MarketState['scouting']>>): void {
+    const m = this.state.market;
+    m.scouting = {
+      gameBias: m.scouting?.gameBias ?? null,
+      rarityBias: m.scouting?.rarityBias ?? null,
+      traitFocus: m.scouting?.traitFocus ?? null,
+      ...patch,
+    };
     this.refresh();
   }
 

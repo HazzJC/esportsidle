@@ -19,8 +19,44 @@
 
 ## Pending Changes
 
-### Player-centric README rewrite and authentic in-game screenshot
+### Targeted Scouting, Coach Bench Automation, Gear Tiers & UX Refinements
 *Status: Pending*
+
+* **The Issue / Motivation**:
+  * **Scout Specialization Missing**: Scouts could only roll prospects randomly across all games and rarities, with no ability to direct recruitment efforts or hunt for desirable player traits.
+  * **Toast Readability & Season Celebrations**: End-of-season popups combine match victories, promotions, and MVP awards into a large message, but toast notifications disappeared after a fixed time regardless of how much text they contained.
+  * **Audio Ambiguity for Bad Drama Outcomes**: When click drops resolved with negative outcomes, they played generic sounds, lacking clear auditory feedback that something went wrong.
+  * **Bench Roster Automation Gap**: Coach automation was limited to signing players into open active lineup slots, ignoring bench depth even when an org had surplus cash.
+  * **Gear Budget Ceiling Restrictions**: Coaches could only be allocated up to 5% of cash reserves for equipment purchases, severely restricting late-game gear development.
+  * **Look Editor Unsaved Changes**: In the player appearance editor, clicking the close button immediately committed visual changes with no explicit save button or confirmation prompt to discard mistakes.
+  * **Market Potential Visibility**: Transfer market prospects displayed current stat bars but hid their potential ceilings until after purchase or opening the details modal.
+  * **Sponsor Temporary vs Permanent Ambiguity**: Players found it difficult to distinguish between temporary contract income/perks and permanent rewards (trophies and completed goal cash payouts).
+  * **Buried Poaching Transfer Offers**: Rival player poaching offers could appear behind other popups or get queued behind low-priority world events.
+  * **Easter Egg Player Scarcity**: Legendary easter egg pros were unavailable for acquisition through standard gameplay.
+  * **Name Variety**: Player names and gamer tags lacked scene-specific flavor and variety across all 12 esports disciplines.
+
+* **What Changed**:
+  * **Targeted Scouting Legacy Nodes**: Added `scout_bias` (15 LP) and `scout_trait` (25 LP) legacy buyables. Unlocking them enables Scout Focus controls in both the Transfer Market tab and Front Office, allowing scouts to bias recruiting towards a specified game (5x weight), rarity tier (3.5x weight), and double the chance (2x weight) of rolling a chosen player trait.
+  * **Content-Proportional Toast Durations**: Scaled toast lifetimes proportionally with message character length (`2800ms + length * 45ms`, clamped between 3.5s and 12s), and doubled display duration for Season Champion popups.
+  * **Bad Drama Audio Cue**: Added synthesized `dramaBad` sound effect (descending gritty minor dissonance and sub thump) triggered when click drops yield negative outcomes.
+  * **Coach Bench Automation**: Added `coach_bench` (18 LP) legacy purchase and Front Office toggle allowing coach automation to sign affordable players directly into bench slots when active lineups are full.
+  * **Gear Gear Gear Budget Tiers**: Added three tiers of `gear_gear_gear` legacy upgrades (15, 50, 200 LP) unlocking front-office equipment spending caps of 10%, 25%, and 50% of cash.
+  * **Player Look Editor Confirmation**: Added a green checkmark button to save and close the look editor, and added a confirmation prompt when clicking the close cross if visual changes were made, preventing accidental edits.
+  * **Market Potential Line Markers**: Added white vertical potential markers on all player stat bars in the transfer market, making prospect ceilings immediately clear prior to purchase.
+  * **Sponsor Benefit Differentiation**: Added visual `Temp` badges to contract income boosts and category perks, paired with `Perm` badges and trophy callouts for goal payouts and trophy cabinet rewards.
+  * **Prioritized Poaching Offers**: Elevated `ChoicePanel` z-index to 1000 and updated `offerChoice` to unshift transfer poaching offers to the front of the pending queue so they cannot be hidden or delayed.
+  * **Market Easter Egg Prospects**: Introduced a 1% chance for easter egg players to appear as rare legacy prospects on the transfer market, purchasable for 5 Legacy points.
+  * **Expanded Name Pool & Scene Parodies**: Added hundreds of diverse first and last names, and added a 10% chance for players in all 12 games to roll parody handles inspired by famous pro esports figures.
+  * **Automated Tests**: Added comprehensive test suite in `tests/new-features.test.ts` covering scouting biases, parody tags, coach bench logic, legacy market signings, toast duration math, and transfer queue prioritization.
+
+---
+
+## Historical Release & Commit Notes
+
+### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
+
+#### `8696dc0` & `d9ece80` — Player-centric README rewrite and authentic in-game screenshot
+*Date: Sun Sep 20 2026* | *Status: Committed*
 
 * **The Issue / Motivation**:
   * The previous README was heavily skewed toward developer instructions, contained excessive em dashes and rigid syntax, and featured an artificial AI-generated mockup that did not reflect actual gameplay.
@@ -32,10 +68,6 @@
   * Updated AI contributor instructions in `AGENTS.md` and `PATCH_NOTES.md` to mandate maintaining evolution strikethroughs on prior entries.
 
 ---
-
-## Historical Release & Commit Notes
-
-### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
 
 #### `ba96581` — Add comprehensive patch notes documentation and AI agent workflow
 *Date: Sun Sep 20 2026* | *Status: Committed*
@@ -59,7 +91,7 @@
 * **What Changed**:
   * **Merchandise Quality Upgrades**: Added purchasable product line quality tiers (`merchQualityCost`, `upgradeMerchQuality`) and visual store previews (`MerchPreview.svelte`), enabling merch scaling to keep pace with late-game operations.
   * **Hype Meter Decay Buffer**: Extended hype grace thresholds and reduced passive decay during short pauses, requiring ~80 clicks to reach maximum crowd mode.
-  * **Consolidated Season End Toast**: Merged title championships, prize payouts, MVP player honours, and tier promotions into a single summary notification.
+  * **Consolidated Season End Toast**: Merged title championships, prize payouts, MVP player honours, and tier promotions into a single summary notification ~~with static display duration~~ *(Changed 1 time since: toast durations now scale proportionally with content length and double for season champions)*.
   * **Smarter Operations Automation**: Legacy operations manager now inspects the available cash budget and prioritizes purchasing the most expensive affordable operation.
   * **Player Retention Bidding**: Dynamically scaled player retention counter-offers based on available cash reserves and career achievements.
   * **Dynamic Ticker Retirement**: Automatically filters out beginner and small-audience ticker headlines once an org reaches arena-scale fanbases.
@@ -145,10 +177,10 @@
 * **What Changed**:
   * **Flu Recovery**: Changed to a pure elapsed-time recovery timer with clear UI countdowns, eliminating forced manual benching.
   * **Contextual Auto-Pause**: Front-office automation now automatically pauses when the player is browsing the Market, Gear, or Lineup screens.
-  * **Auto-Buy Logic Fixes**: Fixed auto-sponsor tier adherence and respected empty roster slot toggles.
-  * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts.
+  * **Auto-Buy Logic Fixes**: Fixed auto-sponsor tier adherence and respected empty roster slot toggles ~~which only bought players for the active lineup~~ *(Changed 1 time since: coaches can now be instructed to buy bench players via coach_bench legacy purchase)*.
+  * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts ~~without visual distinction between contract perks and permanent rewards~~ *(Changed 1 time since: active cards and offers now feature explicit Temporary vs Permanent tags and styling)*.
   * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to $10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session.
-  * **Easter Eggs**: Added special custom traits and buffs for community members and iconic pros (*Faker*, *TheOnlyCook*, *Varantha*, etc.).
+  * **Easter Eggs**: Added special custom traits and buffs for community members and iconic pros (*Faker*, *TheOnlyCook*, *Varantha*, etc.) ~~which were not available in the market~~ *(Changed 1 time since: legendary easter egg players now have a rare 1% chance to appear as legacy prospects on the transfer market)*.
 
 ---
 

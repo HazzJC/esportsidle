@@ -62,7 +62,8 @@
     position: fixed;
     left: 14px;
     bottom: 14px;
-    z-index: 780;
+    z-index: 1000;
+    pointer-events: auto;
     width: min(360px, calc(100vw - 28px));
     padding: 12px;
     display: flex;
