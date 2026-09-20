@@ -18,6 +18,7 @@ export const GAME_VERSION = '0.7.0';
 /** Every routine starts switched off; the player opts in once it unlocks. */
 export function createAutomation(): AutomationSettings {
   return {
+    operations: { on: false, maxCostPct: 0.1 },
     upgrades: { on: false, maxCostPct: 0.25 },
     roster: { on: false, maxCostPct: 0.5 },
     gear: { on: false, maxCostPct: 0.01 },

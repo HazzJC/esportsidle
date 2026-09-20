@@ -24,6 +24,7 @@ export type BuffEffect =
   | { kind: 'income'; mult: number }
   | { kind: 'click'; mult: number }
   | { kind: 'fans'; mult: number }
+  | { kind: 'merch'; mult: number }
   | { kind: 'op'; op: string; mult: number };
 
 export interface Buff {
@@ -300,6 +301,8 @@ export interface CareerMilestone {
 
 export interface RivalState {
   name: string;
+  heat?: number;
+  formerPlayer?: string;
   wins: number;
   losses: number;
   /** Positive: our winning streak against them; negative: theirs. */
@@ -459,6 +462,8 @@ export interface PendingChoice {
 
 export interface EventLogEntry {
   time: number;
+  /** When a timed activity ends. One-off news stays recent for a short time. */
+  endsAt?: number;
   title: string;
   body: string;
   icon: string;
@@ -520,6 +525,7 @@ export interface MerchLine {
   launchedAt: number;
   sold: number;
   revenue: number;
+  quality?: number;
 }
 
 export interface MerchState {
@@ -527,6 +533,7 @@ export interface MerchState {
   trendEndsAt: number;
   unlocked: Record<string, boolean>;
   lines: Record<string, MerchLine>;
+  mania?: { trend: TrendId; productId: string; endsAt: number } | null;
 }
 
 export interface SponsorOffer {
@@ -593,6 +600,7 @@ export interface HallOfFameEntry {
 
 /** Standing orders the front office carries out once each routine is unlocked. */
 export interface AutomationSettings {
+  operations: { on: boolean; maxCostPct: number };
   upgrades: { on: boolean; maxCostPct: number };
   roster: { on: boolean; maxCostPct: number };
   gear: { on: boolean; maxCostPct: number };

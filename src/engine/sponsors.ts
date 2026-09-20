@@ -42,7 +42,11 @@ export function goalLabel(kind: SponsorGoalKind, target: number): string {
 }
 
 /** The share of what the org earned during a deal that finishing its goal pays out. */
-export const GOAL_EARNINGS_SHARE = 0.25;
+export const GOAL_EARNINGS_SHARE = 0.35;
+
+export function goalDifficultyBonus(kind: SponsorGoalKind): number {
+  return kind === 'drops' ? 8 : kind === 'tournaments' ? 5 : kind === 'titles' ? 3 : 1;
+}
 
 /**
  * What finishing a sponsor goal pays.
@@ -57,16 +61,16 @@ export function goalReward(s: GameState, c: SponsorContract, cpsNoBuffs: number)
   const floor = 500 * (c.tier + 1);
   const full = c.goal.rewardSeconds;
   const pace = Math.min(1, Math.max(0, s.time - c.signedAt) / Math.max(1, full));
-  const headline = Math.max(0, cpsNoBuffs) * full;
+  const headline = Math.max(0, cpsNoBuffs) * full * goalDifficultyBonus(c.goal.kind);
   // Contracts signed before this rule have no baseline, so they keep the old headline value.
   const earnedDuring = c.earnedAt === undefined ? null : Math.max(0, s.earnedRun - c.earnedAt);
-  const share = earnedDuring === null ? headline : earnedDuring * GOAL_EARNINGS_SHARE;
+  const share = earnedDuring === null ? headline : earnedDuring * GOAL_EARNINGS_SHARE * goalDifficultyBonus(c.goal.kind);
   return Math.max(floor, Math.min(headline, share) * pace);
 }
 
 /** The most a goal could pay if the deal runs its full goal time: what an offer advertises. */
-export function goalRewardPotential(tier: number, rewardSeconds: number, cpsNoBuffs: number): number {
-  return Math.max(500 * (tier + 1), Math.max(0, cpsNoBuffs) * rewardSeconds);
+export function goalRewardPotential(tier: number, rewardSeconds: number, cpsNoBuffs: number, kind: SponsorGoalKind = 'wins'): number {
+  return Math.max(500 * (tier + 1), Math.max(0, cpsNoBuffs) * rewardSeconds * goalDifficultyBonus(kind));
 }
 
 export function goalProgress(s: GameState, c: SponsorContract): number {
@@ -96,7 +100,7 @@ export function generateOffer(s: GameState, rng: Rng): SponsorOffer {
     id: s.nextId++,
     brandId: brand.id,
     tier,
-    duration: Math.round(rng.range(900, 3600) / 60) * 60,
+    duration: Math.round(rng.range(kind === 'drops' ? 3600 : 900, kind === 'drops' ? 14_400 : 3600) / 60) * 60,
     incomePct: t.incomePct * (brand.category === 'crypto' ? 2 : 1) * rng.range(0.85, 1.15),
     goal: { kind, target: GOAL_INFO[kind].targets[tier], rewardSeconds: t.goalSeconds },
   };

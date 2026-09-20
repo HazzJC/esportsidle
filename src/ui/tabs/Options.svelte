@@ -148,7 +148,7 @@
     <Toggle
       checked={settings.hypeChain}
       label="Click chain"
-      description="When the crowd goes wild, pop the chain of hype bubbles to make it louder and longer."
+      description="A rare Hype Drop starts a bubble chain. Pop quickly to build a louder, longer crowd."
       onchange={(v) => game.setSetting('hypeChain', v)}
     />
     <Toggle checked={settings.newsTicker} label="News ticker" onchange={(v) => game.setSetting('newsTicker', v)} />

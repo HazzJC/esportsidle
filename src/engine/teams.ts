@@ -348,7 +348,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     }
   }
   const opponent = pickOpponent(s, rng);
-  const prize = win ? ev.winPrize : ev.lossPrize;
+  const prize = (win ? ev.winPrize : ev.lossPrize) * (opponent.rival ? 1.5 + Math.min(1.5, (s.rival?.heat ?? 0) * 0.2) : 1);
   // Derby wins against the rival bring in extra fans.
   const fans = (win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO) * (opponent.rival && win ? RIVAL_FANS_MULT : 1);
   earnCash(s, prize, 'match');
@@ -402,7 +402,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     }
     const levels = grantXp(p, baseXp * plan.xp * mood.xp * playerXpMult(p), rng);
     checkPlayerMilestones(s, p, win, levels);
-    applyMorale(p, win ? mood.moraleWin : mood.moraleLoss, mods);
+    applyMorale(p, (win ? mood.moraleWin : mood.moraleLoss) - (opponent.rival && !win ? 4 + Math.min(12, (s.rival?.heat ?? 0) * 2) : 0), mods);
     drainEnergy(p, mods, plan.drain);
     if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench);
   }
@@ -423,7 +423,9 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   const wins = team.seasonWins;
   const record = `${wins}-${SEASON_LENGTH - wins}`;
   const promoted = wins >= PROMOTE_WINS && team.autoPromote;
-  recordSeason(s, team, { title: wins >= TITLE_WINS, promoted, relegated: !promoted && wins <= RELEGATE_WINS && team.tier > 0 });
+  const relegated = !promoted && wins <= RELEGATE_WINS && team.tier > 0;
+  recordSeason(s, team, { title: wins >= TITLE_WINS, promoted, relegated });
+  const resultBody: string[] = [`${record} in the ${tierName(team.tier)}.`];
   if (wins >= TITLE_WINS) {
     team.titles++;
     s.stats.seasonTitles++;
@@ -431,28 +433,30 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
     if (onlyFounder(s)) s.stats.soloFounderTitles++;
     gainTrophies(s, 1);
     addTrophy(s, { kind: 'title', gameId: team.gameId, tier: team.tier, season: team.seasonNumber, mvp: team.lastSeason?.mvp ?? null });
-    const bonus = ev.winPrize * 3;
+    const bonus = ev.winPrize * 12;
     earnCash(s, bonus, 'match');
-    emit({
-      type: 'toast',
-      title: `${game.name}: season champions!`,
-      body: `${record} in the ${tierName(team.tier)}. +1 trophy and ${money(bonus)} bonus.`,
-      icon: 'trophy',
-      tone: 'gold',
-      channel: 'matches',
-    });
+    resultBody.push(`+1 trophy and ${money(bonus)} bonus.`);
+    if (team.lastSeason?.mvp) resultBody.push(`MVP: ${team.lastSeason.mvp}.`);
   }
   if (wins >= PROMOTE_WINS && team.autoPromote) {
     team.tier++;
     resetFormForTier(team);
     team.bestTier = Math.max(team.bestTier, team.tier);
     s.stats.promotions++;
-    emit({ type: 'toast', title: `${game.name}: promoted!`, body: `${record} season. Welcome to the ${tierName(team.tier)}.`, icon: 'trending-up', tone: 'good', channel: 'matches' });
-  } else if (wins <= RELEGATE_WINS && team.tier > 0) {
+    resultBody.push(`Promoted to the ${tierName(team.tier)}.`);
+  } else if (relegated) {
     team.tier--;
     resetFormForTier(team);
-    emit({ type: 'toast', title: `${game.name}: relegated`, body: `${record} season. Back down to the ${tierName(team.tier)}.`, icon: 'trending-down', tone: 'bad', channel: 'matches' });
+    resultBody.push(`Relegated to the ${tierName(team.tier)}.`);
   }
+  if (wins >= TITLE_WINS || promoted || relegated) emit({
+    type: 'toast',
+    title: wins >= TITLE_WINS ? `${game.name}: season champions!` : promoted ? `${game.name}: promoted!` : `${game.name}: relegated`,
+    body: resultBody.join(' '),
+    icon: wins >= TITLE_WINS ? 'trophy' : promoted ? 'trending-up' : 'trending-down',
+    tone: wins >= TITLE_WINS ? 'gold' : promoted ? 'good' : 'bad',
+    channel: 'matches',
+  });
   ageSquad(s, team, rng);
   if (team.nextPlan) {
     team.plan = team.nextPlan;

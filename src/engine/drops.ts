@@ -38,7 +38,7 @@ interface Outcome {
 }
 
 function buffSeconds(ctx: DropContext, seconds: number): number {
-  return seconds * ctx.mods.buffDurationMult;
+  return seconds * ctx.mods.buffDurationMult * ctx.rng.range(0.5, 1.5);
 }
 
 export function dramaShare(s: GameState, mods: Mods): number {
@@ -98,11 +98,50 @@ const OUTCOMES: Outcome[] = [
   {
     id: 'clutch',
     kind: 'hype',
-    weight: (s) => (s.stats.clicksRun >= 50 ? 7 : 2),
+    weight: (s) => (s.earnedRun >= 1e6 ? 7 : 0),
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 13);
       addBuff(s, { id: 'clutch', name: 'Clutch Mode', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×777', duration: d, effects: [{ kind: 'click', mult: 777 }] });
       return { outcome: 'clutch', title: 'Clutch Mode!', body: `Clicks are worth ×777 for ${fmtTime(d)}. Click!`, icon: 'mouse-pointer-click', tone: 'gold' };
+    },
+  },
+  {
+    id: 'legendary_clutch',
+    kind: 'hype',
+    weight: (s) => (s.earnedRun >= 1e9 ? 1 : 0),
+    apply: (s, ctx) => {
+      const d = buffSeconds(ctx, 8);
+      addBuff(s, { id: 'legendary_clutch', name: 'Legendary Clutch', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×7777', duration: d, effects: [{ kind: 'click', mult: 7777 }] });
+      return { outcome: 'legendary_clutch', title: 'Legendary Clutch!', body: `Clicks are worth ×7777 for ${fmtTime(d)}.`, icon: 'mouse-pointer-click', tone: 'gold' };
+    },
+  },
+  {
+    id: 'bubble_chain',
+    kind: 'hype',
+    weight: (s) => s.settings.hypeChain !== false ? 2 : 0,
+    apply: () => {
+      emit({ type: 'hypeChain' });
+      return { outcome: 'bubble_chain', title: 'Hype bubbles!', body: 'Pop the bubbles before they fade to build a huge crowd.', icon: 'megaphone', tone: 'gold' };
+    },
+  },
+  {
+    id: 'merch_surge',
+    kind: 'hype',
+    weight: (s) => Object.values(s.merch.lines).some((line) => line.designId) ? 12 : 0,
+    apply: (s, ctx) => {
+      const d = buffSeconds(ctx, 90);
+      addBuff(s, { id: 'merch_surge', name: 'Merch Spotlight', icon: 'shirt', tone: 'good', desc: 'Merch sales ×5', duration: d, effects: [{ kind: 'merch', mult: 5 }] });
+      return { outcome: 'merch_surge', title: 'Merch Spotlight!', body: `Merch sales ×5 for ${fmtTime(d)}.`, icon: 'shirt', tone: 'gold' };
+    },
+  },
+  {
+    id: 'fan_meet',
+    kind: 'hype',
+    weight: () => 11,
+    apply: (s, ctx) => {
+      const fans = Math.max(100, s.fans * 0.08, ctx.rates.fansPerSec * 900);
+      gainFans(s, fans);
+      return { outcome: 'fan_meet', title: 'Fan Meet!', body: `A surprise appearance brings in ${fmt(fans)} fans.`, icon: 'heart', tone: 'gold' };
     },
   },
   {

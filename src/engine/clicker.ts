@@ -5,13 +5,11 @@ import { earnCash } from './wallet';
 import type { GameState } from './types';
 
 export const HYPE_MAX = 100;
-/**
- * Filling the meter used to take 200 clicks against a drain that outran a steady hand, so most
- * players never saw a crowd at all. It is now about 50 clicks, and the drain is gentler.
- */
-export const HYPE_PER_CLICK = 2;
-export const HYPE_DECAY_PER_SEC = 2.5;
-export const HYPE_IDLE_GRACE = 3;
+/** A crowd takes 80 unboosted clicks. Pauses remain useful, but a long absence empties the meter. */
+export const HYPE_PER_CLICK = 1.25;
+export const HYPE_DECAY_PER_SEC = 0.12;
+export const HYPE_DECAY_ACCELERATION = 0.018;
+export const HYPE_IDLE_GRACE = 4;
 export const CROWD_BUFF_ID = 'crowd';
 export const CROWD_DURATION = 30;
 export const CROWD_MULT = 2;
@@ -130,7 +128,11 @@ export function clickLogo(s: GameState): ClickResult {
 /** Hype slowly drains when the player stops clicking. */
 export function decayHype(s: GameState, dt: number): void {
   if (s.hype <= 0) return;
-  if (s.time - s.lastClickTime > HYPE_IDLE_GRACE) {
-    s.hype = Math.max(0, s.hype - HYPE_DECAY_PER_SEC * dt);
-  }
+  const idle = s.time - s.lastClickTime - HYPE_IDLE_GRACE;
+  if (idle <= 0) return;
+  // Integrate the increasing drain over this tick; this also behaves well for offline ticks.
+  const start = Math.max(0, idle - dt);
+  const drain = HYPE_DECAY_PER_SEC * (idle - start)
+    + HYPE_DECAY_ACCELERATION * (idle * idle - start * start) / 2;
+  s.hype = Math.max(0, s.hype - drain);
 }

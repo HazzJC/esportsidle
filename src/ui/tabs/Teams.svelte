@@ -268,7 +268,6 @@
               ondrop={(e) => (e.preventDefault(), dropOnSlot(g.id, slot))}
               role="presentation"
             >
-              <span class="role">{g.roles[slot]}</span>
               {#if delta !== null}
                 <span class="delta num" class:good={delta > 0} class:bad={delta < 0}>{delta > 0 ? '+' : ''}{delta}% win</span>
               {/if}
@@ -284,6 +283,7 @@
                   onclick={() => (moving ? dropOnSlot(g.id, slot) : pick(g.id, p.id))}
                   use:tooltip={() => playerTip(p.id)}
                 >
+                  <span class="station-screen"><Icon name="monitor" size={19} /><i></i></span>
                   <span
                     class="info"
                     role="button"
@@ -302,10 +302,12 @@
                 </button>
               {:else}
                 <button class="slot-empty" onclick={() => (moving?.gameId === g.id ? dropOnSlot(g.id, slot) : openMarket(g.id))}>
-                  <Icon name={moving?.gameId === g.id ? 'arrow-down' : 'user-plus'} size={20} />
+                  <span class="station-screen"><Icon name="monitor" size={19} /><i></i></span>
+                  <Icon name={moving?.gameId === g.id ? 'arrow-down' : 'user-plus'} size={17} />
                   <span>{moving?.gameId === g.id ? 'Put here' : 'Sign player'}</span>
                 </button>
               {/if}
+              <span class="role">{g.roles[slot]}</span>
             </div>
           {/each}
         </div>
@@ -318,7 +320,7 @@
             ondrop={(e) => (e.preventDefault(), dropOnBench(g.id))}
             role="presentation"
           >
-            <span class="muted small">Bench</span>
+            <span class="bench-label"><Icon name="bed" size={15} /> Bench · drag a player here to rest</span>
             {#each team.bench as id (id)}
               {@const p = v.s.players[id]}
               {#if p}
@@ -331,7 +333,7 @@
                   onclick={() => pick(g.id, p.id)}
                   use:tooltip={() => playerTip(p.id)}
                 >
-                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={26} mode="bust" tag={p.tag} />
+                  <Avatar look={p.look} gear={p.gear} primary={teamKit(v.s, p.gameId).primary} secondary={teamKit(v.s, p.gameId).secondary} size={42} mode="bust" tag={p.tag} />
                   <span>{p.tag}</span>
                 </button>
               {/if}
@@ -819,7 +821,11 @@
   .lineup {
     display: grid;
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    gap: 6px;
+    gap: 10px;
+    padding: 14px 10px 10px;
+    border-radius: 13px;
+    background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--gc) 14%, transparent), transparent 70%), var(--panel);
+    border: 1px solid color-mix(in srgb, var(--gc) 28%, var(--line));
   }
   .slot {
     display: flex;
@@ -828,10 +834,11 @@
     min-width: 0;
   }
   .role {
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--dim);
+    color: var(--gc);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -847,10 +854,15 @@
     padding: 6px 4px;
     border-radius: 9px;
     border: 1px solid var(--line-2);
-    background: rgba(0, 0, 0, 0.2);
-    min-height: 104px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gc) 13%, var(--bg-2)), var(--bg-2));
+    min-height: 142px;
     justify-content: center;
+    box-shadow: 0 5px 0 rgba(0,0,0,.32), inset 0 -4px 0 color-mix(in srgb, var(--gc) 32%, transparent);
+    cursor: grab;
   }
+  .slot-player:active,.bench-player:active { cursor: grabbing; }
+  .station-screen { position:relative; display:grid; place-items:center; width:56px; height:32px; margin-bottom:1px; border:2px solid var(--gc); border-radius:5px; background:#111827; color:var(--gc); box-shadow:0 0 12px color-mix(in srgb,var(--gc) 38%,transparent); }
+  .station-screen i { position:absolute; bottom:-6px; width:24px; height:3px; border-radius:2px; background:var(--gc); }
   .slot-player:hover {
     border-color: var(--gc);
   }
@@ -910,20 +922,29 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 9px;
+    min-height: 86px;
+    padding: 12px;
+    border: 1px dashed color-mix(in srgb,var(--gc) 45%,var(--line));
+    border-radius: 12px;
+    background: repeating-linear-gradient(90deg,transparent 0 32px,rgba(255,255,255,.015) 32px 34px),var(--panel);
   }
+  .bench-label { display:flex; align-items:center; gap:5px; width:100%; color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
   .bench-player {
     display: flex;
+    flex-direction:column;
     align-items: center;
-    gap: 5px;
-    padding: 2px 8px 2px 2px;
-    border-radius: 999px;
+    gap: 3px;
+    min-width:78px;
+    padding: 7px;
+    border-radius: 9px;
     border: 1px solid var(--line-2);
-    background: rgba(0, 0, 0, 0.2);
+    background: color-mix(in srgb,var(--gc) 8%,var(--bg-2));
     font-size: 12px;
     font-family: var(--font-ui);
     font-weight: 700;
     overflow: hidden;
+    cursor:grab;
   }
   .bench-player :global(svg) {
     border-radius: 50%;

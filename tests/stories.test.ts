@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TITLE_WINS } from '../src/data/leagues';
 import { computeRates } from '../src/engine/economy';
+import { subscribe } from '../src/engine/bus';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
@@ -75,6 +76,28 @@ describe('the rival', () => {
 });
 
 describe('season recaps and the trophy shelf', () => {
+  it('announces a title, bonus, MVP, and promotion together', () => {
+    const s = foundedGame(0, 6);
+    const team = s.teams.smash;
+    team.seasonWins = TITLE_WINS;
+    team.seasonPlayed = 16;
+    team.seasonStats = { founder: TITLE_WINS };
+    const notices: string[] = [];
+    const unsubscribe = subscribe((event) => {
+      if (event.type === 'toast') notices.push(`${event.title} ${event.body ?? ''}`);
+    });
+    try {
+      endSeason(s, team, computeRates(s).teams.smash);
+    } finally {
+      unsubscribe();
+    }
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toContain('season champions');
+    expect(notices[0]).toContain('bonus');
+    expect(notices[0]).toContain(`MVP: ${s.players.founder.tag}`);
+    expect(notices[0]).toContain('Promoted');
+  });
+
   it('records each season with its outcome and MVP', () => {
     const s = foundedGame(0, 6);
     const team = s.teams.smash;

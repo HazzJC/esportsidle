@@ -15,7 +15,9 @@ export const NOVELTY_SECONDS = 1800;
 export const NOVELTY_FLOOR = 0.25;
 export const TREND_SECONDS = 900;
 export const TRENDING_THRESHOLD = 0.6;
-export const TREND_BONUS = 1.25;
+export const TREND_BONUS = 2.5;
+export const MANIA_BONUS = 7;
+export const MAX_MERCH_QUALITY = 10;
 export const MERCH_UNLOCK_FANS = 25_000;
 
 export function clampPrice(price: number): number {
@@ -64,11 +66,12 @@ export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, inco
     const trending = appeal.trend >= TRENDING_THRESHOLD;
     const novelty = noveltyOf(line, s.time, mods);
     const pf = priceFactor(line.price, trending);
-    const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1) * novelty * pf;
-    // The income-linked share is capped by design; merch multipliers only boost fan-driven sales,
-    // otherwise merch would multiply operations income without bound.
-    const fromIncome = cpsNoBuffs * product.cpsShare * quality;
-    const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.05 * quality * mods.merchMult;
+    const mania = s.merch.mania?.endsAt && s.merch.mania.endsAt > s.time
+      && (s.merch.mania.productId === product.id || (s.merch.mania.trend === s.merch.trend && trending));
+    const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1)
+      * (mania ? MANIA_BONUS : 1) * novelty * pf * (1 + (line.quality ?? 0) * 0.35);
+    const fromIncome = cpsNoBuffs * product.cpsShare * 2 * quality * mods.merchMult;
+    const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.12 * quality * mods.merchMult;
     const lineCps = (fromIncome + fromFans) * incomeBuff;
     const profitPerUnit = product.basePrice * Math.max(0.01, clampPrice(line.price) - UNIT_COST);
     lines[product.id] = {
@@ -93,14 +96,21 @@ export function pickTrend(rng: Rng, current: TrendId): TrendId {
 export function rotateTrend(s: GameState, rng: Rng, announce: boolean): void {
   s.merch.trend = pickTrend(rng, s.merch.trend);
   s.merch.trendEndsAt = s.time + TREND_SECONDS;
+  s.merch.mania = null;
+  if (Object.keys(s.merch.unlocked).length > 0 && rng.chance(0.25)) {
+    const products = PRODUCTS.filter((p) => s.merch.unlocked[p.id]);
+    s.merch.mania = { trend: s.merch.trend, productId: rng.pick(products).id, endsAt: s.time + rng.range(300, 600) };
+  }
   if (announce && isMerchUnlocked(s)) {
     const trend = TREND_MAP.get(s.merch.trend);
     emit({ type: 'toast', title: `Merch trend: ${trend?.name}`, body: trend?.desc, icon: trend?.icon ?? 'shirt', tone: 'info', channel: 'business' });
+    if (s.merch.mania) emit({ type: 'toast', title: 'Merch mania!', body: `${PRODUCT_MAP.get(s.merch.mania.productId)?.name} and matching ${trend?.name} designs are selling wildly for a few minutes.`, icon: 'flame', tone: 'gold', channel: 'business' });
   }
 }
 
 /** Books merch sales for the tick and rotates trends. */
 export function updateMerch(s: GameState, dt: number, factor: number, rates: Rates, rng: Rng, offline: boolean): void {
+  if (s.merch.mania && s.time >= s.merch.mania.endsAt) s.merch.mania = null;
   if (s.merch.trendEndsAt <= 0) s.merch.trendEndsAt = s.time + TREND_SECONDS;
   else if (s.time >= s.merch.trendEndsAt) rotateTrend(s, rng, !offline);
   for (const [id, rate] of Object.entries(rates.merchLines)) {
@@ -121,7 +131,7 @@ export function unlockProduct(s: GameState, productId: string): boolean {
   if (s.fansRun < product.unlockFans || s.cash < product.unlockCost) return false;
   s.cash -= product.unlockCost;
   s.merch.unlocked[productId] = true;
-  s.merch.lines[productId] = { designId: null, price: 1, launchedAt: s.time, sold: 0, revenue: 0 };
+  s.merch.lines[productId] = { designId: null, price: 1, launchedAt: s.time, sold: 0, revenue: 0, quality: 0 };
   return true;
 }
 
@@ -139,5 +149,20 @@ export function setLinePrice(s: GameState, productId: string, price: number): bo
   const line = s.merch.lines[productId];
   if (!line) return false;
   line.price = Math.round(clampPrice(price) * 100) / 100;
+  return true;
+}
+
+export function merchQualityCost(s: GameState, productId: string): number {
+  const product = PRODUCT_MAP.get(productId);
+  const line = s.merch.lines[productId];
+  if (!product || !line || (line.quality ?? 0) >= MAX_MERCH_QUALITY) return Infinity;
+  return Math.ceil(product.unlockCost * 0.4 * Math.pow(2, line.quality ?? 0));
+}
+
+export function upgradeMerchQuality(s: GameState, productId: string): boolean {
+  const cost = merchQualityCost(s, productId);
+  if (!Number.isFinite(cost) || s.cash < cost) return false;
+  s.cash -= cost;
+  s.merch.lines[productId].quality = (s.merch.lines[productId].quality ?? 0) + 1;
   return true;
 }

@@ -1,6 +1,6 @@
 import type { GameState } from '../engine/types';
 
-export type AutomationId = 'upgrades' | 'roster' | 'gear' | 'sponsors' | 'roles';
+export type AutomationId = 'operations' | 'upgrades' | 'roster' | 'gear' | 'sponsors' | 'roles';
 
 export interface AutomationDef {
   id: AutomationId;
@@ -15,6 +15,12 @@ export interface AutomationDef {
 }
 
 export const AUTOMATIONS: AutomationDef[] = [
+  {
+    id: 'operations', name: 'Operations manager', icon: 'building', owner: 'Operations manager',
+    desc: 'Buys the most expensive affordable building first, then works down the list within your cash budget.',
+    requirement: 'Buy the Operations Manager legacy unlock',
+    unlock: (s) => s.prestige.nodes.operations_manager !== undefined,
+  },
   {
     id: 'upgrades',
     name: 'Upgrade desk',

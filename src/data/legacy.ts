@@ -215,6 +215,7 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
   { id: 'sponsor_income', name: 'Household Name', desc: 'Sponsor income ×1.5.', icon: 'handshake', cost: 120, requires: ['sponsor_slot'], x: 10, y: 2, effects: [{ kind: 'sponsorIncome', mult: 1.5 }] },
   { id: 'keep_merch', name: 'Merch Archive', desc: 'Merch products stay unlocked when you sell the org.', icon: 'shirt', cost: 35, requires: ['sponsor_slot'], x: 10, y: 3, special: [{ kind: 'keepMerch' }] },
   { id: 'merch_mult', name: 'Cult Merch', desc: 'Merch sales ×2.', icon: 'shirt', cost: 150, requires: ['keep_merch'], x: 10, y: 4, effects: [{ kind: 'merchMult', mult: 2 }] },
+  { id: 'operations_manager', name: 'Operations Manager', desc: 'Unlock an automatic building buyer with a cash budget you set.', icon: 'building', cost: 30, requires: ['legacy'], x: 11, y: 1 },
 ];
 
 export const LEGACY_NODE_MAP: Map<string, LegacyNodeDef> = new Map(LEGACY_NODES.map((n) => [n.id, n]));

@@ -41,7 +41,7 @@ export function pickOpponent(s: GameState, rng: Rng): { name: string; rival: boo
     s.rival = newRival(s, rng);
     emit({ type: 'toast', title: 'A rivalry begins', body: `${s.rival.name} have noticed ${s.org.name}. Expect to see a lot of them.`, icon: 'swords', tone: 'info', channel: 'matches' });
   }
-  if (s.rival && rng.chance(RIVAL_CHANCE)) return { name: s.rival.name, rival: true };
+  if (s.rival && rng.chance(Math.min(0.5, RIVAL_CHANCE + (s.rival.heat ?? 0) * 0.04))) return { name: s.rival.name, rival: true };
   const others = RIVAL_ORGS.filter((n) => n !== s.rival?.name);
   return { name: rng.pick(others), rival: false };
 }
@@ -119,7 +119,8 @@ export function recordSeason(s: GameState, team: TeamState, flags: { title: bool
   s.seasonLog.unshift(recap);
   if (s.seasonLog.length > SEASON_LOG_SIZE) s.seasonLog.length = SEASON_LOG_SIZE;
   team.lastSeason = recap;
-  if (flags.title && mvp) addMilestone(s, mvp, `mvp-${team.gameId}-${team.seasonNumber}-${recap.run}`, `Season MVP: ${tierName(team.tier)} champions`, true);
+  // The season result announces its MVP in the same popup.
+  if (flags.title && mvp) addMilestone(s, mvp, `mvp-${team.gameId}-${team.seasonNumber}-${recap.run}`, `Season MVP: ${tierName(team.tier)} champions`, false);
   return recap;
 }
 

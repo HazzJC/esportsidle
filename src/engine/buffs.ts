@@ -15,6 +15,7 @@ export interface BuffTotals {
   income: number;
   click: number;
   fans: number;
+  merch: number;
   op: Record<string, number>;
 }
 
@@ -61,7 +62,7 @@ export function expireBuffs(s: GameState): Buff[] {
 }
 
 export function buffTotals(s: GameState): BuffTotals {
-  const totals: BuffTotals = { income: 1, click: 1, fans: 1, op: {} };
+  const totals: BuffTotals = { income: 1, click: 1, fans: 1, merch: 1, op: {} };
   for (const buff of s.buffs) {
     if (buff.endsAt <= s.time) continue;
     for (const e of buff.effects) {
@@ -74,6 +75,9 @@ export function buffTotals(s: GameState): BuffTotals {
           break;
         case 'fans':
           totals.fans *= e.mult;
+          break;
+        case 'merch':
+          totals.merch *= e.mult;
           break;
         case 'op':
           totals.op[e.op] = (totals.op[e.op] ?? 1) * e.mult;

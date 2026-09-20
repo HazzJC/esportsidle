@@ -3,6 +3,8 @@ import { CHARTER_MAP } from '../data/charters';
 import { getGame } from '../data/games';
 import { GEAR_SLOTS, type GearSlot } from '../data/gear';
 import { BRAND_MAP } from '../data/sponsors';
+import { OPERATIONS } from '../data/operations';
+import { buyOperation, unitPrice } from './operations';
 import { money } from './format';
 import { signListing } from './market';
 import { buyGear, gearUpgradeCost, isAvailable, playerRating, skillRating } from './players';
@@ -46,11 +48,27 @@ export interface AutomationOptions {
 }
 
 export function runAutomation(s: GameState, mods: Mods, options?: AutomationOptions): void {
+  if (automationActive(s, 'operations')) autoOperations(s, mods);
   if (automationActive(s, 'upgrades')) autoUpgrades(s, mods);
   if (!options?.pauseMarket && automationActive(s, 'roster')) autoRoster(s, mods);
   if (!options?.pauseGear && automationActive(s, 'gear')) autoGear(s, mods);
   if (!options?.pauseTeams && automationActive(s, 'roles')) autoRoles(s);
   if (automationActive(s, 'sponsors')) autoSponsors(s, mods);
+}
+
+export function autoOperations(s: GameState, mods: Mods): void {
+  let budget = s.cash * s.automation.operations.maxCostPct;
+  let bought = 0;
+  for (const op of [...OPERATIONS].reverse().filter((op) => op.index >= 3)) {
+    // One unit per building per pass keeps the manager moving down the list.
+    const price = unitPrice(op, s.ops[op.id].owned, mods.opCostMult);
+    if (price > budget || price > s.cash) continue;
+    if (buyOperation(s, op.id, 1)) {
+      budget -= price;
+      bought++;
+    }
+  }
+  if (bought) log(s, `Operations manager bought ${bought} building${bought === 1 ? '' : 's'}, starting with the priciest.`);
 }
 
 /** The rating gain a swap must be worth before coaches disturb a settled lineup. */

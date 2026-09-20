@@ -22,6 +22,8 @@
       <b class="name">{rival.name}</b>
       <span class="h2h num"><span class="good">{rival.wins}</span> – <span class="bad">{rival.losses}</span></span>
       <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · derby matches against your rival bring double fans</span>
+      {#if rival.formerPlayer}<span class="bad small">Their new signing: your former player {rival.formerPlayer}</span>{/if}
+      {#if rival.heat}<span class="small">Rivalry heat {rival.heat}/8 · bigger match payouts, harder morale hits on losses</span>{/if}
     {:else}
       <span class="muted small">
         {s.stats.matchesWon + s.stats.matchesLost < RIVAL_AFTER_MATCHES ? 'Nobody has noticed you yet. Keep playing.' : 'The next challenger is sizing you up.'}

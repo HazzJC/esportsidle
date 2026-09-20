@@ -18,7 +18,7 @@ import {
   updateDesign,
   type DesignDraft,
 } from '../engine/designs';
-import { setLineDesign, setLinePrice, unlockProduct } from '../engine/merch';
+import { setLineDesign, setLinePrice, unlockProduct, upgradeMerchQuality } from '../engine/merch';
 import { cancelContract, signOffer } from '../engine/sponsors';
 import { buyDynasty, buyNode, sellOrg, type SellOptions } from '../engine/prestige';
 import { LEGACY_NODE_MAP } from '../data/legacy';
@@ -80,6 +80,8 @@ export interface ToastAchievement {
 
 export interface Toast {
   id: number;
+  /** Repeated attempts on the same item share one visible warning. */
+  dedupeKey?: string;
   title: string;
   body?: string;
   icon?: string;
@@ -170,6 +172,7 @@ class GameStore {
   private lastAutosave = 0;
   private lastNews = 0;
   private toastId = 0;
+  private toastDedupeUntil = new Map<string, number>();
   private frameCount = 0;
   private unsubscribe: (() => void) | null = null;
   private bgTimer: ReturnType<typeof setInterval> | undefined;
@@ -424,6 +427,10 @@ class GameStore {
   }
 
   toast(t: ToastInput, durationMs = 5000): void {
+    if (t.dedupeKey) {
+      if ((this.toastDedupeUntil.get(t.dedupeKey) ?? 0) > Date.now()) return;
+      this.toastDedupeUntil.set(t.dedupeKey, Date.now() + durationMs);
+    }
     const id = ++this.toastId;
     this.toasts.push({ ...t, tone: t.tone ?? 'info', id, duration: durationMs });
     if (this.toasts.length > MAX_TOASTS) this.toasts.splice(0, this.toasts.length - MAX_TOASTS);
@@ -480,6 +487,7 @@ class GameStore {
           body: `${want > 1 ? `${fmt(want)} of them cost` : 'One costs'} ${money(price)}. You have ${money(this.state.cash)}.`,
           icon: def.icon,
           tone: 'bad',
+          dedupeKey: `operation:${id}`,
         },
         3500,
       );
@@ -505,7 +513,7 @@ class GameStore {
     if (def && def.currency === 'cash') {
       this.sfx('error');
       this.toast(
-        { title: `Not enough cash for ${def.name}`, body: `It costs ${money(upgradePrice(def, computeMods(this.state)))}.`, icon: def.icon, tone: 'bad' },
+        { title: `Not enough cash for ${def.name}`, body: `It costs ${money(upgradePrice(def, computeMods(this.state)))}.`, icon: def.icon, tone: 'bad', dedupeKey: `upgrade:${id}` },
         3500,
       );
     }
@@ -802,6 +810,13 @@ class GameStore {
 
   setLinePrice(productId: string, price: number): void {
     if (setLinePrice(this.state, productId, price)) this.refresh();
+  }
+
+  upgradeMerchQuality(productId: string): void {
+    if (upgradeMerchQuality(this.state, productId)) {
+      this.sfx('buy');
+      this.refresh();
+    }
   }
 
   // ---------------------------------------------------------------------------

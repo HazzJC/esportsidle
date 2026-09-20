@@ -19,16 +19,19 @@ import { earnCash, gainFans } from './wallet';
 
 export const EVENT_INTERVAL: [number, number] = [90, 240];
 export const FIRST_EVENT: [number, number] = [60, 120];
-/**
- * What it costs to keep a player a rival wants, as a share of the offer on the table. Each step up
- * is roughly three times the last: matching the bid is a formality, refusing to be outbid at any
- * price should hurt.
- */
+/** The share of current cash committed to each retention offer. Career value adds up to five points. */
 export const COUNTER_BIDS: { label: string; share: number; morale: number }[] = [
-  { label: 'Match their offer', share: 0.25, morale: 12 },
-  { label: 'Beat their offer', share: 0.75, morale: 25 },
-  { label: 'Blow them out of the water', share: 2.25, morale: 45 },
+  { label: 'Match their offer', share: 0.05, morale: 12 },
+  { label: 'Beat their offer', share: 0.12, morale: 25 },
+  { label: 'Blow them out of the water', share: 0.2, morale: 45 },
 ];
+
+export function retentionBids(s: GameState, p: Player): number[] {
+  const rank = Math.min(1, Math.max(0, (p.level - 1) / 40));
+  const loyalty = Math.min(1, (p.seasons ?? 0) / 8);
+  const career = rank * 0.6 + loyalty * 0.4;
+  return COUNTER_BIDS.map((b) => Math.ceil(Math.max(1, s.cash * (b.share + career * 0.05))));
+}
 
 export const CHOICE_LIFETIME = 120;
 export const MAX_PENDING_CHOICES = 3;
@@ -112,7 +115,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         icon: 'trophy',
         tone: 'good',
       });
-      logEvent(s, { title: `${g.name} World Championship season`, body: `Prize money for ${g.name} matches ×1.5 for ${fmtTime(300)}.`, icon: 'trophy', tone: 'good' });
+      logEvent(s, { title: `${g.name} World Championship season`, body: `Prize money for ${g.name} matches ×1.5 for ${fmtTime(300)}.`, icon: 'trophy', tone: 'good', endsAt: s.time + 300 });
     },
   },
   {
@@ -133,7 +136,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         icon: 'sparkles',
         tone: 'good',
       });
-      logEvent(s, { title: `The meta favours ${label} teams`, body: `${label} team ratings +15% for ${fmtTime(600)}.`, icon: 'sparkles', tone: 'good' });
+      logEvent(s, { title: `The meta favours ${label} teams`, body: `${label} team ratings +15% for ${fmtTime(600)}.`, icon: 'sparkles', tone: 'good', endsAt: s.time + 600 });
     },
   },
   {
@@ -146,6 +149,40 @@ export const WORLD_EVENTS: WorldEventDef[] = [
       gainFans(s, fans);
       applyMorale(p, 10, ctx.mods);
       logEvent(s, { title: `${p.tag}'s clip goes viral`, body: `+${fmt(fans)} fans and a big morale boost.`, icon: 'video', tone: 'good' });
+    },
+  },
+  {
+    id: 'bad_pr', category: 'player',
+    weight: (s) => allPlayers(s).length > 0 ? 1.5 : 0,
+    fire: (s, ctx) => {
+      const p = ctx.rng.pick(allPlayers(s));
+      const lost = Math.ceil(s.fans * ctx.rng.range(0.01, 0.05));
+      s.fans = Math.max(0, s.fans - lost);
+      applyMorale(p, -8, ctx.mods);
+      logEvent(s, { title: `${p.tag} faces bad PR`, body: `${fmt(lost)} fans unfollowed after a poorly judged stream. Morale -8.`, icon: 'megaphone', tone: 'bad' });
+    },
+  },
+  {
+    id: 'good_pr', category: 'player',
+    weight: (s) => allPlayers(s).length > 0 ? 2 : 0,
+    fire: (s, ctx) => {
+      const p = ctx.rng.pick(allPlayers(s));
+      const fans = Math.ceil(Math.max(100, s.fans * ctx.rng.range(0.03, 0.1)));
+      gainFans(s, fans);
+      applyMorale(p, 8, ctx.mods);
+      logEvent(s, { title: `${p.tag} wins over the crowd`, body: `A great interview brings ${fmt(fans)} new fans. Morale +8.`, icon: 'heart', tone: 'good' });
+    },
+  },
+  {
+    id: 'trash_talk', category: 'player',
+    weight: (s) => allPlayers(s).length > 0 ? 1.5 : 0,
+    fire: (s, ctx) => {
+      const p = ctx.rng.pick(allPlayers(s));
+      if (!s.rival) s.rival = { name: ctx.rng.pick(RIVAL_ORGS), wins: 0, losses: 0, streak: 0, since: s.time, heat: 0 };
+      const fans = Math.ceil(Math.max(100, s.fans * 0.04));
+      gainFans(s, fans);
+      if (s.rival) s.rival.heat = Math.min(8, (s.rival.heat ?? 0) + 2);
+      logEvent(s, { title: `${p.tag} calls out ${s.rival?.name}`, body: `The rivalry heats up. +${fmt(fans)} fans; derby payouts rise, and losses will sting more.`, icon: 'swords', tone: 'good' });
     },
   },
   {
@@ -208,13 +245,14 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     category: 'player',
     weight: (s) => (canOfferChoice(s) && tradable(s).length > 0 && allPlayers(s).length >= 3 ? 2 : 0),
     fire: (s, ctx) => {
-      const p = ctx.rng.weighted(tradable(s), (x) => x.level + 5) ?? tradable(s)[0];
+      const p = ctx.rng.weighted(tradable(s), (x) => (x.level + 5) * (x.morale < 50 ? 2 : 1)) ?? tradable(s)[0];
       const rival = ctx.rng.pick(RIVAL_ORGS);
-      // Rivals pay over the odds for a player you developed: well above a normal transfer.
+      // A rival's cash offer must compete with the meaningful retention budgets below.
       const worth = transferValue(p, ctx.rates.teams[p.gameId]?.cps ?? 0, getGame(p.gameId).teamSize);
-      const value = Math.ceil(Math.max(worth * 1.6, p.fee * 1.2, 100));
-      // Bids climb steeply: matching the offer is cheap, refusing to be outbid at any price is not.
-      const bids = COUNTER_BIDS.map((b) => ({ ...b, cost: Math.ceil(Math.max(100, value * b.share)) }));
+      const value = Math.ceil(Math.max(worth * 2.5, p.fee * 3, s.cash * (0.08 + Math.min(0.08, p.level / 500)), ctx.rates.cpsNoBuffs * 300, 100));
+      // The current cash balance fixes all three offers before the player decides.
+      const costs = retentionBids(s, p);
+      const bids = COUNTER_BIDS.map((b, i) => ({ ...b, cost: costs[i] }));
       offerChoice(s, {
         eventId: 'poaching',
         title: `${rival} wants ${p.tag}`,
@@ -239,6 +277,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         delete s.players[p.id];
         s.cash += value;
         s.stats.playersSold++;
+        s.rival = { name: String(choice.data.rival), wins: 0, losses: 0, streak: 0, since: s.time, heat: 4, formerPlayer: p.tag };
         logEvent(s, { title: `${p.tag} transferred`, body: `${choice.data.rival} paid ${money(value)}.`, icon: 'handshake', tone: 'info' });
       } else if (option >= 1 && option <= bids.length && s.cash >= bids[option - 1].cost) {
         const bid = bids[option - 1];
@@ -294,7 +333,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     weight: () => 4,
     fire: (s) => {
       addModifier(s, { id: 'gear_sale', kind: 'gearCost', mult: 0.7, duration: 180, name: 'Hardware flash sale', desc: 'Gear 30% cheaper', icon: 'cpu', tone: 'good' });
-      logEvent(s, { title: 'Hardware flash sale!', body: `All gear is 30% off for ${fmtTime(180)}.`, icon: 'cpu', tone: 'good' });
+      logEvent(s, { title: 'Hardware flash sale!', body: `All gear is 30% off for ${fmtTime(180)}.`, icon: 'cpu', tone: 'good', endsAt: s.time + 180 });
     },
   },
   {
@@ -303,7 +342,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     weight: () => 2,
     fire: (s) => {
       addModifier(s, { id: 'gpu_shortage', kind: 'gearCost', mult: 1.4, duration: 240, name: 'GPU shortage', desc: 'Gear 40% more expensive', icon: 'cpu', tone: 'bad' });
-      logEvent(s, { title: 'Global GPU shortage', body: `Gear costs 40% more for ${fmtTime(240)}.`, icon: 'cpu', tone: 'bad' });
+      logEvent(s, { title: 'Global GPU shortage', body: `Gear costs 40% more for ${fmtTime(240)}.`, icon: 'cpu', tone: 'bad', endsAt: s.time + 240 });
     },
   },
   {
@@ -331,7 +370,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     weight: () => 2,
     fire: (s) => {
       addModifier(s, { id: 'hype_week', kind: 'fans', mult: 1.5, duration: 300, name: 'Hype Week', desc: 'Fan gain ×1.5', icon: 'megaphone', tone: 'good' });
-      logEvent(s, { title: 'Hype Week', body: `Fan gain ×1.5 for ${fmtTime(300)}.`, icon: 'megaphone', tone: 'good' });
+      logEvent(s, { title: 'Hype Week', body: `Fan gain ×1.5 for ${fmtTime(300)}.`, icon: 'megaphone', tone: 'good', endsAt: s.time + 300 });
     },
   },
   {
@@ -340,7 +379,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     weight: (s) => (allPlayers(s).length > 0 ? 2 : 0),
     fire: (s) => {
       addModifier(s, { id: 'bootcamp_week', kind: 'xp', mult: 2, duration: 300, name: 'Bootcamp Week', desc: 'XP ×2', icon: 'dumbbell', tone: 'good' });
-      logEvent(s, { title: 'Bootcamp Week', body: `Players gain double XP for ${fmtTime(300)}.`, icon: 'dumbbell', tone: 'good' });
+      logEvent(s, { title: 'Bootcamp Week', body: `Players gain double XP for ${fmtTime(300)}.`, icon: 'dumbbell', tone: 'good', endsAt: s.time + 300 });
     },
   },
   {
@@ -350,7 +389,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     fire: (s) => {
       addBuff(s, { id: 'isp', name: 'ISP Outage', icon: 'wifi', tone: 'bad', desc: 'Income ×0.8', duration: 60, effects: [{ kind: 'income', mult: 0.8 }] });
       for (const team of Object.values(s.teams)) team.progress = 0;
-      logEvent(s, { title: 'The internet is down', body: 'Matches restart and income ×0.8 for a minute.', icon: 'wifi', tone: 'bad' });
+      logEvent(s, { title: 'The internet is down', body: 'Matches restart and income ×0.8 for a minute.', icon: 'wifi', tone: 'bad', endsAt: s.time + 60 });
     },
   },
   {
@@ -377,7 +416,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         const amount = Number(choice.data.amount);
         earnCash(s, amount, 'event');
         addBuff(s, { id: 'investor', name: 'Investor Oversight', icon: 'briefcase', tone: 'bad', desc: 'Income ×0.9', duration: 600, effects: [{ kind: 'income', mult: 0.9 }] });
-        logEvent(s, { title: 'Investment secured', body: `+${money(amount)}. The board is watching.`, icon: 'briefcase', tone: 'info' }, false);
+        logEvent(s, { title: 'Investment secured', body: `+${money(amount)}. The board is watching.`, icon: 'briefcase', tone: 'info', endsAt: s.time + 600 }, false);
       } else {
         const fans = s.fans * 0.05 + 20;
         gainFans(s, fans);
@@ -424,7 +463,7 @@ WORLD_EVENTS.push(
     fire: (s, ctx) => {
       rotateTrend(s, ctx.rng, false);
       const trend = TREND_MAP.get(s.merch.trend);
-      logEvent(s, { title: `Fashion shock: ${trend?.name} is in`, body: trend?.desc ?? '', icon: trend?.icon ?? 'shirt', tone: 'info' });
+      logEvent(s, { title: `Fashion shock: ${trend?.name} is in`, body: trend?.desc ?? '', icon: trend?.icon ?? 'shirt', tone: 'info', endsAt: s.merch.trendEndsAt });
     },
   },
   {
@@ -433,7 +472,7 @@ WORLD_EVENTS.push(
     weight: (s) => (s.sponsors.active.length > 0 ? 2 : 0),
     fire: (s) => {
       addModifier(s, { id: 'sponsor_boom', kind: 'sponsor', mult: 1.5, duration: 300, name: 'Advertising boom', desc: 'Sponsor income ×1.5', icon: 'handshake', tone: 'good' });
-      logEvent(s, { title: 'Advertising boom', body: `Brands are throwing money around. Sponsor income ×1.5 for ${fmtTime(300)}.`, icon: 'handshake', tone: 'good' });
+      logEvent(s, { title: 'Advertising boom', body: `Brands are throwing money around. Sponsor income ×1.5 for ${fmtTime(300)}.`, icon: 'handshake', tone: 'good', endsAt: s.time + 300 });
     },
   },
 );

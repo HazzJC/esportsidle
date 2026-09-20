@@ -341,7 +341,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   }
   const opsFansPerSec = opsFans * fansMult;
   const playerFansPerSec = playerFans * mods.playerFansMult * fansMult;
-  const merch = evaluateMerch(s, mods, cpsNoBuffs, buffs.income);
+  const merch = evaluateMerch(s, mods, cpsNoBuffs, buffs.income * buffs.merch);
 
   return {
     cps,
