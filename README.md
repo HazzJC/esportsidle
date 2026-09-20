@@ -1,91 +1,51 @@
 # Esports Idle
 
-An incremental (idle/clicker) game about building an esports empire, inspired by the depth of Cookie Clicker.
+An incremental management game where you turn a scrappy garage squad into an orbital esports dynasty.
 
-You start with nothing but a logo to click in a garage. You end up running leagues in orbit.
+Click the logo to build crowd hype, scout mechanical prodigies on the transfer market, kit them out with liquid-cooled rigs, and watch them battle through 16-game seasons across 12 parody titles. Behind the stage, fund your teams with a commercial empire spanning ranked grinders, streaming houses, custom merchandise lines, and high-risk sponsorships.
 
-**Play it here: https://hazzjc.github.io/esportsidle/**
+**Play directly in your browser:** https://hazzjc.github.io/esportsidle/
 
-![Esports Idle Gameplay Screenshot](docs/screenshot.png)
+![Esports Idle Gameplay](docs/screenshot.png)
 
-## What you actually do
+## The Core Loop
 
-- **Found your org**: name it, pick its colour and design a logo (a badge and a mark, or draw your own
-  later). Then a short tutorial: click your way to $25, sign and customise your founding player, watch
-  them compete, then open the store. The first few minutes are calm, with no random events, and new
-  tabs open as the org grows.
-- **Two sides to every org** — players, gear and seasons are the active side; operations are the passive
-  side that earns every second, even while the game is closed.
-- **Chase quests** — two milestone quests at a time (gear up, take a sponsor, design a shirt, hit a hype
-  streak, win a tournament, sell a player and more). Finish one and pick one of two rewards.
-- **Click your logo** to grind ranked and fill the hype meter. A full meter sends the crowd wild (income ×2).
-- **Buy operations** — 16 businesses from Ranked Grinders and Streamers up to Simulation Servers and the
-  Multiverse Championship, each with tiered upgrades, collabs and cross-synergies.
-- **Sign players** from a rotating transfer market. Every player is generated with stats, potential, traits,
-  a nationality, a look you can customise, and a price.
-- **Kit them out** — 10 gear slots with 15 tiers each: PC, monitor, mouse, keyboard, headset, chair, desk,
-  jersey, lucky charm and, of course, shoes. Gear boosts the stats that matter in that player's game.
-- **Win matches** — teams play simulated matches across 12 parody games, climbing an endless league ladder
-  through seasons, promotions, relegations and titles.
-- **Hire staff** — coaches, chefs, scouts, physios, analysts, social media managers, sports psychologists,
-  team managers, AI trainers, merch designers and talent agents.
-- **Look after people** — players get tired, sick, injured and burnt out. Chefs, physios, psychologists,
-  better chairs and a deep bench keep them playing.
-- **Catch Hype Drops** — the golden-cookie moment: LAN Frenzy, Prize Pools, Clutch Mode, Viral Clips,
-  operation Rushes, chaining Hype Trains and Tournament Invites that play out as a three-round bracket.
-- **Ride the news** — patches, streamer hype, meta shifts, food poisoning, flash sales, GPU shortages,
-  investors, poaching offers and contract demands all change the run as you play.
-- **Draw your own art** — a pixel editor with mirroring, fill, shapes, a text stamp and a live "merch appeal"
-  score. Your design becomes your logo, your jersey crest and your merch.
-- **Sell merch and sign sponsors** — 10 products with pricing sweet spots and fading novelty, plus 36 parody
-  brands across 12 categories with perks, bonus goals and a crypto sponsor that can collapse.
-- **Sell the org** — prestige into legacy points, spend them on a 37-node Legacy Tree, keep a franchise
-  player, retire stars as legend coaches, and take on challenge runs (Solo Queue, Potato League,
-  Skeleton Crew, No Hype, Tabloid Darling).
+Esports Idle runs on two interlocking engines:
 
-Everything is tracked by roughly 300 achievements and 380+ upgrades, and it autosaves in your browser.
+### 1. The Active Roster
+Sign procedurally generated players across multiple competitive titles, from solo fighters in *Smash Siblings* to tactical 5v5 squads in *Counter-Strike* parodies.
+* **Scout and Sign**: Hunt the transfer market for generational talent. Every rookie comes with their own stat distribution, skill ceiling, personality traits, and salary demands.
+* **Kit Out Rigs**: Upgrade 10 gear slots per player across 16 tiers, taking your roster from hand-me-down CRT monitors to quantum computing clusters and lucky charm desk ornaments.
+* **Manage the Season**: Set team tactical plans (Development, Balanced, or Push for Promotion). Chase promotion, dodge relegation, manage player burnout, and capture season championship trophies.
+* **Navigate Rivalries**: Face off against persistent rival organizations that track your head-to-head records and trigger high-stakes grudge matches.
 
-## Saves
+### 2. The Commercial Empire
+Matches need prize money, and players need salaries. Build an automated business network that generates cash every second, even when you are away:
+* **16 Tiered Operations**: Scale your revenue from solo Ranked Grinders and Streamers up to regional Bootcamp Houses, LAN Centers, and Multiverse Arenas.
+* **Custom Pixel Studio**: Design your own crest, logo, and jersey patterns inside the built-in pixel editor. Your artwork appears directly on player jerseys and in your official merch shop.
+* **Merch Store**: Launch 10 product lines, balance pricing sweet spots against market trends, and capitalize on viral hype waves.
+* **Sponsorship Deals**: Sign contracts with 36 parody brands across 12 categories. Chase performance bonuses, balance brand exclusivity, and decide whether risky crypto sponsorships are worth the gamble.
 
-The game autosaves to local storage, keeps rotating backups, and credits offline earnings when you return.
-In **Options** you can export your save as text or a file and import it on another device. There is no
-account and nothing is uploaded anywhere.
+## Hype, Drama, and Metagame
 
-## Development
+* **Logo Clicker and Click Chains**: Clicking your team crest fills the hype meter to spark *Crowd Goes Wild* multipliers. Pop floating hype bubbles in real time to stack chain bonuses up to 20x.
+* **Hype Drops and World Events**: Click golden drops for sudden cash spikes, tournament bracket invites, and viral surges. Respond to balance patches, player contract drama, and hardware shortages.
+* **Prestige and Legacy**: When your org reaches the top, sell the franchise to earn Legacy Points. Unlock permanent perks on a 37-node Legacy Tree, pick unique Founding Charters, carry forward franchise players, and tackle themed challenge runs.
+
+## Saves and Privacy
+
+The game autosaves directly to browser localStorage and keeps rolling automatic backups. You can export or import your save string at any time in the Options tab. No accounts, no logins, no tracking.
+
+## Running Locally
 
 Requires Node 22+.
 
 ```bash
 npm install
-npm run dev      # start the dev server
-npm test         # engine unit tests (vitest)
-npm run check    # type-check Svelte + TypeScript
-npm run build    # production build into dist/
-npm run sim      # headless balance simulation
+npm run dev      # run local development server
+npm test         # run Vitest test suite
+npm run check    # run Svelte and TypeScript diagnostics
+npm run build    # build production bundle
 ```
 
-The balance simulation plays the real engine with a "sensible player" and reports when milestones
-happen, which is how the pacing is tuned. Four player models are available: `active` (at the keyboard
-throughout), `semi` (the game open beside something else), `passive` (left running) and `casual`
-(four short check-ins a day).
-
-```bash
-npm run sim -- --hours=5 --mode=active --seed=1
-npm run sim -- --hours=5 --mode=semi --income          # where the money came from, every 10 minutes
-npm run sim -- --hours=5 --mode=passive --income --json=after.json
-npx tsx scripts/compare.ts before.json after.json      # what a balance change actually did
-```
-
-`--income` prints the economy report: income by source per interval, what each sponsor goal paid and
-what the org did to earn it, and a progression checklist. [docs/economy.md](docs/economy.md) is the
-write-up of the last pass.
-
-### Layout
-
-- `src/engine` — the game simulation. Plain TypeScript, no DOM access, unit tested.
-- `src/data` — content: operations, upgrades, games, gear, traits, staff, decor, sponsors, merch, legacy, news.
-- `src/ui` — Svelte 5 components and the store that drives them.
-- `scripts/sim.ts` — the headless balance simulation.
-- `scripts/compare.ts` — compares two sim runs, for judging a balance change.
-
-Game titles, organisations and brands in the game are fictional parodies.
+All game titles, organizations, and sponsor brands featured in the game are fictional parodies.
