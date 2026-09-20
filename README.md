@@ -64,12 +64,21 @@ npm run build    # production build into dist/
 npm run sim      # headless balance simulation
 ```
 
-The balance simulation plays the real engine with a greedy "sensible player" and reports when milestones
-happen, which is how the pacing is tuned:
+The balance simulation plays the real engine with a "sensible player" and reports when milestones
+happen, which is how the pacing is tuned. Four player models are available: `active` (at the keyboard
+throughout), `semi` (the game open beside something else), `passive` (left running) and `casual`
+(four short check-ins a day).
 
 ```bash
 npm run sim -- --hours=5 --mode=active --seed=1
+npm run sim -- --hours=5 --mode=semi --income          # where the money came from, every 10 minutes
+npm run sim -- --hours=5 --mode=passive --income --json=after.json
+npx tsx scripts/compare.ts before.json after.json      # what a balance change actually did
 ```
+
+`--income` prints the economy report: income by source per interval, what each sponsor goal paid and
+what the org did to earn it, and a progression checklist. [docs/economy.md](docs/economy.md) is the
+write-up of the last pass.
 
 ### Layout
 
@@ -77,5 +86,6 @@ npm run sim -- --hours=5 --mode=active --seed=1
 - `src/data` — content: operations, upgrades, games, gear, traits, staff, decor, sponsors, merch, legacy, news.
 - `src/ui` — Svelte 5 components and the store that drives them.
 - `scripts/sim.ts` — the headless balance simulation.
+- `scripts/compare.ts` — compares two sim runs, for judging a balance change.
 
 Game titles, organisations and brands in the game are fictional parodies.
