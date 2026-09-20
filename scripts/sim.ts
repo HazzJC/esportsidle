@@ -45,7 +45,7 @@ import { buyNode, legacyFor, mandateOffers, pendingLegacy, sellOrg } from '../sr
 import { claimQuest, skipQuest } from '../src/engine/quests';
 import { QUEST_MAP } from '../src/data/quests';
 import { Rng } from '../src/engine/rng';
-import { signOffer } from '../src/engine/sponsors';
+import { goalReward, signOffer } from '../src/engine/sponsors';
 import { hireStaff, isStaffUnlocked, staffPrice } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
 import { sectionOpen } from '../src/engine/sections';
@@ -365,7 +365,8 @@ function trackSponsors(): void {
     if (!c.completed || sponsorDone.has(c.id)) continue;
     sponsorDone.add(c.id);
     const signed = sponsorSigned.get(c.id) ?? { at: s.time, earned: s.earnedRun };
-    const reward = s.incomeRun.sponsor - sponsorPaid;
+    // Recomputed rather than taken from the ledger delta: two goals can land in the same tick.
+    const reward = goalReward(s, c, computeRates(s).cpsNoBuffs);
     sponsorPaid = s.incomeRun.sponsor;
     sponsorPayouts.push({
       at: wall,

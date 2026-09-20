@@ -42,7 +42,7 @@ export function goalLabel(kind: SponsorGoalKind, target: number): string {
 }
 
 /** The share of what the org earned during a deal that finishing its goal pays out. */
-export const GOAL_EARNINGS_SHARE = 0.2;
+export const GOAL_EARNINGS_SHARE = 0.25;
 
 /**
  * What finishing a sponsor goal pays.
