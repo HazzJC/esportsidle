@@ -15,8 +15,24 @@
 
 ## Pending Changes
 
-### Add comprehensive patch notes documentation and AI agent workflow
+### Player-centric README rewrite and authentic in-game screenshot
 *Status: Pending*
+
+* **The Issue / Motivation**:
+  * The previous README was heavily skewed toward developer instructions, contained excessive em dashes and rigid syntax, and featured an artificial AI-generated mockup that did not reflect actual gameplay.
+* **What Changed**:
+  * Replaced `docs/screenshot.png` with an authentic, high-resolution 1600x920 screenshot rendered directly from the running Svelte 5 engine with live teams, custom kit, operations, and match progression.
+  * Rewrote `README.md` to focus on player engagement, core loops (Active Roster vs Commercial Empire), and web play, while completely eliminating em dashes and corporate phrasing.
+  * Streamlined local setup instructions to a compact section at the end of the document.
+
+---
+
+## Historical Release & Commit Notes
+
+### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
+
+#### `ba96581` — Add comprehensive patch notes documentation and AI agent workflow
+*Date: Sun Sep 20 2026* | *Status: Committed*
 
 * **The Issue / Motivation**:
   * The project had 38 commits across foundational milestones, UX passes, game systems, and post-launch tuning, but lacked a centralized, narrative patch notes file detailing the problems and solutions of each major push.
@@ -25,12 +41,6 @@
   * Created `PATCH_NOTES.md` documenting every major milestone, visual pass, system expansion, and balance update from scaffolding (`2b710ef`) through recent economy tuning (`de1e324`).
   * Established instructions for AI agents and human contributors to maintain the pending/committed changelog lifecycle.
   * Updated `AGENTS.md` to mandate patch notes logging for all AI agent workflows in the repository.
-
----
-
-## Historical Release & Commit Notes
-
-### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
 
 #### `de1e324` — Progression Balance, Merch Upgrades & Activity Polish
 *Date: Sun Sep 20 2026* | *Status: Committed*
