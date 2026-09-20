@@ -1,5 +1,6 @@
 <script lang="ts">
   import { OPERATIONS } from '../../data/operations';
+  import { activityEntries } from '../../engine/activity';
   import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
@@ -18,6 +19,8 @@
   const r = $derived(v.r);
   const owned = $derived(OPERATIONS.filter((op) => s.ops[op.id].owned > 0));
   const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
+  let activityMode = $state<'active' | 'all'>('active');
+  const activityLog = $derived(activityEntries(s.events.log, s.time, activityMode).slice(0, 8));
   const showLevels = $derived(s.stats.trophiesTotal > 0);
   const drama = $derived(dramaShare(s, v.m));
   const calm = $derived(s.events.calmUntil > s.time);
@@ -59,7 +62,13 @@
 
   {#if modifiers.length > 0 || s.events.log.length > 0 || v.m.dramaLevel > 0}
     <section class="activity">
-      <h3 class="section-title">Org activity</h3>
+      <div class="activity-heading">
+        <h3 class="section-title">Org activity</h3>
+        <div class="activity-toggle" role="group" aria-label="Org activity view">
+          <button class:chosen={activityMode === 'active'} aria-pressed={activityMode === 'active'} onclick={() => activityMode = 'active'}>Active</button>
+          <button class:chosen={activityMode === 'all'} aria-pressed={activityMode === 'all'} onclick={() => activityMode = 'all'}>All</button>
+        </div>
+      </div>
 
       {#if v.m.dramaLevel > 0}
         <div class="drama" class:calm>
@@ -120,9 +129,9 @@
         </div>
       {/if}
 
-      {#if s.events.log.length > 0}
+      {#if activityLog.length > 0}
         <ul class="log">
-          {#each s.events.log.slice(0, 8) as entry, i (`${entry.time}-${i}`)}
+          {#each activityLog as entry, i (`${entry.time}-${i}`)}
             <li class={entry.tone}>
               <Icon name={entry.icon} size={14} />
               <span class="ltitle">{entry.title}</span>
@@ -131,6 +140,8 @@
             </li>
           {/each}
         </ul>
+      {:else if activityMode === 'active' && modifiers.length === 0}
+        <p class="activity-empty muted">Nothing active right now. Switch to All for past events.</p>
       {/if}
     </section>
   {/if}
@@ -236,6 +247,35 @@
   }
   .activity .section-title {
     margin: 0;
+  }
+  .activity-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .activity-toggle {
+    display: flex;
+    padding: 2px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .activity-toggle button {
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .activity-toggle button.chosen {
+    color: var(--text);
+    background: var(--panel-3);
+  }
+  .activity-empty {
+    margin: 4px 0 0;
+    font-size: 12px;
   }
   .dbuttons {
     display: flex;

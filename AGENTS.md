@@ -1,0 +1,11 @@
+# Game content and balance locations
+
+Keep each kind of game content in its existing canonical file. Update the entries there when adding, editing, or deleting content; avoid copying lists into UI components or creating a second registry. See `docs/content-catalog.md` for the full map.
+
+- Ticker headlines and their eligibility rules: `src/data/news.ts`. Selection and placeholder rendering: `src/engine/news.ts`.
+- Generated player names, tags, nationalities, and rival org names: `src/data/names.ts`.
+- World event definitions, weights, durations, and activity messages: `src/engine/worldEvents.ts`.
+- Operation, upgrade, gear, sponsor, merch, and legacy definitions: their matching files in `src/data/`.
+- Hype meter, drops, merch sales, and sponsor progress calculations: their matching files in `src/engine/`.
+
+When changing a timed event, update the activity log `endsAt` alongside the effect duration. Check that scale-specific ticker lines have both lower and upper eligibility bounds where appropriate.

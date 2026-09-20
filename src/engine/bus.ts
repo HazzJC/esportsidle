@@ -6,6 +6,7 @@ export type GameEvent =
   | { type: 'buffStart'; buff: Buff }
   | { type: 'buffEnd'; buff: Buff }
   | { type: 'crowd' }
+  | { type: 'hypeChain' }
   | { type: 'drop'; kind: 'hype' | 'drama' }
   | { type: 'choice' }
   /** The org can be sold for the first time. */

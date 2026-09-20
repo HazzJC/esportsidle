@@ -72,6 +72,18 @@ describe('news ticker', () => {
     expect(has(/ coach/)).toBe(true);
   });
 
+  it('retires small audience stories when the fanbase grows', () => {
+    const s = foundedGame(0, 6);
+    s.ops.streamer.owned = 1;
+    s.fans = 1_500;
+    expect(eligible(s).some((t) => t.includes('Six people and a cardboard cutout'))).toBe(true);
+    expect(eligible(s).some((t) => t.includes('3 concurrent viewers'))).toBe(true);
+    s.fans = 1_000_000;
+    expect(eligible(s).some((t) => t.includes('Six people and a cardboard cutout'))).toBe(false);
+    expect(eligible(s).some((t) => t.includes('3 concurrent viewers'))).toBe(false);
+    expect(eligible(s).some((t) => t.includes('fan meet fills an arena'))).toBe(true);
+  });
+
   it('reports world events, hot games and the next release', () => {
     const s = lateGame();
     s.games.counter.popularity = 3;

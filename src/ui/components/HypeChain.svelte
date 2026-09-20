@@ -6,7 +6,7 @@
   import Icon from './Icon.svelte';
 
   /**
-   * The click chain. When the crowd goes wild a bubble appears; popping it spawns the next, a
+   * A rare Hype Drop starts the bubble chain; popping one spawns the next, a
    * little smaller and a little quicker to fade. Every pop makes the crowd louder and longer, and
    * the chain ends the moment one gets away.
    */
@@ -76,7 +76,7 @@
 
   onMount(() => {
     const stop = subscribe((e) => {
-      if (e.type !== 'crowd' || !enabled) return;
+      if (e.type !== 'hypeChain' || !enabled) return;
       popped = 0;
       next(1);
     });

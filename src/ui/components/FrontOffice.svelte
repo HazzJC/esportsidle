@@ -9,11 +9,13 @@
 
   /** Cash-share presets per routine: small enough to be safe, large enough to matter. */
   const SHARES: Record<Exclude<AutomationId, 'sponsors' | 'roles'>, number[]> = {
+    operations: [0.01, 0.05, 0.1, 0.25],
     upgrades: [0.05, 0.1, 0.25, 0.5],
     roster: [0.1, 0.25, 0.5, 1],
     gear: [0.005, 0.01, 0.025, 0.05],
   };
   const SHARE_LABEL: Record<Exclude<AutomationId, 'sponsors' | 'roles'>, string> = {
+    operations: 'Spend up to',
     upgrades: 'Spend up to',
     roster: 'Spend up to',
     gear: 'Spend up to',

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { GOAL_EARNINGS_SHARE, goalLabel, goalProgress, goalReward, goalRewardPotential, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
+  import { GOAL_EARNINGS_SHARE, goalDifficultyBonus, goalLabel, goalProgress, goalReward, goalRewardPotential, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
   import type { SponsorOffer } from '../../engine/types';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
@@ -85,7 +85,7 @@
                   <span class="bar"><i style="width:{Math.min(100, (progress / c.goal.target) * 100)}%"></i></span>
                   {#if !c.completed}
                     {@const payout = goalReward(s, c, v.r.cpsNoBuffs)}
-                    {@const potential = goalRewardPotential(c.tier, c.goal.rewardSeconds, v.r.cpsNoBuffs)}
+                    {@const potential = goalRewardPotential(c.tier, c.goal.rewardSeconds, v.r.cpsNoBuffs, c.goal.kind)}
                     <div
                       class="payout-row small"
                       use:tooltip={() => ({
@@ -93,7 +93,7 @@
                         icon: 'handshake',
                         lines: [
                           `Finishing this goal now pays ${money(payout)}.`,
-                          { text: `It is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs, up to ${money(potential)}.`, tone: 'muted' },
+                          { text: `It is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of run earnings during the deal${goalDifficultyBonus(c.goal.kind) > 1 ? `, multiplied by ${goalDifficultyBonus(c.goal.kind)} for this harder goal` : ''}, up to ${money(potential)}.`, tone: 'muted' },
                           { text: `A goal finished early pays proportionally less, so let the deal run its ${fmtTime(c.goal.rewardSeconds)}.`, tone: 'muted' },
                         ],
                       })}
@@ -130,7 +130,7 @@
             {@const brand = BRAND_MAP.get(offer.brandId)}
             {@const info = brand ? CATEGORY_INFO[brand.category] : undefined}
             {@const block = blocker(offer)}
-            {@const payout = goalRewardPotential(offer.tier, offer.goal.rewardSeconds, v.r.cpsNoBuffs)}
+            {@const payout = goalRewardPotential(offer.tier, offer.goal.rewardSeconds, v.r.cpsNoBuffs, offer.goal.kind)}
             {#if brand && info}
               <div class="card" style="--bc:{brand.color}">
                 <div class="brand">
@@ -149,7 +149,7 @@
                     title: 'Bonus goal',
                     lines: [
                       `Worth up to ${money(payout)}${offer.tier >= 2 ? ' and a trophy' : ''}.`,
-                      { text: `The bonus is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs, and pays less if the goal is finished in under ${fmtTime(offer.goal.rewardSeconds)}.`, tone: 'muted' },
+                      { text: `The bonus is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of run earnings during the deal${goalDifficultyBonus(offer.goal.kind) > 1 ? `, multiplied by ${goalDifficultyBonus(offer.goal.kind)} for difficulty` : ''}. Finishing too early reduces it.`, tone: 'muted' },
                     ],
                   })}
                 >

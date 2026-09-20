@@ -109,7 +109,7 @@ export const GOAL_INFO: Record<SponsorGoalKind, { label: (n: string) => string; 
   fans: { label: (n) => `Gain ${n} fans`, targets: [2e3, 2e5, 2e7, 2e9, 2e11] },
   titles: { label: (n) => `Win ${n} season titles`, targets: [1, 2, 4, 8, 15] },
   tournaments: { label: (n) => `Win ${n} tournaments`, targets: [1, 1, 2, 3, 5] },
-  drops: { label: (n) => `Click ${n} Hype Drops`, targets: [3, 5, 8, 12, 20] },
+  drops: { label: (n) => `Click ${n} Hype Drops`, targets: [8, 18, 40, 85, 180] },
 };
 
 export const SPONSORS_UNLOCK_FANS = 1_000;

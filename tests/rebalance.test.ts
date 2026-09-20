@@ -24,10 +24,11 @@ import { addToTeam, ensureTeam } from '../src/engine/teams';
 import { foundedGame } from './fixtures';
 
 describe('hype', () => {
-  it('fills in about fifty clicks', () => {
+  it('fills in about eighty clicks', () => {
     const s = foundedGame(0, 2);
     const clicks = Math.ceil(HYPE_MAX / HYPE_PER_CLICK);
-    expect(clicks).toBeLessThanOrEqual(50);
+    expect(clicks).toBeGreaterThanOrEqual(70);
+    expect(clicks).toBeLessThanOrEqual(90);
     let crowd = false;
     for (let i = 0; i < clicks; i++) crowd = clickLogo(s).crowd || crowd;
     expect(crowd).toBe(true);

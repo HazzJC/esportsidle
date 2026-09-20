@@ -2,7 +2,7 @@
   import { PRODUCTS, TREND_MAP } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, optimalPrice } from '../../engine/merch';
+  import { MAX_MERCH_QUALITY, MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
   import type { Design } from '../../engine/types';
   import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
@@ -11,6 +11,7 @@
   import KitPicker from '../components/KitPicker.svelte';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import MerchPreview from '../components/MerchPreview.svelte';
   import PixelEditor from '../components/PixelEditor.svelte';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
@@ -64,11 +65,14 @@
       <p class="muted small">Draw pixel-art designs for your logo, team jerseys and merch. Good designs sell more merch.</p>
     </div>
     {#if merchOpen && trend}
-      <div class="trend" use:tooltip={() => ({ title: `Trend: ${trend.name}`, icon: trend.icon, lines: [trend.desc, 'Designs that match the trend sell 25% more and fans are less fussy about price.'] })}>
+      <div class="trend" use:tooltip={() => ({ title: `Trend: ${trend.name}`, icon: trend.icon, lines: [trend.desc, 'Matching designs sell 2.5 times as much, and fans are less fussy about price.'] })}>
         <Icon name={trend.icon} size={18} />
         <span>Trend: <b>{trend.name}</b></span>
         <span class="dim small num">{fmtTime(s.merch.trendEndsAt - s.time)} left</span>
       </div>
+      {#if s.merch.mania && s.merch.mania.endsAt > s.time}
+        <div class="trend mania"><Icon name="flame" size={18} /> <b>MANIA: {PRODUCTS.find((p) => p.id === s.merch.mania?.productId)?.name}</b> · {fmtTime(s.merch.mania.endsAt - s.time)} left</div>
+      {/if}
     {/if}
   </header>
 
@@ -170,7 +174,7 @@
                 <span class="pcps num">{money(rate?.cps ?? 0, 1)}/s</span>
               </div>
               <div class="pbody">
-                <DesignImage design={d} size={64} />
+                <MerchPreview productId={p.id} design={d} quality={line.quality ?? 0} primary={s.org.primary} secondary={s.org.secondary} />
                 <div class="controls">
                   <select value={line.designId ?? ''} onchange={(e) => game.setLineDesign(p.id, e.currentTarget.value || null)} aria-label="{p.name} design">
                     <option value="">No design (not selling)</option>
@@ -190,6 +194,9 @@
                     />
                   </label>
                   <span class="dim small">Sweet spot ≈ ×{optimalPrice(rate?.trending ?? false).toFixed(2)}</span>
+                  <button class="btn small" disabled={(line.quality ?? 0) >= MAX_MERCH_QUALITY || s.cash < merchQualityCost(s, p.id)} onclick={() => game.upgradeMerchQuality(p.id)}>
+                    <Icon name="sparkles" size={13} /> Improve finish · Q{line.quality ?? 0}{(line.quality ?? 0) < MAX_MERCH_QUALITY ? ` → Q${(line.quality ?? 0) + 1} · ${money(merchQualityCost(s, p.id))}` : ' MAX'}
+                  </button>
                 </div>
               </div>
               {#if rate}
@@ -257,6 +264,7 @@
   .trend b {
     color: var(--text);
   }
+  .trend.mania { color:var(--gold); border-color:var(--gold); background:color-mix(in srgb,var(--gold) 12%,var(--bg-2)); }
   .section-head {
     display: flex;
     align-items: center;

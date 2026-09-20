@@ -139,7 +139,7 @@
     lines: [
       'Clicking your logo fills the hype meter.',
       'When it is full, the crowd goes wild: income ×2 for 30 seconds.',
-      { text: 'Hype drains if you stop clicking.', tone: 'muted' },
+      { text: 'It takes about 80 clicks. Hype drains slowly at first, then faster during a long break.', tone: 'muted' },
     ],
   });
 </script>

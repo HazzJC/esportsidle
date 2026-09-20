@@ -18,6 +18,8 @@ const recentEvent = (s: GameState) => s.events.log.length > 0 && s.time - s.even
 const unlockedCount = (s: GameState) => GAMES.filter((g) => s.games[g.id]?.unlocked).length;
 const nextGame = (s: GameState) => GAMES.some((g) => !s.games[g.id]?.unlocked);
 const hasTeam = (id: string) => (s: GameState) => (s.teams?.[id]?.lineup?.filter(Boolean).length ?? 0) > 0;
+/** Early community jokes stop once the org has a substantial audience. */
+const smallAudience = (s: GameState) => s.fans < 20_000;
 
 export const NEWS: NewsItem[] = [
   // Always
@@ -67,7 +69,7 @@ export const NEWS: NewsItem[] = [
   { text: '{org} founder claims to be "basically semi-pro". Rank remains unverified.', when: (s) => s.earnedRun < 1e6, weight: 2 },
 
   // Operations
-  { text: '{org} streamer hits 3 concurrent viewers. Two are bots, one is their mum.', when: has('streamer'), weight: 2 },
+  { text: '{org} streamer hits 3 concurrent viewers. Two are bots, one is their mum.', when: (s) => has('streamer')(s) && smallAudience(s), weight: 2 },
   { text: 'Chat spams {org} emotes in completely unrelated streams.', when: has('streamer', 50) },
   { text: '{org} creator uploads "10 Pro Tips". Tip 7 is "be better".', when: has('creator'), weight: 2 },
   { text: 'Shocked face from a {org} thumbnail is now a recognised meme format.', when: has('creator', 25) },
@@ -91,7 +93,8 @@ export const NEWS: NewsItem[] = [
   { text: '{org} valuation passes a billion. "Mostly vibes," says accountant.', when: (s) => s.earnedRun >= 1e9 },
   { text: '{org} now legally classified as a small country.', when: (s) => s.earnedRun >= 1e15 },
   { text: 'Economists propose replacing the gold standard with the {org} standard.', when: (s) => s.earnedRun >= 1e20 },
-  { text: '{org} fan club holds first meetup. Six people and a cardboard cutout attend.', when: (s) => s.fans >= 1000, weight: 2 },
+  { text: '{org} fan club holds first meetup. Six people and a cardboard cutout attend.', when: (s) => s.fans >= 1000 && smallAudience(s), weight: 2 },
+  { text: '{org} fan meet fills an arena. The cardboard cutout gets its own autograph queue.', when: (s) => s.fans >= 20_000 && s.fans < 1e7, weight: 2 },
   { text: 'Babies increasingly named after {org} players.', when: (s) => s.fans >= 1e6 },
   { text: 'Crowd noise at {org} events now measured on the Richter scale.', when: (s) => s.stats.crowdsTotal >= 1 },
   { text: 'Doctors warn of "clicking finger" epidemic among {org} fans.', when: (s) => s.stats.clicksTotal >= 5000 },
