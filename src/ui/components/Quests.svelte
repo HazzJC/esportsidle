@@ -1,7 +1,8 @@
 <script lang="ts">
   import { QUESTS, QUEST_MAP, type QuestReward } from '../../data/quests';
   import { fmt } from '../../engine/format';
-  import { describeReward, questPerkLabels, questProgress, rewardDetail } from '../../engine/quests';
+  import { describeReward, nextQuest, questPerkSources, questProgress, rewardDetail } from '../../engine/quests';
+  import { tooltip } from '../tooltip.svelte';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
 
@@ -9,7 +10,8 @@
   const s = $derived(v.s);
   const ctx = $derived({ cps: v.r.cpsNoBuffs, fansPerSec: v.r.fansPerSec });
   const doneCount = $derived(QUESTS.filter((q) => s.quests.done[q.id] !== undefined).length);
-  const perks = $derived(questPerkLabels(s));
+  const perks = $derived(questPerkSources(s));
+  const upNext = $derived(nextQuest(s));
 
   const REWARD_ICON: Record<QuestReward['kind'], string> = {
     cash: 'dollar-sign',
@@ -33,7 +35,7 @@
   <section class="quests">
     <header>
       <h3 class="section-title">Quests <span class="dim">{doneCount}/{QUESTS.length}</span></h3>
-      <span class="dim small">Finish a quest to earn its reward. Perks last forever.</span>
+      <span class="dim small">Follow the quest line in order. Perks last for the rest of this run.</span>
     </header>
     <div class="board">
       {#each s.quests.active as q (q.id)}
@@ -50,9 +52,6 @@
               </div>
               <div class="side">
                 {#if p.target > 1 && !p.complete}<span class="count num">{fmt(p.value)}/{fmt(p.target)}</span>{/if}
-                {#if !p.complete}
-                  <button class="later" onclick={() => game.skipQuest(def.id)} title="Set this quest aside. The next quest takes its place, and this one comes back later.">Later</button>
-                {/if}
               </div>
             </div>
             {#if !p.complete}<span class="bar"><i style="width:{(p.value / p.target) * 100}%"></i></span>{/if}
@@ -73,15 +72,34 @@
           </article>
         {/if}
       {/each}
-      {#if s.quests.active.length < 2}
+      {#if s.quests.active.length === 0}
         <article class="quest empty">
           <Icon name="clock" size={16} />
-          <span class="muted small">More quests appear as your org grows.</span>
+          <span class="muted small">{upNext ? `Next: ${upNext.title}. It opens as your org grows.` : 'More quests appear as your org grows.'}</span>
+        </article>
+      {:else if upNext}
+        <article class="quest empty upnext">
+          <span class="qicon dim"><Icon name={upNext.icon} size={16} /></span>
+          <span class="small"><span class="dim">Up next</span> · {upNext.title}</span>
         </article>
       {/if}
     </div>
     {#if perks.length > 0}
-      <p class="perks small"><Icon name="sparkles" size={12} /> <span class="muted">Your perks:</span> {perks.join(' · ')}</p>
+      <p class="perks small">
+        <Icon name="sparkles" size={12} />
+        <span class="muted">Your perks this run:</span>
+        {#each perks as perk, i (i)}
+          <span
+            class="perk"
+            use:tooltip={() => ({
+              title: perk.label,
+              icon: perk.icon,
+              iconColor: 'var(--gold)',
+              lines: [`From the quest “${perk.quest}”.`, { text: 'Lasts until you sell the org.', tone: 'muted' }],
+            })}>{perk.label}</span
+          >
+        {/each}
+      </p>
     {/if}
   </section>
 {/if}
@@ -104,6 +122,22 @@
   }
   .small {
     font-size: 12px;
+  }
+  .perk {
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+    background: color-mix(in srgb, var(--gold) 10%, transparent);
+    cursor: help;
+  }
+  .perks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+  }
+  .upnext {
+    opacity: 0.75;
   }
   .board {
     display: grid;
@@ -165,18 +199,6 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
-  }
-  .later {
-    padding: 1px 7px;
-    border: 1px solid var(--line-2);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--dim);
-    font-size: 11px;
-  }
-  .later:hover {
-    color: var(--text);
-    border-color: var(--muted);
   }
   .count {
     font-family: var(--font-ui);

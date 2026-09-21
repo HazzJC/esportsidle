@@ -31,7 +31,7 @@ import { PRODUCTS } from '../src/data/merch';
 import { OPERATIONS } from '../src/data/operations';
 import { STAFF } from '../src/data/staff';
 import { clickLogo } from '../src/engine/clicker';
-import { addDesign, generateDesign } from '../src/engine/designs';
+import { addDesign, generateDesign, setJerseyDesign } from '../src/engine/designs';
 import { signDraftPick } from '../src/engine/draft';
 import { clickDrop } from '../src/engine/drops';
 import { computeMods, computeRates } from '../src/engine/economy';
@@ -42,14 +42,14 @@ import { optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../src
 import { buyOperation, isOperationRevealed, unitPrice } from '../src/engine/operations';
 import { buyGear, gearUpgradeCost, playerRating } from '../src/engine/players';
 import { buyNode, legacyFor, mandateOffers, pendingLegacy, sellOrg } from '../src/engine/prestige';
-import { claimQuest, skipQuest } from '../src/engine/quests';
+import { claimQuest } from '../src/engine/quests';
 import { QUEST_MAP } from '../src/data/quests';
 import { Rng } from '../src/engine/rng';
 import { goalReward, signOffer } from '../src/engine/sponsors';
 import { hireStaff, isStaffUnlocked, staffPrice } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
 import { sectionOpen } from '../src/engine/sections';
-import { unlockGame } from '../src/engine/teams';
+import { setSeasonPlan, unlockGame } from '../src/engine/teams';
 import { operationsOpen } from '../src/engine/tutorial';
 import { INCOME_SOURCES, type GameState, type IncomeSource } from '../src/engine/types';
 import { BRAND_MAP, SPONSOR_TIERS } from '../src/data/sponsors';
@@ -79,7 +79,6 @@ const MANDATE = String(args.mandate ?? 'first');
 const AUTOMATION = args.automation !== undefined ? args.automation === 'true' : MODE === 'casual' || MODE === 'passive';
 /** Which kind of quest reward to take when a quest offers a choice: cash or perk. */
 const QUEST_PICK = String(args.quest ?? 'cash');
-const SIM_SKIPS = ['design_shirt', 'plan_1'];
 /** --quests=off never claims quest rewards: a baseline for measuring what quests are worth. */
 const QUESTS_ON = args.quests !== 'off';
 const HOURS = Number(args.hours ?? 5);
@@ -194,8 +193,15 @@ function ruleBasedActions(s: GameState): void {
   if (prospect && prospect.price <= s.cash) signDraftPick(s, prospect.player.id, mods);
   const rates = computeRates(s, mods);
   for (const q of [...s.quests.active]) {
-    // The sim never draws a jersey or changes season plan, so it sets those quests aside.
-    if (!q.ready && SIM_SKIPS.includes(q.id)) skipQuest(s, q.id);
+    // Quests are linear now, so the sim does the two it has no other reason to do.
+    if (!q.ready && q.id === 'plan_1') {
+      const team = Object.values(s.teams)[0];
+      if (team) setSeasonPlan(s, team.gameId, team.plan === 'balanced' ? 'development' : 'balanced');
+    }
+    if (!q.ready && q.id === 'design_shirt') {
+      const designId = Object.keys(s.designs)[0] ?? addDesign(s, generateDesign(new Rng(s), 32, 'Sim jersey'));
+      if (designId) setJerseyDesign(s, designId);
+    }
     if (!q.ready || !QUESTS_ON) continue;
     // Takes cash when offered (easy to value); otherwise the quest's only or first reward.
     const rewards = QUEST_MAP.get(q.id)?.rewards ?? [];

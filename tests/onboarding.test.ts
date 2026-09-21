@@ -9,7 +9,7 @@ import { signListing } from '../src/engine/market';
 import { buyOperation } from '../src/engine/operations';
 import { completeOnboarding } from '../src/engine/org';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
-import { QUEST_SKIP_SECONDS, QUEST_SLOTS, claimQuest, fillQuests, questPerkLabels, questProgress, skipQuest, updateQuests } from '../src/engine/quests';
+import { QUEST_SLOTS, claimQuest, fillQuests, nextQuest, questPerkLabels, questPerkSources, questProgress, updateQuests } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { sectionOpen, updateSections } from '../src/engine/sections';
@@ -219,7 +219,7 @@ describe('tabs that open as the org grows', () => {
 });
 
 describe('quests', () => {
-  it('wait for the tutorial, then offer two at a time', () => {
+  it('wait for the tutorial, then offer one at a time', () => {
     const s = createNewGame(0, 1);
     fillQuests(s);
     expect(s.quests.active).toHaveLength(0);
@@ -268,7 +268,7 @@ describe('quests', () => {
     expect(s.quests.active.map((q) => q.id)).not.toContain('grinders_10');
   });
 
-  it('keeps perks for good, even after selling the org', () => {
+  it('keeps perks for the run, and starts the quest line again after a sale', () => {
     const s = foundedGame(0, 1);
     s.ops.grinder.owned = 10;
     const before = computeRates(s).opUnit.grinder;
@@ -276,9 +276,13 @@ describe('quests', () => {
     expect(claimQuest(s, 'grinders_10', 0, ctx(s), new Rng(s))).toBe(true);
     expect(computeRates(s).opUnit.grinder).toBeCloseTo(before * 2);
     expect(questPerkLabels(s)).toEqual(['Ranked Grinders earn twice as much']);
+    expect(questPerkSources(s)[0].quest).toBe(QUEST_MAP.get('grinders_10')!.title);
+    const claimed = s.quests.claimed;
     s.earnedTotal = LEGACY_DIVISOR;
     sellOrg(s, { charter: 'operator' });
-    expect(questPerkLabels(s)).toHaveLength(1);
+    expect(questPerkLabels(s)).toHaveLength(0);
+    expect(s.quests.done).toEqual({});
+    expect(s.quests.claimed).toBe(claimed);
   });
 
   it('pays cash worth minutes of income, with a floor for small orgs', () => {
@@ -292,21 +296,16 @@ describe('quests', () => {
     expect(s.cash - cash).toBe(1_500);
   });
 
-  it('lets a quest be set aside without blocking the board', () => {
+  it('follows the line in order, one quest at a time', () => {
     const s = foundedGame(0, 1);
     fillQuests(s);
-    const [first, second] = s.quests.active.map((q) => q.id);
-    expect(skipQuest(s, first)).toBe(true);
-    expect(s.quests.active.map((q) => q.id)).toEqual([second, expect.any(String)]);
-    expect(s.quests.active.map((q) => q.id)).not.toContain(first);
-    // It comes back once the fresh quests run out, after a pause.
-    s.quests.done = Object.fromEntries(QUESTS.filter((q) => q.id !== first).map((q) => [q.id, 0]));
-    s.quests.active = [];
+    expect(QUEST_SLOTS).toBe(1);
+    expect(s.quests.active.map((q) => q.id)).toEqual([QUESTS[0].id]);
+    expect(nextQuest(s)?.id).toBe(QUESTS[1].id);
+    // Quests set aside by the old "Later" button simply rejoin the line.
+    s.quests.skipped = { [QUESTS[3].id]: 0 };
     fillQuests(s);
-    expect(s.quests.active).toHaveLength(0);
-    s.time += QUEST_SKIP_SECONDS;
-    fillQuests(s);
-    expect(s.quests.active.map((q) => q.id)).toEqual([first]);
+    expect(s.quests.skipped).toEqual({});
   });
 
   it('asks for a choice only once the player has met both options', () => {

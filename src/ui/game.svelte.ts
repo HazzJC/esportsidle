@@ -48,7 +48,7 @@ import { randomLook } from '../engine/players';
 import { TAB_MAP } from './tabs';
 import { updateSections } from '../engine/sections';
 import { QUEST_MAP } from '../data/quests';
-import { claimQuest, describeReward, skipQuest } from '../engine/quests';
+import { claimQuest, describeReward } from '../engine/quests';
 import { skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
 import { pauseMusicForVisibility, setMusicVolume, startMusic, stopMusic } from './audio/music';
@@ -627,11 +627,6 @@ class GameStore {
     this.sfx('win');
     this.toast({ title: `Reward: ${reward}`, body: def?.title, icon: def?.icon ?? 'flag', tone: 'gold' }, 3000);
     this.refresh();
-  }
-
-  /** Puts a quest aside; the next quest takes its slot. */
-  skipQuest(id: string): void {
-    if (skipQuest(this.state, id)) this.refresh();
   }
 
   sellPlayer(playerId: string): number {

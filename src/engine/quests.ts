@@ -8,8 +8,8 @@ import { tutorialActive } from './tutorial';
 import type { ActiveQuest, Effect, GameState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
 
-/** Quests on the board at once, so there is always a choice of what to chase next. */
-export const QUEST_SLOTS = 2;
+/** One quest at a time: the quest line is followed in order, like a story. */
+export const QUEST_SLOTS = 1;
 
 export interface QuestProgress {
   value: number;
@@ -25,43 +25,27 @@ export function questProgress(s: GameState, q: ActiveQuest): QuestProgress {
   return { value, target: def.target, complete: raw >= def.target };
 }
 
-/** A quest set aside with "Later" stays away at least this long, then waits behind the others. */
-export const QUEST_SKIP_SECONDS = 600;
-
 /**
- * Puts the earliest available quests on any empty slots. Quests set aside come back only when no
- * fresh quest is available, so ignoring one never blocks the board. Quests wait for the tutorial.
+ * Puts the next quest in the line on the board. Quests are followed in order and cannot be set
+ * aside; a quest whose system has not opened yet (sponsors, merch, a rival) waits, and the line
+ * carries on with the next one until it does. Quests wait for the tutorial.
  */
 export function fillQuests(s: GameState): void {
   if (tutorialActive(s)) return;
   const q = s.quests;
-  const open = (def: (typeof QUESTS)[number]) =>
-    q.done[def.id] === undefined && !q.active.some((a) => a.id === def.id) && (!def.available || def.available(s));
-  const offer = (def: (typeof QUESTS)[number]) => {
-    delete q.skipped[def.id];
-    q.active.push({ id: def.id, base: def.metric(s), ready: false });
-  };
+  // Quests set aside under the old "Later" button simply rejoin the line in order.
+  if (Object.keys(q.skipped).length > 0) q.skipped = {};
   for (const def of QUESTS) {
     if (q.active.length >= QUEST_SLOTS) return;
-    if (q.skipped[def.id] === undefined && open(def)) offer(def);
-  }
-  const waiting = QUESTS.filter((d) => q.skipped[d.id] !== undefined && s.time - q.skipped[d.id] >= QUEST_SKIP_SECONDS && open(d)).sort(
-    (a, b) => q.skipped[a.id] - q.skipped[b.id],
-  );
-  for (const def of waiting) {
-    if (q.active.length >= QUEST_SLOTS) return;
-    offer(def);
+    const open = q.done[def.id] === undefined && !q.active.some((a) => a.id === def.id) && (!def.available || def.available(s));
+    if (open) q.active.push({ id: def.id, base: def.metric(s), ready: false });
   }
 }
 
-/** Sets an unfinished quest aside so the next one can take its slot. */
-export function skipQuest(s: GameState, id: string): boolean {
-  const index = s.quests.active.findIndex((q) => q.id === id);
-  if (index < 0 || questProgress(s, s.quests.active[index]).complete) return false;
-  s.quests.active.splice(index, 1);
-  s.quests.skipped[id] = s.time;
-  fillQuests(s);
-  return true;
+/** The quest after the current one, for an "Up next" preview. */
+export function nextQuest(s: GameState): (typeof QUESTS)[number] | undefined {
+  const current = new Set(s.quests.active.map((a) => a.id));
+  return QUESTS.find((d) => s.quests.done[d.id] === undefined && !current.has(d.id));
 }
 
 /** Fills slots and announces quests that have just been finished. */
@@ -119,7 +103,7 @@ export function rewardDetail(r: QuestReward, ctx: RewardContext): string {
     case 'legacy':
       return 'Spend in the Legacy tree';
     case 'perk':
-      return 'Permanent, even after you sell the org';
+      return 'Lasts for the rest of this run';
   }
 }
 
@@ -165,7 +149,7 @@ export function claimQuest(s: GameState, id: string, choice: number, ctx: Reward
   return true;
 }
 
-/** Permanent effects from every perk the org has chosen. */
+/** Effects from every perk the org has chosen this run. */
 export function questPerkEffects(s: GameState): Effect[] {
   const out: Effect[] = [];
   for (const [id, choice] of Object.entries(s.quests.picks)) {
@@ -177,12 +161,18 @@ export function questPerkEffects(s: GameState): Effect[] {
 
 /** Labels of the perks the org has earned, for display. */
 export function questPerkLabels(s: GameState): string[] {
-  const out: string[] = [];
+  return questPerkSources(s).map((p) => p.label);
+}
+
+/** Each perk and the quest that earned it, so the board can say where a perk came from. */
+export function questPerkSources(s: GameState): { label: string; quest: string; icon: string; claimedAt: number }[] {
+  const out: { label: string; quest: string; icon: string; claimedAt: number }[] = [];
   for (const [id, choice] of Object.entries(s.quests.picks)) {
-    const reward = QUEST_MAP.get(id)?.rewards[choice];
-    if (reward?.kind === 'perk') out.push(reward.label);
+    const def = QUEST_MAP.get(id);
+    const reward = def?.rewards[choice];
+    if (def && reward?.kind === 'perk') out.push({ label: reward.label, quest: def.title, icon: def.icon, claimedAt: s.quests.done[id] ?? 0 });
   }
-  return out;
+  return out.sort((a, b) => a.claimedAt - b.claimedAt);
 }
 
 export function questsLeft(s: GameState): number {

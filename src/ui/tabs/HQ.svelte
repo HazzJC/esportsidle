@@ -10,14 +10,35 @@
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { opColor } from '../theme';
+  import { opSceneBackground, opSpriteSvg } from '../opsArt';
   import { tooltip } from '../tooltip.svelte';
 
+  /** Sprites drawn per operation before the rest collapse into a count. */
   const MAX_UNITS = 40;
+  /** Units per row: two rows, back and front, fill the strip left to right. */
+  const PER_ROW = 20;
+
+  /** Where the nth unit stands: rows alternate front and back, with a little jitter so it looks lived in. */
+  function unitSpot(i: number) {
+    const row = i % 2;
+    const col = Math.floor(i / 2);
+    const jitter = ((i * 0.618) % 1) - 0.5;
+    return {
+      x: 2 + (col / PER_ROW) * 95 + jitter * 1.6,
+      y: row === 0 ? 3 : 15,
+      back: row === 1,
+      delay: ((i * 0.37) % 1.6).toFixed(2),
+    };
+  }
 
   const v = $derived(game.view);
   const s = $derived(v.s);
   const r = $derived(v.r);
   const owned = $derived(OPERATIONS.filter((op) => s.ops[op.id].owned > 0));
+  // Built only from constants in opsArt.ts, so {@html} is safe.
+  const art = $derived(
+    Object.fromEntries(owned.map((op) => [op.id, { scene: opSceneBackground(op.id, opColor(op.index)), sprite: opSpriteSvg(op.id, opColor(op.index)) }])),
+  );
   const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
   let activityMode = $state<'active' | 'all'>('active');
   const activityLog = $derived(activityEntries(s.events.log, s.time, activityMode).slice(0, 8));
@@ -41,24 +62,6 @@
     {#if Object.keys(s.teams).length > 0}<Stories />{/if}
   {/if}
 
-  <div class="cards">
-    <div class="card">
-      <span class="label">Income</span>
-      <span class="value num accent-text">{money(r.totalCps, 1)}/s</span>
-    </div>
-    <div class="card" use:tooltip={() => ({ title: 'Fame multiplier', icon: 'heart', iconColor: 'var(--accent-2)', lines: ['Every fan makes your whole org a little more valuable.'] })}>
-      <span class="label">Fame</span>
-      <span class="value num">×{r.fameMult.toFixed(2)}</span>
-    </div>
-    <div class="card" use:tooltip={() => ({ title: 'Trophies', icon: 'trophy', iconColor: 'var(--gold)', lines: ['Won from season titles and tournaments.', 'Spend them on operation levels below and on trophy upgrades.'] })}>
-      <span class="label">Trophies</span>
-      <span class="value num gold-text">{fmt(s.trophies)}</span>
-    </div>
-    <div class="card" use:tooltip={() => ({ title: 'Trophy Cabinet', icon: 'trophy', iconColor: 'var(--gold)', lines: ['Each achievement adds 4% to your cabinet. Superfan upgrades turn it into income.'] })}>
-      <span class="label">Cabinet</span>
-      <span class="value num gold-text">{fmtPct(r.cabinet)}</span>
-    </div>
-  </div>
 
   {#if modifiers.length > 0 || s.events.log.length > 0 || v.m.dramaLevel > 0}
     <section class="activity">
@@ -195,9 +198,11 @@
                 </button>
               {/if}
             </div>
-            <div class="units">
+            <div class="scene">
+              <span class="backdrop" style="background-image:{art[op.id]?.scene}"></span>
               {#each { length: Math.min(st.owned, MAX_UNITS) } as _, i (i)}
-                <span class="unit"><Icon name={op.icon} size={17} /></span>
+                {@const spot = unitSpot(i)}
+                <span class="sprite" class:back={spot.back} style="left:{spot.x}%; bottom:{spot.y}px; --d:{spot.delay}s; z-index:{spot.back ? 1 : 2}">{@html art[op.id]?.sprite}</span>
               {/each}
               {#if st.owned > MAX_UNITS}
                 <span class="more num">+{fmt(st.owned - MAX_UNITS)}</span>
@@ -447,24 +452,63 @@
   .lvl:hover:not(:disabled) {
     border-color: var(--gold);
   }
-  .units {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 4px;
-    margin-top: 4px;
-    align-items: center;
+  /* A strip of scenery per operation, with a sprite for every unit owned: Cookie Clicker's buildings. */
+  .scene {
+    position: relative;
+    height: 58px;
+    margin-top: 6px;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--c) 25%, transparent);
   }
-  .unit {
-    display: grid;
-    place-items: center;
-    color: var(--c);
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--c) 60%, transparent));
-    animation: pop-in 0.25s ease-out both;
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background-repeat: repeat-x;
+    background-size: auto 100%;
+    background-position: left bottom;
+  }
+  .sprite {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    margin-left: -13px;
+    filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
+    animation:
+      pop-in 0.25s ease-out both,
+      idle 2.4s ease-in-out var(--d) infinite;
+  }
+  .sprite.back {
+    width: 21px;
+    height: 21px;
+    margin-left: -10px;
+    opacity: 0.8;
+    filter: brightness(0.8) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  }
+  .sprite :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  @keyframes idle {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -2px;
+    }
   }
   .more {
-    font-size: 12px;
-    color: var(--muted);
-    margin-left: 4px;
+    position: absolute;
+    right: 6px;
+    top: 4px;
+    z-index: 3;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    font-size: 11px;
+    color: var(--text);
   }
   @keyframes pop-in {
     from {
