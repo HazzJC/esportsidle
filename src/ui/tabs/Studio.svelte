@@ -13,6 +13,7 @@
   import Modal from '../components/Modal.svelte';
   import MerchIcon from '../components/MerchIcon.svelte';
   import MerchPreview from '../components/MerchPreview.svelte';
+  import { merchLookName, merchMilestones, nextMerchMilestone } from '../merchArt';
   import { rarityColor, rarityName } from '../theme';
   import PixelEditor from '../components/PixelEditor.svelte';
   import { game } from '../game.svelte';
@@ -218,11 +219,27 @@
                     {#each FINISH_PIPS as i (i)}<i class:on={i < q}></i>{/each}
                   </div>
                   {#if !maxed}
+                    {@const upcoming = nextMerchMilestone(p.id, q)}
                     <div class="next dim">
-                      <MerchIcon productId={p.id} quality={q + 1} primary={s.org.primary} secondary={s.org.secondary} size={24} showLevel={false} />
-                      Next: {FINISH_NAMES[q + 1]}
+                      Next: {FINISH_NAMES[q + 1]}{#if upcoming}<span class="new-look"> · new look at Q{upcoming.q}: {upcoming.name}</span>{/if}
                     </div>
                   {/if}
+                  <div class="looks" aria-label="Looks this product unlocks">
+                    {#each merchMilestones(p.id) as m (m.q)}
+                      <span
+                        class="look"
+                        class:current={merchLookName(p.id, q) === m.name}
+                        use:tooltip={() => ({
+                          title: m.name,
+                          subtitle: `Finish Q${m.q} · ${FINISH_NAMES[m.q]}`,
+                          icon: 'sparkles',
+                          lines: [m.desc, q >= m.q ? { text: 'Unlocked', tone: 'good' as const } : { text: `${m.q - q} more finish upgrade${m.q - q === 1 ? '' : 's'} to go`, tone: 'muted' as const }],
+                        })}
+                      >
+                        <MerchIcon productId={p.id} quality={m.q} primary={s.org.primary} secondary={s.org.secondary} size={28} showLevel={false} dim={q < m.q} />
+                      </span>
+                    {/each}
+                  </div>
                 </div>
                 {#if maxed}
                   <span class="chip gold-text">MAX</span>
@@ -502,10 +519,24 @@
     background: var(--r);
   }
   .next {
-    display: flex;
-    align-items: center;
-    gap: 6px;
     font-size: 11px;
+  }
+  .new-look {
+    color: var(--gold);
+  }
+  .looks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 3px;
+  }
+  .look {
+    position: relative;
+    display: inline-flex;
+    border-radius: 11px;
+  }
+  .look.current {
+    box-shadow: 0 0 0 2px var(--r);
   }
   .phead {
     display: flex;

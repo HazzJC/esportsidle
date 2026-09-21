@@ -1,13 +1,15 @@
 <script lang="ts">
   import { FINISH_NAMES, finishBand } from '../../data/merch';
   import type { Design } from '../../engine/types';
-  import { merchArtSvg, merchPrintWindow } from '../merchArt';
+  import { game } from '../game.svelte';
+  import { merchArtSvg, merchLookName, merchPrintWindow } from '../merchArt';
   import { rarityColor } from '../theme';
   import DesignImage from './DesignImage.svelte';
 
   /**
    * The product as it would ship: the bespoke art in the org's colours, with the chosen design
-   * printed where it belongs on that product, framed in the colour of its finish level.
+   * printed where it belongs on that product, framed in the colour of its finish level. It tilts
+   * towards the pointer like a card in the hand, and pops when the finish improves.
    */
   let {
     productId,
@@ -17,35 +19,71 @@
     secondary = '#8b5cff',
   }: { productId: string; design: Design | undefined; quality?: number; primary?: string; secondary?: string } = $props();
 
+  const reduced = $derived(game.view.s.settings.reducedMotion);
   const band = $derived(finishBand(quality));
   const color = $derived(rarityColor(band));
   // Built only from constants in merchArt.ts and the org's validated hex colours, so {@html} is safe.
-  const art = $derived(merchArtSvg(productId, primary, secondary, quality));
-  const win = $derived(merchPrintWindow(productId));
+  const art = $derived(merchArtSvg(productId, primary, secondary, quality, !reduced));
+  const win = $derived(merchPrintWindow(productId, quality));
+  const look = $derived(merchLookName(productId, quality));
   const pct = (v: number) => `${((v / 48) * 100).toFixed(2)}%`;
+
+  // Pointer tilt, in degrees, and where the glare sits.
+  let rx = $state(0);
+  let ry = $state(0);
+  let gx = $state(50);
+  let gy = $state(30);
+  let hovering = $state(false);
+
+  function onMove(e: PointerEvent) {
+    if (reduced || e.pointerType === 'touch') return;
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const nx = (e.clientX - box.left) / box.width - 0.5;
+    const ny = (e.clientY - box.top) / box.height - 0.5;
+    rx = -ny * 16;
+    ry = nx * 18;
+    gx = (nx + 0.5) * 100;
+    gy = (ny + 0.5) * 100;
+    hovering = true;
+  }
+
+  function onLeave() {
+    rx = 0;
+    ry = 0;
+    hovering = false;
+  }
 </script>
 
 <div
   class="stage"
   class:lit={quality >= 7}
   class:maxed={quality >= 10}
-  style="--r:{color}"
-  aria-label="{productId} preview, {FINISH_NAMES[quality] ?? 'finish'} (Q{quality})"
+  class:hovering
+  style="--r:{color}; --rx:{rx}deg; --ry:{ry}deg; --gx:{gx}%; --gy:{gy}%"
+  onpointermove={onMove}
+  onpointerleave={onLeave}
+  role="img"
+  aria-label="{look}, {FINISH_NAMES[quality] ?? 'finish'} (Q{quality})"
 >
-  <div class="product">
-    <span class="art">{@html art}</span>
-    {#if design}
-      <span
-        class="print"
-        style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg); border-radius:{(win.round ?? 0) * 100}%"
-      >
-        <DesignImage {design} size={64} />
-      </span>
-    {:else}
-      <span class="print empty" style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg)">?</span>
-    {/if}
-  </div>
-  <span class="finish num">Q{quality} · {FINISH_NAMES[quality] ?? ''}</span>
+  {#key quality}
+    <div class="product" class:pop={!reduced}>
+      <span class="art">{@html art}</span>
+      {#if design}
+        <span
+          class="print"
+          class:stitched={quality >= 4}
+          class:foil={quality >= 6 && !reduced}
+          style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg); border-radius:{(win.round ?? 0) * 100}%"
+        >
+          <DesignImage {design} size={64} />
+        </span>
+      {:else}
+        <span class="print empty" style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg)">?</span>
+      {/if}
+    </div>
+  {/key}
+  <span class="glare" aria-hidden="true"></span>
+  <span class="finish num" title={FINISH_NAMES[quality] ?? ''}>{look} · Q{quality}</span>
 </div>
 
 <style>
@@ -62,6 +100,7 @@
       radial-gradient(circle at 50% 40%, #4a4a52 0%, #2c2c31 50%, #19191c 82%),
       #19191c;
     overflow: hidden;
+    perspective: 420px;
   }
   .stage::before {
     content: '';
@@ -84,6 +123,15 @@
     width: 96px;
     height: 96px;
     margin-top: -10px;
+    transform: rotateX(var(--rx)) rotateY(var(--ry));
+    transform-style: preserve-3d;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .hovering .product {
+    transition: transform 0.08s linear;
+  }
+  .product.pop {
+    animation: pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
   }
   .art {
     position: absolute;
@@ -94,7 +142,18 @@
     width: 100%;
     height: 100%;
     overflow: visible;
-    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.5)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.5)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+  }
+  .glare {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--gx) var(--gy), rgba(255, 255, 255, 0.16), transparent 45%);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .hovering .glare {
+    opacity: 1;
   }
   .print {
     position: absolute;
@@ -104,6 +163,25 @@
     /* The print sits on the fabric: slightly softened and shaded, not pasted on top. */
     filter: saturate(0.92) contrast(0.95);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  }
+  /* From Q4 the design is stitched on: a raised patch with a thread edge. */
+  .print.stitched {
+    filter: saturate(1) contrast(1.02);
+    outline: 1px dashed rgba(255, 255, 255, 0.55);
+    outline-offset: -1.5px;
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+      0 1px 1.5px rgba(0, 0, 0, 0.45);
+  }
+  /* From Q6 the print is foiled: a band of light sweeps across it now and then. */
+  .print.foil::after {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+    mix-blend-mode: screen;
+    animation: foil 4.2s ease-in-out infinite;
+    pointer-events: none;
   }
   .print :global(img),
   .print :global(canvas),
@@ -146,6 +224,31 @@
     }
     50% {
       box-shadow: 0 0 24px color-mix(in srgb, var(--r) 75%, transparent);
+    }
+  }
+  @keyframes pop {
+    from {
+      transform: scale(0.82) rotateX(var(--rx)) rotateY(var(--ry));
+      opacity: 0.4;
+    }
+  }
+  @keyframes foil {
+    0%,
+    55% {
+      transform: translateX(-70%);
+    }
+    100% {
+      transform: translateX(70%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .maxed,
+    .product.pop,
+    .print.foil::after {
+      animation: none;
+    }
+    .product {
+      transform: none;
     }
   }
 </style>

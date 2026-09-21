@@ -5,7 +5,7 @@
 
   /**
    * A product tile, drawn the way gear is: bespoke art on a spotlit backdrop, framed in the colour of
-   * its finish level. Locked products show as a silhouette.
+   * its finish level. Locked products show as a silhouette; `dim` shows a look still to come.
    */
   let {
     productId,
@@ -15,14 +15,26 @@
     size = 40,
     showLevel = true,
     locked = false,
-  }: { productId: string; quality?: number; primary: string; secondary: string; size?: number; showLevel?: boolean; locked?: boolean } = $props();
+    dim = false,
+    animate = false,
+  }: {
+    productId: string;
+    quality?: number;
+    primary: string;
+    secondary: string;
+    size?: number;
+    showLevel?: boolean;
+    locked?: boolean;
+    dim?: boolean;
+    animate?: boolean;
+  } = $props();
 
   const band = $derived(finishBand(quality));
   const color = $derived(rarityColor(band));
-  const lit = $derived(quality >= 7);
-  const maxed = $derived(quality >= 10);
+  const lit = $derived(quality >= 7 && !dim);
+  const maxed = $derived(quality >= 10 && !dim);
   // Built only from constants in merchArt.ts and the org's validated hex colours, so {@html} is safe.
-  const art = $derived(merchArtSvg(productId, primary, secondary, quality));
+  const art = $derived(merchArtSvg(productId, primary, secondary, quality, animate && !dim && !locked));
 </script>
 
 <span
@@ -30,6 +42,7 @@
   class:lit
   class:maxed
   class:locked
+  class:dim
   style="--r:{locked ? 'var(--line-2)' : color}; --size:{size}px"
   role="img"
   aria-label={locked ? 'Locked product' : `${rarityName(band)} finish, level ${quality}`}
@@ -51,6 +64,9 @@
     background:
       radial-gradient(circle at 50% 42%, #4a4a52 0%, #2c2c31 48%, #19191c 80%),
       #19191c;
+    transition:
+      opacity 0.2s,
+      filter 0.2s;
   }
   .merch-icon::before {
     content: '';
@@ -74,6 +90,11 @@
   }
   .locked .art {
     filter: brightness(0) opacity(0.45);
+  }
+  .dim {
+    opacity: 0.5;
+    filter: grayscale(0.7);
+    border-style: dashed;
   }
   .lit {
     border-color: var(--r);
@@ -107,6 +128,11 @@
     }
     50% {
       box-shadow: 0 0 22px color-mix(in srgb, var(--r) 75%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .maxed {
+      animation: none;
     }
   }
 </style>
