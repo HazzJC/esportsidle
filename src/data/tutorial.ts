@@ -1,6 +1,6 @@
 import type { GameState } from '../engine/types';
 
-export type TutorialStep = 'click' | 'draft' | 'match' | 'grinder' | 'streamer' | 'done';
+export type TutorialStep = 'click' | 'draft' | 'match' | 'rest' | 'grinder' | 'streamer' | 'done';
 
 /** Where a step points: the element the coach card highlights and "Show me" goes to. */
 export type TutorialTarget = 'logo' | 'draft' | 'matches' | 'store';
@@ -19,6 +19,14 @@ export interface TutorialStepDef {
 export const FIRST_PLAYER_PRICE = 25;
 
 const players = (s: GameState) => Object.keys(s.players).length;
+
+/** How long the tutorial's scripted injury lasts, so nobody is stuck if they miss the step. */
+export const TUTORIAL_INJURY_SECONDS = 60;
+
+/** The player the tutorial follows: the founder, or the first player signed. */
+export function tutorialPlayer(s: GameState) {
+  return s.players.founder ?? Object.values(s.players)[0];
+}
 
 /**
  * The first few minutes of a new org. It starts with nothing but a logo to click, signs a first
@@ -45,11 +53,23 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   },
   {
     id: 'match',
-    title: 'Your first match',
-    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Watch the bar fill: your first match is about to start. Players, gear and seasons are the active side of your org.',
+    title: 'Your first win',
+    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Watch the bar fill and wait for your first win. Players, gear and seasons are the active side of your org.',
     icon: 'swords',
     target: 'matches',
-    progress: (s) => ({ value: Math.min(1, s.stats.matchesWon + s.stats.matchesLost), target: 1 }),
+    progress: (s) => ({ value: Math.min(1, s.stats.matchesWon), target: 1 }),
+  },
+  {
+    id: 'rest',
+    title: 'Rest an injured player',
+    body: 'Your player strained a wrist celebrating that win. Drag them off their computer and onto the bench: benched players recover twice as fast. It heals on its own within a minute if you leave it.',
+    icon: 'bandage',
+    target: 'matches',
+    progress: (s) => {
+      const p = tutorialPlayer(s);
+      const healthy = !p || p.status.kind === 'healthy' || p.status.until <= s.time;
+      return { value: healthy ? 1 : 0, target: 1 };
+    },
   },
   {
     id: 'grinder',

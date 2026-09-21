@@ -50,7 +50,7 @@ import { TAB_MAP } from './tabs';
 import { updateSections } from '../engine/sections';
 import { QUEST_MAP } from '../data/quests';
 import { claimQuest, describeReward } from '../engine/quests';
-import { skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
+import { restDuringTutorial, skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
 import { pauseMusicForVisibility, setMusicVolume, startMusic, stopMusic } from './audio/music';
 
@@ -58,7 +58,6 @@ export type TabId =
   | 'hq'
   | 'house'
   | 'teams'
-  | 'roster'
   | 'market'
   | 'staff'
   | 'studio'
@@ -683,7 +682,11 @@ class GameStore {
   }
 
   benchPlayer(gameId: string, playerId: string): void {
-    if (benchPlayer(this.state, gameId, playerId, computeMods(this.state))) this.refresh();
+    const slot = this.state.teams[gameId]?.lineup.indexOf(playerId) ?? -1;
+    if (benchPlayer(this.state, gameId, playerId, computeMods(this.state))) {
+      restDuringTutorial(this.state, gameId, playerId, slot);
+      this.refresh();
+    }
     else this.toast({ title: 'Bench is full', body: 'Buy bench upgrades to hold more substitutes.', icon: 'users', tone: 'bad' }, 3000);
   }
 

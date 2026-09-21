@@ -47,12 +47,6 @@ export const SECTIONS: SectionDef[] = [
     announce: 'Every achievement adds to your trophy cabinet, which boosts income.',
   },
   {
-    id: 'roster',
-    unlock: (s) => playerCount(s) >= 3,
-    requirement: () => 'Sign 3 players',
-    announce: 'Every player you have signed, across all your teams, in one place.',
-  },
-  {
     id: 'studio',
     unlock: (s) => s.fansRun >= STUDIO_UNLOCK_FANS,
     requirement: (s) => `Reach ${fmt(STUDIO_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`,

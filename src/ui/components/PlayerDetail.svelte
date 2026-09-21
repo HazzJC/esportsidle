@@ -20,6 +20,7 @@
   } from '../../engine/players';
   import { Rng } from '../../engine/rng';
   import { teamKit } from '../../engine/teams';
+  import { BENCH_RECOVERY_MULT } from '../../engine/health';
   import type { Appearance } from '../../engine/types';
   import { game } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
@@ -164,11 +165,12 @@
           <span class="bar morale"><i style="width:{p.morale}%"></i></span>
         </div>
         {#if !isAvailable(p, v.s.time)}
+          {@const benched = !team?.lineup.includes(p.id)}
           <div class="status bad">
             <Icon name="thermometer" size={14} />
             <div>
-              <b>{p.status.reason || 'Unavailable'}</b> · Recovers in {fmtTime(Math.max(0, p.status.until - v.s.time))}
-              <div class="dim small">Purely time-based — no benching required.</div>
+              <b>{p.status.reason || 'Unavailable'}</b> · back in {fmtTime(Math.max(0, p.status.until - v.s.time) / (benched ? BENCH_RECOVERY_MULT : 1))}
+              <div class="dim small">{benched ? `Resting on the bench: recovering ${BENCH_RECOVERY_MULT}× faster.` : `Bench them to recover ${BENCH_RECOVERY_MULT}× faster.`}</div>
             </div>
           </div>
         {/if}

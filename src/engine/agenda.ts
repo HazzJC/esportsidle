@@ -12,7 +12,7 @@ import type { GameState, Mods, Rates } from './types';
 import { canAffordUpgrade, storeUpgrades } from './upgrades';
 
 export type AgendaTarget =
-  | { kind: 'tab'; tab: 'teams' | 'market' | 'sponsors' | 'studio' | 'legacy' | 'roster'; gameId?: string }
+  | { kind: 'tab'; tab: 'teams' | 'market' | 'sponsors' | 'studio' | 'legacy'; gameId?: string }
   | { kind: 'store' }
   | { kind: 'player'; id: string }
   | { kind: 'unlockGame'; gameId: string };

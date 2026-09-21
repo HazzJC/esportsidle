@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { QUESTS, QUEST_MAP } from '../src/data/quests';
-import { FIRST_PLAYER_PRICE } from '../src/data/tutorial';
+import { FIRST_PLAYER_PRICE, TUTORIAL_INJURY_SECONDS } from '../src/data/tutorial';
 import { clickLogo } from '../src/engine/clicker';
 import { customiseDraft, signDraftPick } from '../src/engine/draft';
 import { computeMods, computeRates } from '../src/engine/economy';
@@ -15,7 +15,8 @@ import { decodeSave, encodeSave } from '../src/engine/save';
 import { sectionOpen, updateSections } from '../src/engine/sections';
 import { hireStaff } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
-import { CALM_START_SECONDS, calmStart, operationsOpen, skipTutorial, updateTutorial } from '../src/engine/tutorial';
+import { benchPlayer } from '../src/engine/teams';
+import { CALM_START_SECONDS, calmStart, operationsOpen, restDuringTutorial, skipTutorial, updateTutorial } from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
 import { foundedGame } from './fixtures';
 
@@ -118,7 +119,18 @@ describe('the tutorial', () => {
     updateTutorial(s);
     expect(s.tutorial.step).toBe('match');
 
-    advance(s, 30);
+    // The first win hurts the founder, for a minute at most.
+    while (s.stats.matchesWon === 0 && s.time < 600) advance(s, 5);
+    expect(s.tutorial.step).toBe('rest');
+    const founder = s.players.founder;
+    expect(founder.status.kind).toBe('injured');
+    expect(founder.status.until - s.time).toBeLessThanOrEqual(TUTORIAL_INJURY_SECONDS);
+
+    // Benching heals them on the spot and puts them back at their computer.
+    expect(benchPlayer(s, 'smash', founder.id, computeMods(s))).toBe(true);
+    expect(restDuringTutorial(s, 'smash', founder.id, 0)).toBe(true);
+    expect(founder.status.kind).toBe('healthy');
+    expect(s.teams.smash.lineup[0]).toBe(founder.id);
     expect(s.tutorial.step).toBe('grinder');
     expect(operationsOpen(s)).toBe(true);
     s.cash = 1e6;
@@ -126,6 +138,18 @@ describe('the tutorial', () => {
     buyOperation(s, 'streamer', 1);
     updateTutorial(s);
     expect(s.tutorial.step).toBe('done');
+  });
+
+  it('lets a missed injury heal on its own within a minute', () => {
+    const s = createNewGame(0, 1);
+    clickToFirstPlayer(s);
+    updateTutorial(s);
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    updateTutorial(s);
+    while (s.stats.matchesWon === 0 && s.time < 600) advance(s, 5);
+    expect(s.tutorial.step).toBe('rest');
+    advance(s, TUTORIAL_INJURY_SECONDS + 1);
+    expect(s.tutorial.step).toBe('grinder');
   });
 
   it('can be skipped, which opens everything', () => {
@@ -167,7 +191,7 @@ describe('tabs that open as the org grows', () => {
     const s = createNewGame(0, 1);
     updateSections(s);
     for (const id of ['hq', 'teams', 'stats', 'options']) expect(sectionOpen(s, id), id).toBe(true);
-    for (const id of ['market', 'house', 'staff', 'sponsors', 'studio', 'roster', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
+    for (const id of ['market', 'house', 'staff', 'sponsors', 'studio', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
   });
 
   it('opens House with the second team, Staff with the third and Sponsors at 1,000 fans', () => {

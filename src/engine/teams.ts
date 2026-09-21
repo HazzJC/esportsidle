@@ -17,7 +17,7 @@ import {
 import { DECLINE_AGE, RETIRE_AGE, RETIRE_CHANCE_PER_YEAR, SEASONS_PER_YEAR, SEASON_PLANS, type SeasonPlan } from '../data/seasonPlans';
 import { emit } from './bus';
 import { fmt, money } from './format';
-import { rollHealth } from './health';
+import { BENCH_RECOVERY_MULT, rollHealth } from './health';
 import {
   STAND_IN_RATING,
   applyMorale,
@@ -404,7 +404,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     checkPlayerMilestones(s, p, win, levels);
     applyMorale(p, (win ? mood.moraleWin : mood.moraleLoss) - (opponent.rival && !win ? 4 + Math.min(12, (s.rival?.heat ?? 0) * 2) : 0), mods);
     drainEnergy(p, mods, plan.drain);
-    if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench);
+    if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench, plan.injuryRisk);
   }
   // Bench players train alongside; how much depends on the plan.
   if (plan.benchXp > 0) {
@@ -581,6 +581,8 @@ export function updatePlayers(s: GameState, dt: number, mods: Mods): void {
     const base = moraleBase(p, mods);
     p.morale += (base - p.morale) * Math.min(1, 0.01 * dt);
     if (p.status.kind !== 'healthy') {
+      // Rest works: off the stage, the clock on an illness or injury runs faster.
+      if (resting) p.status.until -= dt * (BENCH_RECOVERY_MULT - 1);
       if (p.status.until <= s.time) {
         p.status = { kind: 'healthy', until: 0, reason: '' };
         emit({ type: 'toast', title: `${p.tag} is back`, body: 'Recovered and ready to compete.', icon: 'heart-pulse', tone: 'good', channel: 'players' });

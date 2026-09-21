@@ -5,7 +5,6 @@ export const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'hq', label: 'HQ', icon: 'building' },
   { id: 'teams', label: 'Teams', icon: 'swords' },
   { id: 'market', label: 'Market', icon: 'user-plus' },
-  { id: 'roster', label: 'Roster', icon: 'users' },
   { id: 'house', label: 'House', icon: 'house' },
   { id: 'staff', label: 'Staff', icon: 'briefcase' },
   { id: 'studio', label: 'Studio', icon: 'palette' },

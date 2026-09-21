@@ -22,6 +22,8 @@ export interface SeasonPlanDef {
   recovery: number;
   /** Starters below this energy are rotated out when a rested substitute is available. */
   subAt: number;
+  /** Injury chance multiplier for starters: pushing hard gets people hurt. */
+  injuryRisk: number;
 }
 
 export const SEASON_PLANS: Record<SeasonPlan, SeasonPlanDef> = {
@@ -36,6 +38,7 @@ export const SEASON_PLANS: Record<SeasonPlan, SeasonPlanDef> = {
     drain: 0.8,
     recovery: 1.25,
     subAt: 60,
+    injuryRisk: 0.7,
   },
   balanced: {
     id: 'balanced',
@@ -48,6 +51,7 @@ export const SEASON_PLANS: Record<SeasonPlan, SeasonPlanDef> = {
     drain: 1,
     recovery: 1,
     subAt: 35,
+    injuryRisk: 1,
   },
   push: {
     id: 'push',
@@ -60,6 +64,7 @@ export const SEASON_PLANS: Record<SeasonPlan, SeasonPlanDef> = {
     drain: 1.35,
     recovery: 0.85,
     subAt: 20,
+    injuryRisk: 1.6,
   },
 };
 

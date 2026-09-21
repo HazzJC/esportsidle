@@ -11,7 +11,6 @@
   import Legacy from '../tabs/Legacy.svelte';
   import Market from '../tabs/Market.svelte';
   import Options from '../tabs/Options.svelte';
-  import Roster from '../tabs/Roster.svelte';
   import House from '../tabs/House.svelte';
   import Sponsors from '../tabs/Sponsors.svelte';
   import Staff from '../tabs/Staff.svelte';
@@ -77,8 +76,6 @@
       <Legacy />
     {:else if game.tab === 'teams'}
       <Teams />
-    {:else if game.tab === 'roster'}
-      <Roster />
     {:else if game.tab === 'market'}
       <Market />
     {:else if game.tab === 'achievements'}

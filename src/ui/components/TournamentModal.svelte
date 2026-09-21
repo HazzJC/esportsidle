@@ -13,6 +13,7 @@
   } from '../../engine/tournament';
   import { Rng } from '../../engine/rng';
   import { game } from '../game.svelte';
+  import { orgLogoSvg } from '../orgArt';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
 
@@ -167,7 +168,7 @@
           {#if !shown}
             <span class="pending muted">{revealed === i && round ? 'Playing…' : '—'}</span>
           {:else if round}
-            <span class="vs">vs {round.opponent} <span class="dim">({fmtPct(round.chance, false, 0)} to win)</span></span>
+            <span class="vs"><span class="crest">{@html orgLogoSvg(round.opponent)}</span> {round.opponent} <span class="dim">({fmtPct(round.chance, false, 0)} to win)</span></span>
             <span class="result num">{round.win ? 'W' : 'L'} {round.score}</span>
           {:else}
             <span class="pending dim">Did not reach</span>
@@ -306,8 +307,21 @@
     font-weight: 700;
   }
   .vs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
     min-width: 0;
+  }
+  .crest {
+    flex: none;
+    width: 22px;
+    height: 22px;
+  }
+  .crest :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
   .result {
     font-family: var(--font-display);

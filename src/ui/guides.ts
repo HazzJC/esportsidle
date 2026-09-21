@@ -4,6 +4,7 @@ import { SEASON_PLANS, SEASON_PLAN_ORDER } from '../data/seasonPlans';
 import { ALL_STATS, STAT_LABEL } from '../engine/players';
 import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN } from '../engine/mood';
 import { CHALLENGE_WIN_CHANCE } from '../engine/teams';
+import { BENCH_RECOVERY_MULT } from '../engine/health';
 import type { GameState, StatKey } from '../engine/types';
 import { STAT_INFO } from './statInfo';
 
@@ -71,6 +72,16 @@ export function teamsGuide(): GuidePage[] {
       ],
     },
     {
+      title: 'The lineup and the bench',
+      icon: 'users',
+      intro: 'Every team has one computer per role and a bench for substitutes. Drag players between them; click a player for their gear and stats.',
+      points: [
+        { term: 'Roles', icon: 'gamepad-2', text: 'Each computer is labelled with its role. A player in the wrong role (marked *) plays a little worse.' },
+        { term: 'Rest', icon: 'bed', text: `Benched players recover energy faster and shake off illness, injury and burnout ${BENCH_RECOVERY_MULT}× as fast.` },
+        { term: 'Risk', icon: 'bandage', text: `Physios and better chairs cut the chance of injury. Plans change it too: ${plans.map((d) => `${d.name} ×${d.injuryRisk}`).join(', ')}.` },
+      ],
+    },
+    {
       title: 'Automation',
       icon: 'bot',
       intro: 'Two switches at the bottom of every team card.',
@@ -78,7 +89,7 @@ export function teamsGuide(): GuidePage[] {
         {
           term: 'Auto-promote',
           icon: 'trending-up',
-          text: `On: a season with ${PROMOTE_WINS}+ wins moves the team up. Off: it stays in its tier until you challenge. Titles and relegation still happen.`,
+          text: `On: a season with ${PROMOTE_WINS}+ wins moves the team up. Off: it stays in its tier until you challenge. League titles and relegation still happen.`,
         },
         {
           term: 'Auto-sub',

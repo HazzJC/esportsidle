@@ -10,6 +10,11 @@ import { Rng } from '../src/engine/rng';
 import { createBaseState } from '../src/engine/state';
 import { playSound, type SoundId } from '../src/ui/sound';
 import { offerChoice } from '../src/engine/worldEvents';
+import { SEASON_PLANS } from '../src/data/seasonPlans';
+import { computeMods } from '../src/engine/economy';
+import { healthChances } from '../src/engine/health';
+import { benchPlayer, updatePlayers } from '../src/engine/teams';
+import { foundedGame } from './fixtures';
 
 describe('New Features - Parody Tags & Names', () => {
   it('defines parody gamer tags for all 12 games', () => {
@@ -342,5 +347,28 @@ describe('New Features - Toast Duration Proportionality', () => {
     const regularSeason = calcDuration('Match Won');
     const champSeason = calcDuration('League Champions!');
     expect(champSeason).toBeGreaterThan(regularSeason * 1.5);
+  });
+});
+
+describe('Bench recovery', () => {
+  it('benched players shake off an injury twice as fast', () => {
+    const s = foundedGame(0, 3);
+    const p = s.players.founder;
+    const mods = computeMods(s);
+    p.status = { kind: 'injured', until: s.time + 100, reason: 'Wrist strain' };
+    s.time += 10;
+    updatePlayers(s, 10, mods);
+    expect(p.status.until - s.time).toBeCloseTo(90);
+    expect(benchPlayer(s, 'smash', p.id, mods)).toBe(true);
+    s.time += 10;
+    updatePlayers(s, 10, mods);
+    expect(p.status.until - s.time).toBeCloseTo(70);
+  });
+
+  it('pushing for promotion raises the injury risk', () => {
+    const s = foundedGame(0, 3);
+    const p = s.players.founder;
+    const mods = computeMods(s);
+    expect(healthChances(p, mods, SEASON_PLANS.push.injuryRisk).injured).toBeGreaterThan(healthChances(p, mods, SEASON_PLANS.development.injuryRisk).injured);
   });
 });

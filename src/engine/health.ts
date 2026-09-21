@@ -9,6 +9,8 @@ export const BASE_SICK_CHANCE = 0.004;
 export const BASE_INJURY_CHANCE = 0.0025;
 export const BASE_BURNOUT_CHANCE = 0.03;
 export const BURNOUT_MORALE = 20;
+/** Players resting on the bench shake off illness, injury and burnout this many times faster. */
+export const BENCH_RECOVERY_MULT = 2;
 
 const REASONS: Record<Exclude<HealthKind, 'healthy'>, string[]> = {
   sick: ['Flu', 'Food poisoning', 'A nasty cold', 'Stomach bug', 'Migraine', 'Suspicious petrol-station sushi'],
@@ -41,20 +43,20 @@ export interface HealthChances {
   burnout: number;
 }
 
-/** Per-match chances of each health problem for a starter. */
-export function healthChances(p: Player, mods: Pick<Mods, 'sickMult' | 'injuryMult' | 'burnoutMult'>): HealthChances {
+/** Per-match chances of each health problem for a starter. `risk` is the season plan's injury risk. */
+export function healthChances(p: Player, mods: Pick<Mods, 'sickMult' | 'injuryMult' | 'burnoutMult'>, risk = 1): HealthChances {
   const fatigue = 1 + (100 - p.energy) / 100;
   return {
     sick: BASE_SICK_CHANCE * traitMult(p, 'sickMult') * mods.sickMult * fatigue,
-    injured: (BASE_INJURY_CHANCE * traitMult(p, 'injuryMult') * mods.injuryMult) / (1 + 0.1 * (p.gear.chair ?? 0)),
+    injured: (BASE_INJURY_CHANCE * traitMult(p, 'injuryMult') * mods.injuryMult * risk) / (1 + 0.1 * (p.gear.chair ?? 0)),
     burnout: p.morale < BURNOUT_MORALE ? BASE_BURNOUT_CHANCE * mods.burnoutMult : 0,
   };
 }
 
 /** Rolls for illness, injury or burnout after a match. Returns the new problem, if any. */
-export function rollHealth(s: GameState, p: Player, mods: Mods, rng: Rng, hasBench: boolean): HealthKind | null {
+export function rollHealth(s: GameState, p: Player, mods: Mods, rng: Rng, hasBench: boolean, risk = 1): HealthKind | null {
   if (!isAvailable(p, s.time)) return null;
-  const c = healthChances(p, mods);
+  const c = healthChances(p, mods, risk);
   if (hasTheOnlyCook(s) && (s.staff.chef ?? 0) >= 1) {
     c.sick = 0;
   }
@@ -85,7 +87,7 @@ export function inflict(
   emit({
     type: 'toast',
     title: `${p.tag}: ${reason}`,
-    body: `Out for ${fmtTime(duration)}. ${hasBench ? 'A substitute will step in.' : 'A stand-in will play badly until they recover.'}`,
+    body: `Out for ${fmtTime(duration)}. ${hasBench ? 'A substitute will step in.' : 'A stand-in will play badly until they recover.'} Benched players recover twice as fast.`,
     icon: HEALTH_ICON[kind],
     tone: 'bad',
     channel: 'players',

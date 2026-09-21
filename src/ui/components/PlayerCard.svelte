@@ -34,7 +34,7 @@
   <div class="portrait">
     <Avatar look={player.look} gear={player.gear} primary={kit.primary} secondary={kit.secondary} size={50} mode="bust" tag={player.tag} />
     {#if out}
-      <span class="status" title="{player.status.reason} (Recovers in {fmtTime(Math.max(0, player.status.until - game.view.s.time))} · purely time-based)">
+      <span class="status" title="{player.status.reason} (Recovers in {fmtTime(Math.max(0, player.status.until - game.view.s.time))} · faster on the bench)">
         <Icon name="thermometer" size={12} />
       </span>
     {/if}

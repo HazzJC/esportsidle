@@ -3,6 +3,7 @@
   import { tierName } from '../../data/leagues';
   import { RIVAL_AFTER_MATCHES, seasonSummary } from '../../engine/stories';
   import { game } from '../game.svelte';
+  import { orgLogoSvg } from '../orgArt';
   import Icon from './Icon.svelte';
   import TrophyIcon from './TrophyIcon.svelte';
 
@@ -19,7 +20,10 @@
   <article class="story rival">
     <span class="kind"><Icon name="swords" size={12} /> Rival</span>
     {#if rival}
-      <b class="name">{rival.name}</b>
+      <div class="rival-head">
+        <span class="crest">{@html orgLogoSvg(rival.name)}</span>
+        <b class="name">{rival.name}</b>
+      </div>
       <span class="h2h num"><span class="good">{rival.wins}</span> – <span class="bad">{rival.losses}</span></span>
       <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · grudge matches against your rival bring double fans</span>
       {#if rival.formerPlayer}<span class="bad small">Their new signing: your former player {rival.formerPlayer}</span>{/if}
@@ -67,6 +71,21 @@
 </section>
 
 <style>
+  .rival-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .crest {
+    flex: none;
+    width: 34px;
+    height: 34px;
+  }
+  .crest :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
   .stories {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
