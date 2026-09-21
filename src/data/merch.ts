@@ -81,3 +81,33 @@ export const PRODUCTS: ProductDef[] = [
 ];
 
 export const PRODUCT_MAP: Map<string, ProductDef> = new Map(PRODUCTS.map((p) => [p.id, p]));
+
+/**
+ * The finish a product line is made to, from bulk stock up to a museum piece. Each level is one
+ * "Improve finish" purchase and adds to how well the line sells, the way gear tiers add to stats.
+ */
+export const FINISH_NAMES = [
+  'Bulk stock',
+  'Screen print',
+  'Heat press',
+  'Contrast trim',
+  'Stitched crest',
+  'Premium materials',
+  'Gloss finish',
+  'Limited run',
+  'Signed edition',
+  "Collector's box",
+  'Hall of Fame edition',
+];
+
+/** Sales added per finish level: a Q4 line sells 2.4 times what bulk stock does. */
+export const FINISH_SALES_PER_LEVEL = 0.35;
+
+/** Rarity band 0-5 for a finish level, on the same colour ladder as gear and upgrades. */
+export function finishBand(quality: number): number {
+  return Math.max(0, Math.min(5, Math.floor(quality / 2)));
+}
+
+export function finishSalesMult(quality: number): number {
+  return 1 + Math.max(0, quality) * FINISH_SALES_PER_LEVEL;
+}

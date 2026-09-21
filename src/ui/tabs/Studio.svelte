@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PRODUCTS, TREND_MAP } from '../../data/merch';
+  import { FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishSalesMult } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { MAX_MERCH_QUALITY, MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
@@ -11,10 +11,15 @@
   import KitPicker from '../components/KitPicker.svelte';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import MerchIcon from '../components/MerchIcon.svelte';
   import MerchPreview from '../components/MerchPreview.svelte';
+  import { rarityColor, rarityName } from '../theme';
   import PixelEditor from '../components/PixelEditor.svelte';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
+
+  /** Pip indices for the finish track, one per purchasable level. */
+  const FINISH_PIPS = Array.from({ length: MAX_MERCH_QUALITY }, (_, i) => i);
 
   let editing = $state<{ id: string | null } | null>(null);
   let confirmDelete = $state<string | null>(null);
@@ -166,9 +171,12 @@
             {@const line = s.merch.lines[p.id]}
             {@const rate = v.r.merchLines[p.id]}
             {@const d = line.designId ? s.designs[line.designId] : undefined}
+            {@const q = line.quality ?? 0}
+            {@const maxed = q >= MAX_MERCH_QUALITY}
+            {@const cost = merchQualityCost(s, p.id)}
             <div class="product" class:live={!!rate}>
               <div class="phead">
-                <Icon name={p.icon} size={16} />
+                <MerchIcon productId={p.id} quality={line.quality ?? 0} primary={s.org.primary} secondary={s.org.secondary} size={30} showLevel={false} />
                 <b>{p.name}</b>
                 {#if rate?.trending}<span class="chip trending">Trending</span>{/if}
                 <span class="pcps num">{money(rate?.cps ?? 0, 1)}/s</span>
@@ -194,10 +202,35 @@
                     />
                   </label>
                   <span class="dim small">Sweet spot ≈ ×{optimalPrice(rate?.trending ?? false).toFixed(2)}</span>
-                  <button class="btn small" disabled={(line.quality ?? 0) >= MAX_MERCH_QUALITY || s.cash < merchQualityCost(s, p.id)} onclick={() => game.upgradeMerchQuality(p.id)}>
-                    <Icon name="sparkles" size={13} /> Improve finish · Q{line.quality ?? 0}{(line.quality ?? 0) < MAX_MERCH_QUALITY ? ` → Q${(line.quality ?? 0) + 1} · ${money(merchQualityCost(s, p.id))}` : ' MAX'}
-                  </button>
                 </div>
+              </div>
+              <div class="finish-row" class:maxed style="--r:{rarityColor(finishBand(q))}">
+                <div class="finfo">
+                  <div class="fname">
+                    {FINISH_NAMES[q]}
+                    <span class="rarity">{rarityName(finishBand(q))} finish</span>
+                  </div>
+                  <div class="fdesc muted">
+                    Sales ×{finishSalesMult(q).toFixed(2)}
+                    {#if !maxed}<span class="good"> → ×{finishSalesMult(q + 1).toFixed(2)}</span>{/if}
+                  </div>
+                  <div class="pips" aria-hidden="true">
+                    {#each FINISH_PIPS as i (i)}<i class:on={i < q}></i>{/each}
+                  </div>
+                  {#if !maxed}
+                    <div class="next dim">
+                      <MerchIcon productId={p.id} quality={q + 1} primary={s.org.primary} secondary={s.org.secondary} size={24} showLevel={false} />
+                      Next: {FINISH_NAMES[q + 1]}
+                    </div>
+                  {/if}
+                </div>
+                {#if maxed}
+                  <span class="chip gold-text">MAX</span>
+                {:else}
+                  <button class="btn small" class:primary={s.cash >= cost} disabled={s.cash < cost} onclick={() => game.upgradeMerchQuality(p.id)}>
+                    <Icon name="sparkles" size={13} /> {money(cost)}
+                  </button>
+                {/if}
               </div>
               {#if rate}
                 <div class="pstats small">
@@ -211,7 +244,10 @@
           {:else}
             {@const canUnlock = s.fansRun >= p.unlockFans}
             <div class="product locked-product">
-              <div class="phead"><Icon name={canUnlock ? p.icon : 'lock'} size={16} /> <b>{canUnlock ? p.name : '???'}</b></div>
+              <div class="phead">
+                <MerchIcon productId={p.id} primary={s.org.primary} secondary={s.org.secondary} size={30} showLevel={false} locked={!canUnlock} />
+                <b>{canUnlock ? p.name : '???'}</b>
+              </div>
               <p class="muted small">{canUnlock ? p.desc : `Unlocks at ${fmt(p.unlockFans)} fans.`}</p>
               {#if canUnlock}
                 <button class="btn small gold" disabled={s.cash < p.unlockCost} onclick={() => game.unlockProduct(p.id)}>
@@ -414,6 +450,62 @@
   }
   .locked-product {
     border-style: dashed;
+  }
+  .finish-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--r) 35%, var(--line));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--r) 10%, transparent), transparent 70%);
+  }
+  .finish-row.maxed {
+    border-color: color-mix(in srgb, var(--r) 70%, transparent);
+  }
+  .finfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .fname {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .rarity {
+    color: var(--r);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .fdesc {
+    font-size: 12px;
+  }
+  .pips {
+    display: flex;
+    gap: 2px;
+  }
+  .pips i {
+    flex: 1;
+    max-width: 14px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .pips i.on {
+    background: var(--r);
+  }
+  .next {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
   }
   .phead {
     display: flex;

@@ -1,4 +1,4 @@
-import { PRODUCTS, PRODUCT_MAP, TRENDS, TREND_MAP, type TrendId } from '../data/merch';
+import { PRODUCTS, PRODUCT_MAP, TRENDS, TREND_MAP, finishSalesMult, type TrendId } from '../data/merch';
 import { emit } from './bus';
 import { analyzeDesign } from './designs';
 import type { Rng } from './rng';
@@ -69,7 +69,7 @@ export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, inco
     const mania = s.merch.mania?.endsAt && s.merch.mania.endsAt > s.time
       && (s.merch.mania.productId === product.id || (s.merch.mania.trend === s.merch.trend && trending));
     const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1)
-      * (mania ? MANIA_BONUS : 1) * novelty * pf * (1 + (line.quality ?? 0) * 0.35);
+      * (mania ? MANIA_BONUS : 1) * novelty * pf * finishSalesMult(line.quality ?? 0);
     const fromIncome = cpsNoBuffs * product.cpsShare * 2 * quality * mods.merchMult;
     const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.12 * quality * mods.merchMult;
     const lineCps = (fromIncome + fromFans) * incomeBuff;

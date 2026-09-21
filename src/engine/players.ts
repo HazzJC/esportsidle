@@ -18,7 +18,7 @@ import {
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
 import { GEAR_COST_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
-import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
+import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_PREFIXES, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
 import { playerEasterEgg } from './easterEggs';
@@ -92,11 +92,11 @@ export function rollRarity(rng: Rng, luck = 0, rarityBias?: Rarity): Rarity {
 const SCENE_TAG_CHANCE = 0.45;
 
 /**
- * A gamer tag. Has a 10% chance to pull a game-specific parody handle based on famous players in that scene.
+ * A gamer tag. About one in six is a parody of a famous pro from that scene.
  * Most of the remaining time it comes from the scene pool or generic word list.
  */
 export function randomTag(rng: Rng, gameId?: string, role?: number): string {
-  if (gameId && PARODY_TAGS[gameId]?.length && rng.chance(0.1)) {
+  if (gameId && PARODY_TAGS[gameId]?.length && rng.chance(0.16)) {
     return rng.pick(PARODY_TAGS[gameId]);
   }
   const scene = gameId ? SCENE_TAGS[gameId] : undefined;
@@ -107,6 +107,7 @@ export function randomTag(rng: Rng, gameId?: string, role?: number): string {
   }
   let tag = rng.pick(TAG_WORDS);
   if (rng.chance(0.25)) tag = `${tag}${rng.pick(TAG_WORDS)}`.slice(0, 14);
+  else if (rng.chance(0.2)) tag = `${rng.pick(TAG_PREFIXES)}${tag}`.slice(0, 14);
   tag += rng.pick(TAG_SUFFIXES);
   if (rng.chance(0.18)) {
     tag = tag.replace(/[oeia]/g, (c) => (rng.chance(0.6) ? ({ o: '0', e: '3', i: '1', a: '4' } as Record<string, string>)[c] : c));

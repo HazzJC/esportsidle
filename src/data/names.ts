@@ -89,6 +89,22 @@ export const TAG_WORDS = [
   'Pickle', 'Biscuit', 'Muffin', 'Nugget', 'Kitten', 'Goose', 'Llama', 'Panda', 'Moth', 'Bean', 'Sushi', 'Taco', 'Mango',
   'Clutch', 'Flick', 'Tilt', 'Smurf', 'Carry', 'Snipe', 'Rush', 'Peek', 'Lurk', 'Frag', 'Combo', 'Parry', 'Dash', 'Juke',
   'Sniper', 'Blade', 'Storm', 'Hawk', 'Wolf', 'Fox', 'Raven', 'Cobra', 'Mantis', 'Kraken', 'Dragon', 'Phoenix', 'Comet',
+  'Badger', 'Otter', 'Ferret', 'Walrus', 'Gecko', 'Axolotl', 'Hornet', 'Jackal', 'Lemur', 'Marlin', 'Narwhal', 'Ocelot',
+  'Puffin', 'Quokka', 'Stoat', 'Tapir', 'Urchin', 'Vulture', 'Wombat', 'Yak', 'Zebra', 'Capybara', 'Hedgehog', 'Pigeon',
+  'Seagull', 'Squid', 'Shrimp', 'Crab', 'Moose', 'Bison', 'Falcon', 'Osprey', 'Orca', 'Beetle', 'Scorpion', 'Tarantula',
+  'Nacho', 'Pretzel', 'Churro', 'Dumpling', 'Ramen', 'Burrito', 'Crouton', 'Pancake', 'Donut', 'Bagel', 'Tofu', 'Kimchi',
+  'Paprika', 'Wasabi', 'Pesto', 'Gnocchi', 'Brisket', 'Toast', 'Jelly', 'Cheddar', 'Brie', 'Mochi', 'Boba', 'Espresso',
+  'Lag', 'Ping', 'Packet', 'Kernel', 'Cache', 'Pixel', 'Vector', 'Shader', 'Sprite', 'Hitbox', 'Framerate', 'Router',
+  'Modem', 'Buffer', 'Cursor', 'Macro', 'Respawn', 'Checkpoint', 'Loot', 'Aggro', 'Buff', 'Nerf', 'Crit', 'Headshot',
+  'Noscope', 'Wallbang', 'Ult', 'Gank', 'Tank', 'Healer', 'Kite', 'Strafe', 'Spray', 'Tap', 'Bhop', 'Prefire',
+  'Odin', 'Thor', 'Freya', 'Anubis', 'Hermes', 'Athena', 'Ares', 'Hydra', 'Chimera', 'Golem', 'Wyvern', 'Banshee',
+  'Nebula', 'Quasar', 'Pulsar', 'Eclipse', 'Aurora', 'Meteor', 'Galaxy', 'Cosmo', 'Solstice', 'Monsoon', 'Blizzard', 'Tornado',
+  'Thunder', 'Cyclone', 'Tempest', 'Hail', 'Drizzle', 'Fog', 'Smog', 'Ember', 'Cinder', 'Magma', 'Obsidian', 'Quartz',
+  'Sweaty', 'Cracked', 'Goated', 'Based', 'Cringe', 'Salty', 'Toxic', 'Chill', 'Cozy', 'Feral', 'Chaos', 'Menace',
+  'Gremlin', 'Goblin', 'Unit', 'Legend', 'Bot', 'Noob', 'Scrub', 'Sensei', 'Senpai', 'Boss', 'Chief', 'Captain',
+  'Diesel', 'Turbo', 'Nitrous', 'Rocket', 'Jet', 'Laser', 'Plasma', 'Photon', 'Quantum', 'Atom', 'Proton', 'Neutron',
+  'Crimson', 'Scarlet', 'Cobalt', 'Indigo', 'Violet', 'Teal', 'Jade', 'Amber', 'Ivory', 'Onyx', 'Chrome', 'Titanium',
+  'Velvet', 'Denim', 'Neoprene', 'Carbon', 'Graphite', 'Silicon', 'Copper', 'Bronze', 'Platinum', 'Cobweb', 'Glacier', 'Tundra',
 ];
 
 /**
@@ -203,64 +219,102 @@ export const PARODY_TAGS: Record<string, string[]> = {
     'Womg0', 'HungryBocks', 'Armadill0', 'Mew2Prince', 'Leffing', 'Zainy', 'aMSaLad',
     'DrPPM', 'Pluppy', 'AxeBody', 'MkLeopard', 'Sparg00', 'Tweeker', 'Dabooz', 'Lighter',
     'Rhyddler', 'Sonixx', 'Glutonnee', 'Kenshiro', 'Isaii', 'Wizzrobot', 'CodySchwarm', 'SFAT-free',
+    'aCoca', 'Miyah', 'Kurami', 'Zomboid', 'Hikaroo', 'Jmoose', 'Mokey', 'Akl0',
+    'Sault', 'Triff', 'nOne', 'KoDoRun', 'Chudat-ish', 'Westballz-ish', 'Nairo-ish', 'Samsorry',
+    'ZeRO-sum', 'Abadangol', 'Riddlr', 'Tea-chan',
   ],
   rocket: [
     'Squishee', 'Jknappy', 'Turbopolka', 'Kaydrop', 'GarrettGG', 'JSTNott', 'MonkeyM00',
     'Vatiro', 'Zennith', 'DanYell', 'BeastM0de', 'Firstchiller', 'Scrubchiller', 'Kronovio',
     'Kuxir99', 'ObviouslyJack', 'Rizey', 'Joyyo', 'Ahmaad', 'Itachee', 'Alpaca54',
+    'At0w', 'Chicag0', 'LJay', 'Joreeuz', 'Retalz', 'Seik00', '0ski', 'Ryze',
+    'Trk512', 'Yuke0', 'Chronik', 'Arsenull', 'Kaydrop2', 'Sypical-ish', 'Fairy Peek', 'Speed0',
+    'Oakz', 'Extra', 'Lionblazer', 'Rapidz',
   ],
   counter: [
     's0mple', 'ZywOoh', 'dev0ce', 'NoKo', 'warmzera', 'Risen', 'GeT_LeFt', 'd0rest',
     'olofmonster', 'shr00d', 'stewie3k', 'Ropz2', 'm0N3Y', 'shameF', 'prot0Nic',
     'kenny5', 'flushaa', 'snaxxx', 'pashaTriceps', 'WardiaN', 'capseN', 'SkreaM',
     'Tw1stz', 'cadiaNo', 'br0ky', 'EliJAY',
+    'd0nkey', 'electr0Nik', 'sh2ro', 'jLo', 'b2t', 'Aleksnib', 'fr0zone', 'gla2ve',
+    'karrygun', 'reign', 'XANTAREZ', 'Jaymes', 'YEKINDOOR', 'Spynx', 'dupreeeh', 'NAFF',
+    'sh0cks', 'KRUMZ', 'apEXE', 'Hobbitt', 'Perfecto-ish', 'iM-ish', 'w0nderful', 'sjuush',
   ],
   lanes: [
     'F4ker', 'Capz', 'Perky', 'R00kie', 'Shoemaker', 'Chovvy', 'TheSly', 'Oozy', 'Daft',
     'Rulez', 'Reckless', 'Jankoz', 'Burgersen', 'Triplelift', 'xPoke', 'DoInB', 'Vypur',
     'CanYon', 'Owner', 'Zoos', 'Kyria', 'Skout', 'Meik0', 'Gumayoosi', 'TigerHu',
+    'CoreJJay', 'Impactt', 'Jensun', 'Sneekey', 'Hylisbang', 'Mikyxx', 'Upsett', 'Humanoyd',
+    'Elyoyo', 'Razorq', 'BrokenBlayde', 'Wunda', 'Inspyred', 'Hans-sauce', 'Matta', 'Smebb',
+    'Prey', 'Impp', 'Knite', '368', 'Bean', 'Peanutt', 'Tianz', 'Kanavi-ish',
   ],
   apex: [
     'ImperialPal', 'Sweetnightmares', 'Genburger', 'Albralele', 'Reppz', 'Verhulst-ish',
     'Shivv', 'ace_u', 'Dizzie', 'L0u', 'Monsooner', 'Zer00', 'Hardecky', 'Droppr',
     'Snipe4down', 'Mandee', 'HerWattson', 'Kn0qd', 'Nafen-ish', 'Gildy',
+    'Hakas', 'Sweet', 'Zer0g', 'Nafen', 'Timmyy', 'Frexs-ish', 'Rkoo', 'YukaFF',
+    'Uhhmm', 'Mande', 'Dropped', 'NiceWigg', 'Aceu-ish', 'Dezign', 'Knoqd', 'Verhulstt',
+    'Rogue5', 'Taisheen-ish', 'Enemy', 'Wxltzy-ish',
   ],
   valorunt: [
     'TenX', 'y4y', 'cNeddy', 'Roaster', 'ScreeM', 'Chronicler', 'Derky', 'Aspaz',
     'Jingggy', 'f0rsak3n', 'Shaw', 'moongetsu', 'Eth4n', 'Dem0n', 'Lesser', 'Smashies',
     'Vict0r', 'Jamppz', 'ShahZ', 'Alfajam', 'gNats', 'Mak0',
+    'Saucy', 'Lehoe', 'Zekkin', 'Safe', 'Somethin', 'Zmjjk', 'Cryocellz', 'Trentt',
+    'Marbled', 'Sickk', 'Asoona', 'Hik0', 'Bangg', 'Kajakk', 'Texx', 'Boost3r',
+    'Nivera-ish', 'Sheydos-ish', 'Redgarr', 'Suygetsu-ish',
   ],
   fortnight: [
     'Ninjato', 'Booga', 'Mongrel', 'Benjyfishe', 'T-few', 'Clax', 'MrSavvy', 'Aquaa',
     'EpikOrca', 'Mitr00', 'TaySon-ish', 'Settie', 'Kamii', 'Chapp', 'Vividd', 'Zaytt',
     'Saff', 'Wolfee', 'Psalmist', 'Bizzler',
+    'Peterbott', 'Coopa', 'Queazy', 'Venno', 'Pollito', 'Reett', 'Kanada', 'Bukket',
+    'Claritee', 'Dookz', 'Akorn', 'Malibuka', 'Kiryatch', 'Mero-ish', 'Rehx-ish', 'Deyy',
+    'Sphinx-ish', 'Th0masHD', 'Mrfreshh', 'Unknown-ish',
   ],
   starcrafty: [
     'Flasher', 'Jaedonger', 'Bisou', 'BoxeD', 'NaDaa', 'Maruu', 'Feral', 'Rainor',
     'R0gue', 'Renovashun', 'Darkish', 'ByuNny', 'Clemmy', 'Lyfe', 'T-Why', 'Statz',
     'S0S', 'BigMC', 'MVPro', 'IceTea', 'TeaJa',
+    'Zestt', 'Sollar', 'hEro', 'Partying', 'Klassic', 'Hydraa', 'Scarlette', 'HeRoMaRiNo',
+    'Showtimer', 'Lamb0', 'Neebs', 'Olivera', 'Kure', 'Deer', 'Nerchio-ish', 'Elazor',
+    'Harstem-ish', 'uThermall', 'Special-ish', 'Astrea-ish',
   ],
   overclock: [
     'Ryu-je-wrong', 'Proffit', 'JJoSnack', 'Sinatrap', 'Carp', 'Feta', 'Decaye',
     'Lipp', 'Pelicann', 'Proppr', 'Souper', 'Jester', 'Spayce', 'Furiez', 'Twilite',
     'Vio12t', 'M0th', 'Alarmer', 'Meero', 'Gulli',
+    'Gestur', 'Shoo', 'Fielda', 'Strikr', 'Coree', 'Birdwing', 'Rascall', 'Haksalt',
+    'Kellen', 'Hanbean', 'Stalk4r', 'LhCloudier', 'Smirf', 'Choihyobean', 'Mooma', 'Jayk',
+    'Seagul', 'Dafran-ish', 'Surefour-ish', 'Kariv-ish',
   ],
   hearthstoned: [
     'Deathcoach', 'Thajs', 'Polento', 'Firecat', 'Trumpet', 'Kibbler', 'Reynadd',
     'Rdoh', 'Savjazz', 'StrifeCrow', 'Amnesiax', 'Pavell', 'Four-sen', 'Haffu',
     'Toastyy', 'Doggie', 'StanCafka', 'Sjowtime', 'HyperJJ',
+    'Lifecoachh', 'Zalay', 'Kasie', 'Tylr', 'Bunnyhopper', 'Muzzie', 'Froyodan', 'Krypp',
+    'Hunteraced', 'Orang', 'Xixi', 'Seik0', 'Gallon-ish', 'Purple-ish', 'Kolento2', 'Sottle-ish',
+    'Nalguidan-ish', 'Rase-ish', 'Jarla-ish', 'Posesi-ish',
   ],
   pong: [
     'No-Lan', 'Allcorn', 'Brushnell', 'Rolf', 'Bear', 'Toruu', 'Miyamotot', 'Carnack',
     'Romereo', 'Yamaguti', 'Dabnee', 'Slugs', 'Bared', 'Bushy', 'Cassar',
+    'BillyMitten', 'SteveWeeb', 'KingOfPong', 'Pac-Mann', 'HighScorer', 'PaddleKing', 'Spinmaster', 'TopspinTom',
+    'Twin Galaxy', 'Blip', 'Deuce Bigalow', 'Rally Ralph', 'Netcord', 'Edge Ball', 'Serve Svensson',
   ],
   galactic: [
     'Wingboy', 'Maverique', 'Starbux', 'Sol0', 'Skytalker', 'Enderr', 'Shep', 'Pickard',
     'Kurk', 'Adama-ish', 'Apoll0', 'SpaceLord', 'Sledge', 'Dameron', 'Celchu',
+    'Leelow', 'Ripleigh', 'Deckhard', 'Zorah', 'Spok', 'Oohura', 'Rimmr', 'Listr',
+    'Kobayashi', 'Maru-Cadet', 'Hicks-ish', 'Vasquezz', 'Shepherd-ish', 'Garrusz', 'Talizorah', 'Cortana-ish',
+    'MasterChef', 'Arbiterr', 'Boba Fettuccine', 'Wedge Antipasto',
   ],
 };
 
-export const TAG_SUFFIXES = ['', '', '', '', '', 'X', 'TV', 'GG', '99', 'EZ', 'Pro', 'Jr', '1337', 'Main', 'Z', 'Prime', 'OP', '7'];
+/** Prefixes that turn a word into a handle: LilBadger, DrToast, NotAGoose, ItsVolt. */
+export const TAG_PREFIXES = ['Lil', 'Big', 'Mr', 'Dr', 'Sir', 'Its', 'Not', 'The', 'Captain', 'Baby', 'King', 'Queen', 'Lord', 'Tiny', 'Mega', 'Ultra', 'Only', 'Just', 'x', 'i'];
+
+export const TAG_SUFFIXES = ['', '', '', '', '', 'X', 'TV', 'GG', '99', 'EZ', 'Pro', 'Jr', '1337', 'Main', 'Z', 'Prime', 'OP', '7', 'HD', 'YT', '2K', 'Ow', 'Irl', 'Uwu', '420', '_', 'xd', 'Lol', 'Esq', 'III'];
 
 export interface Nation {
   code: string;

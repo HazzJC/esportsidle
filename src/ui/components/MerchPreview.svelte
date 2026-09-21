@@ -1,60 +1,151 @@
 <script lang="ts">
+  import { FINISH_NAMES, finishBand } from '../../data/merch';
   import type { Design } from '../../engine/types';
+  import { merchArtSvg, merchPrintWindow } from '../merchArt';
+  import { rarityColor } from '../theme';
   import DesignImage from './DesignImage.svelte';
-  export let productId: string;
-  export let design: Design | undefined;
-  export let quality = 0;
-  export let primary = '#22e4ff';
-  export let secondary = '#8b5cff';
+
+  /**
+   * The product as it would ship: the bespoke art in the org's colours, with the chosen design
+   * printed where it belongs on that product, framed in the colour of its finish level.
+   */
+  let {
+    productId,
+    design,
+    quality = 0,
+    primary = '#22e4ff',
+    secondary = '#8b5cff',
+  }: { productId: string; design: Design | undefined; quality?: number; primary?: string; secondary?: string } = $props();
+
+  const band = $derived(finishBand(quality));
+  const color = $derived(rarityColor(band));
+  // Built only from constants in merchArt.ts and the org's validated hex colours, so {@html} is safe.
+  const art = $derived(merchArtSvg(productId, primary, secondary, quality));
+  const win = $derived(merchPrintWindow(productId));
+  const pct = (v: number) => `${((v / 48) * 100).toFixed(2)}%`;
 </script>
 
-<div class="stage" class:premium={quality >= 5} style="--primary:{primary};--secondary:{secondary};--shine:{1 + quality * 0.06};--glow:{quality * 2}px" aria-label="{productId} preview, quality level {quality}">
-  <div class="item {productId}">
-    {#if productId === 'tee' || productId === 'hoodie' || productId === 'jersey'}
-      <div class="collar"></div><div class="sleeve left"></div><div class="sleeve right"></div>
-      {#if productId === 'hoodie'}<div class="hood"></div>{/if}
-    {:else if productId === 'mug'}
-      <div class="handle"></div>
-    {:else if productId === 'cap'}
-      <div class="brim"></div>
-    {:else if productId === 'sneakers'}
-      <div class="sole"></div>
-    {:else if productId === 'keycaps'}
-      <div class="keys"></div>
-    {:else if productId === 'plushie'}
-      <div class="ear left"></div><div class="ear right"></div>
+<div
+  class="stage"
+  class:lit={quality >= 7}
+  class:maxed={quality >= 10}
+  style="--r:{color}"
+  aria-label="{productId} preview, {FINISH_NAMES[quality] ?? 'finish'} (Q{quality})"
+>
+  <div class="product">
+    <span class="art">{@html art}</span>
+    {#if design}
+      <span
+        class="print"
+        style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg); border-radius:{(win.round ?? 0) * 100}%"
+      >
+        <DesignImage {design} size={64} />
+      </span>
+    {:else}
+      <span class="print empty" style="left:{pct(win.x)}; top:{pct(win.y)}; width:{pct(win.w)}; height:{pct(win.h)}; transform:rotate({win.rotate ?? 0}deg)">?</span>
     {/if}
-    <div class="print"><DesignImage {design} size={42} /></div>
   </div>
-  {#if quality > 0}<span class="finish">Q{quality} · {quality >= 5 ? 'Pro' : 'Standard'}</span>{/if}
+  <span class="finish num">Q{quality} · {FINISH_NAMES[quality] ?? ''}</span>
 </div>
 
 <style>
-  .stage { position:relative; flex:none; width:112px; height:104px; display:grid; place-items:center; overflow:hidden; border-radius:10px; border:1px solid var(--line-2); background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--primary) 18%,transparent),transparent 70%),repeating-linear-gradient(0deg,transparent 0 13px,rgba(255,255,255,.025) 13px 14px),var(--bg-3); }
-  .stage.premium { box-shadow:inset 0 0 20px color-mix(in srgb,var(--primary) 28%,transparent); border-color:var(--primary); }
-  .item { position:relative; width:74px; height:68px; display:grid; place-items:center; background:linear-gradient(135deg,var(--secondary),#1b2041 65%); border:2px solid color-mix(in srgb,var(--primary) 65%,white); filter:brightness(var(--shine)); box-shadow:4px 5px 0 rgba(0,0,0,.32), 0 0 var(--glow) var(--primary), inset 0 0 0 3px rgba(255,255,255,.07); }
-  .print { position:relative; z-index:2; display:grid; place-items:center; width:44px; height:44px; overflow:hidden; border-radius:3px; background:rgba(0,0,0,.18); transform:scale(.75); }
-  .tee,.hoodie,.jersey { width:61px; height:65px; border-radius:8px 8px 4px 4px; }
-  .sleeve { position:absolute; top:4px; width:17px; height:23px; background:var(--secondary); border:2px solid var(--primary); }
-  .sleeve.left { left:-18px; transform:skewY(-18deg); }
-  .sleeve.right { right:-18px; transform:skewY(18deg); }
-  .collar { position:absolute; top:-2px; width:19px; height:9px; border-radius:0 0 12px 12px; background:var(--bg-3); border:2px solid var(--primary); }
-  .hood { position:absolute; top:-13px; width:33px; height:20px; border:3px solid var(--primary); border-radius:15px 15px 2px 2px; background:var(--secondary); }
-  .jersey { background:linear-gradient(90deg,var(--secondary) 0 34%,var(--primary) 35% 43%,var(--secondary) 44%); }
-  .cap { height:43px; border-radius:42px 42px 10px 10px; }
-  .cap .print { transform:scale(.58); }
-  .brim { position:absolute; z-index:3; bottom:-9px; left:28px; width:62px; height:12px; border-radius:3px 15px 5px 3px; background:var(--primary); transform:skewX(-25deg); }
-  .mug { width:60px; height:64px; border-radius:3px 3px 12px 12px; }
-  .handle { position:absolute; right:-26px; top:12px; width:25px; height:36px; border:7px solid var(--primary); border-radius:0 14px 14px 0; }
-  .mousepad { width:91px; height:54px; border-radius:5px; transform:perspective(110px) rotateX(22deg); }
-  .poster { width:63px; height:83px; border:5px solid var(--primary); }
-  .poster .print { transform:scale(1.4); }
-  .keycaps { width:91px; height:52px; border-radius:5px; }
-  .keys { position:absolute; inset:5px; background:repeating-linear-gradient(90deg,transparent 0 10px,var(--primary) 10px 12px),repeating-linear-gradient(0deg,transparent 0 10px,var(--primary) 10px 12px); opacity:.45; }
-  .sneakers { width:86px; height:43px; border-radius:35px 8px 5px 5px; transform:skewX(-12deg); }
-  .sole { position:absolute; bottom:-8px; width:100%; height:9px; background:var(--primary); border-radius:3px; }
-  .plushie { width:62px; height:62px; border-radius:40%; }
-  .ear { position:absolute; top:-14px; width:21px; height:25px; background:var(--secondary); border:2px solid var(--primary); transform:rotate(-20deg); }
-  .ear.left { left:0; }.ear.right { right:0; transform:rotate(20deg); }
-  .finish { position:absolute; z-index:3; right:3px; bottom:2px; padding:1px 4px; border-radius:3px; background:#101326; color:var(--primary); font-size:9px; font-weight:800; }
+  .stage {
+    position: relative;
+    flex: none;
+    width: 116px;
+    height: 116px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    border: 1.5px solid color-mix(in srgb, var(--r) 55%, transparent);
+    background:
+      radial-gradient(circle at 50% 40%, #4a4a52 0%, #2c2c31 50%, #19191c 82%),
+      #19191c;
+    overflow: hidden;
+  }
+  .stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--r) 22%, transparent), transparent 55%);
+    pointer-events: none;
+  }
+  .lit {
+    border-color: var(--r);
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--r) 45%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--r) 22%, transparent);
+  }
+  .maxed {
+    animation: sheen 3.5s ease-in-out infinite;
+  }
+  .product {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    margin-top: -10px;
+  }
+  .art {
+    position: absolute;
+    inset: 0;
+  }
+  .art :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.5)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  }
+  .print {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    /* The print sits on the fabric: slightly softened and shaded, not pasted on top. */
+    filter: saturate(0.92) contrast(0.95);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  }
+  .print :global(img),
+  .print :global(canvas),
+  .print :global(svg) {
+    width: 100% !important;
+    height: 100% !important;
+    image-rendering: pixelated;
+  }
+  .print.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.55);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 12px;
+    border-radius: 3px;
+  }
+  .finish {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 5px;
+    overflow: hidden;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--bg);
+    border: 1px solid color-mix(in srgb, var(--r) 55%, transparent);
+    color: var(--r);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10px;
+    line-height: 14px;
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  @keyframes sheen {
+    0%,
+    100% {
+      box-shadow: 0 0 14px color-mix(in srgb, var(--r) 45%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 24px color-mix(in srgb, var(--r) 75%, transparent);
+    }
+  }
 </style>
