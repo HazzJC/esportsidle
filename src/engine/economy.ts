@@ -20,7 +20,6 @@ export const BASE_OFFLINE_CAP_HOURS = 12;
 export const BASE_BENCH_SLOTS = 1;
 export const BASE_SPONSOR_SLOTS = 2;
 /** Sponsors can at most triple income. */
-export const MAX_SPONSOR_INCOME_PCT = 2;
 /**
  * Fame is fans^fameExp, and fans grow without bound as teams climb the ladder. Upgrades that raise
  * the exponent therefore compound an already exponential quantity twice over, so the exponent is
@@ -240,7 +239,8 @@ export function computeMods(s: GameState): Mods {
   for (const st of sponsors.stats) applyStat(m, st.stat, st.amount);
   for (const e of sponsors.effects) applyEffect(m, e);
   // Sponsor bonuses stack across slots, brands and staff, so the total is capped.
-  m.sponsorIncomePct = Math.min(MAX_SPONSOR_INCOME_PCT, sponsors.incomePct * m.sponsorIncomeMult);
+  // What the contracts say is what they pay: there used to be a silent cap at +200%.
+  m.sponsorIncomePct = sponsors.incomePct * m.sponsorIncomeMult;
   m.globalMult *= 1 + m.sponsorIncomePct;
   m.fameExp = Math.min(MAX_FAME_EXP, m.fameExp);
   m.globalMult *= 1 + s.prestige.level * m.legacyLevelPct;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DESIGN_PALETTE, PRODUCTS } from '../src/data/merch';
-import { BRANDS, BRAND_MAP, SPONSOR_TIERS } from '../src/data/sponsors';
+import { BRANDS, BRAND_MAP, GOAL_INFO, SPONSOR_TIERS } from '../src/data/sponsors';
 import {
   addDesign,
   analyzeDesign,
@@ -26,7 +26,7 @@ import {
 } from '../src/engine/merch';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { cancelContract, generateOffer, goalProgress, refreshOffers, signOffer, updateSponsors } from '../src/engine/sponsors';
+import { MIN_GOAL_SECONDS, cancelContract, generateOffer, goalProgress, goalTarget, maxSponsorTier, offerPerkScale, refreshOffers, scaleSponsorEffect, signOffer, updateSponsors } from '../src/engine/sponsors';
 import { foundedGame } from './fixtures';
 import type { Design, GameState, SponsorOffer } from '../src/engine/types';
 
@@ -165,9 +165,44 @@ describe('sponsors', () => {
     return offer;
   }
 
-  it('has unique brands in every category', () => {
+  it('has unique brands in every category, and ten tiers with a goal for each', () => {
     expect(new Set(BRANDS.map((b) => b.id)).size).toBe(BRANDS.length);
-    expect(SPONSOR_TIERS).toHaveLength(5);
+    expect(SPONSOR_TIERS).toHaveLength(10);
+    for (const info of Object.values(GOAL_INFO)) expect(info.targets).toHaveLength(SPONSOR_TIERS.length);
+    // Each tier asks for more than the last.
+    for (let i = 1; i < SPONSOR_TIERS.length; i++) {
+      expect(SPONSOR_TIERS[i].fans).toBeGreaterThan(SPONSOR_TIERS[i - 1].fans);
+      expect(SPONSOR_TIERS[i].perkScale).toBeGreaterThan(SPONSOR_TIERS[i - 1].perkScale);
+    }
+  });
+
+  it('keeps tiers six to ten behind the Global Brand Portfolio', () => {
+    const s = foundedGame(0, 2);
+    s.fansRun = 1e30;
+    for (const t of Object.values(s.teams)) t.bestTier = 30;
+    expect(maxSponsorTier(s)).toBe(4);
+    for (let i = 0; i < 20; i++) expect(generateOffer(s, new Rng({ rng: i + 1 })).tier).toBeLessThanOrEqual(4);
+    s.prestige.nodes.sponsor_tiers = 1;
+    expect(maxSponsorTier(s)).toBe(9);
+    expect(Array.from({ length: 30 }, (_, i) => generateOffer(s, new Rng({ rng: i + 1 })).tier).some((t) => t > 4)).toBe(true);
+  });
+
+  it('never offers a goal the org would clear inside a few minutes', () => {
+    const s = foundedGame(0, 2);
+    s.sponsors.pace = [
+      { at: 0, wins: 0, fans: 0, titles: 0, tournaments: 0, drops: 0 },
+      { at: 300, wins: 3000, fans: 0, titles: 0, tournaments: 0, drops: 0 },
+    ];
+    // Ten wins a second: a tier 1 "win 10 matches" goal would be over in one second.
+    expect(goalTarget(s, 'wins', 0)).toBeGreaterThanOrEqual(10 * MIN_GOAL_SECONDS);
+    expect(goalTarget(s, 'drops', 0)).toBe(GOAL_INFO.drops.targets[0]);
+  });
+
+  it('scales perks with tier and goal difficulty, and applies them at that strength', () => {
+    expect(offerPerkScale(4, 'drops')).toBeGreaterThan(offerPerkScale(4, 'fans'));
+    expect(offerPerkScale(9, 'wins')).toBeGreaterThan(offerPerkScale(0, 'wins'));
+    expect(scaleSponsorEffect({ kind: 'prizeMult', mult: 1.2 }, 3)).toEqual({ kind: 'prizeMult', mult: expect.closeTo(1.6, 6) });
+    expect(scaleSponsorEffect({ kind: 'gearCostMult', mult: 0.85 }, 10)).toEqual({ kind: 'gearCostMult', mult: 0.3 });
   });
 
   it('generates offers once fans arrive', () => {

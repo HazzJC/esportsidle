@@ -174,7 +174,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     events: { nextAt: 0, pending: [], modifiers: [], log: [], calmUntil: 0, fansHeld: 0, fansReturnAt: 0, lastTournament: null },
     designs: {},
     merch: { trend: 'neon', trendEndsAt: 0, unlocked: {}, lines: {} },
-    sponsors: { offers: [], active: [], nextRefresh: 0, history: [] },
+    sponsors: { offers: [], active: [], nextRefresh: 0, history: [], pace: [] },
     prestige: {
       level: 0,
       points: 0,

@@ -549,7 +549,19 @@ export interface SponsorOffer {
   tier: number;
   duration: number;
   incomePct: number;
+  /** How strong the category perk is on this deal: tier strength times goal difficulty. */
+  perkScale?: number;
   goal: { kind: SponsorGoalKind; target: number; rewardSeconds: number };
+}
+
+/** A snapshot of how fast each sponsor goal is progressing, for pacing new offers. */
+export interface SponsorPaceSample {
+  at: number;
+  wins: number;
+  fans: number;
+  titles: number;
+  tournaments: number;
+  drops: number;
 }
 
 export interface SponsorContract extends SponsorOffer {
@@ -573,6 +585,8 @@ export interface SponsorsState {
   active: SponsorContract[];
   nextRefresh: number;
   history: SponsorHistoryEntry[];
+  /** The last five minutes of progress, sampled every 30 seconds. */
+  pace: SponsorPaceSample[];
 }
 
 export interface Legend {

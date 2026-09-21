@@ -391,7 +391,7 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
     for (const [id, line] of Object.entries(s.merch.lines)) lines[id] = { ...line, launchedAt: s.time, sold: 0, revenue: 0 };
   }
   s.merch = { trend: s.merch.trend, trendEndsAt: 0, unlocked: keepMerch ? { ...s.merch.unlocked } : {}, lines };
-  s.sponsors = { offers: [], active: [], nextRefresh: 0, history: [] };
+  s.sponsors = { offers: [], active: [], nextRefresh: 0, history: [], pace: [] };
   s.popularityClock = 0;
   s.stats.clicksRun = 0;
   s.stats.clickCashRun = 0;

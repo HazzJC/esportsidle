@@ -1,12 +1,15 @@
 import {
+  BASE_SPONSOR_TIERS,
   BRANDS,
   BRAND_MAP,
   CATEGORY_INFO,
+  GOAL_EASE,
   GOAL_INFO,
   SPONSORS_UNLOCK_FANS,
   SPONSOR_TIERS,
   type SponsorGoalKind,
 } from '../data/sponsors';
+import { hasSpecial } from './prestige';
 import type { StatAmount } from '../data/staff';
 import { addBuff } from './buffs';
 import { emit } from './bus';
@@ -84,10 +87,58 @@ export function offerRequirements(s: GameState, offer: SponsorOffer): { ok: bool
   return { ok: true };
 }
 
+/** The highest tier that can call: five, or ten with the Global Brand Portfolio. */
+export function maxSponsorTier(s: GameState): number {
+  return (hasSpecial(s, 'sponsorTiers') ? SPONSOR_TIERS.length : BASE_SPONSOR_TIERS) - 1;
+}
+
+/** Goals are never set so low that the org would clear them in minutes at its recent pace. */
+export const MIN_GOAL_SECONDS = 300;
+/** Pace samples are this far apart, and the window is five minutes of them. */
+const PACE_EVERY = 30;
+const PACE_SAMPLES = 11;
+
+function paceSample(s: GameState) {
+  return {
+    at: s.time,
+    wins: GOAL_STAT.wins(s),
+    fans: GOAL_STAT.fans(s),
+    titles: GOAL_STAT.titles(s),
+    tournaments: GOAL_STAT.tournaments(s),
+    drops: GOAL_STAT.drops(s),
+  };
+}
+
+/** How fast this kind of goal has been progressing, per second, over the last five minutes. */
+export function goalPace(s: GameState, kind: SponsorGoalKind): number {
+  const pace = s.sponsors.pace ?? [];
+  if (pace.length < 2) return 0;
+  const first = pace[0];
+  const last = pace[pace.length - 1];
+  const span = last.at - first.at;
+  return span > 0 ? Math.max(0, last[kind] - first[kind]) / span : 0;
+}
+
+/**
+ * A goal's target: the tier's target, raised when the org is already moving so fast that it would
+ * finish in less than five minutes. A deal that completes the moment it is signed is no deal.
+ */
+export function goalTarget(s: GameState, kind: SponsorGoalKind, tier: number): number {
+  const base = GOAL_INFO[kind].targets[tier];
+  const pace = goalPace(s, kind);
+  return Math.max(base, Math.ceil(pace * MIN_GOAL_SECONDS));
+}
+
+/** How strong a deal's category perk is: its tier, times how demanding its goal is. */
+export function offerPerkScale(tier: number, kind: SponsorGoalKind): number {
+  return SPONSOR_TIERS[tier].perkScale * GOAL_EASE[kind];
+}
+
 export function generateOffer(s: GameState, rng: Rng): SponsorOffer {
   let maxTier = 0;
+  const top = maxSponsorTier(s);
   SPONSOR_TIERS.forEach((t, i) => {
-    if (s.fansRun >= t.fans / 20) maxTier = i;
+    if (i <= top && s.fansRun >= t.fans / 20) maxTier = i;
   });
   const tiers = Array.from({ length: maxTier + 1 }, (_, i) => i);
   const tier = rng.weighted(tiers, (i) => (i === maxTier ? 3 : 1 + i * 0.5)) ?? 0;
@@ -101,8 +152,9 @@ export function generateOffer(s: GameState, rng: Rng): SponsorOffer {
     brandId: brand.id,
     tier,
     duration: Math.round(rng.range(kind === 'drops' ? 3600 : 900, kind === 'drops' ? 14_400 : 3600) / 60) * 60,
-    incomePct: t.incomePct * (brand.category === 'crypto' ? 2 : 1) * rng.range(0.85, 1.15),
-    goal: { kind, target: GOAL_INFO[kind].targets[tier], rewardSeconds: t.goalSeconds },
+    incomePct: t.incomePct * GOAL_EASE[kind] * (brand.category === 'crypto' ? 2 : 1) * rng.range(0.85, 1.15),
+    perkScale: offerPerkScale(tier, kind),
+    goal: { kind, target: goalTarget(s, kind, tier), rewardSeconds: t.goalSeconds },
   };
 }
 
@@ -158,7 +210,18 @@ export interface SponsorBonuses {
   effects: Effect[];
 }
 
-/** Income bonus and category perks from active contracts. */
+/** A category perk's effect at a contract's strength. */
+export function scaleSponsorEffect(e: Effect, k: number): Effect {
+  if ('mult' in e && typeof e.mult === 'number') {
+    // Reductions deepen towards a floor; bonuses grow linearly.
+    const mult = e.mult < 1 ? Math.max(0.3, 1 - (1 - e.mult) * k) : 1 + (e.mult - 1) * k;
+    return { ...e, mult } as Effect;
+  }
+  if ('add' in e && typeof e.add === 'number') return { ...e, add: e.add * k } as Effect;
+  return e;
+}
+
+/** Income bonus and category perks from active contracts, each at its deal's strength. */
 export function sponsorBonuses(s: GameState): SponsorBonuses {
   const out: SponsorBonuses = { incomePct: 0, stats: [], effects: [] };
   for (const c of s.sponsors.active) {
@@ -167,8 +230,9 @@ export function sponsorBonuses(s: GameState): SponsorBonuses {
     if (!brand) continue;
     out.incomePct += c.incomePct;
     const info = CATEGORY_INFO[brand.category];
-    if (info.stats) out.stats.push(...info.stats);
-    if (info.effects) out.effects.push(...info.effects);
+    const k = c.perkScale ?? 1;
+    if (info.stats) out.stats.push(...info.stats.map((st) => ({ ...st, amount: st.amount * k })));
+    if (info.effects) out.effects.push(...info.effects.map((e) => scaleSponsorEffect(e, k)));
   }
   return out;
 }
@@ -190,6 +254,14 @@ export function updateSponsors(s: GameState, ctx: SponsorContext, dt: number, of
     }
   }
   if (offline || !sponsorsUnlocked(s)) return;
+
+  // Five minutes of progress, so new goals are pitched at the org's real pace.
+  s.sponsors.pace ??= [];
+  const lastSample = s.sponsors.pace[s.sponsors.pace.length - 1];
+  if (!lastSample || s.time - lastSample.at >= PACE_EVERY) {
+    s.sponsors.pace.push(paceSample(s));
+    if (s.sponsors.pace.length > PACE_SAMPLES) s.sponsors.pace.splice(0, s.sponsors.pace.length - PACE_SAMPLES);
+  }
 
   if (s.time >= s.sponsors.nextRefresh) refreshOffers(s, ctx.rng, OFFER_COUNT);
 
