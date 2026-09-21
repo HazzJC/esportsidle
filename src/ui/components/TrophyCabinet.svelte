@@ -36,7 +36,7 @@
     Trophy shelf <span class="dim">{s.trophyCase.length}</span>
   </h3>
   {#if s.trophyCase.length === 0}
-    <p class="muted small">Win a season title or a tournament to put your first trophy on the shelf. Trophies stay here when you sell the org.</p>
+    <p class="muted small">Win a league title or an Invitational to put your first trophy on the shelf. Trophies stay here when you sell the org.</p>
   {:else}
     {#each shelves as [run, trophies] (run)}
       <div class="shelf-label">{run === currentRun ? 'This run' : `Run ${run}`} · {trophies.length}</div>

@@ -154,7 +154,7 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
   {
     id: 'tourney',
     name: 'Invitational Regulars',
-    desc: 'Tournament prizes ×2 and invites 50% more common.',
+    desc: 'Invitational prizes ×2 and invites 50% more common.',
     icon: 'trophy',
     cost: 30,
     requires: ['drops_1'],

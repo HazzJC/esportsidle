@@ -177,7 +177,7 @@
             title: 'Trophies',
             icon: 'trophy',
             iconColor: 'var(--gold)',
-            lines: ['Won from season titles and tournaments.', { text: 'Spend them on operation levels (HQ) and trophy upgrades.', tone: 'muted' }],
+            lines: ['Won from league titles, Invitationals, sponsor goals and quests.', { text: 'Spend them on operation levels (HQ) and trophy upgrades.', tone: 'muted' }],
           })}
         >
           <Icon name="trophy" size={14} />
@@ -265,7 +265,7 @@
       {#each recent as { m, gameId } (`${gameId}-${m.time}`)}
         <button class="match" class:win={m.win} onclick={() => (game.tab = 'teams', game.mobileView = 'center')}>
           <span class="wl">{m.win ? 'W' : 'L'}</span>
-          <span class="vs">{m.score} vs {m.opponent}{#if m.rival}<span class="derby" title="Derby match against rival organization {m.opponent}: awards double fans and rivalry bragging rights"><Icon name="swords" size={11} /></span>{/if}</span>
+          <span class="vs">{m.score} vs {m.opponent}{#if m.rival}<span class="derby" title="Grudge match against your rival {m.opponent}: double fans and bragging rights"><Icon name="swords" size={11} /></span>{/if}</span>
           <span class="prize num">+{money(m.prize)}</span>
         </button>
       {/each}

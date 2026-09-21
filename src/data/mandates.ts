@@ -107,9 +107,9 @@ export const MANDATES: MandateDef[] = [
   },
   {
     id: 'circuit',
-    name: 'Tournament Circuit',
+    name: 'Invitational Circuit',
     icon: 'trophy',
-    upside: 'Tournament invites come twice as often and pay double.',
+    upside: 'Invitational invites come twice as often and pay double.',
     downside: 'All income is 10% lower.',
     effects: [
       { kind: 'tournamentReward', mult: 2 },

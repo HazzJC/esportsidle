@@ -349,7 +349,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   }
   const opponent = pickOpponent(s, rng);
   const prize = (win ? ev.winPrize : ev.lossPrize) * (opponent.rival ? 1.5 + Math.min(1.5, (s.rival?.heat ?? 0) * 0.2) : 1);
-  // Derby wins against the rival bring in extra fans.
+  // Grudge matches: wins against the rival bring in extra fans.
   const fans = (win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO) * (opponent.rival && win ? RIVAL_FANS_MULT : 1);
   earnCash(s, prize, 'match');
   gainFans(s, fans);
@@ -436,7 +436,7 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
     const bonus = ev.winPrize * 12;
     earnCash(s, bonus, 'match');
     resultBody.push(`+1 trophy and ${money(bonus)} bonus.`);
-    if (team.lastSeason?.mvp) resultBody.push(`MVP: ${team.lastSeason.mvp}.`);
+    if (team.lastSeason?.mvp) resultBody.push(`Season MVP: ${team.lastSeason.mvp}.`);
   }
   if (wins >= PROMOTE_WINS && team.autoPromote) {
     team.tier++;
@@ -451,7 +451,7 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   }
   if (wins >= TITLE_WINS || promoted || relegated) emit({
     type: 'toast',
-    title: wins >= TITLE_WINS ? `${game.name}: season champions!` : promoted ? `${game.name}: promoted!` : `${game.name}: relegated`,
+    title: wins >= TITLE_WINS ? `${game.name}: league champions!` : promoted ? `${game.name}: promoted!` : `${game.name}: relegated`,
     body: resultBody.join(' '),
     icon: wins >= TITLE_WINS ? 'trophy' : promoted ? 'trending-up' : 'trending-down',
     tone: wins >= TITLE_WINS ? 'gold' : promoted ? 'good' : 'bad',

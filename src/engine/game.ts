@@ -6,6 +6,7 @@ import { AUTOMATION_INTERVAL, runAutomation } from './automation';
 import { expireBuffs } from './buffs';
 import { decayHype } from './clicker';
 import { returnScandalFans, updateDrops } from './drops';
+import { updateInvitation } from './tournament';
 import { updateWorldEvents } from './worldEvents';
 import { computeMods, computeRates } from './economy';
 import { updateMarket } from './market';
@@ -71,6 +72,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
       updateDrops(s, ctx);
       updateWorldEvents(s, ctx);
     }
+    updateInvitation(s, ctx);
     decayHype(s, dt);
     if (rates.cpsNoBuffs > s.stats.bestCps) s.stats.bestCps = rates.cpsNoBuffs;
   }

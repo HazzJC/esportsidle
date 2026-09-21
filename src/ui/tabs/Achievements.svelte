@@ -20,7 +20,7 @@
     { id: 'teams', label: 'Teams & Leagues' },
     { id: 'players', label: 'Players & Gear' },
     { id: 'staff', label: 'Staff & House' },
-    { id: 'events', label: 'Events & Tournaments' },
+    { id: 'events', label: 'Events & Invitationals' },
     { id: 'business', label: 'Sponsors & Merch' },
     { id: 'legacy', label: 'Legacy' },
     { id: 'misc', label: 'Miscellaneous' },

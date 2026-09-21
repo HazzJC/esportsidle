@@ -206,8 +206,8 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'title_1',
-    title: 'Champions',
-    desc: 'Win a season title: 15 wins in a 16-match season.',
+    title: 'League champions',
+    desc: 'Win a league title: 15 wins in a 16-match season.',
     icon: 'trophy',
     metric: (s) => s.stats.seasonTitles,
     target: 1,
@@ -229,7 +229,7 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'tourney_1',
     title: 'Invitational winners',
-    desc: 'Win a tournament. Invites arrive as Hype Drops.',
+    desc: 'Win an Invitational. Invites arrive as Hype Drops.',
     icon: 'medal',
     metric: (s) => s.stats.tournamentsWon,
     target: 1,
@@ -250,8 +250,8 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'rival_1',
-    title: 'Derby day',
-    desc: 'Beat your rival in a derby (matches against your rival are derbies, awarding double fans).',
+    title: 'Grudge match',
+    desc: 'Beat your rival in a grudge match (any league match against your rival, worth double fans).',
     icon: 'swords',
     metric: (s) => s.stats.derbyWins,
     target: 1,

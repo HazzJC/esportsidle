@@ -92,7 +92,7 @@ describe('season recaps and the trophy shelf', () => {
       unsubscribe();
     }
     expect(notices).toHaveLength(1);
-    expect(notices[0]).toContain('season champions');
+    expect(notices[0]).toContain('league champions');
     expect(notices[0]).toContain('bonus');
     expect(notices[0]).toContain(`MVP: ${s.players.founder.tag}`);
     expect(notices[0]).toContain('Promoted');

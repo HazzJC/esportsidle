@@ -5,7 +5,7 @@ import { PARODY_TAGS } from '../src/data/names';
 import { TRAITS } from '../src/data/traits';
 import { autoRoster } from '../src/engine/automation';
 import { refreshMarket, signListing } from '../src/engine/market';
-import { generatePlayer, randomTag } from '../src/engine/players';
+import { PARODY_TAG_CHANCE, generatePlayer, randomTag } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { createBaseState } from '../src/engine/state';
 import { playSound, type SoundId } from '../src/ui/sound';
@@ -20,12 +20,12 @@ describe('New Features - Parody Tags & Names', () => {
     }
   });
 
-  it('rolls a parody tag when rng.chance(0.10) triggers', () => {
-    // Custom mock rng that forces chance(0.10) to return true
+  it('rolls a parody tag when the parody chance triggers', () => {
+    // A mock rng that only passes the parody roll
     const rng = new Rng({ rng: 12345 });
     const mockRng = {
       ...rng,
-      chance: (p: number) => p === 0.1,
+      chance: (p: number) => p === PARODY_TAG_CHANCE,
       pick: <T>(arr: readonly T[]): T => arr[0],
       int: (min: number, max: number) => min,
     } as unknown as Rng;
@@ -325,11 +325,11 @@ describe('New Features - Bad Drama Audio', () => {
 });
 
 describe('New Features - Toast Duration Proportionality', () => {
-  it('scales duration with message length and doubles for season champions', () => {
+  it('scales duration with message length and doubles for league champions', () => {
     const calcDuration = (title: string, body?: string) => {
       const len = (title?.length ?? 0) + (body?.length ?? 0);
       let duration = Math.min(12000, Math.max(3500, 2800 + len * 45));
-      if (title.toLowerCase().includes('season champions')) {
+      if (title.toLowerCase().includes('league champions')) {
         duration *= 2;
       }
       return duration;
@@ -340,7 +340,7 @@ describe('New Features - Toast Duration Proportionality', () => {
     expect(long).toBeGreaterThan(short);
 
     const regularSeason = calcDuration('Match Won');
-    const champSeason = calcDuration('Season Champions!');
+    const champSeason = calcDuration('League Champions!');
     expect(champSeason).toBeGreaterThan(regularSeason * 1.5);
   });
 });

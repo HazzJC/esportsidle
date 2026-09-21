@@ -27,7 +27,7 @@
     gear: 'Gear upgrade',
     staff: 'Staff upgrade',
     drops: 'Hype Drop upgrade',
-    tournament: 'Tournament upgrade',
+    tournament: 'Invitational upgrade',
     drama: 'Drama upgrade',
     trophy: 'Trophy upgrade',
     sponsor: 'Sponsor upgrade',

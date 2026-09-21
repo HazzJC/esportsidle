@@ -34,7 +34,7 @@ export function teamsGuide(): GuidePage[] {
       intro: `Every team plays its matches on its own, ${SEASON_LENGTH} to a season, in a league tier. Higher tiers pay far more prize money and bring more fans, but the opponents are tougher.`,
       points: [
         { term: 'Promotion', icon: 'trending-up', text: `Win ${PROMOTE_WINS} or more matches in a season to move up a tier.` },
-        { term: 'Title', icon: 'trophy', text: `${TITLE_WINS} or more wins is a season title: a trophy and a cash bonus.` },
+        { term: 'League title', icon: 'trophy', text: `${TITLE_WINS} or more wins is a league title: a trophy and a cash bonus. The team's top performer is named Season MVP.` },
         { term: 'Relegation', icon: 'trending-down', text: `${RELEGATE_WINS} or fewer wins drops the team a tier.` },
       ],
     },

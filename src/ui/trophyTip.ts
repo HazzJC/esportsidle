@@ -5,9 +5,9 @@ import type { TipContent } from './tooltip.svelte';
 
 /** What each kind of trophy is called on the shelf. */
 export const TROPHY_KIND_LABEL: Record<TrophyKind, string> = {
-  title: 'Season title',
-  tournament: 'Tournament win',
-  runnerUp: 'Tournament runner-up',
+  title: 'League title',
+  tournament: 'Invitational champions',
+  runnerUp: 'Invitational runners-up',
   sponsor: 'Sponsor goal',
   quest: 'Quest reward',
 };
@@ -29,7 +29,7 @@ export function trophyTitle(t: TrophyEntry): string {
 export function trophyTip(s: GameState, t: TrophyEntry): TipContent {
   const currentRun = s.prestige.runs + 1;
   const game = getGame(t.gameId);
-  const where = t.kind === 'sponsor' || t.kind === 'quest' ? TROPHY_KIND_LABEL[t.kind] : t.season !== null ? `Season ${t.season}` : 'Tournament';
+  const where = t.kind === 'sponsor' || t.kind === 'quest' ? TROPHY_KIND_LABEL[t.kind] : t.season !== null ? `Season ${t.season}` : 'Invitational';
   return {
     title: trophyTitle(t),
     subtitle: `${game.name} · ${where}`,

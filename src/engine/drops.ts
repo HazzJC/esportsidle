@@ -4,8 +4,8 @@ import { addBuff } from './buffs';
 import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
 import type { Rng } from './rng';
-import { pickTournamentTeam, runTournament } from './tournament';
-import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone, TournamentResult } from './types';
+import { INVITATION_SECONDS, invitationOdds, invitationalName, offerInvitation, pickTournamentTeam } from './tournament';
+import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone } from './types';
 import { earnCash, gainFans } from './wallet';
 
 export const DROP_LIFETIME = 13;
@@ -27,7 +27,6 @@ export interface DropResult {
   body: string;
   icon: string;
   tone: Tone;
-  tournament?: TournamentResult;
 }
 
 interface Outcome {
@@ -187,21 +186,19 @@ const OUTCOMES: Outcome[] = [
   {
     id: 'tournament',
     kind: 'hype',
-    weight: (s, ctx) => (pickTournamentTeam(s, ctx.rates) ? 14 * ctx.mods.tournamentWeightMult : 0),
+    // About one hype drop in six once a team is playing: roughly one Invitational every 40 minutes.
+    weight: (s, ctx) => (!s.events.invitation && pickTournamentTeam(s, ctx.rates) ? 24 * ctx.mods.tournamentWeightMult : 0),
     apply: (s, ctx) => {
-      if (!pickTournamentTeam(s, ctx.rates)) return applyDropOutcome(s, 'prize', ctx);
-      const r = runTournament(s, ctx);
-      const name = GAME_MAP.get(r.gameId)?.name ?? 'Your team';
-      const last = r.rounds[r.rounds.length - 1];
+      const inv = offerInvitation(s, ctx);
+      const odds = inv ? invitationOdds(s, ctx.rates, ctx.mods, 0, inv.gameId) : null;
+      if (!inv || !odds) return applyDropOutcome(s, 'prize', ctx);
+      const name = GAME_MAP.get(inv.gameId)?.name ?? 'Your team';
       return {
         outcome: 'tournament',
-        title: r.champion ? 'Tournament champions!' : 'Tournament invite',
-        body: r.champion
-          ? `${name} won the invitational! +${r.trophies} trophies and ${money(r.totalPrize)}.`
-          : `${name} went out in the ${last.name.toLowerCase()}${r.trophies ? ` (+${r.trophies} trophy)` : ''}.`,
+        title: `${invitationalName(odds.tier)} invite!`,
+        body: `${name} have ${Math.round(odds.champion * 100)}% to win it. It starts in ${fmtTime(INVITATION_SECONDS)}; spend on preparation to raise the odds.`,
         icon: 'trophy',
-        tone: r.champion ? 'gold' : 'info',
-        tournament: r,
+        tone: 'gold',
       };
     },
   },

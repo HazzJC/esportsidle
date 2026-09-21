@@ -21,7 +21,7 @@
     {#if rival}
       <b class="name">{rival.name}</b>
       <span class="h2h num"><span class="good">{rival.wins}</span> – <span class="bad">{rival.losses}</span></span>
-      <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · derby matches against your rival bring double fans</span>
+      <span class="muted small">{streakText(rival.streak) || 'Head to head so far'} · grudge matches against your rival bring double fans</span>
       {#if rival.formerPlayer}<span class="bad small">Their new signing: your former player {rival.formerPlayer}</span>{/if}
       {#if rival.heat}<span class="small">Rivalry heat {rival.heat}/8 · bigger match payouts, harder morale hits on losses</span>{/if}
     {:else}
@@ -61,7 +61,7 @@
         </span>
       </span>
     {:else}
-      <span class="muted small">Win a title or a tournament to start the collection.</span>
+      <span class="muted small">Win a league title or an Invitational to start the collection.</span>
     {/if}
   </button>
 </section>

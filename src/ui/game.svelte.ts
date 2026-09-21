@@ -9,6 +9,7 @@ import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
 import { isPinned, pinnedRival, refreshMarket, rerollMarket, seedMarketForGame, sellPlayer, signListing, togglePin } from '../engine/market';
 import { SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, calmDrama, clickDrop, rideOutDrama, scandalFanLoss } from '../engine/drops';
+import { playInvitation } from '../engine/tournament';
 import {
   addDesign,
   deleteDesign,
@@ -432,7 +433,7 @@ class GameStore {
       const text = `${t.title ?? ''} ${t.body ?? ''}`.trim();
       duration = Math.max(3500, Math.min(12000, 2800 + text.length * 45));
     }
-    if (t.title?.toLowerCase().includes('season champions')) {
+    if (t.title?.toLowerCase().includes('league champions')) {
       duration *= 2;
     }
     if (t.dedupeKey) {
@@ -717,6 +718,17 @@ class GameStore {
 
   resolveChoice(choiceId: number, option: number): void {
     if (resolveChoice(this.state, choiceId, option, this.eventContext())) this.refresh();
+  }
+
+  /** Answers a waiting Invitational with the chosen preparation and plays it. */
+  playInvitation(stakeId: string): void {
+    const result = playInvitation(this.state, this.eventContext(), stakeId);
+    if (!result) {
+      this.sfx('error');
+      return;
+    }
+    this.sfx('dropClick');
+    this.refresh();
   }
 
   dismissTournament(): void {

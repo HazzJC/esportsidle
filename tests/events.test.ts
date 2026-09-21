@@ -8,7 +8,7 @@ import { levelUpOperation } from '../src/engine/operations';
 import { gearUpgradeCost } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { foundedGame } from './fixtures';
-import { runTournament } from '../src/engine/tournament';
+import { INVITATION_STAKES, invitationOdds, playInvitation, runTournament, updateInvitation } from '../src/engine/tournament';
 import { unlockGame } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
 import { WORLD_EVENTS, fireEvent, offerChoice, resolveChoice, updateWorldEvents } from '../src/engine/worldEvents';
@@ -105,6 +105,47 @@ describe('tournaments', () => {
     expect(result.champion).toBe(false);
     expect(result.rounds.length).toBeLessThan(3);
     expect(result.trophies).toBe(0);
+  });
+
+  it('an even league team is more likely than not to win an Invitational', () => {
+    const s = foundedGame(0, 21);
+    const ctx = ctxFor(s);
+    const ev = ctx.rates.teams.smash;
+    // Put the team level with its league: rating equals the league opponent.
+    ev.rating = ev.opponent;
+    const odds = invitationOdds(s, ctx.rates, ctx.mods, 0, 'smash')!;
+    expect(odds.champion).toBeGreaterThan(0.5);
+    expect(odds.rounds[0]).toBeGreaterThan(odds.rounds[2]);
+    const boosted = invitationOdds(s, ctx.rates, ctx.mods, INVITATION_STAKES[3].boost, 'smash')!;
+    expect(boosted.champion).toBeGreaterThan(odds.champion);
+  });
+
+  it('a Hype Drop sends an invitation that plays itself when it runs out', () => {
+    const s = foundedGame(0, 21);
+    applyDropOutcome(s, 'tournament', ctxFor(s));
+    const inv = s.events.invitation;
+    expect(inv).not.toBeNull();
+    expect(updateInvitation(s, ctxFor(s))).toBeNull();
+    s.time = inv!.expiresAt;
+    const result = updateInvitation(s, ctxFor(s));
+    expect(result).not.toBeNull();
+    expect(result?.stake).toBe(0);
+    expect(s.events.invitation).toBeNull();
+    expect(s.stats.tournamentsPlayed).toBe(1);
+  });
+
+  it('paid preparation costs cash up front and is refused when unaffordable', () => {
+    const s = foundedGame(0, 21);
+    s.ops.streamer.owned = 30;
+    applyDropOutcome(s, 'tournament', ctxFor(s));
+    // With income coming in, even an empty bank has a price for preparation.
+    s.cash = 0;
+    expect(playInvitation(s, ctxFor(s), 'allin')).toBeNull();
+    expect(s.events.invitation).not.toBeNull();
+    s.cash = 1e12;
+    const result = playInvitation(s, ctxFor(s), 'bootcamp');
+    expect(result?.stake).toBeCloseTo(0.25e12, -3);
+    expect(s.events.invitation).toBeNull();
   });
 });
 

@@ -91,12 +91,15 @@ export function rollRarity(rng: Rng, luck = 0, rarityBias?: Rarity): Rarity {
 /** How often a generated player gets a tag from their scene rather than the generic word list. */
 const SCENE_TAG_CHANCE = 0.45;
 
+/** Share of generated tags that send up a real player's handle. */
+export const PARODY_TAG_CHANCE = 0.16;
+
 /**
  * A gamer tag. About one in six is a parody of a famous pro from that scene.
  * Most of the remaining time it comes from the scene pool or generic word list.
  */
 export function randomTag(rng: Rng, gameId?: string, role?: number): string {
-  if (gameId && PARODY_TAGS[gameId]?.length && rng.chance(0.16)) {
+  if (gameId && PARODY_TAGS[gameId]?.length && rng.chance(PARODY_TAG_CHANCE)) {
     return rng.pick(PARODY_TAGS[gameId]);
   }
   const scene = gameId ? SCENE_TAGS[gameId] : undefined;

@@ -496,6 +496,17 @@ export interface TournamentResult {
   fans: number;
   totalPrize: number;
   seen: boolean;
+  /** The chance to win it all, as it stood when the bracket started. */
+  odds?: number;
+  /** Cash spent preparing for it. */
+  stake?: number;
+}
+
+/** An Invitational waiting for an answer. It plays itself, unprepared, when it runs out. */
+export interface Invitation {
+  id: number;
+  gameId: string;
+  expiresAt: number;
 }
 
 export interface EventsState {
@@ -510,6 +521,7 @@ export interface EventsState {
   /** When those fans drift back. */
   fansReturnAt: number;
   lastTournament: TournamentResult | null;
+  invitation: Invitation | null;
 }
 
 export interface Design {

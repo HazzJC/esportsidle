@@ -13,7 +13,7 @@ export const RIVAL_CHANCE = 0.12;
 export const RIVAL_AFTER_MATCHES = 12;
 /** A head-to-head lead this large leaves the rival behind, and a new one steps up. */
 export const RIVAL_VANQUISH_LEAD = 10;
-/** Derby wins bring this many times the usual fans. */
+/** Grudge match wins (league wins over the rival) bring this many times the usual fans. */
 export const RIVAL_FANS_MULT = 2;
 export const SEASON_LOG_SIZE = 40;
 export const TROPHY_CASE_SIZE = 300;
@@ -62,7 +62,7 @@ export function recordRivalMatch(s: GameState, win: boolean, gameId: string): vo
     emit({
       type: 'toast',
       title: win ? `First blood against ${r.name}` : `${r.name} strike first`,
-      body: `The first derby, in ${game}. It will not be the last.`,
+      body: `The first grudge match, in ${game}. It will not be the last.`,
       icon: 'swords',
       tone: win ? 'good' : 'bad',
       channel: 'matches',

@@ -1,6 +1,7 @@
 import { fmt } from '../engine/format';
 import type { GameState, Rates } from '../engine/types';
 import { DECOR, ROOMS } from './decor';
+import { TITLE_WINS } from './leagues';
 import { CHALLENGES, LEGACY_NODES } from './legacy';
 import { PRODUCTS } from './merch';
 import { OPERATIONS, OP_ACH_THRESHOLDS } from './operations';
@@ -269,7 +270,7 @@ const players = (s: GameState) => Object.values(s.players);
 const WINS: [number, string][] = [
   [1, 'First Blood'],
   [25, 'Scrim Regulars'],
-  [100, 'Tournament Grinders'],
+  [100, 'Circuit Grinders'],
   [500, 'Veteran Squad'],
   [2_500, 'Winning Machine'],
   [10_000, 'Dynasty'],
@@ -306,7 +307,7 @@ for (const [n, name] of TIERS) {
   });
 }
 const TITLES: [number, string][] = [
-  [1, 'Season Champions'],
+  [1, 'League Champions'],
   [10, 'Serial Winners'],
   [50, 'Trophy Hoarders'],
   [200, 'Silverware Collectors'],
@@ -315,7 +316,7 @@ for (const [n, name] of TITLES) {
   add({
     id: `titles_${n}`,
     name,
-    desc: () => `Win ${n} season title${n === 1 ? '' : 's'} (9+ wins in a season).`,
+    desc: () => `Win ${n} league title${n === 1 ? '' : 's'} (${TITLE_WINS}+ wins in a season).`,
     icon: 'trophy',
     group: 'teams',
     check: (s) => s.stats.seasonTitles >= n,
@@ -565,22 +566,22 @@ add({
 add({
   id: 'tourney_played',
   name: 'Invited',
-  desc: () => 'Play in a tournament.',
+  desc: () => 'Play in an Invitational.',
   icon: 'swords',
   group: 'events',
   check: (s) => s.stats.tournamentsPlayed >= 1,
 });
 const TOURNEY_WINS: [number, string][] = [
-  [1, 'Tournament Champions'],
+  [1, 'Invitational Champions'],
   [5, 'Bracket Busters'],
   [25, 'Invitational Kings'],
-  [100, 'Tournament Dynasty'],
+  [100, 'Invitational Dynasty'],
 ];
 for (const [n, name] of TOURNEY_WINS) {
   add({
     id: `tourney_${n}`,
     name,
-    desc: () => `Win ${n} tournament${n === 1 ? '' : 's'}.`,
+    desc: () => `Win ${n} Invitational${n === 1 ? '' : 's'}.`,
     icon: 'trophy',
     group: 'events',
     check: (s) => s.stats.tournamentsWon >= n,
@@ -928,7 +929,7 @@ const SECRETS: (Omit<AchievementInput, 'group' | 'secret'> & { rarity: number })
   {
     id: 'one_man_army',
     name: 'One-Man Army',
-    desc: () => 'Win a season title while your founding player is the only player in the org.',
+    desc: () => 'Win a league title while your founding player is the only player in the org.',
     hint: 'Who needs a roster?',
     icon: 'user',
     rarity: 2,

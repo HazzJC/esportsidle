@@ -187,7 +187,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
       const fans = Math.ceil(Math.max(100, s.fans * 0.04));
       gainFans(s, fans);
       if (s.rival) s.rival.heat = Math.min(8, (s.rival.heat ?? 0) + 2);
-      logEvent(s, { title: `${p.tag} calls out ${s.rival?.name}`, body: `The rivalry heats up. +${fmt(fans)} fans; derby payouts rise, and losses will sting more.`, icon: 'swords', tone: 'good' });
+      logEvent(s, { title: `${p.tag} calls out ${s.rival?.name}`, body: `The rivalry heats up. +${fmt(fans)} fans; grudge matches pay more, and losses will sting more.`, icon: 'swords', tone: 'good' });
     },
   },
   {
