@@ -815,6 +815,8 @@ export interface GameState {
   earnedTotal: number;
   /** Cash earned this run, split by where it came from. */
   incomeRun: Record<IncomeSource, number>;
+  /** The same split across every run. Starts from zero on saves older than the ledger. */
+  incomeTotal: Record<IncomeSource, number>;
   fans: number;
   fansRun: number;
   fansTotal: number;

@@ -153,6 +153,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     cash: 0,
     earnedRun: 0,
     incomeRun: createIncomeLedger(),
+    incomeTotal: createIncomeLedger(),
     earnedTotal: 0,
     fans: 0,
     fansRun: 0,

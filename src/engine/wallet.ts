@@ -10,6 +10,7 @@ export function earnCash(s: GameState, amount: number, source: IncomeSource = 'e
   s.earnedRun += amount;
   s.earnedTotal += amount;
   s.incomeRun[source] = (s.incomeRun[source] ?? 0) + amount;
+  s.incomeTotal[source] = (s.incomeTotal[source] ?? 0) + amount;
 }
 
 export function gainFans(s: GameState, amount: number): void {

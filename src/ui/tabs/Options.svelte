@@ -7,6 +7,7 @@
   import { UI_TONES } from '../../data/palette';
   import ToneSwatches from '../components/ToneSwatches.svelte';
   import Toggle from '../components/Toggle.svelte';
+  import DebugPanel from '../components/DebugPanel.svelte';
   import { game } from '../game.svelte';
 
   let exportText = $state('');
@@ -15,6 +16,19 @@
   let resetOpen = $state(false);
   let resetConfirm = $state('');
   let fileInput: HTMLInputElement | undefined = $state();
+
+  /** Tapping the version number seven times within three seconds opens the debug stats. */
+  const DEBUG_TAPS = 7;
+  let taps: number[] = [];
+  let debugOpen = $state(false);
+  function tapVersion() {
+    const now = Date.now();
+    taps = [...taps.filter((t) => now - t < 3000), now];
+    if (taps.length >= DEBUG_TAPS) {
+      taps = [];
+      debugOpen = true;
+    }
+  }
 
   const settings = $derived(game.view.s.settings);
 
@@ -191,9 +205,13 @@
   </section>
 
   <p class="dim small about">
-    Esports Idle v{GAME_VERSION} · <a href="https://github.com/HazzJC/esportsidle" target="_blank" rel="noreferrer">GitHub</a>
+    <button class="ver" onclick={tapVersion}>Esports Idle v{GAME_VERSION}</button> · <a href="https://github.com/HazzJC/esportsidle" target="_blank" rel="noreferrer">GitHub</a>
   </p>
 </div>
+
+{#if debugOpen}
+  <DebugPanel onclose={() => (debugOpen = false)} />
+{/if}
 
 {#if resetOpen}
   <Modal title="Hard reset" onclose={() => (resetOpen = false)} width={400}>
@@ -208,6 +226,14 @@
 {/if}
 
 <style>
+  .ver {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: default;
+  }
   .options {
     display: flex;
     flex-direction: column;
