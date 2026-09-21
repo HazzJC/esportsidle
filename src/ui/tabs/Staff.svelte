@@ -39,7 +39,7 @@
   }
 
   function effectLines(def: StaffDef, hires: number): string[] {
-    const power = staffPower(hires, game.view.m.staffMult[def.id] ?? 1, def.softCapFrom);
+    const power = staffPower(hires, game.view.m.staffMult[def.id] ?? 1, def.softCapFrom, def.softExponent);
     return def.effects.map((e) => STAT_DESCRIPTIONS[e.stat](e.amount * power));
   }
 

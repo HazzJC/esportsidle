@@ -41,6 +41,8 @@ export interface StaffDef {
    * staff was the whole strategy: the first ten are unchanged, the fiftieth is worth about half.
    */
   softCapFrom?: number;
+  /** The growth exponent past the soft cap, when a staff type should flatten harder than usual. */
+  softExponent?: number;
   /** Price growth per hire, when it differs from the usual 15% a hire. */
   costGrowth?: number;
   requirement: string;
@@ -180,9 +182,11 @@ const RAW: RawStaff[] = [
     plural: 'Team Managers',
     icon: 'calendar-clock',
     baseCost: 20_000_000,
-    desc: 'Books scrims, flights and hotel rooms. Matches happen faster.',
+    desc: 'Books scrims, flights and hotel rooms. Matches happen faster. The first few make a big difference; a hundred of them mostly argue about the calendar.',
     flavor: 'Has 14 calendars and a colour-coding system nobody else understands.',
-    effects: [{ stat: 'matchSpeed', amount: 0.01 }],
+    effects: [{ stat: 'matchSpeed', amount: 0.025 }],
+    softCapFrom: 5,
+    softExponent: 0.3,
     requirement: 'Field teams in 3 games',
     unlock: (s) => games(s) >= 3,
     upgradeNames: ['Scheduling Software', 'Travel Logistics Team', 'Time Management Wizards'],
@@ -193,12 +197,13 @@ const RAW: RawStaff[] = [
     plural: 'AI Trainers',
     icon: 'bot',
     baseCost: 5_000_000_000,
-    desc: 'Self-play models that never sleep. Huge XP gains and a small rating boost.',
+    desc: 'Self-play models that plan every practice. Players learn faster and tire less, but it is coaches who win matches.',
     flavor: 'It has played ten million games against itself and is still annoyed about one of them.',
     effects: [
-      { stat: 'xp', amount: 0.05 },
-      { stat: 'teamRating', amount: 0.01 },
+      { stat: 'xp', amount: 0.03 },
+      { stat: 'energyDrain', amount: 0.015 },
     ],
+    softCapFrom: STAFF_SOFT_CAP,
     requirement: 'Field teams in 4 games and play 3,000 matches',
     unlock: (s) => games(s) >= 4 && matches(s) >= 3_000,
     upgradeNames: ['Neural Coaching Models', 'Self-Play Engines', 'Superhuman Training Data'],

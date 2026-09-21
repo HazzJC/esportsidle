@@ -70,16 +70,16 @@ export function applyStat(m: Mods, stat: StaffStat, amount: number): void {
  * changes, and past it each hire is worth much less, so a wall of coaches stops being the answer to
  * every problem. The fiftieth coach is worth about half what it used to be.
  */
-export function staffPower(hires: number, mult = 1, softCapFrom?: number): number {
+export function staffPower(hires: number, mult = 1, softCapFrom?: number, softExponent = STAFF_SOFT_EXPONENT): number {
   if (hires <= 0) return 0;
   if (softCapFrom === undefined || hires <= softCapFrom) return Math.pow(hires, STAFF_EXPONENT) * mult;
   const atCap = Math.pow(softCapFrom, STAFF_EXPONENT);
-  return atCap * Math.pow(hires / softCapFrom, STAFF_SOFT_EXPONENT) * mult;
+  return atCap * Math.pow(hires / softCapFrom, softExponent) * mult;
 }
 
 export function applyStaffAndDecor(m: Mods, s: GameState): void {
   for (const def of STAFF) {
-    const power = staffPower(s.staff[def.id] ?? 0, m.staffMult[def.id] ?? 1, def.softCapFrom);
+    const power = staffPower(s.staff[def.id] ?? 0, m.staffMult[def.id] ?? 1, def.softCapFrom, def.softExponent);
     if (power <= 0) continue;
     for (const e of def.effects) applyStat(m, e.stat, e.amount * power);
   }
