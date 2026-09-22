@@ -163,14 +163,24 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
     font-size: 11.5px;
     color: var(--muted);
+    white-space: nowrap;
+  }
+  .meta > span:not(.game-badge) {
+    flex: none;
   }
   .game-badge {
     display: inline-flex;
     align-items: center;
     gap: 3px;
+    min-width: 0;
     font-weight: 600;
+  }
+  .game-badge b {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .bars {
     display: flex;

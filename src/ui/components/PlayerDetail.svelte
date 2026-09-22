@@ -87,26 +87,29 @@
     game.updateLook(p.id, randomLook(new Rng({ rng: (Math.random() * 4294967296) >>> 0 })));
   }
 
-  function saveAndClose() {
+  /** Keeps the new look: it becomes the one "Undo" goes back to. */
+  function saveLook(andClose = false) {
+    if (p) initialLook = { ...p.look };
     hasLookChanges = false;
     confirmDiscard = false;
-    close();
+    if (andClose) close();
   }
 
+  /** Puts the look back the way it was when the editor opened (or was last saved). */
+  function undoLook(andClose = false) {
+    if (initialLook && p) game.updateLook(p.id, { ...initialLook });
+    hasLookChanges = false;
+    confirmDiscard = false;
+    if (andClose) close();
+  }
+
+  /** Closing with unsaved look changes asks first, in the footer, rather than guessing. */
   function requestClose() {
-    if (tab === 'look' && hasLookChanges) {
+    if (hasLookChanges) {
+      tab = 'look';
       confirmDiscard = true;
       return;
     }
-    close();
-  }
-
-  function discardAndClose() {
-    if (initialLook && p) {
-      Object.assign(p.look, initialLook);
-    }
-    hasLookChanges = false;
-    confirmDiscard = false;
     close();
   }
 
@@ -115,28 +118,26 @@
   }
 </script>
 
+{#snippet lookFooter()}
+  <div class="look-bar" class:asking={confirmDiscard}>
+    {#if confirmDiscard}
+      <span class="look-state"><Icon name="palette" size={14} /> Keep {p ? `${p.tag}'s` : 'the'} new look?</span>
+      <button class="btn" onclick={() => undoLook(true)}>Undo changes</button>
+      <button class="btn primary" onclick={() => saveLook(true)}>Keep it</button>
+    {:else}
+      <span class="look-state dim">{hasLookChanges ? 'Unsaved changes. The preview shows them live.' : 'No changes yet.'}</span>
+      <button class="btn" disabled={!hasLookChanges} onclick={() => undoLook()}>Undo changes</button>
+      <button class="btn primary" disabled={!hasLookChanges} onclick={() => saveLook()}>Save look</button>
+    {/if}
+  </div>
+{/snippet}
+
 {#if p}
   {@const g = getGame(p.gameId)}
   {@const rarity = RARITY_MAP.get(p.rarity)!}
   {@const team = v.s.teams[p.gameId]}
   {@const slot = team ? team.lineup.indexOf(p.id) : -1}
-  <Modal title={p.founder ? `${p.tag} · Founder` : `${p.first} “${p.tag}” ${p.last}`} onclose={requestClose} width={860}>
-    {#snippet headerExtra()}
-      {#if tab === 'look'}
-        <button class="tick-btn" onclick={saveAndClose} title="Save look & close" aria-label="Save visual changes and close">
-          <Icon name="check" size={18} />
-        </button>
-      {/if}
-    {/snippet}
-    {#if confirmDiscard}
-      <div class="discard-banner">
-        <span>Discard visual changes?</span>
-        <div class="discard-actions">
-          <button class="btn danger small" onclick={discardAndClose}>Discard</button>
-          <button class="btn small" onclick={() => (confirmDiscard = false)}>Keep editing</button>
-        </div>
-      </div>
-    {/if}
+  <Modal title={p.founder ? `${p.tag} · Founder` : `${p.first} “${p.tag}” ${p.last}`} onclose={requestClose} width={860} footer={tab === 'look' || hasLookChanges ? lookFooter : undefined}>
     <div class="detail" style="--rc:{rarity.color}; --gc:{g.color}">
       <aside class="side">
         <div class="stage">
@@ -668,36 +669,24 @@
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
-  .tick-btn {
-    border: none;
-    background: transparent;
-    color: var(--green);
-    display: grid;
-    place-items: center;
-    padding: 4px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .tick-btn:hover {
-    background: color-mix(in srgb, var(--green) 18%, transparent);
-  }
-  .discard-banner {
+  .look-bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--red) 12%, var(--panel-2));
-    border: 1px solid color-mix(in srgb, var(--red) 40%, var(--line));
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .discard-actions {
-    display: flex;
+    justify-content: flex-end;
     gap: 8px;
+    width: 100%;
+  }
+  .look-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: auto;
+    font-size: 12.5px;
+  }
+  .look-bar.asking .look-state {
+    color: var(--gold);
+    font-weight: 700;
   }
   @media (max-width: 720px) {
     .detail {

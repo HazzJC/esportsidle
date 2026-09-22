@@ -1,12 +1,12 @@
 <script lang="ts">
   import { AUTOMATIONS, type AutomationId } from '../../data/automation';
   import { CHARTER_MAP } from '../../data/charters';
-  import { GAMES } from '../../data/games';
+  import { GAME_MAP } from '../../data/games';
   import { SPONSOR_TIERS } from '../../data/sponsors';
-  import { TRAITS } from '../../data/traits';
+  import { TRAIT_MAP } from '../../data/traits';
   import { automationUnlocked } from '../../engine/automation';
   import { fmtTime } from '../../engine/format';
-  import { RARITIES } from '../../engine/players';
+  import { RARITY_MAP } from '../../engine/players';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
 
@@ -26,6 +26,17 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
+
+  /** The market scouting focus in words; it is set in the Market, where its results show. */
+  function scoutSummary(): string {
+    const f = s.market.scouting;
+    const parts = [
+      f?.gameBias ? (GAME_MAP.get(f.gameBias)?.name ?? f.gameBias) : 'any game',
+      f?.rarityBias ? (RARITY_MAP.get(f.rarityBias)?.name ?? f.rarityBias) : 'any rarity',
+      f?.traitFocus ? (TRAIT_MAP.get(f.traitFocus)?.name ?? f.traitFocus) : 'any trait',
+    ];
+    return parts.join(', ');
+  }
   const charter = $derived(s.prestige.charter ? CHARTER_MAP.get(s.prestige.charter) : undefined);
   const pct = (x: number) => `${parseFloat((x * 100).toFixed(1))}%`;
 
@@ -109,52 +120,16 @@
                   checked={s.automation.roster.buyBench ?? false}
                   onchange={(e) => game.setAutomation('roster', { buyBench: e.currentTarget.checked })}
                 />
-                Buy for bench
+                Also sign substitutes for the bench
               </label>
             </div>
           {/if}
           {#if a.id === 'roster' && (s.prestige.nodes.scout_bias !== undefined || s.prestige.nodes.scout_trait !== undefined)}
             <div class="rule small scout-rule">
-              {#if s.prestige.nodes.scout_bias !== undefined}
-                <label>
-                  Game
-                  <select
-                    value={s.market.scouting?.gameBias ?? ''}
-                    onchange={(e) => game.setScouting({ gameBias: e.currentTarget.value || null })}
-                  >
-                    <option value="">Any</option>
-                    {#each GAMES.filter((g) => s.games[g.id]?.unlocked) as g (g.id)}
-                      <option value={g.id}>{g.name}</option>
-                    {/each}
-                  </select>
-                </label>
-                <label>
-                  Tier
-                  <select
-                    value={s.market.scouting?.rarityBias ?? ''}
-                    onchange={(e) => game.setScouting({ rarityBias: (e.currentTarget.value || null) as any })}
-                  >
-                    <option value="">Any</option>
-                    {#each RARITIES as r (r.id)}
-                      <option value={r.id}>{r.name}</option>
-                    {/each}
-                  </select>
-                </label>
-              {/if}
-              {#if s.prestige.nodes.scout_trait !== undefined}
-                <label>
-                  Trait
-                  <select
-                    value={s.market.scouting?.traitFocus ?? ''}
-                    onchange={(e) => game.setScouting({ traitFocus: e.currentTarget.value || null })}
-                  >
-                    <option value="">Any</option>
-                    {#each TRAITS as t (t.id)}
-                      <option value={t.id}>{t.name}</option>
-                    {/each}
-                  </select>
-                </label>
-              {/if}
+              <span class="dim">
+                Scout focus: {scoutSummary()}
+              </span>
+              <button class="btn small" onclick={() => ((game.marketFilter = null), (game.tab = 'market'))}>Change in Market</button>
             </div>
           {/if}
         {/if}

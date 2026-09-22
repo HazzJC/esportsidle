@@ -11,6 +11,7 @@
   import RosterImpact from '../components/RosterImpact.svelte';
   import { previewSigning } from '../../engine/roster';
   import { game } from '../game.svelte';
+  import type { Rarity } from '../../engine/types';
   import { tooltip } from '../tooltip.svelte';
   import Guide from '../components/Guide.svelte';
   import { marketGuide } from '../guides';
@@ -27,6 +28,11 @@
     game.showGuide('market');
     await tick();
     document.querySelector('.market .guide')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /** The rarity select's value as a scouting bias. */
+  function rarityOrNull(value: string): Rarity | null {
+    return RARITIES.find((r) => r.id === value)?.id ?? null;
   }
 
   function openSlots(gameId: string): number {
@@ -52,46 +58,48 @@
 
   {#if v.s.prestige.nodes.scout_bias !== undefined || v.s.prestige.nodes.scout_trait !== undefined}
     <div class="scout-focus">
-      <span class="focus-title"><Icon name="crosshair" size={14} /> Scout Focus:</span>
-      {#if v.s.prestige.nodes.scout_bias !== undefined}
-        <label>
-          Game:
-          <select
-            value={v.s.market.scouting?.gameBias ?? ''}
-            onchange={(e) => game.setScouting({ gameBias: e.currentTarget.value || null })}
-          >
-            <option value="">Any game</option>
-            {#each unlocked as g (g.id)}
-              <option value={g.id}>{g.name}</option>
-            {/each}
-          </select>
-        </label>
-        <label>
-          Tier:
-          <select
-            value={v.s.market.scouting?.rarityBias ?? ''}
-            onchange={(e) => game.setScouting({ rarityBias: (e.currentTarget.value || null) as any })}
-          >
-            <option value="">Any tier</option>
-            {#each RARITIES as r (r.id)}
-              <option value={r.id}>{r.name}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
-      {#if v.s.prestige.nodes.scout_trait !== undefined}
-        <label>
-          Trait:
-          <select
-            value={v.s.market.scouting?.traitFocus ?? ''}
-            onchange={(e) => game.setScouting({ traitFocus: e.currentTarget.value || null })}
-          >
-            <option value="">Any trait (2× roll chance)</option>
-            {#each TRAITS as t (t.id)}
-              <option value={t.id}>{t.name} ({t.tone})</option>
-            {/each}
-          </select>
-        </label>
+      <div class="focus-head">
+        <span class="focus-title"><Icon name="crosshair" size={14} /> Scout focus</span>
+        <span class="dim">Your scouts bring back more of what you ask for, from the next batch of players.</span>
+      </div>
+      <div class="focus-fields">
+        {#if v.s.prestige.nodes.scout_bias !== undefined}
+          <label>
+            <span>Game</span>
+            <select value={v.s.market.scouting?.gameBias ?? ''} onchange={(e) => game.setScouting({ gameBias: e.currentTarget.value || null })}>
+              <option value="">Any game</option>
+              {#each unlocked as g (g.id)}
+                <option value={g.id}>{g.name}</option>
+              {/each}
+            </select>
+          </label>
+          <label>
+            <span>Rarity</span>
+            <select value={v.s.market.scouting?.rarityBias ?? ''} onchange={(e) => game.setScouting({ rarityBias: rarityOrNull(e.currentTarget.value) })}>
+              <option value="">Any rarity</option>
+              {#each RARITIES as r (r.id)}
+                <option value={r.id}>{r.name}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        {#if v.s.prestige.nodes.scout_trait !== undefined}
+          <label>
+            <span>Trait</span>
+            <select value={v.s.market.scouting?.traitFocus ?? ''} onchange={(e) => game.setScouting({ traitFocus: e.currentTarget.value || null })}>
+              <option value="">Any trait</option>
+              <optgroup label="Helpful">
+                {#each TRAITS.filter((t) => t.tone === 'good') as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+              </optgroup>
+              <optgroup label="Mixed or risky">
+                {#each TRAITS.filter((t) => t.tone !== 'good') as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+              </optgroup>
+            </select>
+          </label>
+        {/if}
+      </div>
+      {#if v.s.market.scouting?.traitFocus}
+        <span class="dim small">Players with {TRAIT_MAP.get(v.s.market.scouting.traitFocus)?.name ?? 'that trait'} turn up twice as often.</span>
       {/if}
     </div>
   {/if}
@@ -125,26 +133,17 @@
         {@const scale = Math.max(p.potential, 100)}
         <div class="listing" class:pinned class:easter-egg={l.isEasterEgg}>
           {#if l.isEasterEgg}
-            <span class="easter-egg-tag" use:tooltip={() => ({ title: 'Easter Egg Prospect', icon: 'sparkles', lines: ['A legendary esports figure has appeared! Acquirable with Legacy points.'] })}>
-              <Icon name="sparkles" size={11} /> Easter Egg
+            <span
+              class="legend-banner"
+              use:tooltip={() => ({
+                title: 'Legend signing',
+                icon: 'sparkles',
+                lines: ['A famous name has come up for transfer.', { text: 'Legends are paid for with Legacy points, not cash.', tone: 'gold' }],
+              })}
+            >
+              <Icon name="sparkles" size={12} /> Legend · signs for Legacy points
             </span>
           {/if}
-          <button
-            class="pin"
-            class:on={pinned}
-            aria-pressed={pinned}
-            onclick={() => game.togglePin(p.id)}
-            use:tooltip={() => ({
-              title: pinned ? 'Pinned' : 'Pin this prospect',
-              icon: pinned ? 'pin-off' : 'pin',
-              lines: [
-                pinned ? 'They stay on the board through refreshes and scouting. Click to let them go.' : 'Keep them on the board through refreshes and scouting while you save up.',
-                { text: `One pin per role${replaces ? `: this releases ${replaces.player.tag}` : ''}.`, tone: replaces ? 'gold' : 'muted' },
-              ],
-            })}
-          >
-            <Icon name={pinned ? 'pin-off' : 'pin'} size={14} />
-          </button>
           <PlayerCard player={p} showCondition={false} />
           <RosterImpact preview={previewSigning(v.s, p, v.m)} />
           <div class="stats">
@@ -171,27 +170,43 @@
             {/each}
           </div>
           <div class="foot">
-            <span class="muted small">
+            <span class="muted small potential-cut">
               <span use:tooltip={() => ({ title: 'Potential', icon: 'trending-up', lines: ['The ceiling for every stat. The white vertical marker on the bars shows this limit.', { text: 'Players level up from match XP and bench training.', tone: 'muted' }] })}>Potential <b>{p.potential}</b></span>
               ·
               <span use:tooltip={() => ({ title: 'Cut', icon: 'handshake', lines: [`They keep ${fmtPct(p.cut)} of the prize money their team wins.`, { text: 'It comes out of winnings, never your bank. There are no wages.', tone: 'muted' }] })}>Cut <b>{fmtPct(p.cut)}</b></span>
             </span>
-            <button
-              class="btn small"
-              class:primary={afford && space}
-              class:legacy-btn={isLegacy}
-              disabled={!afford || !space}
-              onclick={() => game.signPlayer(p.id)}
-              title={!space ? 'Roster full' : !afford ? (isLegacy ? 'Not enough legacy points' : 'Not enough cash') : 'Sign this player'}
-            >
-              {#if !space}
-                Roster full
-              {:else if isLegacy}
-                <Icon name="award" size={13} /> Sign · {l.price} Legacy
-              {:else}
-                Sign · {money(l.price)}
-              {/if}
-            </button>
+            <div class="foot-actions">
+              <button
+                class="pin"
+                class:on={pinned}
+                aria-pressed={pinned}
+                onclick={() => game.togglePin(p.id)}
+                use:tooltip={() => ({
+                  title: pinned ? 'Pinned' : 'Pin this prospect',
+                  icon: pinned ? 'pin-off' : 'pin',
+                  lines: [
+                    pinned ? 'They stay on the board through refreshes and scouting. Click to let them go.' : 'Keep them on the board through refreshes and scouting while you save up.',
+                    { text: `One pin per role${replaces ? `: this releases ${replaces.player.tag}` : ''}.`, tone: replaces ? 'gold' : 'muted' },
+                  ],
+                })}
+              >
+                <Icon name={pinned ? 'pin-off' : 'pin'} size={14} />
+              </button>
+              <button
+                class="btn small"
+                class:primary={afford && space}
+                class:legacy-btn={isLegacy}
+                disabled={!afford || !space}
+                onclick={() => game.signPlayer(p.id)}
+                title={!space ? 'Roster full: make room on the bench first' : !afford ? (isLegacy ? 'Not enough Legacy points' : 'Not enough cash') : 'Sign this player'}
+              >
+                {#if isLegacy}
+                  <Icon name="award" size={13} /> Sign · {l.price} Legacy
+                {:else}
+                  Sign · {money(l.price)}
+                {/if}
+              </button>
+            </div>
           </div>
         </div>
       {/each}
@@ -240,10 +255,31 @@
     color: var(--text);
     font-weight: 700;
   }
+  .scout-focus {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .focus-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+  }
+  .focus-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
   .scout-focus label {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+  }
+  .scout-focus label span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
   .scout-focus select {
     padding: 2px 8px;
@@ -306,20 +342,17 @@
     border-color: color-mix(in srgb, #c084fc 60%, var(--gold));
     background: linear-gradient(160deg, rgba(192, 132, 252, 0.12), rgba(0, 0, 0, 0.2) 60%);
   }
-  .easter-egg-tag {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    z-index: 1;
-    display: inline-flex;
+  .legend-banner {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 7px;
-    border-radius: 999px;
-    font-size: 10.5px;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 7px;
+    font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.02em;
     color: #f3e8ff;
-    background: rgba(168, 85, 247, 0.35);
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.4), rgba(168, 85, 247, 0.08));
     border: 1px solid rgba(192, 132, 252, 0.5);
   }
   .legacy-btn {
@@ -333,10 +366,7 @@
     color: #fff;
   }
   .pin {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 1;
+    flex: none;
     display: grid;
     place-items: center;
     width: 26px;
@@ -425,6 +455,11 @@
   .trait.mixed {
     color: var(--gold);
     border-color: color-mix(in srgb, var(--gold) 35%, transparent);
+  }
+  .foot-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .foot {
     display: flex;
