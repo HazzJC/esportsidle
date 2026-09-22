@@ -19,8 +19,28 @@
 
 ## Pending Changes
 
-### Invitationals, the Teams room, benching that heals, living merch and a debug panel
-*Status: Pending* | On `main` as `2c355cb`, `fc807ca`, `bfb4d86`, `5160ae5`, `424938d`, `8727c16`, `c61a3fb`, `670f3b5`, `1309de3` (Sep 21–22 2026), awaiting playtest
+### Visual pass: fixes, tablet layout and consistent art
+*Status: Pending* | On `main` as `4f7b344`, `243122c`, `dc0dd9e` (Sep 22 2026), awaiting playtest
+
+* **The Issue / Motivation**:
+  * A review of every tab at desktop, tablet and phone widths, plus a brand-new org, found bugs, layout problems and art that looked out of place next to the gear and merch.
+  * Bugs: a solo team's desk stretched to fill the column (hiding the bench during the tutorial); popups were clipped in the clicker column and covered the tabs on phones; tabs opened at the previous tab's scroll position; Svelte stripped spaces ("Skiptutorial"); Stats still said "Tournaments" and the popup settings "derbies"; a 99-cent first prize showed as $0; tutorial text about when operations open was wrong; Stats and the header disagreed on income per second.
+  * Layout: phones showed cash only on the Org view; 768–1023px screens got the phone layout; the House crowded two rows of stations over each other; the Teams page was very long; HQ cards squeezed into thin columns on laptops; HQ operation strips looked thin.
+  * Art: generic, repeated icons on store upgrades and achievements; plain staff rows; a wall-of-text Stats page; Orbitron's slashed zero reading as a broken glyph.
+
+* **What Changed**:
+  * **Fixes** (`4f7b344`): desks keep their normal size in narrow rooms; the clicker column shows the newest popup in full with a "+N more" count; phone and tablet popups rise from above the bottom bar (three at most); every tab opens at the top; spaces restored; wording fixed; sub-dollar amounts show cents; tutorial and Stats text corrected.
+  * **Layout** (`243122c`): a two-column tablet layout that keeps the clicker in view; cash and income in the phone top bar; a staggered two-row House with names clear of everyone; a sticky team switcher and foldable team cards; HQ card grids that wrap by available width; bigger HQ workers.
+  * **Art and consistency** (`dc0dd9e`): pixel workers and tier numerals on store upgrades and the Operations list; ladder numerals and a highlighted next rung on achievements; staff portraits and hire counts, with the hire toggle above the list; a rebuilt Stats page with headline figures, an income-by-source bar and grouped cards; the UI face for counts and scores.
+
+---
+
+## Historical Release & Commit Notes
+
+### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
+
+#### `2c355cb`, `fc807ca`, `bfb4d86`, `5160ae5`, `424938d`, `8727c16`, `c61a3fb`, `670f3b5`, `1309de3`, `39effb3` — Invitationals, the Teams room, benching that heals, living merch and a debug panel
+*Date: Mon Sep 22 2026* | *Status: Committed*
 
 * **The Issue / Motivation**:
   * Merch items and upgrades looked plain next to the gear upgrades, and changed only their frame as the finish improved.
@@ -37,20 +57,16 @@
 * **What Changed**:
   * **Merch that physically changes** (`2c355cb`, `c61a3fb`): bespoke art per product in the gear style, with three builds each (Q0 basic, Q2 better made, Q4 premium; for example blank tee → ringer tee → raglan crest tee). Holographic foil arrives at Q6, a limited-run hang tag at Q7, a gold signature at Q8, a collector's box at Q9 and a Hall of Fame display case at Q10. The Studio preview tilts towards the pointer, pops on upgrade and shows a strip of every look the product will reach. `tests/merch-art.test.ts` covers every product and finish.
   * **Gamer tags** (`2c355cb`): 288 tag words, prefixes, and 490 parody handles of real pros.
-  * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers, and the four stat cards are gone.
+  * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers ~~(up to 40, 26px)~~ *(Changed 1 time since: taller strips, bigger workers, up to 32, in 243122c)*, and the four stat cards are gone.
   * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most.
   * **Sponsors** (`5160ae5`): ten tiers (six to ten behind the Global Brand Portfolio legacy node), perks that scale with tier and goal difficulty, no hidden income cap, no goals that the org would finish in under five minutes at its recent pace, two-zone cards ("While signed" / "Goal bonus · paid once") and parody logos for all 36 brands.
   * **Invitationals** (`424938d`): the Hype Drop sends an invitation showing the chance to win each round. Spending 10%, 25% or 50% of cash on preparation raises it, and an unanswered invite plays itself after two minutes. A team level with its league wins the bracket a little over half the time, and invites are about 70% more common. One glossary covers the competition words (docs/content-catalog.md): match, season, league title, Season MVP, Invitational, grudge match (was derby).
-  * **Teams room** (`8727c16`): the Roster tab is folded into Teams. Each team is a room with a parody game logo, one role-labelled desk per player drawn like the House, and a wooden bench of player cards. Players move by pointer drag (long press on touch), with the change in win chance shown and no layout movement. Clicking a player opens their gear and stats. Rival orgs get knock-off crests.
+  * **Teams room** (`8727c16`): the Roster tab is folded into Teams. Each team is a room with a parody game logo, one role-labelled desk per player drawn like the House, and a wooden bench of player cards ~~(desks stretched to the full column on narrow screens)~~ *(Changed 1 time since: desks capped at their normal size, a sticky team switcher and foldable team cards, in 4f7b344 and 243122c)*. Players move by pointer drag (long press on touch), with the change in win chance shown and no layout movement. Clicking a player opens their gear and stats. Rival orgs get knock-off crests.
   * **Rest and injury** (`8727c16`): benched players recover twice as fast. Season plans carry an injury risk (Development ×0.7, Balanced ×1, Push ×1.6). A new tutorial step after the first win gives the founder a one-minute injury that benching heals on the spot, with a note on rest, physios and risky playstyles.
   * **Debug panel** (`670f3b5`): tap the version number in Options seven times. It shows the live income split, cash by source this run and all time (a new `incomeTotal` ledger), multipliers, top operations, team odds and counters, and can copy them as JSON.
   * **Interface review** (`1309de3`): the market pin no longer covers the rating, easter-egg listings read as Legend signings, scout focus explains itself and lives in one place, and the look editor has labelled Undo / Save controls.
 
 ---
-
-## Historical Release & Commit Notes
-
-### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
 
 #### `de295ff` (merged in `a1d98af`) — Targeted Scouting, Coach Bench Automation, Gear Tiers & UX Refinements
 *Date: Sun Sep 20 2026* | *Status: Committed*
