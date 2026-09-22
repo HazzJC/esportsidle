@@ -134,8 +134,12 @@ export function fmt(value: number, decimals = 0, format: NumberFormat = currentF
   return `${sign}${text}${format === 'long' ? ' ' : ' '}${suffix}`;
 }
 
-/** Formats a dollar amount. */
+/**
+ * Formats a dollar amount. Anything between zero and a dollar shows its cents, so a first prize of
+ * 99 cents reads as $0.99 rather than a flat $0.
+ */
 export function money(value: number, decimals = 0): string {
+  if (value > 0 && value < 1) return value < 0.01 ? '<$0.01' : `$${(Math.floor(value * 100) / 100).toFixed(2)}`;
   return `$${fmt(value, decimals)}`;
 }
 

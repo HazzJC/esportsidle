@@ -979,9 +979,10 @@
     justify-content: center;
     padding: 22px 6px 0;
   }
+  /* Narrow rooms wrap to three desks a row, but a desk never grows past its normal size. */
   @container (max-width: 560px) {
     .bays {
-      grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 1fr));
+      grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 196px));
     }
   }
   @container (max-width: 440px) {
@@ -991,7 +992,7 @@
   }
   @container (max-width: 250px) {
     .bays {
-      grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 1fr));
+      grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 196px));
     }
   }
   .bay {

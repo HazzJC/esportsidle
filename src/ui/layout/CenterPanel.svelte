@@ -31,6 +31,12 @@
   $effect(() => {
     if (!sectionOpen(s, game.tab)) game.tab = 'hq';
   });
+  // A new tab opens at the top, not wherever the last one was scrolled to.
+  let body: HTMLElement | undefined = $state();
+  $effect(() => {
+    void game.tab;
+    if (body) body.scrollTop = 0;
+  });
   // Visiting a tab clears its "new" flag.
   $effect(() => {
     const tab = game.tab;
@@ -61,7 +67,7 @@
       <span class="locked" use:tooltip={lockedTip} aria-label="{locked.length} more tabs to unlock"><Icon name="lock" size={13} /> {locked.length}</span>
     {/if}
   </nav>
-  <div class="body">
+  <div class="body" bind:this={body}>
     {#if game.tab === 'hq'}
       <HQ />
     {:else if game.tab === 'house'}

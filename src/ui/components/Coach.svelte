@@ -100,7 +100,7 @@
       {/key}
     </div>
     <div class="corner">
-      <button class="skip" onclick={() => game.skipTutorial()} title="Skip the tutorial. Quests start straight away.">Skip<span class="wide-only"> tutorial</span></button>
+      <button class="skip" onclick={() => game.skipTutorial()} title="Skip the tutorial. Quests start straight away.">Skip<span class="wide-only">{' '}tutorial</span></button>
       <button class="fold phone-only" onclick={() => (folded = !folded)} aria-expanded={!folded} aria-label={folded ? 'Show the explanation' : 'Hide the explanation'}>
         <Icon name={folded ? 'chevron-down' : 'chevron-up'} size={16} />
       </button>

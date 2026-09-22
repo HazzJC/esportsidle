@@ -180,7 +180,7 @@
         <div class="ops-locked">
           <Icon name="lock" size={22} />
           <b>Operations</b>
-          <span class="muted">Businesses that earn money every second, even while you are away. They open once you have signed your first player.</span>
+          <span class="muted">Businesses that earn money every second, even while you are away. They open just after your first win.</span>
         </div>
       {:else}
         {#each shownOps as op (op.id)}

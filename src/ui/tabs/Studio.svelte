@@ -105,8 +105,8 @@
     <div class="kit-main">
       <h3 class="section-title">Logo</h3>
       <p class="muted small">
-        Pick a badge and a mark.{#if s.org.logo}<span class="dim"> Your drawn logo sits inside the badge in place of the mark.</span>{:else}
-          Or draw a design below and set it as your logo to put it inside the badge.{/if}
+        Pick a badge and a mark.
+        {#if s.org.logo}<span class="dim">Your drawn logo sits inside the badge in place of the mark.</span>{:else}Or draw a design below and set it as your logo to put it inside the badge.{/if}
       </p>
       <EmblemPicker emblem={s.org.emblem} name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} onchange={(e) => game.setEmblem(e)} />
     </div>
@@ -221,7 +221,7 @@
                   {#if !maxed}
                     {@const upcoming = nextMerchMilestone(p.id, q)}
                     <div class="next dim">
-                      Next: {FINISH_NAMES[q + 1]}{#if upcoming}<span class="new-look"> · new look at Q{upcoming.q}: {upcoming.name}</span>{/if}
+                      Next: {FINISH_NAMES[q + 1]}{#if upcoming}{' '}<span class="new-look">· new look at Q{upcoming.q}: {upcoming.name}</span>{/if}
                     </div>
                   {/if}
                   <div class="looks" aria-label="Looks this product unlocks">

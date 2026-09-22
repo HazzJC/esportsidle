@@ -447,9 +447,11 @@
       transform: translateX(-50%) translateY(-3px);
     }
   }
+  /* On phones and tablets popups use the bottom of the screen, so the invite waits at the top. */
   @media (max-width: 1023px) {
     .inv-pill {
-      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+      top: calc(62px + env(safe-area-inset-top, 0px));
+      bottom: auto;
     }
   }
   @media (prefers-reduced-motion: reduce) {

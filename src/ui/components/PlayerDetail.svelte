@@ -193,7 +193,7 @@
             <h4>Career</h4>
             <ul>
               {#each p.milestones as m (m.id)}
-                <li><Icon name="medal" size={12} color="var(--gold)" /> {m.label}{#if m.run !== v.s.prestige.runs + 1}<span class="dim"> · run {m.run}</span>{/if}</li>
+                <li><Icon name="medal" size={12} color="var(--gold)" /> {m.label}{#if m.run !== v.s.prestige.runs + 1}{' '}<span class="dim">· run {m.run}</span>{/if}</li>
               {/each}
             </ul>
           </div>
@@ -235,7 +235,7 @@
                   <i style="width:{Math.min(100, (base / scale) * 100)}%"></i>
                   <b style="left:{(p.potential / scale) * 100}%" title="Potential"></b>
                 </span>
-                <span class="sval num">{Math.round(base)}{#if mult > 1.001}<span class="good"> ×{fmt(mult, 2)}</span>{/if}</span>
+                <span class="sval num">{Math.round(base)}{#if mult > 1.001}{' '}<span class="good">×{fmt(mult, 2)}</span>{/if}</span>
               </div>
             {/each}
           </div>

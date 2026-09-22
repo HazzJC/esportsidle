@@ -11,6 +11,15 @@
 
   /** Achievements named in a batched popup before collapsing into "and N more". */
   const MAX_LISTED = 3;
+  /** Popups on screen at once when they float over a phone or tablet; older ones wait. */
+  const MAX_FLOATING = 3;
+
+  /**
+   * The clicker column only has room for one popup, so it shows the newest in full and counts the
+   * rest, instead of clipping a stack of them mid-sentence.
+   */
+  const shown = $derived(inline ? game.toasts.slice(-1) : game.toasts.slice(-MAX_FLOATING));
+  const hidden = $derived(game.toasts.length - shown.length);
   /** The income the achievements in a popup are worth through Superfan upgrades. */
   const cabinetGain = (t: Toast) => {
     const counted = (t.achievements ?? []).filter((a) => a.cabinet).length;
@@ -25,12 +34,13 @@
   Entry-only transitions, because outros never finish in a background tab and would leave stale cards.
 -->
 <div class="toasts" class:inline aria-live="polite">
-  {#each game.toasts as t (t.id)}
+  {#if hidden > 0}<span class="more-toasts">+{hidden} more</span>{/if}
+  {#each shown as t (t.id)}
     <div
       class="toast {t.tone}"
       class:ach={t.achievements}
       style="--life:{t.duration}ms; {t.achievements ? `--ac:${rarityColor(t.achievements[0].rarity)}` : ''}"
-      in:fly={{ x: -28, duration: 260 }}
+      in:fly={{ x: inline ? -28 : 0, y: inline ? 0 : 18, duration: 260 }}
     >
       {#if t.achievements}
         {@const list = t.achievements}
@@ -84,16 +94,27 @@
 </div>
 
 <style>
+  /* On phones and tablets popups rise from just above the bottom bar, clear of the tabs up top. */
   .toasts {
     position: fixed;
-    top: 8px;
     left: 8px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     z-index: 900;
     width: min(340px, calc(100vw - 16px));
     display: flex;
     flex-direction: column;
     gap: 8px;
     pointer-events: none;
+  }
+  .more-toasts {
+    align-self: flex-start;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--panel) 90%, transparent);
+    border: 1px solid var(--line-2);
   }
   /* In the clicker column: part of the page, newest at the bottom, clipped to the gap. */
   .toasts.inline {
@@ -159,6 +180,14 @@
   .body {
     font-size: 12.5px;
     color: var(--muted);
+  }
+  /* In the clicker column a long popup gives up its tail rather than being cut in half. */
+  .inline .body {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   /* Achievement card */
