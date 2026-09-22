@@ -208,6 +208,7 @@
     flex: none;
     width: 44px;
     height: 44px;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
   }
   .logo :global(svg) {
     display: block;

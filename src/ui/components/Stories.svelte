@@ -80,6 +80,7 @@
     flex: none;
     width: 34px;
     height: 34px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
   }
   .crest :global(svg) {
     display: block;

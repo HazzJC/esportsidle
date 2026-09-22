@@ -106,7 +106,7 @@
           use:tooltip={() => tip(def)}
         >
           <span class="icon portrait">
-            <Avatar look={FACES[def.id]} gear={NO_GEAR} primary={v.s.org.primary} secondary={v.s.org.secondary} size={46} mode="bust" tag={def.name} />
+            <span class="face"><Avatar look={FACES[def.id]} gear={NO_GEAR} primary={v.s.org.primary} secondary={v.s.org.secondary} size={44} mode="bust" tag={def.name} /></span>
             <span class="role"><Icon name={def.icon} size={12} /></span>
           </span>
           <span class="main">
@@ -260,22 +260,32 @@
   .list-head .section-title {
     margin: 0;
   }
+  /* The face is clipped to the frame; the role badge sits inside its bottom corner. */
   .portrait {
     position: relative;
-    overflow: visible;
+    overflow: hidden;
   }
-  .portrait :global(svg) {
-    border-radius: 9px;
+  .face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+  .face :global(svg) {
+    display: block;
   }
   .role {
     position: absolute;
-    right: -5px;
-    bottom: -5px;
+    right: 1px;
+    bottom: 1px;
+    z-index: 1;
     display: grid;
     place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
+    width: 17px;
+    height: 17px;
+    border-radius: 5px;
     color: var(--q);
     background: var(--bg);
     border: 1px solid color-mix(in srgb, var(--q) 55%, var(--line-2));

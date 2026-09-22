@@ -855,6 +855,7 @@
     display: block;
     width: 22px;
     height: 22px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
   }
   .mini :global(svg) {
     display: block;

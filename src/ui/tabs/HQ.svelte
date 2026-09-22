@@ -25,7 +25,7 @@
     const jitter = ((i * 0.618) % 1) - 0.5;
     return {
       x: 2 + (col / PER_ROW) * 95 + jitter * 1.6,
-      y: row === 0 ? 3 : 19,
+      y: row === 0 ? 1 : 17,
       back: row === 1,
       delay: ((i * 0.37) % 1.6).toFixed(2),
     };
@@ -470,18 +470,18 @@
   }
   .sprite {
     position: absolute;
-    width: 34px;
-    height: 34px;
-    margin-left: -17px;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
     filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
     animation:
       pop-in 0.25s ease-out both,
       idle 2.4s ease-in-out var(--d) infinite;
   }
   .sprite.back {
-    width: 27px;
-    height: 27px;
-    margin-left: -13px;
+    width: 31px;
+    height: 31px;
+    margin-left: -15px;
     opacity: 0.8;
     filter: brightness(0.8) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
   }

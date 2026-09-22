@@ -1,4 +1,5 @@
 import { circ, ell, line, op, path, rect, rr, stroke } from './artKit';
+import { roundedRect, withDepth } from './logoDepth';
 
 /**
  * Parody logos for the sponsor brands, on a 48x48 badge. Each one riffs on the shape of the logo
@@ -101,7 +102,8 @@ export function brandLogoSvg(brandId: string, color: string, name = ''): string 
   const inner = draw
     ? draw(color)
     : `<text x="24" y="30" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="16" fill="${color}">${name.slice(0, 2).toUpperCase().replace(/[^A-Z0-9]/g, '')}</text>`;
-  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${badge(color)}${inner}</svg>`;
+  const body = withDepth({ plate: badge(color), emblem: inner, outline: roundedRect(2, 2, 44, 44, 11) });
+  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
 export const BRAND_LOGO_IDS = Object.keys(LOGOS);

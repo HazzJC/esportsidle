@@ -1,4 +1,5 @@
 import { K, circ, ell, line, op, path, rect, rr, stroke } from './artKit';
+import { roundedRect, withDepth } from './logoDepth';
 
 /**
  * Parody logos for the twelve games, on a 48x48 emblem. Each one riffs on the shape of the game it
@@ -109,7 +110,8 @@ export function gameLogoSvg(gameId: string, color: string, name = ''): string {
   const inner = draw
     ? draw(color)
     : `<text x="24" y="30" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="16" fill="${color}">${name.slice(0, 2).toUpperCase().replace(/[^A-Z0-9]/g, '')}</text>`;
-  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${plate(color)}${inner}</svg>`;
+  const body = withDepth({ plate: plate(color), emblem: inner, outline: roundedRect(1.5, 1.5, 45, 45, 12) });
+  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
 export const GAME_LOGO_IDS = Object.keys(LOGOS);

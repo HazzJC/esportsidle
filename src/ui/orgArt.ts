@@ -1,4 +1,5 @@
 import { K, circ, ell, line, op, path, rect, rr, stroke } from './artKit';
+import { roundedRect, withDepth } from './logoDepth';
 
 /**
  * Knock-off crests for the rival esports orgs. The best-known names get a drawing that sends up the
@@ -160,7 +161,9 @@ function generated(name: string): Crest {
 /** A rival org's crest as a square SVG. */
 export function orgLogoSvg(name: string): string {
   const crest = BESPOKE[name] ?? generated(name);
-  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${rr(1, 1, 46, 46, 11, crest.bg)}${crest.draw()}</svg>`;
+  const plate = rr(1, 1, 46, 46, 11, crest.bg) + rr(1, 1, 46, 46, 11, 'none', `${stroke('#ffffff', 1)} ${op(0.12)}`);
+  const body = withDepth({ plate, emblem: crest.draw(), outline: roundedRect(1, 1, 46, 46, 11) });
+  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
 export const ORG_LOGO_NAMES = Object.keys(BESPOKE);
