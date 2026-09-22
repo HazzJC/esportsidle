@@ -19,8 +19,41 @@
 
 ## Pending Changes
 
-### Targeted Scouting, Coach Bench Automation, Gear Tiers & UX Refinements
-*Status: Pending*
+### Invitationals, the Teams room, benching that heals, living merch and a debug panel
+*Status: Pending* | On `main` as `2c355cb`, `fc807ca`, `bfb4d86`, `5160ae5`, `424938d`, `8727c16`, `c61a3fb`, `670f3b5`, `1309de3` (Sep 21–22 2026), awaiting playtest
+
+* **The Issue / Motivation**:
+  * Merch items and upgrades looked plain next to the gear upgrades, and changed only their frame as the finish improved.
+  * The player-name pool had grown but gamer tags had not.
+  * The Roster tab duplicated the Teams tab, and moving players around was fiddly and made the page jump.
+  * Injuries were purely time-based, so the bench did nothing for a hurt player, and the tutorial never showed it.
+  * Sponsor temporary and permanent rewards were still unclear, and sponsor income stopped at a hidden 200% no matter how many sponsors were signed.
+  * Tournament invites were rare, usually lost, and shared a confusing name with the league system. Seasons, titles, MVPs and "derbies" had no consistent vocabulary.
+  * AI Trainers were just better coaches, and Team Managers scaled the same way at 1 or 100 hires.
+  * There was no way to see where income actually came from while testing.
+  * The HQ operations were plain coloured bars, and the HQ header repeated the income, fame, trophy and cabinet numbers shown elsewhere.
+  * Quests could be put off with "Later", and quest perks carried over into every future run.
+
+* **What Changed**:
+  * **Merch that physically changes** (`2c355cb`, `c61a3fb`): bespoke art per product in the gear style, with three builds each (Q0 basic, Q2 better made, Q4 premium; for example blank tee → ringer tee → raglan crest tee). Holographic foil arrives at Q6, a limited-run hang tag at Q7, a gold signature at Q8, a collector's box at Q9 and a Hall of Fame display case at Q10. The Studio preview tilts towards the pointer, pops on upgrade and shows a strip of every look the product will reach. `tests/merch-art.test.ts` covers every product and finish.
+  * **Gamer tags** (`2c355cb`): 288 tag words, prefixes, and 490 parody handles of real pros.
+  * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers, and the four stat cards are gone.
+  * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most.
+  * **Sponsors** (`5160ae5`): ten tiers (six to ten behind the Global Brand Portfolio legacy node), perks that scale with tier and goal difficulty, no hidden income cap, no goals that the org would finish in under five minutes at its recent pace, two-zone cards ("While signed" / "Goal bonus · paid once") and parody logos for all 36 brands.
+  * **Invitationals** (`424938d`): the Hype Drop sends an invitation showing the chance to win each round. Spending 10%, 25% or 50% of cash on preparation raises it, and an unanswered invite plays itself after two minutes. A team level with its league wins the bracket a little over half the time, and invites are about 70% more common. One glossary covers the competition words (docs/content-catalog.md): match, season, league title, Season MVP, Invitational, grudge match (was derby).
+  * **Teams room** (`8727c16`): the Roster tab is folded into Teams. Each team is a room with a parody game logo, one role-labelled desk per player drawn like the House, and a wooden bench of player cards. Players move by pointer drag (long press on touch), with the change in win chance shown and no layout movement. Clicking a player opens their gear and stats. Rival orgs get knock-off crests.
+  * **Rest and injury** (`8727c16`): benched players recover twice as fast. Season plans carry an injury risk (Development ×0.7, Balanced ×1, Push ×1.6). A new tutorial step after the first win gives the founder a one-minute injury that benching heals on the spot, with a note on rest, physios and risky playstyles.
+  * **Debug panel** (`670f3b5`): tap the version number in Options seven times. It shows the live income split, cash by source this run and all time (a new `incomeTotal` ledger), multipliers, top operations, team odds and counters, and can copy them as JSON.
+  * **Interface review** (`1309de3`): the market pin no longer covers the rating, easter-egg listings read as Legend signings, scout focus explains itself and lives in one place, and the look editor has labelled Undo / Save controls.
+
+---
+
+## Historical Release & Commit Notes
+
+### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
+
+#### `de295ff` (merged in `a1d98af`) — Targeted Scouting, Coach Bench Automation, Gear Tiers & UX Refinements
+*Date: Sun Sep 20 2026* | *Status: Committed*
 
 * **The Issue / Motivation**:
   * **Scout Specialization Missing**: Scouts could only roll prospects randomly across all games and rarities, with no ability to direct recruitment efforts or hunt for desirable player traits.
@@ -36,24 +69,20 @@
   * **Name Variety**: Player names and gamer tags lacked scene-specific flavor and variety across all 12 esports disciplines.
 
 * **What Changed**:
-  * **Targeted Scouting Legacy Nodes**: Added `scout_bias` (15 LP) and `scout_trait` (25 LP) legacy buyables. Unlocking them enables Scout Focus controls in both the Transfer Market tab and Front Office, allowing scouts to bias recruiting towards a specified game (5x weight), rarity tier (3.5x weight), and double the chance (2x weight) of rolling a chosen player trait.
-  * **Content-Proportional Toast Durations**: Scaled toast lifetimes proportionally with message character length (`2800ms + length * 45ms`, clamped between 3.5s and 12s), and doubled display duration for Season Champion popups.
+  * **Targeted Scouting Legacy Nodes**: Added `scout_bias` (15 LP) and `scout_trait` (25 LP) legacy buyables. Unlocking them enables Scout Focus controls in the Transfer Market tab ~~and Front Office~~ *(Changed 1 time since: Front Office shows the current focus with a link to the Market in 1309de3)*, allowing scouts to bias recruiting towards a specified game (5x weight), rarity tier (3.5x weight), and double the chance (2x weight) of rolling a chosen player trait.
+  * **Content-Proportional Toast Durations**: Scaled toast lifetimes proportionally with message character length (`2800ms + length * 45ms`, clamped between 3.5s and 12s), and doubled display duration for ~~Season Champion~~ popups *(Changed 1 time since: renamed league champions in 424938d)*.
   * **Bad Drama Audio Cue**: Added synthesized `dramaBad` sound effect (descending gritty minor dissonance and sub thump) triggered when click drops yield negative outcomes.
   * **Coach Bench Automation**: Added `coach_bench` (18 LP) legacy purchase and Front Office toggle allowing coach automation to sign affordable players directly into bench slots when active lineups are full.
   * **Gear Gear Gear Budget Tiers**: Added three tiers of `gear_gear_gear` legacy upgrades (15, 50, 200 LP) unlocking front-office equipment spending caps of 10%, 25%, and 50% of cash.
-  * **Player Look Editor Confirmation**: Added a green checkmark button to save and close the look editor, and added a confirmation prompt when clicking the close cross if visual changes were made, preventing accidental edits.
+  * **Player Look Editor Confirmation**: ~~Added a green checkmark button to save and close the look editor, and a confirmation banner when clicking the close cross~~ *(Changed 1 time since: labelled "Undo changes" / "Save look" footer and a "Keep the new look?" prompt in 1309de3)*, preventing accidental edits.
   * **Market Potential Line Markers**: Added white vertical potential markers on all player stat bars in the transfer market, making prospect ceilings immediately clear prior to purchase.
-  * **Sponsor Benefit Differentiation**: Added visual `Temp` badges to contract income boosts and category perks, paired with `Perm` badges and trophy callouts for goal payouts and trophy cabinet rewards.
+  * **Sponsor Benefit Differentiation**: ~~Added visual `Temp` badges to contract income boosts and category perks, paired with `Perm` badges~~ *(Changed 1 time since: two-zone cards, "While signed" and "Goal bonus · paid once", in 5160ae5)* and trophy callouts for goal payouts and trophy cabinet rewards.
   * **Prioritized Poaching Offers**: Elevated `ChoicePanel` z-index to 1000 and updated `offerChoice` to unshift transfer poaching offers to the front of the pending queue so they cannot be hidden or delayed.
-  * **Market Easter Egg Prospects**: Introduced a 1% chance for easter egg players to appear as rare legacy prospects on the transfer market, purchasable for 5 Legacy points.
-  * **Expanded Name Pool & Scene Parodies**: Added hundreds of diverse first and last names, and added a 10% chance for players in all 12 games to roll parody handles inspired by famous pro esports figures.
+  * **Market ~~Easter Egg~~ Legend Prospects** *(Changed 1 time since: shown as a "Legend" banner in 1309de3)*: Introduced a 1% chance for easter egg players to appear as rare legacy prospects on the transfer market, purchasable for 5 Legacy points.
+  * **Expanded Name Pool & Scene Parodies**: Added hundreds of diverse first and last names, and added a ~~10%~~ chance *(Changed 1 time since: 16%, from 490 parody handles, in 2c355cb)* for players in all 12 games to roll parody handles inspired by famous pro esports figures.
   * **Automated Tests**: Added comprehensive test suite in `tests/new-features.test.ts` covering scouting biases, parody tags, coach bench logic, legacy market signings, toast duration math, and transfer queue prioritization.
 
 ---
-
-## Historical Release & Commit Notes
-
-### Phase 6: Economy Overhaul, Balance & Feedback Loop Tuning
 
 #### `8696dc0` & `d9ece80` — Player-centric README rewrite and authentic in-game screenshot
 *Date: Sun Sep 20 2026* | *Status: Committed*
@@ -130,9 +159,9 @@
   * Lineup management was cumbersome on both mobile and desktop screens.
 * **What Changed**:
   * **Interactive Click Chain**: Reduced hype fill requirement from 200 to ~~50 clicks~~ *(Changed 1 time since: rebalanced to ~80 clicks with decay buffer in de1e324)*. Reaching full hype initiates an interactive chain of popping bubbles granting escalating multipliers up to 20x for 200 seconds.
-  * **Staff Soft Cap**: Applied diminishing-return soft caps to Coaches and Analysts after 10 hires, preventing runaway rating spikes.
+  * **Staff Soft Cap**: Applied diminishing-return soft caps to Coaches and Analysts after 10 hires, preventing runaway rating spikes *(Changed 1 time since: AI Trainers and Team Managers get their own curves in bfb4d86)*.
   * **Role-Based Coaching**: Coaches now automatically promote bench substitutes when the stat benefit exceeds the chemistry penalty.
-  * **Squad Drag-and-Drop**: Implemented full drag-and-drop and tap-to-swap lineup interactions with live win-rate preview tooltips.
+  * **Squad Drag-and-Drop**: Implemented full drag-and-drop ~~and tap-to-swap lineup interactions~~ *(Changed 1 time since: pointer drag that works on touch, onto role-labelled desks and a bench, in 8727c16)* with live win-rate preview tooltips.
 
 ---
 
@@ -175,10 +204,10 @@
     * Sponsor payouts were invisible.
     * Prestige threshold ($10^{15}$) felt impossibly far away.
 * **What Changed**:
-  * **Flu Recovery**: Changed to a pure elapsed-time recovery timer with clear UI countdowns, eliminating forced manual benching.
+  * **Flu Recovery**: Changed to a pure elapsed-time recovery timer with clear UI countdowns, eliminating forced manual benching ~~with no benefit from resting~~ *(Changed 1 time since: benched players recover twice as fast in 8727c16)*.
   * **Contextual Auto-Pause**: Front-office automation now automatically pauses when the player is browsing the Market, Gear, or Lineup screens.
   * **Auto-Buy Logic Fixes**: Fixed auto-sponsor tier adherence and respected empty roster slot toggles ~~which only bought players for the active lineup~~ *(Changed 1 time since: coaches can now be instructed to buy bench players via coach_bench legacy purchase)*.
-  * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts ~~without visual distinction between contract perks and permanent rewards~~ *(Changed 1 time since: active cards and offers now feature explicit Temporary vs Permanent tags and styling)*.
+  * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts ~~without visual distinction between contract perks and permanent rewards~~ *(Changed 2 times since: Temporary vs Permanent tags in de295ff, two-zone "While signed" / "Goal bonus" cards in 5160ae5)*.
   * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to $10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session.
   * **Easter Eggs**: Added special custom traits and buffs for community members and iconic pros (*Faker*, *TheOnlyCook*, *Varantha*, etc.) ~~which were not available in the market~~ *(Changed 1 time since: legendary easter egg players now have a rare 1% chance to appear as legacy prospects on the transfer market)*.
 
@@ -240,7 +269,7 @@
 * **What Changed**:
   * **Step-by-Step Tutorial**: 5-step non-modal guided banner walking through initial clicking, player signing, match viewing, and opening operations.
   * **First-Player Draft**: ~~Offered 3 tiered Smash Siblings draft prospects ($10, $25, $50)~~ *(Changed 1 time since: replaced in 16e999b with 1 customizable permanent founding player)*.
-  * **Quest Board**: Added 22 milestone quests offering choices between cash injections or permanent account-wide perks, with a "Later" deferral option.
+  * **Quest Board**: Added 22 milestone quests offering choices between cash injections or ~~permanent account-wide perks, with a "Later" deferral option~~ *(Changed 1 time since: a linear quest line with no "Later", and perks that last for the current run only, in fc807ca)*.
 
 ---
 
@@ -412,8 +441,8 @@
   * Orgs had no creative identity or visual branding, and monetization lacked merchandise sales and commercial brand sponsorships.
 * **What Changed**:
   * **Pixel Art Studio**: Integrated full 16/32/64 canvas editor featuring pencil, fill bucket, line, rectangle, ellipse, color picker, symmetry modes, undo/redo, and automated design appeal scoring.
-  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves ~~with static product quality~~ *(Changed 1 time since: merchandise quality upgrade tiers and visual store preview in de1e324)*.
-  * **Sponsorship Board**: 36 parody sponsors across 12 categories with signing bonuses, passive yields, category perks, bonus goals, and volatile crypto sponsors ~~paying flat percentage instant bonuses~~ *(Changed 4 times since: contract payout preview in c0174cd, duration-based calculation in 1e42876, 25% earnings cap in ef74a7b, and front-office auto-sign budget limits in de1e324)*.
+  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves ~~with static product quality~~ *(Changed 3 times since: merchandise quality upgrade tiers and visual store preview in de1e324, gear-style finish art in 2c355cb, products that physically change every few finish levels in c61a3fb)*.
+  * **Sponsorship Board**: 36 parody sponsors across 12 categories with signing bonuses, passive yields, category perks, bonus goals, and volatile crypto sponsors ~~paying flat percentage instant bonuses~~ *(Changed 5 times since: contract payout preview in c0174cd, duration-based calculation in 1e42876, 25% earnings cap in ef74a7b, front-office auto-sign budget limits in de1e324, and ten tiers with scaling perks and no hidden 200% income cap in 5160ae5)*.
 
 ---
 
@@ -424,7 +453,7 @@
   * Active players lacked surprise mini-events, high-stakes tournament bracket experiences, and unpredictable macro events.
 * **What Changed**:
   * **Hype Drops**: Introduced clickable drops (*LAN Frenzy*, *Prize Pool*, *Clutch Mode*, *Viral Clips*, *Operation Rushes*, and *Hype Train* chains) ~~spawning immediately from game start and unconstrained on viewport~~ *(Changed 2 times since: calm start 8-minute early delay in 16e999b, screen boundary clamping and anti-overlap in 1e42876)*.
-  * **Tournament Brackets**: Added 3-round bracket tournaments offering trophy rewards, high cash prizes, and fan influxes.
+  * **~~Tournament~~ Invitational Brackets** *(Changed 1 time since: renamed Invitationals, winnable more often than not, with shown odds and a cash stake, in 424938d)*: Added 3-round bracket tournaments offering trophy rewards, high cash prizes, and fan influxes.
   * **Drama Mechanics**: Optional high-risk rage-bait upgrades turning benign drops into volatile *Drama Drops* requiring costly PR cleanups.
   * **Dynamic World Events**: 23 global world events with interactive decision prompts.
   * **Trophy Spend**: Allowed trophies to permanently level up base operations (+1% per trophy) and buy unique trophy upgrades.
@@ -438,7 +467,7 @@
   * Players suffered no friction or wear-and-tear; orgs had no back-office infrastructure or physical progression space.
 * **What Changed**:
   * **Staff Department**: Added 9 hireable staff roles with diminishing-return bonus curves ($\text{strength} \times \text{hires}^{0.8}$) ~~scaling indefinitely without soft caps~~ *(Changed 1 time since: soft-capped at 10 hires with role coaching in 28d2f1a)*.
-  * **Player Well-being**: Added match-triggered illness, physical injury, and psychological burnout conditions, ~~requiring manual benching for flu recovery~~ *(Changed 2 times since: calm start early immunity in 16e999b, converted to pure elapsed-time recovery without benching in c0174cd)*.
+  * **Player Well-being**: Added match-triggered illness, physical injury, and psychological burnout conditions, ~~requiring manual benching for flu recovery~~ *(Changed 3 times since: calm start early immunity in 16e999b, converted to pure elapsed-time recovery without benching in c0174cd, benching doubles recovery speed and plans carry an injury risk in 8727c16)*.
   * **Interactive Gaming House**: Developed a visual SVG environment upgrading from a cramped *Garage* up to an *Orbital HQ*, complete with real-time desk stations and 16 functional decor items.
 
 ---
