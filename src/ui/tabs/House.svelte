@@ -53,20 +53,25 @@
     return list.slice(0, MAX_STATIONS);
   });
 
-  /** Positions stations in one or two rows, back row first so the front row paints over it. */
+  /**
+   * Positions stations in one row, or two staggered rows for a big squad: the back row stands small
+   * at the foot of the wall, the front row sits lower and between them, so no desk hides another.
+   * Back-row names go above their heads and front-row names below their desks, clear of each other.
+   */
   const placed = $derived.by(() => {
     const n = seats.length;
     if (n === 0) return [];
-    const spread = (count: number, y: number, scale: number, offset: number) =>
-      Array.from({ length: count }, (_, i) => ({
-        seat: seats[offset + i],
-        x: count === 1 ? 480 : 130 + (700 * i) / (count - 1),
-        y,
-        scale,
-      }));
-    if (n <= 5) return spread(n, 398, n <= 3 ? 1.15 : 1, 0);
-    const back = Math.ceil(n / 2);
-    return [...spread(back, 312, 0.78, 0), ...spread(n - back, 414, 0.95, back)];
+    if (n <= 5) {
+      const scale = n <= 3 ? 1.15 : 1;
+      return seats.map((seat, i) => ({ seat, x: n === 1 ? 480 : 130 + (700 * i) / (n - 1), y: 398, scale, back: false }));
+    }
+    // One virtual row of n slots, alternating back and front.
+    const step = 740 / (n - 1);
+    const slots = seats.map((seat, k) => ({ seat, x: 110 + k * step, back: k % 2 === 0 }));
+    return [
+      ...slots.filter((sl) => sl.back).map((sl) => ({ ...sl, y: 298, scale: 0.72 })),
+      ...slots.filter((sl) => !sl.back).map((sl) => ({ ...sl, y: 426, scale: 0.86 })),
+    ];
   });
 
   // Neutral surfaces per room, getting darker and sleeker as the org grows. The org's team colours
@@ -383,7 +388,7 @@
       {#each placed as pos (pos.seat.player.id)}
         <text
           x={pos.x}
-          y={pos.y + 26 * pos.scale}
+          y={pos.back ? pos.y - 150 * pos.scale : pos.y + 26 * pos.scale}
           text-anchor="middle"
           class="name-tag"
           class:out={pos.seat.status === 'out'}

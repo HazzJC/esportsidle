@@ -363,6 +363,25 @@
   /** Seconds until a player is back, counting the bench speed-up. */
   const backIn = (p: Player, benched: boolean) => Math.max(0, p.status.until - v.s.time) / (benched ? BENCH_RECOVERY_MULT : 1);
 
+  const ownedTeams = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked && v.s.teams[g.id]));
+  const outIn = (gameId: string) =>
+    [...v.s.teams[gameId].lineup, ...v.s.teams[gameId].bench].filter((id) => {
+      const p = id ? v.s.players[id] : undefined;
+      return !!p && !isAvailable(p, v.s.time);
+    }).length;
+
+  /** Scrolls to a team, unfolding it first if it was folded. */
+  async function jumpTo(gameId: string) {
+    collapsed.delete(gameId);
+    await tick();
+    document.getElementById(`team-${gameId}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
+  function toggleFold(gameId: string) {
+    if (collapsed.has(gameId)) collapsed.delete(gameId);
+    else collapsed.add(gameId);
+  }
+
   const restStep = $derived(v.s.tutorial.step === 'rest');
   const restPlayer = $derived(restStep ? tutorialPlayer(v.s) : undefined);
 </script>
@@ -387,6 +406,21 @@
     </div>
   {/if}
 
+  {#if ownedTeams.length > 1}
+    <nav class="jump" aria-label="Jump to a team">
+      {#each ownedTeams as g (g.id)}
+        {@const ev = v.r.teams[g.id]}
+        {@const out = outIn(g.id)}
+        <button class="jump-chip" style="--gc:{g.color}" onclick={() => jumpTo(g.id)} title="Go to {g.name}">
+          <span class="mini">{@html gameLogoSvg(g.id, g.color, g.name)}</span>
+          <span class="jname">{g.name}</span>
+          <span class="num jwin" class:good={(ev?.winChance ?? 0) >= 0.6} class:bad={!ev?.active || ev.winChance < 0.4}>{ev?.active ? fmtPct(ev.winChance) : 'idle'}</span>
+          {#if out > 0}<i class="jout num" title="{out} out injured or ill">{out}</i>{/if}
+        </button>
+      {/each}
+    </nav>
+  {/if}
+
   {#each GAMES as g (g.id)}
     {#if v.s.games[g.id]?.unlocked && v.s.teams[g.id]}
       {@const team = v.s.teams[g.id]}
@@ -394,7 +428,8 @@
       {@const pop = v.s.games[g.id].popularity}
       {@const kit = teamKit(v.s, g.id)}
       {@const seats = Math.max(v.m.benchSlots, team.bench.length)}
-      <article class="team" class:tut-target={v.s.tutorial.step === 'match' && g.index === 0} style="--gc:{g.color}">
+      {@const folded = collapsed.has(g.id)}
+      <article id="team-{g.id}" class="team" class:folded class:tut-target={v.s.tutorial.step === 'match' && g.index === 0} style="--gc:{g.color}">
         <header>
           <span class="logo">{@html gameLogoSvg(g.id, g.color, g.name)}</span>
           <div class="titles">
@@ -412,6 +447,9 @@
             <Sparkline values={v.s.games[g.id].history} color={g.color} width={90} />
             <span class="num" class:good={pop >= 1.05} class:bad={pop < 0.95}>×{pop.toFixed(2)}</span>
           </div>
+          <button class="fold" onclick={() => toggleFold(g.id)} aria-expanded={!folded} aria-label={folded ? `Show ${g.name}` : `Fold ${g.name} away`} title={folded ? 'Show the room' : 'Fold away'}>
+            <Icon name={folded ? 'chevron-down' : 'chevron-up'} size={16} />
+          </button>
         </header>
 
         <div class="league">
@@ -447,6 +485,7 @@
           {/if}
         </div>
 
+        {#if !folded}
         <!-- The gaming floor: one computer per role, with the player sitting at it. -->
         <div class="floor" style="--cols:{g.teamSize}">
           <div class="wall" aria-hidden="true">
@@ -683,6 +722,7 @@
           <button class="help-btn" onclick={help} aria-label="How teams work" title="How teams work"><Icon name="help" size={15} /></button>
           <span class="record muted small num">{fmt(team.wins)}W {fmt(team.losses)}L · {team.titles} league title{team.titles === 1 ? '' : 's'} · {money(team.earnings)}</span>
         </footer>
+        {/if}
       </article>
     {:else if g.id === nextLocked?.id && !v.s.draft}
       <article class="team locked" style="--gc:{g.color}">
@@ -738,7 +778,11 @@
 {/if}
 
 <script module lang="ts">
+  import { SvelteSet } from 'svelte/reactivity';
   import type { TeamState } from '../../engine/types';
+
+  /** Team cards the player has folded away. Kept for the session, across tab switches. */
+  const collapsed = new SvelteSet<string>();
   function teamHasPlayers(team: TeamState): boolean {
     return team.lineup.some((id) => id !== null) || team.bench.length > 0;
   }
@@ -777,7 +821,80 @@
     font-size: 12px;
     margin-left: auto;
   }
+  .jump {
+    position: sticky;
+    top: -12px;
+    z-index: 5;
+    display: flex;
+    gap: 6px;
+    margin-top: -12px;
+    padding: 12px 0 8px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    background: linear-gradient(180deg, var(--panel) 85%, transparent);
+  }
+  .jump-chip {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 3px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--gc) 40%, var(--line-2));
+    background: color-mix(in srgb, var(--gc) 8%, var(--bg-2));
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .jump-chip:hover {
+    border-color: var(--gc);
+  }
+  .mini {
+    display: block;
+    width: 22px;
+    height: 22px;
+  }
+  .mini :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .jwin {
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .jout {
+    display: grid;
+    place-items: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    border-radius: 999px;
+    font-style: normal;
+    font-size: 10px;
+    color: #fff;
+    background: var(--red);
+  }
+  .fold {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--line-2);
+    background: var(--bg-2);
+    color: var(--muted);
+  }
+  .fold:hover {
+    color: var(--text);
+    border-color: var(--gc);
+  }
   .team {
+    scroll-margin-top: 44px;
     container-type: inline-size;
     border-radius: 12px;
     border: 1px solid color-mix(in srgb, var(--gc) 35%, var(--line));

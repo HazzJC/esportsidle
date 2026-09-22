@@ -383,10 +383,12 @@
     background: color-mix(in srgb, var(--red) 10%, transparent);
     color: var(--red);
   }
+  /* Shrinks with a narrow column (tablets, small laptops) instead of spilling past its edges. */
   .stage {
     position: relative;
-    width: 250px;
-    height: 250px;
+    container-type: inline-size;
+    width: min(250px, 100%);
+    aspect-ratio: 1;
     flex: none;
     display: grid;
     place-items: center;
@@ -426,6 +428,10 @@
   .ring .fill.crowd {
     stroke: var(--gold);
     filter: drop-shadow(0 0 4px var(--gold));
+  }
+  .logo :global(svg) {
+    width: min(190px, 76cqw);
+    height: min(190px, 76cqw);
   }
   .logo {
     position: relative;
@@ -653,12 +659,11 @@
   }
   @media (max-height: 700px) {
     .stage {
-      width: 210px;
-      height: 210px;
+      width: min(210px, 100%);
     }
     .logo :global(svg) {
-      width: 160px;
-      height: 160px;
+      width: min(160px, 76cqw);
+      height: min(160px, 76cqw);
     }
   }
 </style>

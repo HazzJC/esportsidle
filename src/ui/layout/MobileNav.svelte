@@ -9,14 +9,26 @@
   ];
 
   const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft);
+
+  /** On a tablet the clicker has its own column, so "Org" and "Manage" both mean the centre view. */
+  let tablet = $state(false);
+  $effect(() => {
+    const query = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
+    const update = () => (tablet = query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  });
+  const items = $derived(tablet ? ITEMS.filter((i) => i.id !== 'clicker') : ITEMS);
+  const isActive = (id: MobileView) => game.mobileView === id || (tablet && id === 'center' && game.mobileView === 'clicker');
 </script>
 
 <nav class="mobile-nav panel" aria-label="Views">
-  {#each ITEMS as item (item.id)}
-    <button class:active={game.mobileView === item.id} onclick={() => (game.mobileView = item.id)}>
+  {#each items as item (item.id)}
+    <button class:active={isActive(item.id)} onclick={() => (game.mobileView = item.id)}>
       <Icon name={item.icon} size={20} />
       <span>{item.label}</span>
-      {#if item.id === 'center' && hqWaiting && game.mobileView !== 'center'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
+      {#if item.id === 'center' && hqWaiting && !isActive('center')}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
     </button>
   {/each}
 </nav>

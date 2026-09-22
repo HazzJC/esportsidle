@@ -57,15 +57,11 @@
 </section>
 
 <style>
+  /* Cards sit side by side only when each gets a readable width; otherwise they stack. */
   .agenda {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 8px;
-  }
-  @media (max-width: 1250px) {
-    .agenda {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
   .card {
     --k: var(--accent);

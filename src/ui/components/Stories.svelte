@@ -88,13 +88,8 @@
   }
   .stories {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 8px;
-  }
-  @media (max-width: 1250px) {
-    .stories {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
   .story {
     display: flex;

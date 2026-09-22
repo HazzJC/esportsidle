@@ -14,9 +14,9 @@
   import { tooltip } from '../tooltip.svelte';
 
   /** Sprites drawn per operation before the rest collapse into a count. */
-  const MAX_UNITS = 40;
+  const MAX_UNITS = 32;
   /** Units per row: two rows, back and front, fill the strip left to right. */
-  const PER_ROW = 20;
+  const PER_ROW = 16;
 
   /** Where the nth unit stands: rows alternate front and back, with a little jitter so it looks lived in. */
   function unitSpot(i: number) {
@@ -25,7 +25,7 @@
     const jitter = ((i * 0.618) % 1) - 0.5;
     return {
       x: 2 + (col / PER_ROW) * 95 + jitter * 1.6,
-      y: row === 0 ? 3 : 15,
+      y: row === 0 ? 3 : 19,
       back: row === 1,
       delay: ((i * 0.37) % 1.6).toFixed(2),
     };
@@ -455,7 +455,7 @@
   /* A strip of scenery per operation, with a sprite for every unit owned: Cookie Clicker's buildings. */
   .scene {
     position: relative;
-    height: 58px;
+    height: 72px;
     margin-top: 6px;
     border-radius: 7px;
     overflow: hidden;
@@ -470,18 +470,18 @@
   }
   .sprite {
     position: absolute;
-    width: 26px;
-    height: 26px;
-    margin-left: -13px;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
     filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
     animation:
       pop-in 0.25s ease-out both,
       idle 2.4s ease-in-out var(--d) infinite;
   }
   .sprite.back {
-    width: 21px;
-    height: 21px;
-    margin-left: -10px;
+    width: 27px;
+    height: 27px;
+    margin-left: -13px;
     opacity: 0.8;
     filter: brightness(0.8) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
   }

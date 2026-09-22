@@ -95,4 +95,17 @@
       display: block;
     }
   }
+  /*
+   * Tablets and small laptops: the clicker stays in a column on the left and the bottom bar switches
+   * the right-hand side between Manage and Store, instead of blowing the clicker up to full screen.
+   */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .columns {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+    .app .col-left,
+    .app[data-view='clicker'] .col-center {
+      display: block;
+    }
+  }
 </style>

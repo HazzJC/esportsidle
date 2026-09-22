@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
-  import { fmtTime } from '../../engine/format';
+  import { fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
   import NotifyToggles from '../components/NotifyToggles.svelte';
@@ -75,6 +75,10 @@
     <Icon name="pencil" size={12} />
   </button>
 
+  <button class="wallet" onclick={() => (game.mobileView = 'clicker')} title="Back to your logo">
+    <b class="num">{money(s.cash)}</b>
+    <span class="num">+{money(game.view.r.totalCps, 1)}/s</span>
+  </button>
   <div class="ticker">
     {#if s.settings.newsTicker}
       <Icon name="newspaper" size={15} class="ticker-icon" />
@@ -327,6 +331,32 @@
   @media (max-width: 1000px) {
     .save-text {
       display: none;
+    }
+  }
+  /* Cash in the corner of a phone, whenever the big counter on the Org view is out of sight. */
+  .wallet {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    flex: none;
+    padding: 2px 8px;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    background: var(--bg-2);
+    color: var(--text);
+    line-height: 1.15;
+  }
+  .wallet b {
+    font-family: var(--font-display);
+    font-size: 14px;
+  }
+  .wallet span {
+    font-size: 10.5px;
+    color: var(--green);
+  }
+  @media (max-width: 767px) {
+    :global(.app:not([data-view='clicker'])) .wallet {
+      display: flex;
     }
   }
   @media (max-width: 1023px) {
