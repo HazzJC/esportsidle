@@ -20,7 +20,7 @@
 ## Pending Changes
 
 ### Visual pass: fixes, tablet layout and consistent art
-*Status: Pending* | On `main` as `4f7b344`, `243122c`, `dc0dd9e` (Sep 22 2026), awaiting playtest
+*Status: Pending* | On `main` as `4f7b344`, `243122c`, `dc0dd9e`, `14b8824` (Sep 22 2026), awaiting playtest
 
 * **The Issue / Motivation**:
   * A review of every tab at desktop, tablet and phone widths, plus a brand-new org, found bugs, layout problems and art that looked out of place next to the gear and merch.
@@ -31,6 +31,7 @@
 * **What Changed**:
   * **Fixes** (`4f7b344`): desks keep their normal size in narrow rooms; the clicker column shows the newest popup in full with a "+N more" count; phone and tablet popups rise from above the bottom bar (three at most); every tab opens at the top; spaces restored; wording fixed; sub-dollar amounts show cents; tutorial and Stats text corrected.
   * **Layout** (`243122c`): a two-column tablet layout that keeps the clicker in view; cash and income in the phone top bar; a staggered two-row House with names clear of everyone; a sticky team switcher and foldable team cards; HQ card grids that wrap by available width; bigger HQ workers.
+  * **HQ buildings, scenes and logos** (`14b8824`): every operation building redrawn on the 48x48 grid with outlines, lit and shaded faces, glows and ground shadows; each HQ strip a layered 400x72 scene with sky gradients, depth and lighting; game, rival and sponsor logos given an embossed emblem, lighting, gloss and a bevelled rim; staff portraits clipped to their frames.
   * **Art and consistency** (`dc0dd9e`): pixel workers and tier numerals on store upgrades and the Operations list; ladder numerals and a highlighted next rung on achievements; staff portraits and hire counts, with the hire toggle above the list; a rebuilt Stats page with headline figures, an income-by-source bar and grouped cards; the UI face for counts and scores.
 
 ---
@@ -57,7 +58,7 @@
 * **What Changed**:
   * **Merch that physically changes** (`2c355cb`, `c61a3fb`): bespoke art per product in the gear style, with three builds each (Q0 basic, Q2 better made, Q4 premium; for example blank tee → ringer tee → raglan crest tee). Holographic foil arrives at Q6, a limited-run hang tag at Q7, a gold signature at Q8, a collector's box at Q9 and a Hall of Fame display case at Q10. The Studio preview tilts towards the pointer, pops on upgrade and shows a strip of every look the product will reach. `tests/merch-art.test.ts` covers every product and finish.
   * **Gamer tags** (`2c355cb`): 288 tag words, prefixes, and 490 parody handles of real pros.
-  * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers ~~(up to 40, 26px)~~ *(Changed 1 time since: taller strips, bigger workers, up to 32, in 243122c)*, and the four stat cards are gone.
+  * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers ~~(up to 40, 26px, flat 24px sprites on flat strips)~~ *(Changed 2 times since: taller strips, bigger workers, up to 32, in 243122c; redrawn buildings and layered scenes in 14b8824)*, and the four stat cards are gone.
   * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most.
   * **Sponsors** (`5160ae5`): ten tiers (six to ten behind the Global Brand Portfolio legacy node), perks that scale with tier and goal difficulty, no hidden income cap, no goals that the org would finish in under five minutes at its recent pace, two-zone cards ("While signed" / "Goal bonus · paid once") and parody logos for all 36 brands.
   * **Invitationals** (`424938d`): the Hype Drop sends an invitation showing the chance to win each round. Spending 10%, 25% or 50% of cash on preparation raises it, and an unanswered invite plays itself after two minutes. A team level with its league wins the bracket a little over half the time, and invites are about 70% more common. One glossary covers the competition words (docs/content-catalog.md): match, season, league title, Season MVP, Invitational, grudge match (was derby).
