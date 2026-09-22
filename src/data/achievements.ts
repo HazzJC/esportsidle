@@ -39,6 +39,8 @@ export interface AchievementDef {
   check: (s: GameState, r: Rates) => boolean;
   /** Rarity band 0-5 (common to mythic), on the same colour ladder as gear and upgrades. */
   rarity: number;
+  /** Operation whose pixel worker the tile shows, for operation achievements. */
+  art?: string;
 }
 
 type AchievementInput = Omit<AchievementDef, 'rarity'>;
@@ -161,6 +163,7 @@ for (const op of OPERATIONS) {
       name: op.achNames[i],
       desc: () => `Own ${n} ${n === 1 ? op.name : op.plural}.`,
       icon: op.icon,
+      art: op.id,
       group: 'operations',
       check: (s) => s.ops[op.id].owned >= n,
     });

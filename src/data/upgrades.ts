@@ -31,6 +31,10 @@ export interface UpgradeDef {
   icon: string;
   /** Optional secondary badge icon. */
   badge?: string;
+  /** Operation whose pixel worker the tile shows instead of the icon, for operation upgrades. */
+  art?: string;
+  /** A second operation drawn small in the corner (collabs and synergies). */
+  artBadge?: string;
   /** 0-based tier for frame colour. */
   tier: number;
   cost: number;
@@ -74,6 +78,7 @@ GRIND_LINE.forEach((u, i) => {
     name: u.name,
     group: 'grind',
     icon: 'gamepad-2',
+    art: 'grinder',
     tier: i,
     cost: u.cost,
     effects: [u.effect],
@@ -97,6 +102,7 @@ for (const op of OPERATIONS) {
       name,
       group: 'op',
       icon: op.icon,
+      art: op.id,
       tier: i,
       cost: op.baseCost * TIER_COST_MULT[i],
       effects: [{ kind: 'opMult', op: op.id, mult: 2 }],
@@ -135,6 +141,8 @@ for (const op of OPERATIONS) {
     group: 'collab',
     icon: 'video',
     badge: op.icon,
+    art: 'streamer',
+    artBadge: op.id,
     tier: Math.min(11, op.index - 2),
     cost: op.baseCost * 50,
     effects: [
@@ -179,6 +187,8 @@ for (const [aId, bId, name1, name2] of SYNERGIES) {
       group: 'synergy',
       icon: a.icon,
       badge: b.icon,
+      art: aId,
+      artBadge: bId,
       tier: t.tier * 4 + 2,
       cost: t.cost,
       effects: [

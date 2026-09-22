@@ -123,10 +123,12 @@
     font-family: var(--font-ui);
     font-size: 17px;
   }
+  /* A scoreboard in the UI face, whose zero is a plain oval rather than Orbitron's slashed box. */
   .h2h {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: 20px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.1;
   }
   ul {
     list-style: none;

@@ -10,6 +10,14 @@
   import TutArrow from '../components/TutArrow.svelte';
   import { game } from '../game.svelte';
   import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
+  import { opSpriteSvg } from '../opsArt';
+
+  const OP_INDEX = new Map(OPERATIONS.map((o) => [o.id, o.index]));
+  /** An operation's pixel worker in its own colour. Built from constants in opsArt.ts, safe for {@html}. */
+  const opArt = (id: string) => opSpriteSvg(id, opColor(OP_INDEX.get(id) ?? 0));
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI'];
+  /** Tier numerals tell apart upgrades that share a picture. */
+  const roman = (tier: number) => ROMAN[tier] ?? String(tier + 1);
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   const GROUP_LABEL: Record<UpgradeGroup, string> = {
@@ -145,8 +153,17 @@
             use:tooltip={() => upgradeTip(def)}
             aria-label="{def.name}, costs {money(upgradePrice(def, v.m))}"
           >
-            <Icon name={def.icon} size={22} />
-            {#if def.badge}<span class="badge"><Icon name={def.badge} size={11} /></span>{/if}
+            {#if def.art}
+              <span class="art">{@html opArt(def.art)}</span>
+            {:else}
+              <Icon name={def.icon} size={22} />
+            {/if}
+            {#if def.artBadge}
+              <span class="badge art-badge">{@html opArt(def.artBadge)}</span>
+            {:else if def.badge}
+              <span class="badge"><Icon name={def.badge} size={11} /></span>
+            {/if}
+            <span class="tno" aria-hidden="true">{roman(def.tier)}</span>
             <i class="rank" aria-hidden="true"></i>
           </button>
         {/each}
@@ -196,7 +213,7 @@
               onclick={() => onOp(op)}
               use:tooltip={() => opTip(op)}
             >
-              <span class="op-icon"><Icon name={op.icon} size={24} /></span>
+              <span class="op-icon">{@html opArt(op.id)}</span>
               <span class="op-main">
                 <span class="op-name">{op.name}</span>
                 <span class="op-price num">
@@ -315,6 +332,39 @@
   .upgrade:active {
     transform: translateY(0) scale(0.95);
   }
+  .art {
+    display: block;
+    width: 74%;
+    height: 74%;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+  }
+  .upgrade:not(.ok) .art {
+    filter: grayscale(0.6) brightness(0.8);
+  }
+  .art :global(svg),
+  .art-badge :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .badge.art-badge {
+    width: 17px;
+    height: 17px;
+    padding: 1px;
+    border: 1px solid color-mix(in srgb, var(--c) 50%, var(--line-2));
+  }
+  .tno {
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    font-family: var(--font-display);
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--c);
+    opacity: 0.85;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+  }
   .badge {
     position: absolute;
     right: 2px;
@@ -409,6 +459,11 @@
   }
   .op.no {
     filter: saturate(0.4) brightness(0.8);
+  }
+  .op-icon :global(svg) {
+    width: 34px;
+    height: 34px;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
   }
   .op-icon {
     display: grid;

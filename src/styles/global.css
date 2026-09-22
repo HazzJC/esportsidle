@@ -169,6 +169,14 @@ textarea {
   color: var(--muted);
   margin: 0 0 8px;
 }
+/* Counts beside a heading use the UI face: Orbitron draws zero with a slash, which reads as a broken glyph at this size. */
+.section-title .dim,
+.section-title .count {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
 
 .muted {
   color: var(--muted);

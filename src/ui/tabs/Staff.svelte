@@ -9,6 +9,21 @@
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   import { hasTheOnlyCook } from '../../engine/easterEggs';
+  import { randomLook } from '../../engine/players';
+  import { Rng } from '../../engine/rng';
+  import type { Appearance } from '../../engine/types';
+  import Avatar from '../components/Avatar.svelte';
+  import { GEAR_SLOTS, type GearSlot } from '../../data/gear';
+
+  /** A face for every job: the same person turns up for each staff type, every time. */
+  function seedOf(text: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+  /** Staff wear plain clothes: no gear on show. */
+  const NO_GEAR = Object.fromEntries(GEAR_SLOTS.map((g) => [g.id, 0])) as Record<GearSlot, number>;
+  const FACES: Record<string, Appearance> = Object.fromEntries(STAFF.map((d) => [d.id, randomLook(new Rng({ rng: seedOf(`staff-${d.id}`) }))]));
 
   const AMOUNTS: { value: number; label: string }[] = [
     { value: 1, label: '1' },
@@ -66,14 +81,16 @@
         Staff work for every team at once. Each extra hire helps a little less than the last, but the bonus never stops growing.
       </p>
     </div>
-    <div class="seg">
+  </header>
+
+  <div class="list-head">
+    <h3 class="section-title">Hire</h3>
+    <div class="seg" aria-label="How many to hire at once">
       {#each AMOUNTS as a (a.value)}
         <button class:active={amount === a.value} onclick={() => game.setSetting('buyAmount', a.value)}>{a.label}</button>
       {/each}
     </div>
-  </header>
-
-  <FrontOffice />
+  </div>
 
   <div class="list">
     {#each STAFF as def (def.id)}
@@ -88,7 +105,10 @@
           onclick={() => game.hireStaff(def.id, amount)}
           use:tooltip={() => tip(def)}
         >
-          <span class="icon"><Icon name={def.icon} size={26} /></span>
+          <span class="icon portrait">
+            <Avatar look={FACES[def.id]} gear={NO_GEAR} primary={v.s.org.primary} secondary={v.s.org.secondary} size={46} mode="bust" tag={def.name} />
+            <span class="role"><Icon name={def.icon} size={12} /></span>
+          </span>
           <span class="main">
             <span class="name">{def.name}</span>
             <span class="effects">{owned > 0 ? effectLines(def, owned).join(' · ') : def.desc}</span>
@@ -97,7 +117,7 @@
             {money(i.price)}
             {#if i.n !== 1}<span class="qty">×{fmt(i.n)}</span>{/if}
           </span>
-          {#if owned > 0}<span class="owned num">{fmt(owned)}</span>{/if}
+          <span class="owned num" class:none={owned === 0} title="{fmt(owned)} hired">{fmt(owned)}</span>
         </button>
       {:else if def.id === nextLocked?.id}
         <div class="row locked">
@@ -110,6 +130,8 @@
       {/if}
     {/each}
   </div>
+
+  <FrontOffice />
 </div>
 
 <style>
@@ -229,10 +251,43 @@
     color: var(--muted);
     margin-left: 3px;
   }
+  .list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .list-head .section-title {
+    margin: 0;
+  }
+  .portrait {
+    position: relative;
+    overflow: visible;
+  }
+  .portrait :global(svg) {
+    border-radius: 9px;
+  }
+  .role {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    color: var(--q);
+    background: var(--bg);
+    border: 1px solid color-mix(in srgb, var(--q) 55%, var(--line-2));
+  }
+  .owned.none {
+    color: var(--dim);
+    opacity: 0.5;
+  }
   .owned {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: 24px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 28px;
     min-width: 44px;
     text-align: right;
     color: rgba(196, 177, 255, 0.6);

@@ -7,7 +7,9 @@
   import { game } from '../game.svelte';
   import type { TipContent } from '../tooltip.svelte';
   import { tooltip } from '../tooltip.svelte';
-  import { RARITY_BANDS, rarityColor, rarityName } from '../theme';
+  import { RARITY_BANDS, opColor, rarityColor, rarityName } from '../theme';
+  import { OPERATIONS } from '../../data/operations';
+  import { opSpriteSvg } from '../opsArt';
 
   const GROUPS: { id: AchievementGroup; label: string }[] = [
     { id: 'earnings', label: 'Earnings' },
@@ -30,6 +32,43 @@
   const BY_GROUP = GROUPS.map((g) => ({ ...g, list: ACHIEVEMENTS.filter((a) => a.group === g.id) })).filter(
     (g) => g.list.length > 0,
   );
+
+  const OP_INDEX = new Map(OPERATIONS.map((o) => [o.id, o.index]));
+  /** Built from constants in opsArt.ts, so {@html} is safe. */
+  const opArt = (id: string) => opSpriteSvg(id, opColor(OP_INDEX.get(id) ?? 0));
+
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
+  /**
+   * Achievements that share a picture form a ladder (earn $1K, $1M, $1B…). Each gets its rung number,
+   * so a row of identical icons still reads as steps, and a one-off gets none.
+   */
+  const RUNG = new Map<string, string>();
+  for (const g of BY_GROUP) {
+    const byIcon = new Map<string, AchievementDef[]>();
+    for (const a of g.list) byIcon.set(a.icon, [...(byIcon.get(a.icon) ?? []), a]);
+    for (const ladder of byIcon.values()) {
+      if (ladder.length < 2) continue;
+      ladder.forEach((a, i) => RUNG.set(a.id, ROMAN[i] ?? String(i + 1)));
+    }
+  }
+  const LADDER_OF = new Map<string, string>();
+  for (const g of BY_GROUP) for (const a of g.list) LADDER_OF.set(a.id, `${g.id}:${a.icon}`);
+
+  /** The first locked rung of every ladder: the next thing to aim for. */
+  const nextUp = $derived.by(() => {
+    const seen = new Set<string>();
+    const next = new Set<string>();
+    for (const g of BY_GROUP) {
+      for (const a of g.list) {
+        if (a.secret || s.achievements[a.id] !== undefined) continue;
+        const key = LADDER_OF.get(a.id)!;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.add(a.id);
+      }
+    }
+    return next;
+  });
 
   const s = $derived(game.view.s);
   const unlocked = $derived(Object.keys(s.achievements).length);
@@ -106,8 +145,13 @@
       <div class="grid">
         {#each g.list as a (a.id)}
           {@const got = s.achievements[a.id] !== undefined}
-          <div class="ach" class:got class:shadow={a.shadow} style="--c:{rarityColor(a.rarity)}" use:tooltip={() => tip(a)}>
-            <Icon name={got || !a.secret ? a.icon : 'lock'} size={20} />
+          <div class="ach" class:got class:next={nextUp.has(a.id)} class:shadow={a.shadow} style="--c:{rarityColor(a.rarity)}" use:tooltip={() => tip(a)}>
+            {#if a.art}
+              <span class="art">{@html opArt(a.art)}</span>
+            {:else}
+              <Icon name={got || !a.secret ? a.icon : 'lock'} size={20} />
+            {/if}
+            {#if RUNG.has(a.id)}<span class="rung" aria-hidden="true">{RUNG.get(a.id)}</span>{/if}
           </div>
         {/each}
       </div>
@@ -164,6 +208,7 @@
   }
   /* Locked tiles keep a faint rarity edge, so you can see what kind of prize is left. */
   .ach {
+    position: relative;
     aspect-ratio: 1;
     display: grid;
     place-items: center;
@@ -180,6 +225,39 @@
     border-color: color-mix(in srgb, var(--c) 55%, transparent);
     background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, transparent), color-mix(in srgb, var(--c) 4%, transparent));
     box-shadow: 0 0 10px color-mix(in srgb, var(--c) 15%, transparent);
+  }
+  /* The next rung of each ladder stands out from the rest of the locked ones. */
+  .ach.next {
+    opacity: 0.9;
+    color: var(--muted);
+    border-color: color-mix(in srgb, var(--c) 45%, var(--line));
+    border-style: dashed;
+  }
+  .art {
+    display: block;
+    width: 72%;
+    height: 72%;
+  }
+  .art :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .ach:not(.got) .art {
+    filter: grayscale(1) brightness(0.7);
+  }
+  .rung {
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    font-family: var(--font-display);
+    font-size: 8.5px;
+    font-weight: 800;
+    color: var(--c);
+    opacity: 0.8;
+  }
+  .ach:not(.got) .rung {
+    color: var(--dim);
   }
   /* Shadow achievements do not count towards the cabinet: same rarity colour, dashed frame. */
   .ach.shadow {
