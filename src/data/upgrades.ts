@@ -72,6 +72,9 @@ const GRIND_LINE: { name: string; need: number; cost: number; effect: Effect; fl
   { name: 'Nonillion-Game Grind', need: 450, cost: 1e25, effect: { kind: 'grindAddMult', mult: 20 }, flavor: 'One more game. Forever.' },
 ];
 
+/** Grinders owned for each rung of the grind line, for showing when the next one opens. */
+export const GRIND_NEED = GRIND_LINE.map((u) => u.need);
+
 GRIND_LINE.forEach((u, i) => {
   add({
     id: `grind_${i}`,

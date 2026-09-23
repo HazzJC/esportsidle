@@ -11,6 +11,7 @@
   import { game } from '../game.svelte';
   import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
   import { opSpriteSvg } from '../opsArt';
+  import { upgradeIconSvg } from '../upgradeArt';
 
   const OP_INDEX = new Map(OPERATIONS.map((o) => [o.id, o.index]));
   /** An operation's pixel worker in its own colour. Built from constants in opsArt.ts, safe for {@html}. */
@@ -144,6 +145,7 @@
       <div class="grid">
         {#each shownUpgrades as def (def.id)}
           {@const ok = canAffordUpgrade(s, def, v.m)}
+          {@const drawn = def.art ? null : upgradeIconSvg(def.icon, def.group, tierColor(def.tier))}
           <button
             class="upgrade"
             class:ok
@@ -155,6 +157,9 @@
           >
             {#if def.art}
               <span class="art">{@html opArt(def.art)}</span>
+            {:else if drawn}
+              <!-- Built from constants in upgradeArt.ts, so {@html} is safe. -->
+              <span class="art">{@html drawn}</span>
             {:else}
               <Icon name={def.icon} size={22} />
             {/if}
@@ -162,6 +167,9 @@
               <span class="badge art-badge">{@html opArt(def.artBadge)}</span>
             {:else if def.badge}
               <span class="badge"><Icon name={def.badge} size={11} /></span>
+            {:else if def.group === 'staff' && drawn}
+              <!-- Staff upgrades share the ID card; the corner shows whose. -->
+              <span class="badge"><Icon name={def.icon} size={11} /></span>
             {/if}
             <span class="tno" aria-hidden="true">{roman(def.tier)}</span>
             <i class="rank" aria-hidden="true"></i>

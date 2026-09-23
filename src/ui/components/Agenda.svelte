@@ -26,62 +26,77 @@
   }
 </script>
 
-{#snippet card(kind: 'growth' | 'concern' | 'opportunity', label: string, item: AgendaItem | null, empty: string)}
-  <article class="card {kind}" class:quiet={!item}>
-    <span class="kind">{label}</span>
-    {#if item}
-      <div class="body">
-        <span class="icon"><Icon name={item.icon} size={18} /></span>
-        <div class="text">
-          <b>{item.title}</b>
-          <span class="detail">{item.detail}</span>
-        </div>
-      </div>
-      {#if item.progress !== undefined}
-        <span class="bar"><i style="width:{Math.max(0, Math.min(100, item.progress * 100))}%"></i></span>
+{#snippet row(kind: 'growth' | 'concern' | 'opportunity', label: string, item: AgendaItem | null, empty: string)}
+  <li class="row {kind}" class:quiet={!item}>
+    <span class="icon"><Icon name={item?.icon ?? 'check'} size={18} /></span>
+    <div class="text">
+      <span class="kind">{label}</span>
+      {#if item}
+        <b>{item.title}</b>
+        <span class="detail">{item.detail}</span>
+        {#if item.progress !== undefined}
+          <span class="bar"><i style="width:{Math.max(0, Math.min(100, item.progress * 100))}%"></i></span>
+        {/if}
+      {:else}
+        <span class="detail">{empty}</span>
       {/if}
-      {#if item.action}
-        {@const target = item.action.target}
-        <button class="btn small go" onclick={() => go(target)}>{item.action.label} <Icon name="chevron-right" size={13} /></button>
-      {/if}
-    {:else}
-      <p class="empty"><Icon name="check" size={14} /> {empty}</p>
+    </div>
+    {#if item?.action}
+      {@const target = item.action.target}
+      <button class="btn small go" onclick={() => go(target)}>{item.action.label} <Icon name="chevron-right" size={13} /></button>
     {/if}
-  </article>
+  </li>
 {/snippet}
 
-<section class="agenda" aria-label="Agenda">
-  {@render card('growth', 'Next goal', agenda.growth, '')}
-  {@render card('concern', 'Team', agenda.concern, 'Every team is in good shape.')}
-  {@render card('opportunity', 'Opportunity', agenda.opportunity, 'Nothing pressing right now.')}
+<section class="agenda" aria-label="Next steps">
+  <h3 class="section-title">Next steps</h3>
+  <ul>
+    {@render row('growth', 'Next goal', agenda.growth, '')}
+    {@render row('concern', 'Teams', agenda.concern, 'Every team is in good shape.')}
+    {@render row('opportunity', 'Opportunity', agenda.opportunity, 'Nothing pressing right now.')}
+  </ul>
 </section>
 
 <style>
-  /* Cards sit side by side only when each gets a readable width; otherwise they stack. */
+  /* One panel, one row per thing to do: a coloured marker, what and why, and the button to act on it. */
   .agenda {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 8px;
-  }
-  .card {
-    --k: var(--accent);
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    padding: 10px 12px;
-    border-radius: 11px;
-    border: 1px solid color-mix(in srgb, var(--k) 32%, var(--line));
-    background: linear-gradient(135deg, color-mix(in srgb, var(--k) 11%, transparent), transparent 55%), var(--bg-2);
+    gap: 6px;
   }
-  .card.concern {
+  .agenda .section-title {
+    margin: 0;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    overflow: hidden;
+  }
+  .row {
+    --k: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--k);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--k) 9%, transparent), transparent 45%);
+  }
+  .row + .row {
+    border-top: 1px solid var(--line);
+  }
+  .row.concern {
     --k: var(--gold);
   }
-  .card.opportunity {
+  .row.opportunity {
     --k: var(--green);
   }
-  .card.quiet {
-    border-color: var(--line);
-    background: var(--bg-2);
+  .row.quiet {
+    --k: var(--line-2);
+    background: none;
   }
   .kind {
     font-family: var(--font-display);
@@ -94,25 +109,24 @@
   .quiet .kind {
     color: var(--dim);
   }
-  .body {
-    display: flex;
-    gap: 9px;
-    align-items: flex-start;
-  }
   .icon {
     display: grid;
     place-items: center;
     flex: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     color: var(--k);
-    background: color-mix(in srgb, var(--k) 14%, transparent);
+    background: color-mix(in srgb, var(--k) 15%, transparent);
+  }
+  .quiet .icon {
+    color: var(--dim);
   }
   .text {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     min-width: 0;
   }
   .text b {
@@ -125,18 +139,30 @@
     color: var(--muted);
     line-height: 1.35;
   }
+  .quiet .detail {
+    color: var(--dim);
+  }
+  .bar {
+    margin-top: 4px;
+    max-width: 260px;
+  }
   .bar > i {
     background: var(--k);
   }
   .go {
-    align-self: flex-start;
+    flex: none;
   }
-  .empty {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--dim);
+  /* On a phone the button drops under the text instead of squeezing it into a column. */
+  @media (max-width: 520px) {
+    .row {
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .text {
+      flex-basis: calc(100% - 50px);
+    }
+    .go {
+      margin-left: 45px;
+    }
   }
 </style>

@@ -10,6 +10,7 @@
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { opSpriteSvg } from '../opsArt';
+  import { upgradeIconSvg } from '../upgradeArt';
   import { opColor, tierColor } from '../theme';
   import { tooltip } from '../tooltip.svelte';
 
@@ -220,7 +221,7 @@
               flavor: def.flavor?.replaceAll('{org}', game.view.s.org.name),
             })}
           >
-            {#if def.art}<span class="up-art">{@html opArt(def.art)}</span>{:else}<Icon name={def.icon} size={18} />{/if}
+            {#if def.art}<span class="up-art">{@html opArt(def.art)}</span>{:else if upgradeIconSvg(def.icon, def.group, tierColor(def.tier))}<span class="up-art">{@html upgradeIconSvg(def.icon, def.group, tierColor(def.tier))}</span>{:else}<Icon name={def.icon} size={18} />{/if}
           </div>
         {/each}
       </div>

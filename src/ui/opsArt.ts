@@ -425,7 +425,7 @@ type Scene = (c: string) => string;
 const SCENES: Record<string, Scene> = {
   // A gamer's bedroom at night: posters, fairy lights, a moonlit window, wooden floor.
   grinder: (c) =>
-    base(['#2a2238', '#1b1726'], ['#5a3f2e', '#3a291e'], c) +
+    base(['#3a2f4f', '#262036'], ['#6a4a36', '#44301f'], c) +
     repeat(2, 200, (x) => rr(x + 120, 8, 36, 26, 2, '#0e1424', o(1)) + rect(x + 122, 10, 32, 22, '#16244a') + circ(x + 146, 16, 4, '#f4f1d8', op(0.9)) + line(`M${x + 138} 10V32M${x + 122} 21H${x + 154}`, '#0e1424', 1.4)) +
     repeat(4, 100, (x, i) => rr(x + 22, 12, 22, 28, 1, i % 2 ? c : '#3a2f52', `${o(0.8)} ${op(0.85)}`) + rect(x + 25, 16, 16, 12, '#ffffff', op(0.12)) + rect(x + 25, 31, 12, 2, '#ffffff', op(0.3))) +
     path(`M0 6Q50 12 100 6T200 6T300 6T400 6`, 'none', `${stroke('#3a3348', 0.8)}`) +
@@ -450,11 +450,17 @@ const SCENES: Record<string, Scene> = {
 
   // A photo studio: a grey sweep, softboxes and tape marks on the floor.
   creator: (c) =>
-    base(['#3a3d44', '#2a2c31'], ['#2a2c31', '#1c1d21'], c) +
-    repeat(4, 100, (x) => path(`M${x + 35} 6L${x + 65} 6L${x + 80} ${GROUND}H${x + 20}Z`, '#ffffff', op(0.05))) +
-    repeat(4, 100, (x) => rr(x + 36, 2, 28, 8, 1.5, '#1c1d21', o(0.8)) + rect(x + 38, 4, 24, 4, '#f4f5f7', op(0.9)) + line(`M${x + 50} 10V16`, '#1c1d21', 1.2)) +
+    base(['#3b2d52', '#2a2440'], ['#3a3346', '#26222f'], c) +
+    // A two-tone set wall: the creator's colour on the left of every bay, a soft purple on the right.
+    repeat(4, 100, (x) => rect(x, 0, 50, GROUND, c, op(0.22)) + rect(x + 50, 0, 50, GROUND, '#6a4f9a', op(0.2))) +
+    // Acoustic panels and a shelf of figurines in each bay.
+    repeat(4, 100, (x) => repeat(2, 1, (_, r) => repeat(3, 1, (__, k) => rr(x + 58 + k * 11, 8 + r * 11, 9, 9, 1, '#2a2238', o(0.6)) + rect(x + 59 + k * 11, 9 + r * 11, 7, 2.4, '#ffffff', op(0.06)))) + rect(x + 6, 30, 34, 2, '#6b4a33', o(0.6)) + rr(x + 9, 24, 5, 6, 1, '#ff7a3d', o(0.6)) + rr(x + 18, 22, 6, 8, 1.5, '#4ade80', o(0.6)) + circ(x + 31, 26, 3.5, '#ffd36b', o(0.6))) +
+    // A glowing play-button sign every other bay.
+    repeat(2, 200, (x) => rr(x + 12, 6, 26, 15, 4, '#1a1426', o(0.8)) + rr(x + 13, 7, 24, 13, 3.4, '#ff3d5a') + path(`M${x + 22} 10L${x + 29} 13.5L${x + 22} 17Z`, '#ffffff') + rr(x + 8, 3, 34, 21, 6, '#ff3d5a', op(0.16))) +
+    // Softbox lights on stands, beams falling on the floor.
+    repeat(4, 100, (x) => path(`M${x + 88} 12L${x + 100} 12L${x + 118} ${GROUND}H${x + 72}Z`, '#fff6e0', op(0.06)) + rr(x + 86, 6, 16, 8, 1.4, '#f4f5f7', o(0.8)) + line(`M${x + 94} 14V${GROUND - 1}`, '#1c1d21', 1.1)) +
     repeat(8, 50, (x) => path(`M${x + 12} ${GROUND + 8}h8M${x + 16} ${GROUND + 4}v8`, 'none', `${stroke(c, 1.4)} ${op(0.5)}`)) +
-    line(`M0 ${GROUND + 0.5}H${W}`, c, 0.8, op(0.35)) +
+    line(`M0 ${GROUND + 0.5}H${W}`, c, 0.8, op(0.45)) +
     vignette(),
 
   // A shopping street at dusk: shopfronts, street lamps, a lit pavement.
@@ -519,13 +525,20 @@ const SCENES: Record<string, Scene> = {
 
   // A data centre aisle: racks of blinking servers over a tiled raised floor.
   platform: (c) =>
-    base(['#101626', '#1a2234'], ['#1f2838', '#121822'], c) +
-    repeat(10, 40, (x) => rr(x + 4, 4, 32, 42, 1.4, '#252d3d', o(0.8)) + rect(x + 5, 5, 30, 1.4, '#ffffff', op(0.08)) + repeat(6, 1, (_, r) => rect(x + 7, 7 + r * 6.4, 26, 4.6, '#303a4e'))) +
-    repeat(80, 5, (x, i) => circ(x + 3, 9 + (i % 6) * 6.4, 0.9, i % 7 === 0 ? '#4ade80' : c, op(0.35 + ((i * 3) % 5) * 0.12))) +
-    ell(200, 6, 220, 8, '#9ec5ff', op(0.08)) +
-    repeat(20, 20, (x) => line(`M${x} ${GROUND}L${(x - 200) * 1.6 + 200} ${H}`, '#ffffff', 0.5, op(0.08))) +
-    repeat(3, 1, (_, i) => line(`M0 ${GROUND + 5 + i * 6}H${W}`, '#ffffff', 0.5, op(0.06))) +
-    rect(0, GROUND, W, 1.2, c, op(0.45)) +
+    base(['#1b2a44', '#24385a'], ['#2a3a52', '#18222f'], c) +
+    // A wall of screens at the back of the hall, each showing a stream with a live dot.
+    repeat(10, 40, (x, i) => rr(x + 3, 3, 34, 20, 1.4, '#0d1422', o(0.8)) + rect(x + 5, 5, 30, 16, i % 3 === 0 ? c : i % 3 === 1 ? '#3f7fd0' : '#7a4fd0', op(0.55)) + path(`M${x + 17} 9L${x + 24} 13L${x + 17} 17Z`, '#ffffff', op(0.85)) + circ(x + 31, 7.5, 1.4, '#ff3d5a')) +
+    // Overhead cable trays with light spilling from them.
+    rect(0, 25, W, 3, '#3a4a66', o(0.6)) +
+    repeat(20, 20, (x, i) => rect(x + 4, 25.6, 12, 1.6, i % 2 ? c : '#4ade80', op(0.6))) +
+    // Racks along the back wall, paler than the ones you own so those stand out.
+    repeat(10, 40, (x) => rr(x + 6, 29, 28, 18, 1, '#3b4a66', o(0.6)) + repeat(3, 1, (_, r) => rect(x + 8, 31 + r * 5, 24, 3, '#4a5b7c'))) +
+    repeat(40, 10, (x, i) => circ(x + 5, 32.5 + (i % 3) * 5, 0.8, i % 5 === 0 ? '#4ade80' : c, op(0.5 + (i % 3) * 0.15))) +
+    // A cold-lit raised floor in perspective.
+    ell(200, GROUND + 10, 220, 10, '#9ec5ff', op(0.1)) +
+    repeat(20, 20, (x) => line(`M${x} ${GROUND}L${(x - 200) * 1.6 + 200} ${H}`, '#ffffff', 0.5, op(0.1))) +
+    repeat(3, 1, (_, i) => line(`M0 ${GROUND + 5 + i * 6}H${W}`, '#ffffff', 0.5, op(0.08))) +
+    rect(0, GROUND, W, 1.2, c, op(0.5)) +
     vignette(),
 
   // A business district: glass towers, lit office floors, a street at the bottom.

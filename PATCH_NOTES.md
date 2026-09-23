@@ -19,6 +19,32 @@
 
 ## Pending Changes
 
+### HQ redesign, drawn upgrade icons and brighter operation scenes
+*Status: Pending*
+
+* **The Issue / Motivation**:
+  * The HQ was hard to read at a glance. There was no summary of where income came from, the goal cards left gaps, and the operation lanes showed little beyond a count, with a cryptic level button.
+  * The page grew very long with every operation.
+  * Most store upgrades were plain outline icons next to the drawn operation buildings.
+  * A few operation scenes were dull or low-contrast: Content Creators, Streaming Platforms, and the dark Ranked Grinder room.
+* **What Changed**:
+  * **HQ overview** (`HQOverview.svelte`):
+    * A banner painted with the org's best operation scene, with a slow light sweep. It shows the logo, room, run and legacy, a large income figure, and boost and sponsor chips.
+    * An income-mix bar splits income into Operations, Matches and Merch.
+    * Four tiles jump to where each stream is managed: Operations (buildings, best building), Teams (team count, average win chance), Merch (lines on the current trend, flagged when some aren't) and Sponsors (boost, slots signed).
+  * **Next steps**: the goal, team and opportunity cards are one panel of rows, each with a coloured marker, the detail and an action button. On phones the button drops under the text.
+  * **Operations**:
+    * A header with the building count and operations income.
+    * A **Scenes / List** toggle; List hides the scenes so every operation fits on one screen, and the choice is remembered in this browser.
+    * Each lane shows the building's own sprite, the count, income, a bar for its share of operations income, and when its next ×2 upgrade unlocks. The level-up button explains itself in a tooltip.
+    * Rival, recaps and trophies move below the operations.
+  * **Upgrade art** (`upgradeArt.ts`): 23 new drawings in the operation-sprite style replace the plain icons on every store upgrade and in Stats. They cover the mouse, crowd, megaphone, snacks, heart, superfan star, trophy, dumbbell, stopwatch, scouting, CPU, briefcase, hype drop, bracket, flame, shield, sponsor contract, jersey and fancam. Staff upgrades share an ID-card drawing, with the role icon in the corner. Every upgrade now has a picture.
+  * **Scenes**:
+    * Content Creators: a colourful set with a two-tone wall, acoustic panels, a play-button sign, softboxes and a shelf of figurines.
+    * Streaming Platforms: a brighter data hall with a wall of live screens, cable trays and paler back racks, so the racks you own stand out.
+    * Ranked Grinders: a lighter room.
+    * Every HQ worker gets a thin rim of its lane colour, lifting dark sprites off dark scenes.
+
 ### Fix: black screen after offline progress (duplicate match key)
 *Status: Pending*
 

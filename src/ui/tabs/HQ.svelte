@@ -5,6 +5,8 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
+  import HQOverview from '../components/HQOverview.svelte';
+  import { GRIND_NEED, TIER_NEED } from '../../data/upgrades';
   import Quests from '../components/Quests.svelte';
   import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
@@ -35,6 +37,30 @@
   const s = $derived(v.s);
   const r = $derived(v.r);
   const owned = $derived(OPERATIONS.filter((op) => s.ops[op.id].owned > 0));
+  const buildings = $derived(owned.reduce((n, op) => n + s.ops[op.id].owned, 0));
+  /** When the operation's next doubling upgrade appears in the store. */
+  function nextTier(id: string, count: number): number | undefined {
+    return (id === 'grinder' ? GRIND_NEED : TIER_NEED).find((need) => need > count);
+  }
+
+  // Scenes are the fun view; the list fits every operation on one screen. Remembered per browser.
+  const VIEW_KEY = 'esportsidle.hqOpsView';
+  let opsView = $state<'scenes' | 'list'>(readView());
+  function readView(): 'scenes' | 'list' {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'scenes';
+    } catch {
+      return 'scenes';
+    }
+  }
+  function setView(view: 'scenes' | 'list'): void {
+    opsView = view;
+    try {
+      localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // Not remembered, that's all.
+    }
+  }
   // Built only from constants in opsArt.ts, so {@html} is safe.
   const art = $derived(
     Object.fromEntries(owned.map((op) => [op.id, { scene: opSceneBackground(op.id, opColor(op.index)), sprite: opSpriteSvg(op.id, opColor(op.index)) }])),
@@ -56,10 +82,10 @@
 </script>
 
 <div class="hq">
+  {#if s.tutorial.step === 'done' && owned.length > 0}<HQOverview />{/if}
   <Quests />
   {#if s.tutorial.step === 'done'}
     <Agenda />
-    {#if Object.keys(s.teams).length > 0}<Stories />{/if}
   {/if}
 
 
@@ -160,11 +186,21 @@
     </div>
   {:else}
     <section>
-      <h3 class="section-title">Operations</h3>
-      <div class="lanes">
+      <div class="ops-head">
+        <h3 class="section-title">Operations</h3>
+        <span class="ops-sum muted"><b class="num">{fmt(buildings)}</b> buildings · <b class="num">{money(r.cps, 1)}/s</b></span>
+        <div class="view-toggle" role="group" aria-label="Operations view">
+          <button class:chosen={opsView === 'scenes'} aria-pressed={opsView === 'scenes'} onclick={() => setView('scenes')}><Icon name="image" size={13} /> Scenes</button>
+          <button class:chosen={opsView === 'list'} aria-pressed={opsView === 'list'} onclick={() => setView('list')}><Icon name="list" size={13} /> List</button>
+        </div>
+      </div>
+      <div class="lanes" class:list={opsView === 'list'}>
         {#each owned as op (op.id)}
           {@const st = s.ops[op.id]}
           {@const cost = operationLevelCost(st.level)}
+          {@const share = r.cps > 0 ? r.opCps[op.id] / r.cps : 0}
+          {@const need = nextTier(op.id, st.owned)}
+
           <div
             class="lane"
             style="--c:{opColor(op.index)}"
@@ -180,10 +216,19 @@
             })}
           >
             <div class="lane-head">
-              <Icon name={op.icon} size={15} />
-              <span class="lane-name">{op.plural}</span>
-              <span class="lane-count num">{fmt(st.owned)}</span>
-              <span class="lane-cps num">{money(r.opCps[op.id], 1)}/s</span>
+              <span class="lane-icon">{@html art[op.id]?.sprite}</span>
+              <span class="lane-title">
+                <span class="lane-name">{op.plural} <span class="lane-count num">×{fmt(st.owned)}</span></span>
+                <span class="lane-meta">
+                  {#if need}<span class="next">Next ×2 upgrade at <b class="num">{need}</b></span>{:else}<span class="next">Every ×2 upgrade unlocked</span>{/if}
+                  {#if st.level > 0}<span class="lv num">Lv {st.level} · +{st.level}%</span>{/if}
+                </span>
+              </span>
+              <span class="lane-stats">
+                <span class="lane-cps num">{money(r.opCps[op.id], 1)}/s</span>
+                <span class="share" title="{fmtPct(share)} of operations income"><i style="width:{Math.max(2, share * 100)}%"></i></span>
+                <span class="share-pct num">{fmtPct(share, false, 0)}</span>
+              </span>
               {#if showLevels}
                 <button
                   class="lvl"
@@ -192,12 +237,14 @@
                     e.stopPropagation();
                     game.levelUpOperation(op.id);
                   }}
-                  title="Spend {cost} {cost === 1 ? 'trophy' : 'trophies'} for +1% production"
+                  use:tooltip={() => ({ title: 'Level up ' + op.plural, icon: 'trophy', iconColor: 'var(--gold)', lines: ['Spend ' + cost + (cost === 1 ? ' trophy' : ' trophies') + ' for +1% production, for good.', { text: 'You have ' + fmt(game.view.s.trophies) + ' unspent.', tone: 'muted' as const }] })}
+                  aria-label="Level up {op.plural} for {cost} trophies"
                 >
-                  Lv {st.level} <Icon name="arrow-up" size={11} /> <Icon name="trophy" size={11} /> {cost}
+                  <Icon name="arrow-up" size={12} /> <Icon name="trophy" size={11} /> {cost}
                 </button>
               {/if}
             </div>
+            {#if opsView === 'scenes'}
             <div class="scene">
               <span class="backdrop" style="background-image:{art[op.id]?.scene}"></span>
               {#each { length: Math.min(st.owned, MAX_UNITS) } as _, i (i)}
@@ -208,11 +255,13 @@
                 <span class="more num">+{fmt(st.owned - MAX_UNITS)}</span>
               {/if}
             </div>
+            {/if}
           </div>
         {/each}
       </div>
     </section>
   {/if}
+  {#if s.tutorial.step === 'done' && Object.keys(s.teams).length > 0}<Stories />{/if}
 </div>
 
 <style>
@@ -418,28 +467,161 @@
       repeating-linear-gradient(90deg, color-mix(in srgb, var(--c) 5%, transparent) 0 1px, transparent 1px 28px),
       linear-gradient(90deg, color-mix(in srgb, var(--c) 13%, transparent), color-mix(in srgb, var(--c) 3%, transparent));
   }
+  .ops-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 8px;
+  }
+  .ops-head .section-title {
+    margin: 0;
+  }
+  .ops-sum {
+    font-size: 12.5px;
+  }
+  .ops-sum b {
+    color: var(--text);
+  }
+  .view-toggle {
+    display: flex;
+    margin-left: auto;
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .view-toggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .view-toggle button.chosen {
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  /* Head of each operation: its building, name and next goal, what it earns and its share of operations. */
   .lane-head {
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: var(--c);
+    gap: 10px;
     font-family: var(--font-ui);
-    font-weight: 700;
-    font-size: 14px;
+  }
+  .lane-icon {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 2px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--c) 14%, var(--bg));
+    border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  }
+  .lane-icon :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .lane-title {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
   }
   .lane-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lane-count {
+    color: var(--c);
+  }
+  .lane-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .lane-meta b {
     color: var(--text);
   }
+  .lv {
+    color: var(--gold);
+  }
+  .lane-stats {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 2px 6px;
+    justify-items: end;
+    flex: none;
+  }
   .lane-cps {
-    margin-left: auto;
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .share {
+    display: block;
+    width: 70px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .share i {
+    display: block;
+    height: 100%;
+    background: var(--c);
+    border-radius: 999px;
+  }
+  .share-pct {
+    min-width: 30px;
+    font-size: 11px;
     color: var(--muted);
-    font-size: 12px;
+  }
+  .lanes.list {
+    gap: 4px;
+  }
+  @media (max-width: 520px) {
+    .lane-head {
+      gap: 7px;
+    }
+    .lane-name {
+      font-size: 14px;
+    }
+    .share {
+      width: 40px;
+    }
+    .share-pct {
+      display: none;
+    }
+    .lane-meta .next {
+      font-size: 11px;
+    }
+  }
+  .lanes.list .lane {
+    contain-intrinsic-size: auto 52px;
+    padding: 6px 10px;
   }
   .lvl {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    padding: 1px 7px;
+    padding: 4px 8px;
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent);
     background: color-mix(in srgb, var(--gold) 10%, transparent);
@@ -459,7 +641,7 @@
   .scene {
     position: relative;
     height: 72px;
-    margin-top: 6px;
+    margin-top: 8px;
     border-radius: 7px;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--c) 25%, transparent);
@@ -476,7 +658,8 @@
     width: 40px;
     height: 40px;
     margin-left: -20px;
-    filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
+    /* A rim of the lane colour lifts dark sprites off dark scenes. */
+    filter: drop-shadow(0 0 1px color-mix(in srgb, var(--c) 75%, transparent)) drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
     animation: pop-in 0.25s ease-out both;
   }
   /* Only every third unit bobs: hundreds of animated, shadowed sprites were most of a frame late in a run. */
@@ -490,7 +673,7 @@
     height: 31px;
     margin-left: -15px;
     opacity: 0.8;
-    filter: brightness(0.8) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+    filter: brightness(0.8) drop-shadow(0 0 1px color-mix(in srgb, var(--c) 60%, transparent)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
   }
   .sprite :global(svg) {
     display: block;
