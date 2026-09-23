@@ -1,6 +1,7 @@
 import { DEFAULT_KIT, LEGACY_KIT } from '../data/palette';
 import LZString from 'lz-string';
 import { GAMES } from '../data/games';
+import { OP_ACH_THRESHOLDS } from '../data/operations';
 import { sanitizeDesign } from './designs';
 import { createFounder } from './players';
 import { Rng } from './rng';
@@ -48,7 +49,39 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
     const tutorial = raw.tutorial as { step?: string } | undefined;
     if (tutorial?.step === 'done') raw.__openAllSections = true;
   },
+  // v5 -> v6 reordered three pairs of operations by real-world cost. Prices and output stay with the
+  // position in the list, so each org's buildings, upgrades and achievements move with them: an org's
+  // cafés become bootcamps (now the 4th building) and earn exactly what they did before.
+  5: (raw) => {
+    for (const [a, b] of OP_REORDER_V6) {
+      swapKey(raw.ops, a, b);
+      for (const field of ['upgrades', 'unlockedUpgrades']) {
+        const rec = raw[field];
+        for (let i = 0; i < 12; i++) swapKey(rec, `op_${a}_${i}`, `op_${b}_${i}`);
+        swapKey(rec, `collab_${a}`, `collab_${b}`);
+      }
+      for (const n of OP_ACH_THRESHOLDS) swapKey(raw.achievements, `op_${a}_${n}`, `op_${b}_${n}`);
+    }
+  },
 };
+
+/** The pairs of operations that traded places in v6. */
+export const OP_REORDER_V6: [string, string][] = [
+  ['cafe', 'bootcamp'],
+  ['arena', 'broadcast'],
+  ['platform', 'studio'],
+];
+
+/** Swaps two keys of a record in place, including when only one of them is present. */
+function swapKey(rec: unknown, a: string, b: string): void {
+  if (!isPlainObject(rec)) return;
+  const va = rec[a];
+  const vb = rec[b];
+  if (vb === undefined) delete rec[a];
+  else rec[a] = vb;
+  if (va === undefined) delete rec[b];
+  else rec[b] = va;
+}
 
 function isPlainObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -12,7 +12,7 @@ import { addToTeam, createTeam, ensureTeam } from './teams';
 import { INCOME_SOURCES, type IncomeSource } from './types';
 import type { AutomationSettings, GameProgress, GameState, OperationState, Player, Settings, Stats } from './types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const GAME_VERSION = '0.7.0';
 
 /** Every routine starts switched off; the player opts in once it unlocks. */

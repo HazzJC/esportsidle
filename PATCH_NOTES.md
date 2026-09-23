@@ -19,6 +19,16 @@
 
 ## Pending Changes
 
+### Operations reordered by real-world cost
+*Status: Pending*
+
+* **The Issue / Motivation**: A few operations were out of order for a progression ladder. The Gaming Café came before the cheaper Bootcamp House, the Esports Arena before the Broadcast Studio, and the Streaming Platform before the Game Studio. Ranked by rough real-world cost, the order runs: a house (~$1M), a café fit-out, a LAN venue, a broadcast stage (~$2–15M), an arena (~$10–100M), a competitive AAA game (~$100–500M), a platform (~$1B), then a global league.
+* **What Changed**:
+  * The new order: Ranked Grinder, Streamer, Content Creator, **Bootcamp House, Gaming Café**, LAN Center, **Broadcast Studio, Esports Arena, Game Studio, Streaming Platform**, Global League, then the sci-fi tier unchanged.
+  * Prices, output and fans stay with each position, so the balance curve is unchanged. Each building's name, art, tier upgrades, collabs, achievements and ticker lines move with it.
+  * Save version 6: a migration swaps each org's owned counts, levels, bought and revealed tier and collab upgrades, and ownership achievements between the three pairs. Every org earns exactly what it did before; its cafés are now bootcamps in the same slot.
+  * `tests/op-order.test.ts` covers the order, the rising costs, the migration and unchanged income.
+
 ### Type-check fix for the merch rebalance tests
 *Status: Committed* | `79d9860` (Sep 23 2026)
 
@@ -570,7 +580,7 @@
   * An idle game requires a deterministic tick cycle, passive cash generation, multi-tier purchase progression, click mechanics, and robust save persistence.
 * **What Changed**:
   * **Tick Simulation**: Implemented a fixed-step engine accumulator handling delta times and offline earnings.
-  * **Operations**: Created 16 tiered revenue generators with bulk buying (`1x`, `10x`, `100x`, `Max`).
+  * **Operations**: Created 16 tiered revenue generators with bulk buying (`1x`, `10x`, `100x`, `Max`), ~~ordered Café → Bootcamp, Arena → Broadcast, Platform → Studio~~ *(Changed 1 time since: reordered by real-world cost to Bootcamp → Café, Broadcast → Arena, Game Studio → Platform)*.
   * **Upgrades**: Generated over 280 procedural and curated upgrades.
   * **Hype Engine**: Interactive logo clicker with clicking power calculations, hype meter accumulation, and *"Crowd Goes Wild"* burst multipliers ~~requiring 200 uninterrupted clicks with rapid 4%/s drain~~ *(Changed 2 times since: redesigned click chain in 28d2f1a, decay buffer and ~80 click tuning in de1e324)*.
   * **Persistence**: Implemented `lz-string` compressed LocalStorage saves, auto-migration hooks, schema versioning, and export/import.
