@@ -19,8 +19,61 @@
 
 ## Pending Changes
 
+### Merch that rewards trend-chasing, a hype helper, an auto-clicker, faster late game and scrolling fixes
+*Status: Committed* | `0de7c85` (Sep 23 2026), awaiting playtest
+
+* **The Issue / Motivation**:
+  * Players reported that merch went "insane" late in the game, that scrolling misbehaved on some pages, and other rough edges. A progression audit (`docs/progression-audit-2026-09-22.md`, `scripts/audit.ts`) found:
+    * Merch made 80–100% of all income, and hundreds of thousands of times operations for active players. The main cause was Merch Designers multiplying merch sales with no cap: merch paid for more designers, which made more merch.
+    * Mania (×7 for 5–10 minutes) swung income wildly.
+    * The "Hype streak" quest needs ~80 fast clicks, so players who can't click much were stuck on it for the rest of every run.
+    * On phones the top bar was 422px wide, so on any phone narrower than that the page slid sideways and pushed the bottom nav off screen.
+    * Late in a run the page redrew at 85–180ms a frame, making scrolling stutter.
+  * The requested design: set-and-forget merch should earn less than operations; tracking trends and launching fresh designs should earn more.
+
+* **What Changed**:
+  * **Merch rebalance**:
+    * Merch Designers now keep designs fresh for longer and make each trend last longer, with only a small sales boost. Every designer bonus levels off at a ceiling (at most twice as fresh, trends 75% longer, +30% sales), through a new `max` on staff effects (`effectAmount` in `src/data/staff.ts`).
+    * The merch sales multiplier upgrades are now ×1.25, ×1.5, ×1.25 and ×1.25 (Limited Edition Drops ×1.5 freshness), and Cult Merch is ×1.5.
+    * Finishes add 0.15 a level (×2.5 at Q10). Trend matching is ×2 and a line earns 0.5× its share of operations income (`MERCH_INCOME_SCALE`).
+    * Mania is ×4 and lasts 60–120 seconds.
+    * A design a line sold in the last two hours comes back no fresher than it left, so swapping designs back and forth doesn't reset freshness.
+    * Audit result: active players following trends earn about 2–3× operations from merch, semi-active 0.3–0.5×, passive under 0.1×.
+  * **Chasing trends**:
+    * A "Design for <trend>" button in the Studio generates a design briefed to match the current trend. Every trend's brief matches in testing.
+    * Designs show an "On trend" chip, and an "All merch" button puts a design on every line.
+  * **Hype streak help**: while that quest is live, the hype meter warms up by itself to 80% (a gold tick marks it), so a few clicks finish it.
+  * **Auto-clicker**: an Accessibility option in Options clicks the logo twice a second while the game is open.
+  * **Performance** (late-game frame time: 84 → 10ms on HQ, 95 → 15ms on Teams, 178 → 12ms in the Studio):
+    * The HQ agenda caches its best-signing search.
+    * Operation art strings are cached.
+    * Only every third HQ worker bobs.
+    * HQ strips and Studio product cards skip rendering off screen.
+    * Easter-egg name matching is memoised.
+    * The interface redraws 10 times a second instead of 15.
+  * **Scrolling**:
+    * The phone top bar fits 360px screens, so the page no longer slides sideways.
+    * Pull-to-refresh can no longer reload the game.
+    * Scroll panels contain their own scrolling.
+    * The phone Store scrolls as one list instead of two nested boxes.
+    * Picking up a player on a touch screen drags the card instead of scrolling the page.
+    * The active tab stays in view in the tab strip.
+  * **Visual passes**:
+    * The world-event decision card is a solid card at the bottom centre with an illustrated banner: the player's portrait, the rival's crest, or a drawn prop.
+    * Hype Drops are bevelled hex badges with light rays.
+    * Welcome Back shows the org's skyline at night.
+    * The HQ quest card shows the quest line as a road of medallions.
+    * Trophies have lit and shaded metals on plinths, with a neon crystal for tier 12+, on wooden shelves.
+    * Achievements are struck coins.
+    * The Legacy tree has bevelled medallions, node names, cost pills and a night-sky backdrop, and opens centred on the root on phones.
+    * The Team HQ and Campus windows show a layered night city.
+    * Season recaps have game logos and result badges.
+    * Smaller fixes: clearer on/off toggles, and Stats values that no longer wrap mid-figure. The Welcome Back stray space is fixed.
+  * **Tests**: `tests/merch-rebalance.test.ts` covers the designer ceilings, trend length, trend-briefed designs, on-trend vs stale income, set-and-forget merch staying under operations, the swap-back freshness rule, Mania length and the hype helper.
+  * **Pacing note**: passive players now reach their first sale at about 5h20 (was 3h30–4h40), because merch no longer carries them. Semi-active players take about 2h10 and active players about 1h30.
+
 ### Visual pass: fixes, tablet layout and consistent art
-*Status: Pending* | On `main` as `4f7b344`, `243122c`, `dc0dd9e`, `14b8824` (Sep 22 2026), awaiting playtest
+*Status: Committed* | `4f7b344`, `243122c`, `dc0dd9e`, `14b8824`, notes `07acb22`, `5e9fe6e` (Sep 22 2026)
 
 * **The Issue / Motivation**:
   * A review of every tab at desktop, tablet and phone widths, plus a brand-new org, found bugs, layout problems and art that looked out of place next to the gear and merch.
@@ -135,7 +188,7 @@
   * **Notification Overload**: End-of-season events triggered four separate toast popups (titles, bonuses, MVPs, promotions) in rapid succession.
   * **Automation Inefficiency**: The legacy operations manager purchased low-tier operations instead of prioritizing higher-tier, higher-yield buildings within budget.
 * **What Changed**:
-  * **Merchandise Quality Upgrades**: Added purchasable product line quality tiers (`merchQualityCost`, `upgradeMerchQuality`) and visual store previews (`MerchPreview.svelte`), enabling merch scaling to keep pace with late-game operations.
+  * **Merchandise Quality Upgrades**: Added purchasable product line quality tiers (`merchQualityCost`, `upgradeMerchQuality`) and visual store previews (`MerchPreview.svelte`), ~~enabling merch scaling to keep pace with late-game operations~~ *(Changed 1 time since: merch now tops out below operations when left alone and a few times above them when kept on trend, with finishes worth 0.15 a level)*.
   * **Hype Meter Decay Buffer**: Extended hype grace thresholds and reduced passive decay during short pauses, requiring ~80 clicks to reach maximum crowd mode.
   * **Consolidated Season End Toast**: Merged title championships, prize payouts, MVP player honours, and tier promotions into a single summary notification ~~with static display duration~~ *(Changed 1 time since: toast durations now scale proportionally with content length and double for season champions)*.
   * **Smarter Operations Automation**: Legacy operations manager now inspects the available cash budget and prioritizes purchasing the most expensive affordable operation.
@@ -458,7 +511,7 @@
   * Orgs had no creative identity or visual branding, and monetization lacked merchandise sales and commercial brand sponsorships.
 * **What Changed**:
   * **Pixel Art Studio**: Integrated full 16/32/64 canvas editor featuring pencil, fill bucket, line, rectangle, ellipse, color picker, symmetry modes, undo/redo, and automated design appeal scoring.
-  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves ~~with static product quality~~ *(Changed 3 times since: merchandise quality upgrade tiers and visual store preview in de1e324, gear-style finish art in 2c355cb, products that physically change every few finish levels in c61a3fb)*.
+  * **Merchandise Store**: 10 fan-gated product lines where sales volume dynamically reacts to design appeal, trend matching, brand freshness decay, and price elasticity curves ~~with static product quality~~ *(Changed 4 times since: merchandise quality upgrade tiers and visual store preview in de1e324, gear-style finish art in 2c355cb, products that physically change every few finish levels in c61a3fb, and in the trend rebalance: designers now extend freshness and trends instead of multiplying sales, Mania ×4 for 60–120s, trend-briefed designs)*.
   * **Sponsorship Board**: 36 parody sponsors across 12 categories with signing bonuses, passive yields, category perks, bonus goals, and volatile crypto sponsors ~~paying flat percentage instant bonuses~~ *(Changed 5 times since: contract payout preview in c0174cd, duration-based calculation in 1e42876, 25% earnings cap in ef74a7b, front-office auto-sign budget limits in de1e324, and ten tiers with scaling perks and no hidden 200% income cap in 5160ae5)*.
 
 ---
