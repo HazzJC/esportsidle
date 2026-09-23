@@ -47,7 +47,7 @@
       <span class="muted small">Recaps appear here as your teams finish seasons.</span>
     {:else}
       <ul>
-        {#each recent as r (r.gameId + r.season + '-' + r.run)}
+        {#each recent as r, i (`${r.gameId}-${r.season}-${r.run}-${i}`)}
           {@const g = getGame(r.gameId)}
           <li class:good={r.title || r.promoted} class:bad={r.relegated}>
             <!-- Built from constants in gameArt.ts, so {@html} is safe. -->

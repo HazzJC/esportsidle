@@ -42,7 +42,7 @@
   const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
   const recent = $derived(
     Object.values(s.teams)
-      .flatMap((t) => t.history.slice(0, 3).map((m) => ({ m, gameId: t.gameId })))
+      .flatMap((t) => t.history.slice(0, 3).map((m, i) => ({ m, gameId: t.gameId, key: `${t.gameId}-${i}-${m.time}` })))
       .sort((a, b) => b.m.time - a.m.time)
       .slice(0, 3),
   );
@@ -264,7 +264,8 @@
 
   {#if recent.length > 0}
     <div class="recent">
-      {#each recent as { m, gameId } (`${gameId}-${m.time}`)}
+      <!-- Offline catch-up can finish two matches for a team in the same tick, so time alone is not a unique key. -->
+      {#each recent as { m, gameId, key } (key)}
         <button class="match" class:win={m.win} onclick={() => (game.tab = 'teams', game.mobileView = 'center')}>
           <span class="wl">{m.win ? 'W' : 'L'}</span>
           <span class="vs">{m.score} vs {m.opponent}{#if m.rival}<span class="derby" title="Grudge match against your rival {m.opponent}: double fans and bragging rights"><Icon name="swords" size={11} /></span>{/if}</span>

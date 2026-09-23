@@ -19,6 +19,12 @@
 
 ## Pending Changes
 
+### Fix: black screen after offline progress (duplicate match key)
+*Status: Pending*
+
+* **The Issue / Motivation**: A returning player's save crashed on load with Svelte's `each_key_duplicate`, which the new recovery screen reported. The recent-results list under the logo keyed each match by `game-time`. Offline catch-up runs in coarse steps, so it can finish two matches for one team in the same tick; they got the same key and the first render threw. The bug dates from M2, and a long enough absence triggers it.
+* **What Changed**: Recent results are keyed by game, position and time (`ClickerPanel.svelte`). HQ season recaps also add their position to the key, as a guard against the same kind of collision (`Stories.svelte`). Reproduced with a save whose team had two matches at the same time: it crashed before the fix and loads after it.
+
 ### A recovery screen instead of a black page
 *Status: Pending*
 
