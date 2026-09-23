@@ -18,11 +18,21 @@ export type StaffStat =
   | 'playerFans'
   | 'matchSpeed'
   | 'merch'
+  | 'freshness'
+  | 'trendLength'
   | 'sponsor';
 
 export interface StatAmount {
   stat: StaffStat;
   amount: number;
+  /** The most this effect can ever reach: it grows as usual at first, then levels off toward this. */
+  max?: number;
+}
+
+/** The strength of a staff effect at a given hiring power, levelling off toward its `max` if it has one. */
+export function effectAmount(e: StatAmount, power: number): number {
+  const raw = e.amount * power;
+  return e.max === undefined ? raw : e.max * (1 - Math.exp(-raw / e.max));
 }
 
 export interface StaffDef {
@@ -214,9 +224,14 @@ const RAW: RawStaff[] = [
     plural: 'Merch Designers',
     icon: 'palette',
     baseCost: 50_000,
-    desc: 'Turns your doodles into bestsellers. Boosts merch sales.',
+    desc: 'Markets your designs so they stay fresh for longer and read trends early, so each trend runs longer. A small boost to merch sales too.',
     flavor: 'Owns 40 black hoodies and has opinions about kerning.',
-    effects: [{ stat: 'merch', amount: 0.05 }],
+    effects: [
+      { stat: 'freshness', amount: 0.03, max: 1 },
+      { stat: 'trendLength', amount: 0.02, max: 0.75 },
+      { stat: 'merch', amount: 0.01, max: 0.3 },
+    ],
+    softCapFrom: STAFF_SOFT_CAP,
     requirement: 'Unlock a merch product',
     unlock: (s) => Object.keys(s.merch.unlocked).length > 0,
     upgradeNames: ['Screen-Printing Workshop', 'Design Collective', 'Fashion Week Runway'],
@@ -256,6 +271,8 @@ export const STAT_DESCRIPTIONS: Record<StaffStat, (amount: number) => string> = 
   playerFans: (a) => `+${pct(a)} player fans`,
   matchSpeed: (a) => `+${pct(a)} match speed`,
   merch: (a) => `+${pct(a)} merch sales`,
+  freshness: (a) => `Designs stay fresh ${pct(a)} longer`,
+  trendLength: (a) => `Trends last ${pct(a)} longer`,
   sponsor: (a) => `+${pct(a)} sponsor income`,
 };
 

@@ -12,6 +12,17 @@
   const doneCount = $derived(QUESTS.filter((q) => s.quests.done[q.id] !== undefined).length);
   const perks = $derived(questPerkSources(s));
   const upNext = $derived(nextQuest(s));
+  /** A window of the quest line around where the player is: two behind, the current ones, two ahead. */
+  const road = $derived.by(() => {
+    const active = new Set(s.quests.active.map((q) => q.id));
+    const at = QUESTS.findIndex((q) => active.has(q.id) || s.quests.done[q.id] === undefined);
+    const from = Math.max(0, Math.min(QUESTS.length - 5, (at < 0 ? QUESTS.length : at) - 2));
+    return QUESTS.slice(from, from + 5).map((q, i) => ({
+      def: q,
+      n: from + i + 1,
+      state: s.quests.done[q.id] !== undefined ? 'done' : active.has(q.id) ? 'live' : 'ahead',
+    }));
+  });
 
   const REWARD_ICON: Record<QuestReward['kind'], string> = {
     cash: 'dollar-sign',
@@ -77,10 +88,20 @@
           <Icon name="clock" size={16} />
           <span class="muted small">{upNext ? `Next: ${upNext.title}. It opens as your org grows.` : 'More quests appear as your org grows.'}</span>
         </article>
-      {:else if upNext}
-        <article class="quest empty upnext">
-          <span class="qicon dim"><Icon name={upNext.icon} size={16} /></span>
-          <span class="small"><span class="dim">Up next</span> · {upNext.title}</span>
+      {:else}
+        <article class="quest road" aria-label="The quest line">
+          <span class="label">The quest line</span>
+          <ol class="track">
+            {#each road as step (step.def.id)}
+              <li class="step {step.state}" use:tooltip={() => ({ title: `${step.n}. ${step.def.title}`, icon: step.def.icon, lines: [step.def.desc, step.state === 'done' ? { text: 'Done', tone: 'good' as const } : step.state === 'live' ? { text: 'In progress', tone: 'gold' as const } : { text: 'Still to come', tone: 'muted' as const }] })}>
+                <span class="medal">
+                  {#if step.state === 'done'}<Icon name="check" size={16} />{:else}<Icon name={step.def.icon} size={16} />{/if}
+                </span>
+                <span class="sname">{step.def.title}</span>
+              </li>
+            {/each}
+          </ol>
+          {#if upNext}<span class="dim small">Up next · <b class="next-name">{upNext.title}</b></span>{/if}
         </article>
       {/if}
     </div>
@@ -136,8 +157,93 @@
     align-items: center;
     gap: 5px;
   }
-  .upnext {
-    opacity: 0.75;
+  /* The quest line as a road of medallions: done, live, still ahead. */
+  .road {
+    justify-content: space-between;
+    background:
+      radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+      var(--bg-2);
+  }
+  .track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .track::before {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 19px;
+    height: 3px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg, var(--line-2) 0 6px, transparent 6px 10px);
+  }
+  .step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    cursor: help;
+  }
+  .medal {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: var(--dim);
+    background: radial-gradient(circle at 35% 30%, var(--panel-2), var(--bg));
+    border: 2px solid var(--line-2);
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+  }
+  .step.done .medal {
+    color: #1a1406;
+    border-color: color-mix(in srgb, var(--gold) 70%, #000);
+    background: radial-gradient(circle at 35% 30%, #fff1bf, var(--gold) 55%, #9a6a10);
+  }
+  .step.live .medal {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 35%, var(--panel-2)), var(--bg));
+    box-shadow:
+      inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+      0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+    animation: live-pulse 1.8s ease-in-out infinite;
+  }
+  .sname {
+    max-width: 100%;
+    font-size: 10.5px;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--dim);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .step.done .sname {
+    color: var(--muted);
+  }
+  .step.live .sname {
+    color: var(--text);
+    font-weight: 700;
+  }
+  .next-name {
+    color: var(--text);
+  }
+  @keyframes live-pulse {
+    50% {
+      box-shadow:
+        inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+        0 0 22px color-mix(in srgb, var(--accent) 65%, transparent);
+    }
   }
   .board {
     display: grid;

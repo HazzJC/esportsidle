@@ -98,7 +98,7 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'crowd_1',
     title: 'Hype streak',
-    desc: 'Click fast enough to fill the hype meter until the crowd goes wild.',
+    desc: 'Fill the hype meter until the crowd goes wild. While this quest is live the crowd warms up by itself to 80%, so a few clicks finish it.',
     icon: 'megaphone',
     metric: (s) => s.stats.crowdsTotal,
     target: 1,

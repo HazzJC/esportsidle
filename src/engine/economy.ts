@@ -81,6 +81,7 @@ export function emptyMods(): Mods {
     sponsorIncomePct: 0,
     merchMult: 1,
     noveltyMult: 1,
+    trendLengthMult: 1,
     legacyLevelPct: BASE_LEGACY_LEVEL_PCT,
     feeMult: 1,
     gameRatingMult: {},

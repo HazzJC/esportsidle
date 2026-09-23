@@ -177,7 +177,8 @@
         <dl>
           {#each g.rows as [label, value] (label)}
             <dt>{label}</dt>
-            <dd class="num">{value}</dd>
+            <!-- Values wrap between their parts, never in the middle of one ("24.25 T" / "sold"). -->
+            <dd class="num">{#each String(value).split(' · ') as part, i (i)}<span class="part">{i > 0 ? ' · ' : ''}{part}</span>{/each}</dd>
           {/each}
         </dl>
       </section>
@@ -343,6 +344,9 @@
     margin: 0;
     font-weight: 600;
     text-align: right;
+  }
+  .part {
+    white-space: nowrap;
   }
   .ops {
     list-style: none;

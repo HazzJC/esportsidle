@@ -253,6 +253,7 @@
     flex: none;
     max-height: 45%;
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .section-head {
     display: flex;
@@ -429,6 +430,7 @@
   .op-list {
     flex: 1;
     overflow-y: auto;
+    overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -536,5 +538,25 @@
   }
   .op.mystery .op-price {
     color: var(--muted);
+  }
+  /*
+   * On a phone the store has the whole screen, so it scrolls as one page: two scroll boxes stacked in a
+   * small screen fought each other for the swipe.
+   */
+  @media (max-width: 767px) {
+    .store {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .upgrades {
+      max-height: none;
+      overflow: visible;
+    }
+    .ops {
+      flex: none;
+    }
+    .op-list {
+      overflow: visible;
+    }
   }
 </style>

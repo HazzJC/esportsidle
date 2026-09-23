@@ -100,8 +100,8 @@ export const FINISH_NAMES = [
   'Hall of Fame edition',
 ];
 
-/** Sales added per finish level: a Q4 line sells 2.4 times what bulk stock does. */
-export const FINISH_SALES_PER_LEVEL = 0.35;
+/** Sales added per finish level: a Q4 line sells 1.6 times what bulk stock does, a Q10 line 2.5 times. */
+export const FINISH_SALES_PER_LEVEL = 0.15;
 
 /** Rarity band 0-5 for a finish level, on the same colour ladder as gear and upgrades. */
 export function finishBand(quality: number): number {

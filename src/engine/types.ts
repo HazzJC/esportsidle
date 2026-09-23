@@ -140,6 +140,8 @@ export interface Mods {
   sponsorIncomePct: number;
   merchMult: number;
   noveltyMult: number;
+  /** How much longer each merch trend runs before the next one. */
+  trendLengthMult: number;
   /** Income bonus per legacy level. */
   legacyLevelPct: number;
   /** Multiplier on transfer-market signing fees. */
@@ -545,6 +547,8 @@ export interface MerchLine {
   sold: number;
   revenue: number;
   quality?: number;
+  /** When each design this line sold recently was first put on it, so freshness can't be reset by swapping back. */
+  history?: Record<string, number>;
 }
 
 export interface MerchState {
@@ -715,6 +719,8 @@ export interface Settings {
   muted: boolean;
   /** The click chain mini-game that runs when the crowd goes wild. */
   hypeChain: boolean;
+  /** Accessibility: clicks the logo for the player, twice a second, while the game is open. */
+  autoClick: boolean;
   /** Background music, synthesised in the browser. */
   musicOn: boolean;
   musicVolume: number;

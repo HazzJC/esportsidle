@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { STAFF, STAT_DESCRIPTIONS, type StaffDef } from '../../data/staff';
+  import { STAFF, STAT_DESCRIPTIONS, effectAmount, type StaffDef } from '../../data/staff';
   import { fmt, money } from '../../engine/format';
   import { isStaffUnlocked, maxStaffAffordable, staffPower, staffPrice, totalStaff } from '../../engine/staff';
   import FrontOffice from '../components/FrontOffice.svelte';
@@ -55,7 +55,7 @@
 
   function effectLines(def: StaffDef, hires: number): string[] {
     const power = staffPower(hires, game.view.m.staffMult[def.id] ?? 1, def.softCapFrom, def.softExponent);
-    return def.effects.map((e) => STAT_DESCRIPTIONS[e.stat](e.amount * power));
+    return def.effects.map((e) => STAT_DESCRIPTIONS[e.stat](effectAmount(e, power)));
   }
 
   function tip(def: StaffDef): TipContent {

@@ -24,7 +24,7 @@ import { cancelContract, signOffer } from '../engine/sponsors';
 import { buyDynasty, buyNode, sellOrg, type SellOptions } from '../engine/prestige';
 import { LEGACY_NODE_MAP } from '../data/legacy';
 import { BRAND_MAP } from '../data/sponsors';
-import { PRODUCT_MAP } from '../data/merch';
+import { PRODUCT_MAP, TREND_MAP } from '../data/merch';
 import { bulkPrice, buyOperation, levelUpOperation, sellOperation } from '../engine/operations';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
@@ -105,7 +105,10 @@ export interface View {
   frame: number;
 }
 
-const UI_INTERVAL_MS = 1000 / 15;
+/** How often the interface redraws. Ten times a second keeps counters smooth for a third less work than 15. */
+const UI_INTERVAL_MS = 100;
+/** The accessibility autoclicker's pace: two clicks a second. */
+const AUTO_CLICK_INTERVAL = 0.5;
 const NEWS_INTERVAL_MS = 14_000;
 const MAX_ONLINE_CATCHUP_SECONDS = 3600;
 /** Popups sit over the top-left corner, so only a few are shown at once. */
@@ -290,6 +293,7 @@ class GameStore {
   private step(now: number): void {
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
+    this.autoClickStep(dt);
     if (dt > 0) {
       if (dt > 2) {
         this.catchUp(dt);
@@ -321,6 +325,21 @@ class GameStore {
     if (now - this.lastNews >= NEWS_INTERVAL_MS) {
       this.lastNews = now;
       this.news = pickNews(this.state, Math.random, this.news);
+    }
+  }
+
+  private autoAcc = 0;
+
+  /** The accessibility autoclicker: two quiet clicks a second, only while the game is on screen. */
+  private autoClickStep(dt: number): void {
+    if (!this.state.settings.autoClick || document.hidden || !this.state.settings.onboarded || !(dt > 0)) {
+      this.autoAcc = 0;
+      return;
+    }
+    this.autoAcc = Math.min(1, this.autoAcc + dt);
+    while (this.autoAcc >= AUTO_CLICK_INTERVAL) {
+      this.autoAcc -= AUTO_CLICK_INTERVAL;
+      clickLogo(this.state);
     }
   }
 
@@ -794,9 +813,12 @@ class GameStore {
     return newId;
   }
 
-  generateDesign(size = 32): void {
+  /** A random design, or with `forTrend` one briefed to match the current merch trend. */
+  generateDesign(size = 32, forTrend = false): void {
     const count = Object.values(this.state.designs).filter((d) => !d.handmade).length + 1;
-    const id = addDesign(this.state, generateDesign(new Rng(this.state), size, `Auto design ${count}`));
+    const trend = this.state.merch.trend;
+    const name = forTrend ? `${TREND_MAP.get(trend)?.name ?? 'Trend'} drop ${count}` : `Auto design ${count}`;
+    const id = addDesign(this.state, generateDesign(new Rng(this.state), size, name, forTrend ? trend : undefined));
     if (!id) this.toast({ title: 'Design library full', icon: 'palette', tone: 'bad' }, 2500);
     this.refresh();
   }
@@ -824,6 +846,13 @@ class GameStore {
 
   setLineDesign(productId: string, designId: string | null): void {
     if (setLineDesign(this.state, productId, designId)) this.refresh();
+  }
+
+  /** Puts one design on every merch line that's on sale. */
+  setAllLinesDesign(designId: string): void {
+    let changed = false;
+    for (const productId of Object.keys(this.state.merch.lines)) changed = setLineDesign(this.state, productId, designId) || changed;
+    if (changed) this.refresh();
   }
 
   setLinePrice(productId: string, price: number): void {

@@ -149,7 +149,7 @@
             {#if a.art}
               <span class="art">{@html opArt(a.art)}</span>
             {:else}
-              <Icon name={got || !a.secret ? a.icon : 'lock'} size={20} />
+              <span class="coin"><Icon name={got || !a.secret ? a.icon : 'lock'} size={17} /></span>
             {/if}
             {#if RUNG.has(a.id)}<span class="rung" aria-hidden="true">{RUNG.get(a.id)}</span>{/if}
           </div>
@@ -242,6 +242,30 @@
     display: block;
     width: 100%;
     height: 100%;
+  }
+  /* Each achievement is struck as a coin in its rarity colour: lit from the top left, rim shaded. */
+  .coin {
+    display: grid;
+    place-items: center;
+    width: 78%;
+    height: 78%;
+    border-radius: 50%;
+    color: var(--dim);
+    background: radial-gradient(circle at 35% 30%, var(--panel-2), var(--bg) 75%);
+    box-shadow:
+      inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+      inset 0 0 0 1.5px var(--line-2);
+  }
+  .ach.got .coin {
+    color: #111;
+    background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--c) 30%, #fff) 0 12%, var(--c) 48%, color-mix(in srgb, var(--c) 55%, #000) 100%);
+    box-shadow:
+      inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, #000),
+      0 2px 4px rgba(0, 0, 0, 0.45);
+  }
+  .ach.got .coin :global(svg) {
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.35));
   }
   .ach:not(.got) .art {
     filter: grayscale(1) brightness(0.7);

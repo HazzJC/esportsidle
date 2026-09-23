@@ -233,26 +233,7 @@ function opportunity(s: GameState, mods: Mods, rates: Rates): AgendaItem | null 
   }
 
   // The affordable market player who would lift a team the most.
-  let best: { item: AgendaItem; gain: number } | null = null;
-  for (const l of s.market.listings) {
-    if (l.price > s.cash) continue;
-    const pv = previewSigning(s, l.player, mods);
-    const after = pv.placement === 'lineup' ? pv.after : pv.placement === 'bench' && pv.couldStart ? pv.couldStart.after : null;
-    if (!after) continue;
-    const gain = after.win - pv.before.win;
-    if (gain < SUITABLE_WIN_GAIN || (best && gain <= best.gain)) continue;
-    const g = getGame(l.player.gameId);
-    const role = pv.placement === 'lineup' ? pv.role : pv.couldStart?.role;
-    best = {
-      gain,
-      item: {
-        icon: 'user-plus',
-        title: `A suitable ${role ?? 'player'} is available`,
-        detail: `${l.player.tag} would take ${g.name} from ${Math.round(pv.before.win * 100)}% to ${Math.round(after.win * 100)}% to win, for ${money(l.price)}.`,
-        action: { label: 'See market', target: { kind: 'tab', tab: 'market', gameId: g.id } },
-      },
-    };
-  }
+  const best = bestSigning(s, mods);
   if (best) return best.item;
 
   if (sponsorsUnlocked(s) && s.sponsors.active.length < mods.sponsorSlots) {
@@ -290,4 +271,41 @@ function opportunity(s: GameState, mods: Mods, rates: Rates): AgendaItem | null 
     };
   }
   return null;
+}
+
+/**
+ * Previewing a signing runs the whole team evaluation for every listing, which is far too slow to do
+ * ten times a second in a big org. The answer only changes when the listings, what's affordable or
+ * the rosters change, so it is kept for a few seconds of game time unless one of those does.
+ */
+const SIGNING_CACHE_SECONDS = 5;
+let signingCache: { key: string; at: number; result: { item: AgendaItem; gain: number } | null } | null = null;
+
+function bestSigning(s: GameState, mods: Mods): { item: AgendaItem; gain: number } | null {
+  const affordable = s.market.listings.filter((l) => l.price <= s.cash);
+  const rosters = Object.values(s.teams).map((t) => t.lineup.join(',') + '|' + t.bench.join(',')).join(';');
+  const key = affordable.map((l) => l.player.id).join(',') + '#' + rosters;
+  if (signingCache && signingCache.key === key && Math.abs(s.time - signingCache.at) < SIGNING_CACHE_SECONDS) return signingCache.result;
+  let best: { item: AgendaItem; gain: number } | null = null;
+  for (const l of s.market.listings) {
+    if (l.price > s.cash) continue;
+    const pv = previewSigning(s, l.player, mods);
+    const after = pv.placement === 'lineup' ? pv.after : pv.placement === 'bench' && pv.couldStart ? pv.couldStart.after : null;
+    if (!after) continue;
+    const gain = after.win - pv.before.win;
+    if (gain < SUITABLE_WIN_GAIN || (best && gain <= best.gain)) continue;
+    const g = getGame(l.player.gameId);
+    const role = pv.placement === 'lineup' ? pv.role : pv.couldStart?.role;
+    best = {
+      gain,
+      item: {
+        icon: 'user-plus',
+        title: `A suitable ${role ?? 'player'} is available`,
+        detail: `${l.player.tag} would take ${g.name} from ${Math.round(pv.before.win * 100)}% to ${Math.round(after.win * 100)}% to win, for ${money(l.price)}.`,
+        action: { label: 'See market', target: { kind: 'tab', tab: 'market', gameId: g.id } },
+      },
+    };
+  }
+  signingCache = { key, at: s.time, result: best };
+  return best;
 }

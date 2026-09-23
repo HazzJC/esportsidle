@@ -97,6 +97,7 @@
   .body {
     padding: 14px;
     overflow: auto;
+    overscroll-behavior: contain;
   }
   footer {
     display: flex;

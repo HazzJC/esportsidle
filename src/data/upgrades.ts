@@ -760,11 +760,11 @@ SPONSOR_LINE.forEach((u, i) => {
 });
 
 const MERCH_LINE: [string, number, number, Effect, string][] = [
-  ['Screen Printer', 1e4, 2.5e5, { kind: 'merchMult', mult: 1.5 }, 'Smells like ink and ambition.'],
-  ['Online Store', 1e7, 2.5e9, { kind: 'merchMult', mult: 2 }, 'Free shipping on orders over one hoodie.'],
-  ['Limited Edition Drops', 1e10, 2.5e12, { kind: 'noveltyMult', mult: 2 }, 'Only 500 made. Each week. Forever.'],
-  ['Global Distribution', 1e13, 2.5e15, { kind: 'merchMult', mult: 2 }, 'Your hoodies are in every airport on Earth.'],
-  ['Collab Collections', 1e16, 2.5e18, { kind: 'merchMult', mult: 3 }, 'Designed with a fashion house nobody can pronounce.'],
+  ['Screen Printer', 1e4, 2.5e5, { kind: 'merchMult', mult: 1.25 }, 'Smells like ink and ambition.'],
+  ['Online Store', 1e7, 2.5e9, { kind: 'merchMult', mult: 1.5 }, 'Free shipping on orders over one hoodie.'],
+  ['Limited Edition Drops', 1e10, 2.5e12, { kind: 'noveltyMult', mult: 1.5 }, 'Only 500 made. Each week. Forever.'],
+  ['Global Distribution', 1e13, 2.5e15, { kind: 'merchMult', mult: 1.25 }, 'Your hoodies are in every airport on Earth.'],
+  ['Collab Collections', 1e16, 2.5e18, { kind: 'merchMult', mult: 1.25 }, 'Designed with a fashion house nobody can pronounce.'],
 ];
 MERCH_LINE.forEach(([name, revenue, cost, effect, flavor], i) => {
   add({

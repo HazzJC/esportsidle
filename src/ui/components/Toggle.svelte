@@ -63,13 +63,20 @@
       transform 0.15s,
       background 0.15s;
   }
+  /* On: a solid accent track with a dark knob. Off: a dark track with a dim knob. Clear with any accent colour. */
+  .switch i {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  input:not(:checked) + .switch i {
+    background: var(--dim);
+  }
   input:checked + .switch {
-    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    background: var(--accent);
     border-color: var(--accent);
   }
   input:checked + .switch i {
     transform: translateX(18px);
-    background: var(--accent);
+    background: #111;
   }
   input:focus-visible + .switch {
     outline: 2px solid var(--accent);

@@ -1,5 +1,5 @@
 import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
-import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, type StaffDef, type StaffStat } from '../data/staff';
+import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, effectAmount, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
 import { sectionOpen } from './sections';
 import { hasTheOnlyCook } from './easterEggs';
@@ -57,6 +57,12 @@ export function applyStat(m: Mods, stat: StaffStat, amount: number): void {
     case 'merch':
       m.merchMult *= 1 + amount;
       break;
+    case 'freshness':
+      m.noveltyMult *= 1 + amount;
+      break;
+    case 'trendLength':
+      m.trendLengthMult *= 1 + amount;
+      break;
     case 'sponsor':
       m.sponsorIncomeMult *= 1 + amount;
       break;
@@ -81,7 +87,7 @@ export function applyStaffAndDecor(m: Mods, s: GameState): void {
   for (const def of STAFF) {
     const power = staffPower(s.staff[def.id] ?? 0, m.staffMult[def.id] ?? 1, def.softCapFrom, def.softExponent);
     if (power <= 0) continue;
-    for (const e of def.effects) applyStat(m, e.stat, e.amount * power);
+    for (const e of def.effects) applyStat(m, e.stat, effectAmount(e, power));
   }
   for (const def of DECOR) {
     if (!s.decor[def.id]) continue;

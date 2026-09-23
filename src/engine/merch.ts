@@ -15,8 +15,18 @@ export const NOVELTY_SECONDS = 1800;
 export const NOVELTY_FLOOR = 0.25;
 export const TREND_SECONDS = 900;
 export const TRENDING_THRESHOLD = 0.6;
-export const TREND_BONUS = 2.5;
-export const MANIA_BONUS = 7;
+export const TREND_BONUS = 2;
+/** A mania is a short spike: the right product in the right style, for a minute or two. */
+export const MANIA_BONUS = 4;
+export const MANIA_SECONDS: [number, number] = [60, 120];
+/**
+ * A perfect line earns this share of operations income for each point of its product's cpsShare.
+ * Tuned so a line left alone (stale design, off trend) earns well under its operations share, and a
+ * line kept on trend with fresh designs earns a few times it.
+ */
+export const MERCH_INCOME_SCALE = 0.5;
+/** Switching back to a design a line sold recently keeps its old freshness, unless it has been rested this long. */
+export const DESIGN_REST_SECONDS = 7200;
 export const MAX_MERCH_QUALITY = 10;
 export const MERCH_UNLOCK_FANS = 25_000;
 
@@ -38,6 +48,10 @@ const PEAK_PROFIT = rawProfit(optimalPrice(false), ELASTICITY);
 /** Profit multiplier for a price (1.0 at the optimal untrended price). */
 export function priceFactor(price: number, trending: boolean): number {
   return rawProfit(clampPrice(price), trending ? TREND_ELASTICITY : ELASTICITY) / PEAK_PROFIT;
+}
+
+export function trendLength(mods: Pick<Mods, 'trendLengthMult'>): number {
+  return TREND_SECONDS * mods.trendLengthMult;
 }
 
 export function noveltyOf(line: MerchLine, time: number, mods: Pick<Mods, 'noveltyMult'>): number {
@@ -70,7 +84,7 @@ export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, inco
       && (s.merch.mania.productId === product.id || (s.merch.mania.trend === s.merch.trend && trending));
     const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1)
       * (mania ? MANIA_BONUS : 1) * novelty * pf * finishSalesMult(line.quality ?? 0);
-    const fromIncome = cpsNoBuffs * product.cpsShare * 2 * quality * mods.merchMult;
+    const fromIncome = cpsNoBuffs * product.cpsShare * MERCH_INCOME_SCALE * quality * mods.merchMult;
     const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.12 * quality * mods.merchMult;
     const lineCps = (fromIncome + fromFans) * incomeBuff;
     const profitPerUnit = product.basePrice * Math.max(0.01, clampPrice(line.price) - UNIT_COST);
@@ -93,26 +107,26 @@ export function pickTrend(rng: Rng, current: TrendId): TrendId {
   return rng.pick(options).id;
 }
 
-export function rotateTrend(s: GameState, rng: Rng, announce: boolean): void {
+export function rotateTrend(s: GameState, rng: Rng, announce: boolean, mods: Pick<Mods, 'trendLengthMult'>): void {
   s.merch.trend = pickTrend(rng, s.merch.trend);
-  s.merch.trendEndsAt = s.time + TREND_SECONDS;
+  s.merch.trendEndsAt = s.time + trendLength(mods);
   s.merch.mania = null;
   if (Object.keys(s.merch.unlocked).length > 0 && rng.chance(0.25)) {
     const products = PRODUCTS.filter((p) => s.merch.unlocked[p.id]);
-    s.merch.mania = { trend: s.merch.trend, productId: rng.pick(products).id, endsAt: s.time + rng.range(300, 600) };
+    s.merch.mania = { trend: s.merch.trend, productId: rng.pick(products).id, endsAt: s.time + rng.range(MANIA_SECONDS[0], MANIA_SECONDS[1]) };
   }
   if (announce && isMerchUnlocked(s)) {
     const trend = TREND_MAP.get(s.merch.trend);
     emit({ type: 'toast', title: `Merch trend: ${trend?.name}`, body: trend?.desc, icon: trend?.icon ?? 'shirt', tone: 'info', channel: 'business' });
-    if (s.merch.mania) emit({ type: 'toast', title: 'Merch mania!', body: `${PRODUCT_MAP.get(s.merch.mania.productId)?.name} and matching ${trend?.name} designs are selling wildly for a few minutes.`, icon: 'flame', tone: 'gold', channel: 'business' });
+    if (s.merch.mania) emit({ type: 'toast', title: 'Merch mania!', body: `${PRODUCT_MAP.get(s.merch.mania.productId)?.name} and matching ${trend?.name} designs are selling wildly for the next minute or two.`, icon: 'flame', tone: 'gold', channel: 'business' });
   }
 }
 
 /** Books merch sales for the tick and rotates trends. */
-export function updateMerch(s: GameState, dt: number, factor: number, rates: Rates, rng: Rng, offline: boolean): void {
+export function updateMerch(s: GameState, dt: number, factor: number, rates: Rates, rng: Rng, offline: boolean, mods: Pick<Mods, 'trendLengthMult'>): void {
   if (s.merch.mania && s.time >= s.merch.mania.endsAt) s.merch.mania = null;
-  if (s.merch.trendEndsAt <= 0) s.merch.trendEndsAt = s.time + TREND_SECONDS;
-  else if (s.time >= s.merch.trendEndsAt) rotateTrend(s, rng, !offline);
+  if (s.merch.trendEndsAt <= 0) s.merch.trendEndsAt = s.time + trendLength(mods);
+  else if (s.time >= s.merch.trendEndsAt) rotateTrend(s, rng, !offline, mods);
   for (const [id, rate] of Object.entries(rates.merchLines)) {
     const line = s.merch.lines[id];
     if (!line) continue;
@@ -140,8 +154,14 @@ export function setLineDesign(s: GameState, productId: string, designId: string 
   if (!line || !s.merch.unlocked[productId]) return false;
   if (designId !== null && !s.designs[designId]) return false;
   if (line.designId === designId) return true;
+  // Fans remember what they already bought: a design this line sold recently comes back as stale as
+  // it left, so flicking between two designs doesn't reset freshness. A long rest makes it new again.
+  const history = (line.history ??= {});
+  if (line.designId) history[line.designId] = line.launchedAt;
+  const before = designId ? history[designId] : undefined;
   line.designId = designId;
-  line.launchedAt = s.time;
+  line.launchedAt = before !== undefined && s.time - before < DESIGN_REST_SECONDS ? before : s.time;
+  for (const [id, at] of Object.entries(history)) if (s.time - at >= DESIGN_REST_SECONDS || !s.designs[id]) delete history[id];
   return true;
 }
 

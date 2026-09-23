@@ -56,7 +56,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   gainFans(s, rates.fansPerSec * dt * factor);
 
   earnCash(s, rates.merchCps * dt * factor, 'merch');
-  updateMerch(s, dt, factor, rates, rng, offline);
+  updateMerch(s, dt, factor, rates, rng, offline, mods);
   updateTeams(s, dt, offline, factor, mods, rates.teams, rng, options?.pauseTeams);
   updatePlayers(s, dt, mods);
   updateSponsors(s, { rng, mods, rates }, dt, offline);

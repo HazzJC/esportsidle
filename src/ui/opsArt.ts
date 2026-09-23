@@ -363,10 +363,19 @@ const SPRITES: Record<string, Sprite> = {
     lit('M16 38H32V39.4H16Z', 0.2),
 };
 
+/** Built art by id and colour. The strings never change, and the HQ asks for them every frame. */
+const spriteCache = new Map<string, string>();
+const backgroundCache = new Map<string, string>();
+
 export function opSpriteSvg(id: string, c: string): string {
+  const key = `${id}|${c}`;
+  const hit = spriteCache.get(key);
+  if (hit) return hit;
   const draw = SPRITES[id];
   const inner = draw ? draw(c) : circ(24, 24, 12, c);
-  return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${inner}</svg>`;
+  const svg = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${inner}</svg>`;
+  spriteCache.set(key, svg);
+  return svg;
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +612,12 @@ export function opSceneSvg(id: string, c: string): string {
 
 /** The backdrop as a CSS background, so it tiles across a lane of any width at its natural height. */
 export function opSceneBackground(id: string, c: string): string {
-  return `url("data:image/svg+xml,${encodeURIComponent(opSceneSvg(id, c))}")`;
+  const key = `${id}|${c}`;
+  const hit = backgroundCache.get(key);
+  if (hit) return hit;
+  const url = `url("data:image/svg+xml,${encodeURIComponent(opSceneSvg(id, c))}")`;
+  backgroundCache.set(key, url);
+  return url;
 }
 
 export const OP_ART_IDS = Object.keys(SPRITES);

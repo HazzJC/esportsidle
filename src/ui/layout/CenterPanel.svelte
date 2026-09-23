@@ -37,6 +37,12 @@
     void game.tab;
     if (body) body.scrollTop = 0;
   });
+  // The active tab stays in view when the strip is too wide for the column.
+  let strip: HTMLElement | undefined = $state();
+  $effect(() => {
+    void game.tab;
+    strip?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
   // Visiting a tab clears its "new" flag.
   $effect(() => {
     const tab = game.tab;
@@ -54,7 +60,7 @@
 </script>
 
 <div class="center panel">
-  <nav class="tabs" aria-label="Sections">
+  <nav class="tabs" aria-label="Sections" bind:this={strip}>
     {#each open as t (t.id)}
       <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id}>
         <Icon name={t.icon} size={16} />
@@ -124,6 +130,9 @@
     flex: none;
     scrollbar-width: none;
   }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
   .tab {
     position: relative;
     display: flex;
@@ -154,6 +163,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 12px;
   }
   .new {

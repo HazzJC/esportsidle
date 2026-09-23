@@ -2,7 +2,7 @@
   import { FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishSalesMult } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { MAX_MERCH_QUALITY, MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
+  import { MAX_MERCH_QUALITY, MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, TREND_BONUS, TRENDING_THRESHOLD, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
   import type { Design } from '../../engine/types';
   import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
@@ -71,7 +71,7 @@
       <p class="muted small">Draw pixel-art designs for your logo, team jerseys and merch. Good designs sell more merch.</p>
     </div>
     {#if merchOpen && trend}
-      <div class="trend" use:tooltip={() => ({ title: `Trend: ${trend.name}`, icon: trend.icon, lines: [trend.desc, 'Matching designs sell 2.5 times as much, and fans are less fussy about price.'] })}>
+      <div class="trend" use:tooltip={() => ({ title: `Trend: ${trend.name}`, icon: trend.icon, lines: [trend.desc, `Matching designs sell ${TREND_BONUS} times as much, and fans are less fussy about price.`, 'Trends change every so often. Keeping up with them, and launching fresh designs, is where merch really pays.'] })}>
         <Icon name={trend.icon} size={18} />
         <span>Trend: <b>{trend.name}</b></span>
         <span class="dim small num">{fmtTime(s.merch.trendEndsAt - s.time)} left</span>
@@ -118,6 +118,9 @@
       <div class="row">
         <button class="btn small primary" disabled={full} onclick={() => (editing = { id: null })}><Icon name="pencil" size={13} /> New design</button>
         <button class="btn small" disabled={full} onclick={() => game.generateDesign()}><Icon name="wand-sparkles" size={13} /> Auto-generate</button>
+        {#if merchOpen && trend}
+          <button class="btn small gold" disabled={full} onclick={() => game.generateDesign(32, true)} use:tooltip={() => ({ title: `Design for ${trend.name}`, icon: trend.icon, lines: ['Generates a design briefed to match the current trend.', 'Put it on your lines while the trend lasts.'] })}><Icon name={trend.icon} size={13} /> Design for {trend.name}</button>
+        {/if}
       </div>
     </div>
     {#if designs.length === 0}
@@ -137,12 +140,16 @@
             <div class="dname">{d.name}</div>
             <div class="dmeta">
               <span class="appeal num" use:tooltip={() => appealTip(d)}>{Math.round(a.total * 100)}% appeal</span>
+              {#if merchOpen && a.trend >= TRENDING_THRESHOLD}<span class="chip trending">On trend</span>{/if}
               {#if !d.handmade}<span class="dim">auto</span>{/if}
             </div>
             {#if uses.length > 0}<div class="uses">{uses.join(' · ')}</div>{/if}
             <div class="dactions">
               <button class="btn small" class:primary={s.org.logo === d.id} onclick={() => game.setLogo(s.org.logo === d.id ? null : d.id)}>Logo</button>
               <button class="btn small" class:primary={s.org.jersey === d.id} onclick={() => game.setJersey(s.org.jersey === d.id ? null : d.id)}>Jersey</button>
+              {#if merchOpen && Object.keys(s.merch.lines).length > 0}
+                <button class="btn small" onclick={() => game.setAllLinesDesign(d.id)} use:tooltip={() => ({ title: 'Use on all merch', icon: 'shirt', lines: ['Puts this design on every merch line.', 'A design a line sold recently comes back no fresher than it left.'] })}>All merch</button>
+              {/if}
               {#if confirmDelete === d.id}
                 <button class="btn small danger" onclick={() => (game.deleteDesign(d.id), (confirmDelete = null))}>Delete?</button>
               {:else}
@@ -252,7 +259,7 @@
               {#if rate}
                 <div class="pstats small">
                   <span use:tooltip={() => ({ title: 'Appeal', lines: ['How much fans like the design (squared in sales).'] })}>Appeal <b>{fmtPct(rate.appeal)}</b></span>
-                  <span use:tooltip={() => ({ title: 'Freshness', lines: ['New designs sell best. Freshness fades over time; swap designs to relaunch.'] })}>Fresh <b>{fmtPct(rate.novelty)}</b></span>
+                  <span use:tooltip={() => ({ title: 'Freshness', lines: ['New designs sell best. Freshness fades over time; launch a new design to relaunch the line.', 'Swapping back to a design this line sold recently keeps its old freshness. Merch Designers keep designs fresh for longer.'] })}>Fresh <b>{fmtPct(rate.novelty)}</b></span>
                   <span use:tooltip={() => ({ title: 'Price efficiency', lines: ['Profit compared with the ideal price.'] })}>Price <b>{fmtPct(rate.priceFactor)}</b></span>
                   <span>Sold <b class="num">{fmt(line.sold)}</b></span>
                 </div>
@@ -454,6 +461,8 @@
     gap: 8px;
   }
   .product {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
     display: flex;
     flex-direction: column;
     gap: 8px;

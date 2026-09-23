@@ -67,6 +67,12 @@
   /** The charter is required the first time it can be chosen. */
   const needsCharter = $derived(!p.charter);
 
+  // The tree is wider than a phone, so it opens centred on the root rather than at its left edge.
+  let treeWrap: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (treeWrap && treeWrap.scrollWidth > treeWrap.clientWidth) treeWrap.scrollLeft = (treeWrap.scrollWidth - treeWrap.clientWidth) / 2;
+  });
+
   function nodeTip(n: LegacyNodeDef): TipContent {
     const state = nodeState(game.view.s, n.id);
     const parents = n.requires.map((r) => LEGACY_NODE_MAP.get(r)?.name ?? r);
@@ -166,8 +172,23 @@
   <section>
     <h3 class="section-title">Legacy tree</h3>
     <p class="muted small">Spend legacy points on permanent upgrades. Unlock a node to reveal the nodes below it.</p>
-    <div class="tree-wrap">
+    <div class="tree-wrap" bind:this={treeWrap}>
       <svg class="tree" viewBox="0 0 {WIDTH} {HEIGHT}" width={WIDTH} height={HEIGHT} role="group" aria-label="Legacy tree">
+        <defs>
+          <radialGradient id="lg-owned" cx="35%" cy="30%" r="75%">
+            <stop offset="0" stop-color="#fff3c4" />
+            <stop offset=".45" stop-color="#f5c451" />
+            <stop offset="1" stop-color="#8a5f12" />
+          </radialGradient>
+          <radialGradient id="lg-open" cx="35%" cy="30%" r="75%">
+            <stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 35%, #2a2f45)" />
+            <stop offset="1" stop-color="#0f1120" />
+          </radialGradient>
+          <radialGradient id="lg-locked" cx="35%" cy="30%" r="75%">
+            <stop offset="0" stop-color="#2c2c33" />
+            <stop offset="1" stop-color="#141418" />
+          </radialGradient>
+        </defs>
         {#each EDGES as e (`${e.from.id}-${e.to.id}`)}
           {@const a = pos(e.from)}
           {@const b = pos(e.to)}
@@ -193,10 +214,19 @@
             onkeydown={(e) => onNodeKey(e, n.id)}
             use:tooltip={() => nodeTip(n)}
           >
-            <circle r="25" />
+            {#if affordable}<circle class="halo" r="31" />{/if}
+            <circle class="rim" r="26" cy="2" />
+            <circle class="face" r="25" />
+            <path class="shine" d="M-17 -9a19 19 0 0 1 22-12" />
             <g transform="translate(-11 -11)"><Icon name={state === 'locked' ? 'lock' : n.icon} size={22} /></g>
+            {#if state !== 'locked'}
+              <text y="41" text-anchor="middle" class="nname">{n.name.length > 18 ? `${n.name.slice(0, 17)}…` : n.name}</text>
+            {/if}
             {#if state !== 'owned'}
-              <text y="42" text-anchor="middle" class="cost">{fmt(n.cost)}</text>
+              <g transform="translate(0 {state === 'locked' ? 40 : 55})">
+                <rect class="pill" x="-19" y="-9" width="38" height="15" rx="7.5" />
+                <text y="2.5" text-anchor="middle" class="cost">{fmt(n.cost)}</text>
+              </g>
             {/if}
           </g>
         {/each}
@@ -541,13 +571,22 @@
   .challenge-banner span {
     color: var(--text);
   }
+  /* The tree hangs in a night sky: a warm glow at the root, a scatter of stars behind the branches. */
   .tree-wrap {
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     border-radius: 12px;
-    border: 1px solid var(--line);
+    border: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line));
     background:
-      radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 60%),
-      var(--bg-2);
+      radial-gradient(1px 1px at 8% 18%, rgba(255, 255, 255, 0.7), transparent),
+      radial-gradient(1px 1px at 23% 64%, rgba(255, 255, 255, 0.5), transparent),
+      radial-gradient(1.5px 1.5px at 41% 36%, rgba(255, 255, 255, 0.6), transparent),
+      radial-gradient(1px 1px at 58% 82%, rgba(255, 255, 255, 0.5), transparent),
+      radial-gradient(1px 1px at 72% 22%, rgba(255, 255, 255, 0.6), transparent),
+      radial-gradient(1.5px 1.5px at 89% 58%, rgba(255, 255, 255, 0.5), transparent),
+      radial-gradient(60% 45% at 50% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, #13111d, #0c0c13);
+    background-size: 260px 220px, 260px 220px, 260px 220px, 260px 220px, 260px 220px, 260px 220px, auto, auto;
   }
   .tree {
     display: block;
@@ -556,58 +595,115 @@
   }
   .edge {
     fill: none;
-    stroke: var(--line-2);
+    stroke: #2c2c36;
     stroke-width: 2;
+    stroke-dasharray: 4 5;
   }
   .edge.lit {
-    stroke: color-mix(in srgb, var(--accent) 50%, transparent);
+    stroke: color-mix(in srgb, var(--accent) 60%, transparent);
+    stroke-dasharray: none;
   }
   .edge.done {
     stroke: var(--gold);
+    stroke-width: 3;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--gold) 70%, transparent));
   }
   .node {
     cursor: default;
     outline: none;
   }
-  .node circle {
-    fill: var(--panel);
-    stroke: var(--line-2);
+  /* Medallions: a dark rim below, a lit face, a shine across the top left. */
+  .rim {
+    fill: #000;
+    opacity: 0.55;
+  }
+  .face {
+    fill: url(#lg-locked);
+    stroke: #3a3a44;
     stroke-width: 2;
   }
-  .node :global(svg) {
-    color: var(--dim);
+  .shine {
+    fill: none;
+    stroke: #fff;
+    stroke-opacity: 0.12;
+    stroke-width: 3;
+    stroke-linecap: round;
   }
-  .node.available circle {
+  .node :global(svg) {
+    color: #5b5b66;
+  }
+  .node.locked {
+    opacity: 0.75;
+  }
+  .node.available .face {
+    fill: url(#lg-open);
     stroke: var(--accent);
   }
   .node.available :global(svg) {
     color: var(--accent);
   }
+  .node.available .shine {
+    stroke-opacity: 0.22;
+  }
   .node.available.affordable {
     cursor: pointer;
   }
-  .node.available.affordable circle {
-    fill: color-mix(in srgb, var(--accent) 12%, transparent);
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent));
+  .halo {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    opacity: 0.6;
+    animation: halo 1.8s ease-in-out infinite;
   }
-  .node.owned circle {
-    fill: color-mix(in srgb, var(--gold) 20%, transparent);
-    stroke: var(--gold);
+  .node.owned .face {
+    fill: url(#lg-owned);
+    stroke: #7a520e;
+  }
+  .node.owned .shine {
+    stroke-opacity: 0.55;
   }
   .node.owned :global(svg) {
-    color: var(--gold);
+    color: #3a2604;
   }
-  .node:focus-visible circle {
+  .node:focus-visible .face {
     stroke-width: 4;
+  }
+  .nname {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10.5px;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: #0e0e14;
+    stroke-width: 3px;
+  }
+  .node.owned .nname {
+    fill: var(--gold);
+  }
+  .node.available .nname {
+    fill: var(--text);
+  }
+  .pill {
+    fill: #0e0e14;
+    stroke: var(--line-2);
+    stroke-width: 1;
+  }
+  .node.affordable .pill {
+    stroke: var(--accent);
   }
   .cost {
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 13px;
+    font-size: 11px;
     fill: var(--muted);
   }
   .node.affordable .cost {
     fill: var(--accent);
+  }
+  @keyframes halo {
+    50% {
+      opacity: 0.15;
+    }
   }
   .tree-done {
     display: flex;

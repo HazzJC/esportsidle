@@ -70,6 +70,15 @@ body {
   overflow: hidden;
 }
 
+/*
+ * The page itself never scrolls; its panels do. Without this, a pull at the top of a panel on a phone
+ * chains to the page and triggers pull-to-refresh, which reloads the game.
+ */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 #app {
   height: 100%;
 }

@@ -76,6 +76,25 @@
 
   // Neutral surfaces per room, getting darker and sleeker as the org grows. The org's team colours
   // are mixed in at render time, so the house is dressed in the player's own colours.
+  /**
+   * The city behind the glass on the upper floors: a pale far layer, then near towers with lit windows
+   * and blinking aerials. Fixed numbers so the skyline is the same every visit.
+   */
+  const FAR_TOWERS = Array.from({ length: 16 }, (_, i) => ({ x: i * 62 - 10, w: 54, top: 120 + ((i * 47) % 70) }));
+  const NEAR_TOWERS = Array.from({ length: 12 }, (_, i) => {
+    const w = 52 + ((i * 29) % 30);
+    const x = i * 82 + ((i * 13) % 18) - 6;
+    const top = 150 - ((i * 53) % 80);
+    const cols = Math.floor((w - 12) / 12);
+    const rows = Math.floor((270 - top - 14) / 16);
+    const windows: { x: number; y: number; lit: number }[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) windows.push({ x: x + 8 + c * 12, y: top + 10 + r * 16, lit: (i * 7 + r * 5 + c * 3) % 9 });
+    }
+    return { x, w, top, windows, aerial: i % 3 === 1 };
+  });
+  const STARS = Array.from({ length: 26 }, (_, i) => ({ x: (i * 173) % 960, y: 28 + ((i * 61) % 90), r: i % 6 === 0 ? 1.6 : 0.9 }));
+
   const WALLS = [
     ['#3c3c40', '#2a2a2d'],
     ['#35353a', '#242428'],
@@ -241,10 +260,39 @@
         <rect x="740" y="40" width="160" height="120" rx="4" fill="url(#house-sky)" stroke="#2a2a2f" stroke-width="6" />
         <circle cx="850" cy="80" r="14" fill="#f5f0d8" opacity="0.85" />
       {:else if level === 3 || level === 4}
-        <rect x="0" y="20" width="960" height="250" fill="url(#house-sky)" opacity="0.9" />
-        {#each Array.from({ length: 24 }, (_, i) => i) as i (i)}
-          <rect x={i * 40 + 4} y={level === 4 ? 200 - ((i * 37) % 60) : 150 - ((i * 53) % 90)} width="32" height="140" fill={level === 4 ? '#0b1b24' : '#0b1128'} />
+        <rect x="0" y="20" width="960" height="250" fill="url(#house-sky)" opacity="0.95" />
+        {#each STARS as st, i (i)}
+          <circle cx={st.x} cy={st.y} r={st.r} fill="#fff" opacity="0.65" />
         {/each}
+        {#if level === 3}
+          <circle cx="840" cy="64" r="18" fill="#f5efd6" opacity="0.9" filter="url(#house-glow)" />
+          <circle cx="834" cy="58" r="4" fill="#d9d0b0" opacity="0.6" />
+        {/if}
+        <!-- Far towers, softened by haze in the team colour. -->
+        {#each FAR_TOWERS as b, i (i)}
+          <rect x={b.x} y={b.top} width={b.w} height={270 - b.top} fill={mix(level === 4 ? '#1c3340' : '#232a4a', primary, 0.12)} opacity="0.75" />
+        {/each}
+        <rect x="0" y="200" width="960" height="70" fill={primary} opacity="0.06" />
+        <!-- Near towers with lit windows. -->
+        {#each NEAR_TOWERS as b, i (i)}
+          <rect x={b.x} y={b.top} width={b.w} height={270 - b.top} fill={level === 4 ? '#0b1b24' : '#0b1128'} />
+          <rect x={b.x} y={b.top} width="4" height={270 - b.top} fill="#fff" opacity="0.05" />
+          <rect x={b.x + b.w - 8} y={b.top} width="8" height={270 - b.top} fill="#000" opacity="0.25" />
+          <rect x={b.x - 2} y={b.top - 4} width={b.w + 4} height="5" fill={level === 4 ? '#12303d' : '#161d3d'} />
+          {#each b.windows as w, k (k)}
+            {#if w.lit < 3}
+              <rect x={w.x} y={w.y} width="6" height="8" fill={w.lit === 0 ? primary : '#ffd98a'} opacity={w.lit === 0 ? 0.55 : 0.7} />
+            {:else if w.lit < 5}
+              <rect x={w.x} y={w.y} width="6" height="8" fill="#9fb3ff" opacity="0.12" />
+            {/if}
+          {/each}
+          {#if b.aerial}
+            <path d="M{b.x + b.w / 2} {b.top - 4} V{b.top - 26}" stroke="#2a3150" stroke-width="2" />
+            <circle cx={b.x + b.w / 2} cy={b.top - 27} r="2.6" fill="#ff4d6d" class="aerial" style="animation-delay:{(i % 4) * 0.4}s" />
+          {/if}
+        {/each}
+        <!-- Reflections on the glass. -->
+        <path d="M40 20 L150 20 L60 270 L-50 270Z M420 20 L470 20 L380 270 L330 270Z M700 20 L790 20 L700 270 L610 270Z" fill="#fff" opacity="0.035" />
         {#if level === 4}
           <path d="M120 270 Q480 120 840 270" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="10" />
           {#each [160, 480, 800] as lx (lx)}
@@ -565,6 +613,14 @@
     font-family: var(--font-ui);
     font-size: 20px;
     fill: var(--muted);
+  }
+  .aerial {
+    animation: blink 2s steps(2) infinite;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0.2;
+    }
   }
   .rgb {
     animation: hue 6s linear infinite;

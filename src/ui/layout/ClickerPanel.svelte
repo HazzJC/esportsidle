@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CROWD_BUFF_ID, HYPE_MAX } from '../../engine/clicker';
+  import { CROWD_BUFF_ID, HYPE_ASSIST_LEVEL, HYPE_MAX, hypeAssistActive } from '../../engine/clicker';
   import { fmt, fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import Toasts from '../components/Toasts.svelte';
@@ -140,6 +140,8 @@
       'Clicking your logo fills the hype meter.',
       'When it is full, the crowd goes wild: income ×2 for 30 seconds.',
       { text: 'It takes about 80 clicks. Hype drains slowly at first, then faster during a long break.', tone: 'muted' },
+      ...(hypeAssistActive(game.view.s) ? [{ text: 'Hype streak quest: the crowd warms up by itself to 80%, so a few clicks finish it.', tone: 'good' as const }] : []),
+      ...(game.view.s.settings.autoClick ? [{ text: 'The auto-clicker is on (Options).', tone: 'cyan' as const }] : []),
     ],
   });
 </script>
@@ -216,8 +218,8 @@
     {#if crowd}
       <span class="crowd-text">CROWD GOES WILD · ×2 income · {fmtTime(crowd.endsAt - s.time)}</span>
     {:else}
-      <span class="muted">Hype</span>
-      <span class="bar"><i style="width:{(s.hype / HYPE_MAX) * 100}%"></i></span>
+      <span class="muted">Hype{#if s.settings.autoClick}<span class="auto" title="Auto-clicker is on"> · auto</span>{/if}</span>
+      <span class="bar" class:assist={hypeAssistActive(s)} style="--assist:{HYPE_ASSIST_LEVEL * 100}%"><i style="width:{(s.hype / HYPE_MAX) * 100}%"></i></span>
       <span class="num muted">{Math.floor(s.hype)}%</span>
     {/if}
   </div>
@@ -502,6 +504,23 @@
   }
   .hype .bar {
     flex: 1;
+    position: relative;
+  }
+  /* During the hype quest, a tick shows where the crowd warms up to by itself. */
+  .hype .bar.assist::after {
+    content: '';
+    position: absolute;
+    left: var(--assist);
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--gold);
+    box-shadow: 0 0 4px var(--gold);
+  }
+  .hype .auto {
+    color: var(--accent);
+    font-weight: 600;
   }
   .hype .bar i {
     background: linear-gradient(90deg, var(--accent), var(--accent-2));

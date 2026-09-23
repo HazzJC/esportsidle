@@ -44,7 +44,7 @@ describe('balance update', () => {
     expect(s.cash).toBe(1e8 - cost);
     expect(computeRates(s).merchCps).toBeGreaterThan(base);
     s.merch.mania = { trend: s.merch.trend, productId: 'tee', endsAt: 400 };
-    expect(computeRates(s).merchCps).toBeGreaterThan(base * 7);
+    expect(computeRates(s).merchCps).toBeGreaterThan(base * 4);
     s.time = 500;
     expect(computeRates(s).merchCps).toBeLessThan(base * 2);
   });

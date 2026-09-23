@@ -172,6 +172,16 @@
   </section>
 
   <section>
+    <h3 class="section-title">Accessibility</h3>
+    <Toggle
+      checked={settings.autoClick}
+      label="Auto-clicker"
+      description="Clicks your logo for you twice a second while the game is open, for anyone who finds a lot of clicking hard. It counts as normal clicks."
+      onchange={(v) => game.setSetting('autoClick', v)}
+    />
+  </section>
+
+  <section>
     <h3 class="section-title">Gameplay</h3>
     <label class="select-row">
       <span>Autosave every</span>

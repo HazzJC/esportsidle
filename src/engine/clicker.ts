@@ -125,8 +125,28 @@ export function clickLogo(s: GameState): ClickResult {
   return { gain, crowd };
 }
 
-/** Hype slowly drains when the player stops clicking. */
+/**
+ * While the "Hype streak" quest is live the crowd warms up on its own, to this share of the meter,
+ * so players who can't click fast only need the last few clicks.
+ */
+export const HYPE_ASSIST_LEVEL = 0.8;
+/** Hype per second the crowd warms up by during the assist. */
+export const HYPE_ASSIST_RATE = 1;
+export const HYPE_QUEST_ID = 'crowd_1';
+
+export function hypeAssistActive(s: GameState): boolean {
+  return !hasBuff(s, CROWD_BUFF_ID) && s.quests.active.some((q) => q.id === HYPE_QUEST_ID && !q.ready);
+}
+
+/** Hype slowly drains when the player stops clicking, and warms up by itself during the hype quest. */
 export function decayHype(s: GameState, dt: number): void {
+  if (hypeAssistActive(s)) {
+    const floor = HYPE_MAX * HYPE_ASSIST_LEVEL;
+    if (s.hype < floor) {
+      s.hype = Math.min(floor, s.hype + HYPE_ASSIST_RATE * dt);
+      return;
+    }
+  }
   if (s.hype <= 0) return;
   const idle = s.time - s.lastClickTime - HYPE_IDLE_GRACE;
   if (idle <= 0) return;
@@ -134,5 +154,6 @@ export function decayHype(s: GameState, dt: number): void {
   const start = Math.max(0, idle - dt);
   const drain = HYPE_DECAY_PER_SEC * (idle - start)
     + HYPE_DECAY_ACCELERATION * (idle * idle - start * start) / 2;
-  s.hype = Math.max(0, s.hype - drain);
+  const floor = hypeAssistActive(s) ? HYPE_MAX * HYPE_ASSIST_LEVEL : 0;
+  s.hype = Math.max(floor, s.hype - drain);
 }

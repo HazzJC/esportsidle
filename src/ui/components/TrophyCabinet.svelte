@@ -41,7 +41,7 @@
     {#each shelves as [run, trophies] (run)}
       <div class="shelf-label">{run === currentRun ? 'This run' : `Run ${run}`} · {trophies.length}</div>
       <div class="shelf">
-        {#each trophies.slice(0, SHELF_LIMIT) as t (t.id)}
+        {#each [...trophies].sort((a, b) => b.tier - a.tier).slice(0, SHELF_LIMIT) as t (t.id)}
           <span class="trophy" use:tooltip={() => tip(t)}><TrophyIcon kind={t.kind} tier={t.tier} /></span>
         {/each}
         {#if trophies.length > SHELF_LIMIT}<span class="more dim">+{trophies.length - SHELF_LIMIT}</span>{/if}
@@ -73,12 +73,18 @@
     gap: 3px 4px;
     padding: 8px 10px 0;
     border-radius: 8px 8px 0 0;
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--gold) 5%, transparent));
-    border-bottom: 5px solid #3a3a40;
-    box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.6);
+    /* A lit cabinet back with a wooden shelf under each run's trophies, best ones first. */
+    background:
+      radial-gradient(60% 120% at 20% 100%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 70%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.25), color-mix(in srgb, var(--gold) 5%, transparent));
+    border-bottom: 6px solid #4a3526;
+    box-shadow:
+      inset 0 -1px 0 #6b4d36,
+      0 8px 10px -6px rgba(0, 0, 0, 0.7);
   }
   .trophy {
     display: block;
+    filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
     transition: transform 0.12s;
   }
   .trophy:hover {

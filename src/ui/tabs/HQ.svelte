@@ -202,7 +202,7 @@
               <span class="backdrop" style="background-image:{art[op.id]?.scene}"></span>
               {#each { length: Math.min(st.owned, MAX_UNITS) } as _, i (i)}
                 {@const spot = unitSpot(i)}
-                <span class="sprite" class:back={spot.back} style="left:{spot.x}%; bottom:{spot.y}px; --d:{spot.delay}s; z-index:{spot.back ? 1 : 2}">{@html art[op.id]?.sprite}</span>
+                <span class="sprite" class:back={spot.back} class:bob={i % 3 === 0} style="left:{spot.x}%; bottom:{spot.y}px; --d:{spot.delay}s; z-index:{spot.back ? 1 : 2}">{@html art[op.id]?.sprite}</span>
               {/each}
               {#if st.owned > MAX_UNITS}
                 <span class="more num">+{fmt(st.owned - MAX_UNITS)}</span>
@@ -408,6 +408,9 @@
     gap: 6px;
   }
   .lane {
+    /* Lanes scrolled out of view skip rendering entirely. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 118px;
     border-radius: 9px;
     padding: 6px 10px 8px;
     border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
@@ -474,6 +477,10 @@
     height: 40px;
     margin-left: -20px;
     filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.55));
+    animation: pop-in 0.25s ease-out both;
+  }
+  /* Only every third unit bobs: hundreds of animated, shadowed sprites were most of a frame late in a run. */
+  .sprite.bob {
     animation:
       pop-in 0.25s ease-out both,
       idle 2.4s ease-in-out var(--d) infinite;

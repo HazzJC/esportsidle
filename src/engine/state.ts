@@ -39,6 +39,7 @@ export function createSettings(): Settings {
     volume: 0.5,
     muted: false,
     hypeChain: true,
+    autoClick: false,
     musicOn: false,
     musicVolume: 0.35,
     confirmPrestige: true,

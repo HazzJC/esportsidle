@@ -124,6 +124,9 @@
     if (press.touch) navigator.vibrate?.(12);
     scroller = scrollParent(root ?? null);
     document.body.classList.add('dragging-player');
+    // Once a finger has picked a player up, moving it drags the card instead of scrolling the page.
+    // Without this the browser starts a scroll, which cancels the drag.
+    if (press.touch) window.addEventListener('touchmove', holdTouch, { passive: false });
     edgeFrame = requestAnimationFrame(edgeScroll);
   }
 
@@ -166,6 +169,11 @@
     drag = null;
     cancelAnimationFrame(edgeFrame);
     document.body.classList.remove('dragging-player');
+    window.removeEventListener('touchmove', holdTouch);
+  }
+
+  function holdTouch(e: TouchEvent) {
+    if (drag && e.cancelable) e.preventDefault();
   }
 
   function endPress() {
@@ -821,6 +829,9 @@
     font-size: 12px;
     margin-left: auto;
   }
+  .jump::-webkit-scrollbar {
+    display: none;
+  }
   .jump {
     position: sticky;
     top: -12px;
@@ -830,7 +841,7 @@
     margin-top: -12px;
     padding: 12px 0 8px;
     overflow-x: auto;
-    scrollbar-width: thin;
+    scrollbar-width: none;
     background: linear-gradient(180deg, var(--panel) 85%, transparent);
   }
   .jump-chip {

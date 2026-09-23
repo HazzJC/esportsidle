@@ -237,17 +237,56 @@ function computeAppeal(d: Design, trend: TrendId): AppealBreakdown {
 // Generation & management
 // ---------------------------------------------------------------------------
 
-/** A symmetric "identicon" sprite, upscaled to the requested size. */
-export function generateDesign(rng: Rng, size: number, name: string): Omit<Design, 'id' | 'createdAt' | 'version'> {
+/** Palette entries (1-based) with their colour data, for picking colours that suit a trend. */
+function paletteInfo(): { idx: number; h: number; s: number; l: number; lum: number }[] {
+  return DESIGN_PALETTE.map((hex, i) => {
+    const [r, g, b] = hexToRgb(hex);
+    const [h, s, l] = rgbToHsl(r, g, b);
+    return { idx: i + 1, h, s, l, lum: luminance(r, g, b) };
+  });
+}
+
+/** Colours and fill density that a design aimed at `trend` should use. */
+function trendRecipe(rng: Rng, trend: TrendId): { colors: number[]; density: [number, number] } {
+  const all = paletteInfo();
+  const pickFrom = (pool: typeof all, n: number) => rng.shuffle(pool.map((c) => c.idx)).slice(0, Math.max(1, Math.min(n, pool.length)));
+  switch (trend) {
+    case 'neon':
+      return { colors: pickFrom(all.filter((c) => c.s >= 0.7 && c.l >= 0.45 && c.l <= 0.75), rng.int(2, 4)), density: [0.35, 0.55] };
+    case 'retro':
+      return { colors: pickFrom(all.filter((c) => c.h >= 15 && c.h <= 60 && c.s >= 0.2 && c.s <= 0.85 && c.l >= 0.2 && c.l <= 0.7), rng.int(3, 4)), density: [0.4, 0.6] };
+    case 'minimal':
+      return { colors: pickFrom(all.filter((c) => c.lum > 0.15), 2), density: [0.15, 0.28] };
+    case 'chaotic':
+      return { colors: pickFrom(all, 10), density: [0.45, 0.6] };
+    case 'mono': {
+      const base = rng.pick(all.filter((c) => c.s >= 0.4));
+      const near = all.filter((c) => c.s >= 0.15 && Math.min(Math.abs(c.h - base.h), 360 - Math.abs(c.h - base.h)) <= 20);
+      return { colors: [base.idx, ...pickFrom(near.filter((c) => c.idx !== base.idx), 2)], density: [0.35, 0.55] };
+    }
+    case 'bold': {
+      const light = rng.pick(all.filter((c) => c.lum >= 0.6));
+      const strong = rng.pick(all.filter((c) => c.s >= 0.6 && c.idx !== light.idx));
+      return { colors: [light.idx, strong.idx], density: [0.62, 0.7] };
+    }
+  }
+}
+
+/**
+ * A symmetric "identicon" sprite, upscaled to the requested size. With a trend, the colours and
+ * fill are chosen to match it, the way a designer would brief a new drop.
+ */
+export function generateDesign(rng: Rng, size: number, name: string, trend?: TrendId): Omit<Design, 'id' | 'createdAt' | 'version'> {
   const cells = 8;
   const scale = size / cells;
-  const choices = rng.shuffle(Array.from({ length: DESIGN_PALETTE.length }, (_, i) => i + 1)).slice(0, rng.int(2, 4));
+  const recipe = trend ? trendRecipe(rng, trend) : null;
+  const choices = recipe?.colors ?? rng.shuffle(Array.from({ length: DESIGN_PALETTE.length }, (_, i) => i + 1)).slice(0, rng.int(2, 4));
   const grid = new Uint8Array(cells * cells);
-  const density = rng.range(0.35, 0.6);
+  const density = recipe ? rng.range(recipe.density[0], recipe.density[1]) : rng.range(0.35, 0.6);
   for (let y = 0; y < cells; y++) {
     for (let x = 0; x < cells / 2; x++) {
       if (!rng.chance(density)) continue;
-      const color = rng.chance(0.7) ? choices[0] : rng.pick(choices);
+      const color = trend === 'chaotic' || rng.chance(0.3) ? rng.pick(choices) : choices[0];
       grid[y * cells + x] = color;
       grid[y * cells + (cells - 1 - x)] = color;
     }

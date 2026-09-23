@@ -150,6 +150,7 @@
     gap: 12px;
     padding: 6px 10px;
     min-height: 46px;
+    min-width: 0;
   }
   .brand {
     display: flex;
@@ -177,6 +178,7 @@
     background: var(--bg-2);
     color: var(--muted);
     max-width: 220px;
+    min-width: 0;
     flex: none;
   }
   .org:hover {
@@ -357,6 +359,17 @@
   @media (max-width: 767px) {
     :global(.app:not([data-view='clicker'])) .wallet {
       display: flex;
+    }
+    /* Everything has to fit a 360px phone; the org name gives way first. */
+    .topbar {
+      gap: 6px;
+      padding: 6px 8px;
+    }
+    .org {
+      padding: 4px 8px;
+    }
+    .save {
+      padding: 5px 8px;
     }
   }
   @media (max-width: 1023px) {

@@ -466,7 +466,7 @@ WORLD_EVENTS.push(
     category: 'market',
     weight: (s) => (isMerchUnlocked(s) ? 2 : 0),
     fire: (s, ctx) => {
-      rotateTrend(s, ctx.rng, false);
+      rotateTrend(s, ctx.rng, false, ctx.mods);
       const trend = TREND_MAP.get(s.merch.trend);
       logEvent(s, { title: `Fashion shock: ${trend?.name} is in`, body: trend?.desc ?? '', icon: trend?.icon ?? 'shirt', tone: 'info', endsAt: s.merch.trendEndsAt });
     },
