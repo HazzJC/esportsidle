@@ -103,7 +103,7 @@ describe('merch pays for keeping up with trends', () => {
 
 describe('trend-briefed designs', () => {
   it('match the trend they were briefed for', () => {
-    const rng = new Rng({ rngState: 99 });
+    const rng = new Rng({ rng: 99 });
     for (const t of TRENDS) {
       for (let i = 0; i < 8; i++) {
         const d = { ...generateDesign(rng, 32, 'x', t.id), id: `${t.id}${i}`, createdAt: 0, version: 1 };

@@ -19,6 +19,12 @@
 
 ## Pending Changes
 
+### Type-check fix for the merch rebalance tests
+*Status: Pending*
+
+* **The Issue / Motivation**: CI's  failed on , which seeded its random generator with . The generator's holder field is called .
+* **What Changed**: The test now seeds with , the same as every other test.
+
 ### Merch that rewards trend-chasing, a hype helper, an auto-clicker, faster late game and scrolling fixes
 *Status: Committed* | `0de7c85` (Sep 23 2026), awaiting playtest
 
