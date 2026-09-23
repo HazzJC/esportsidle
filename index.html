@@ -7,6 +7,119 @@
     <meta name="theme-color" content="#070812" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Esports Idle</title>
+    <script>
+      // A safety net that doesn't depend on the game's own code. If the game fails to load or crashes
+      // while starting (an old cached page, or a save the new version can't draw), the player gets a
+      // screen that explains it and hands them their save, instead of a black page.
+      (function () {
+        var shown = false;
+        var errors = [];
+        function note(msg) {
+          if (msg && errors.length < 5) errors.push(String(msg));
+        }
+        function started() {
+          var app = document.getElementById('app');
+          return !!(app && app.children.length > 0);
+        }
+        function show() {
+          if (shown || started()) return;
+          shown = true;
+          var save = '';
+          try {
+            save = localStorage.getItem('esportsidle.save') || '';
+          } catch (e) {}
+          var box = document.createElement('div');
+          box.id = 'boot-fail';
+          box.innerHTML =
+            '<div class="bf-card"><h1>Esports Idle couldn’t start</h1>' +
+            '<p>Your progress is still saved in this browser. First try a <b>hard refresh</b> (Ctrl+Shift+R, or Cmd+Shift+R on a Mac): a copy of the page cached from before an update is the usual cause.</p>' +
+            '<p>If that doesn’t help, copy your save below and keep it safe. It can be imported again from Options once the problem is fixed.</p>' +
+            '<div class="bf-row"><button id="bf-reload">Hard refresh</button><button id="bf-copy"' + (save ? '' : ' disabled') + '>Copy my save</button><button id="bf-download"' + (save ? '' : ' disabled') + '>Download my save</button></div>' +
+            '<details><summary>Technical details</summary><pre id="bf-err"></pre></details></div>';
+          document.body.appendChild(box);
+          document.getElementById('bf-err').textContent = errors.length ? errors.join('\n\n') : 'The game scripts did not load.';
+          document.getElementById('bf-reload').onclick = function () {
+            location.href = location.pathname + '?r=' + Date.now();
+          };
+          document.getElementById('bf-copy').onclick = function (e) {
+            var btn = e.currentTarget;
+            navigator.clipboard.writeText(save).then(function () {
+              btn.textContent = 'Copied';
+            }, function () {
+              window.prompt('Copy your save:', save);
+            });
+          };
+          document.getElementById('bf-download').onclick = function () {
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([save], { type: 'text/plain' }));
+            a.download = 'EsportsIdle_save_backup.txt';
+            a.click();
+          };
+        }
+        window.addEventListener('error', function (e) {
+          note(e.error && e.error.stack ? e.error.stack : e.message || (e.target && e.target.src ? 'Failed to load ' + e.target.src : ''));
+          setTimeout(show, 400);
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+          note(e.reason && e.reason.stack ? e.reason.stack : e.reason);
+          setTimeout(show, 400);
+        });
+        // Nothing drawn after a while: the scripts never ran.
+        window.addEventListener('load', function () {
+          setTimeout(show, 6000);
+        });
+      })();
+    </script>
+    <style>
+      #boot-fail {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: #070812;
+        color: #e9ecff;
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      #boot-fail .bf-card {
+        max-width: 520px;
+        padding: 20px 22px;
+        border: 1px solid #2c2f45;
+        border-radius: 14px;
+        background: #12131f;
+      }
+      #boot-fail h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      #boot-fail .bf-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0;
+      }
+      #boot-fail button {
+        padding: 8px 14px;
+        border: 1px solid #22e4ff;
+        border-radius: 8px;
+        background: #0f2a33;
+        color: #e9ecff;
+        font: inherit;
+        cursor: pointer;
+      }
+      #boot-fail button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      #boot-fail pre {
+        max-height: 200px;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-size: 12px;
+        color: #8d95c9;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

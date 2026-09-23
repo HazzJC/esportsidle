@@ -19,6 +19,15 @@
 
 ## Pending Changes
 
+### A recovery screen instead of a black page
+*Status: Pending*
+
+* **The Issue / Motivation**: An existing player saw only a black screen on the GitHub Pages site, while a fresh browser (Edge) loaded fine. Pages lets browsers cache the page for 10 minutes. A page cached from before a deploy points at script files that no longer exist, and a save the new version can't draw would crash the same way. Either failure left an empty dark page, with no hint and no way to rescue the save.
+* **What Changed**:
+  * `index.html` carries a small inline safety net that doesn't depend on the game's own code. If the game hasn't drawn anything and a script failed to load, threw, or never ran, it shows a "couldn't start" card instead.
+  * The card suggests a hard refresh and has a button that reloads past the cache. It also offers **Copy my save** and **Download my save**, and a technical-details panel with the error.
+  * `src/main.ts` clears any half-drawn page if the first render throws, so the card can appear.
+
 ### Operations reordered by real-world cost
 *Status: Pending*
 

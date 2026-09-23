@@ -13,7 +13,15 @@ import { applyTone } from './ui/tone';
 // Apply the saved tone before the first paint so the interface never flashes the default.
 applyTone(game.state.settings.uiAccent);
 
-const app = mount(App, { target: document.getElementById('app')! });
+const target = document.getElementById('app')!;
+let app: ReturnType<typeof mount>;
+try {
+  app = mount(App, { target });
+} catch (e) {
+  // A half-drawn page would hide the recovery screen in index.html, so clear it before passing on.
+  target.replaceChildren();
+  throw e;
+}
 
 if (import.meta.env.DEV) {
   const w = window as unknown as Record<string, unknown>;
