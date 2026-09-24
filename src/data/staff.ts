@@ -102,7 +102,7 @@ const RAW: RawStaff[] = [
     effects: [
       { stat: 'energyRecovery', amount: 0.04 },
       { stat: 'sickness', amount: 0.08 },
-      { stat: 'morale', amount: 0.4 },
+      { stat: 'morale', amount: 0.4, max: 15 },
     ],
     requirement: 'Play 40 matches',
     unlock: (s) => matches(s) >= 40,
@@ -180,7 +180,7 @@ const RAW: RawStaff[] = [
     effects: [
       { stat: 'burnout', amount: 0.1 },
       { stat: 'moraleSwing', amount: 0.03 },
-      { stat: 'morale', amount: 0.3 },
+      { stat: 'morale', amount: 0.3, max: 12 },
     ],
     requirement: 'Play 600 matches',
     unlock: (s) => matches(s) >= 600,

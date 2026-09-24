@@ -218,6 +218,7 @@ export function scaleSponsorEffect(e: Effect, k: number): Effect {
     return { ...e, mult } as Effect;
   }
   if ('add' in e && typeof e.add === 'number') return { ...e, add: e.add * k } as Effect;
+  if ('hours' in e && typeof e.hours === 'number') return { ...e, hours: Math.round(e.hours * k) } as Effect;
   return e;
 }
 

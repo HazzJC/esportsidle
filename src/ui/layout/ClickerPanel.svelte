@@ -127,7 +127,7 @@
       lines: [
         `${fmt(s.fans)} fans, gaining ${fmt(r.fansPerSec, 1)} per second.`,
         { text: `Fame multiplies all income by ×${r.fameMult.toFixed(3)}.`, tone: 'good' },
-        { text: `Fame power: ${m.fameExp.toFixed(3)} (more fans and Fame upgrades raise this bonus).`, tone: 'muted' },
+        { text: `Fame power ${m.fameExp.toFixed(3)}${m.fameBonusMult > 1 ? `, bonus ×${m.fameBonusMult.toFixed(2)}` : ''}. More fans and every Fame upgrade raise it.`, tone: 'muted' },
       ],
     };
   };

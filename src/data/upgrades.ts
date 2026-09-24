@@ -336,19 +336,24 @@ SNACKS.forEach(([name, cost, pct, flavor], i) => {
 // ---------------------------------------------------------------------------
 // Fame: fans boost income more strongly
 // ---------------------------------------------------------------------------
+/**
+ * The first four raise the fame exponent (up to MAX_FAME_EXP). The rest multiply the fame bonus: an
+ * exponent compounds with the fanbase, a multiplier doesn't, so the late line can't run away.
+ */
+const FAME_EXP_TIERS = 4;
 const FAME_LINE: [string, number, number, number, string][] = [
   ['Discord Server', 50, 5_000, 0.01, 'Rule 1: be nice. Rule 2: no, seriously.'],
   ['Fan Subreddit', 500, 200_000, 0.01, 'Mostly memes. Occasionally tactical analysis. Mostly memes.'],
   ['Fan Art Wall', 5_000, 2e7, 0.015, 'Some of it is anatomically ambitious.'],
   ['Meet & Greets', 50_000, 2e9, 0.015, 'Signing merch until the Sharpie runs dry.'],
-  ['Fan Conventions', 5e5, 2e11, 0.02, 'Cosplayers outnumber attendees 3 to 1.'],
-  ['Stan Accounts', 5e6, 2e13, 0.02, 'They know your players’ birthdays better than their mums.'],
-  ['Superfan Tattoos', 5e7, 2e15, 0.025, 'Permanent loyalty. Semi-permanent regret.'],
-  ['Fan-Owned Shares', 5e8, 2e17, 0.025, 'Every fan is now technically your boss.'],
-  ['Cult Following', 5e9, 2e19, 0.03, 'Robes are optional. Jerseys are not.'],
-  ['Global Fandom', 5e10, 2e21, 0.03, 'Every country has a {org} fan club.'],
-  ['Interplanetary Fandom', 5e11, 2e23, 0.03, 'Mars colony chants in low gravity.'],
-  ['Fandom Singularity', 5e12, 2e25, 0.04, 'Fans have become a single, loving hive mind.'],
+  ['Fan Conventions', 5e5, 2e11, 1.2, 'Cosplayers outnumber attendees 3 to 1.'],
+  ['Stan Accounts', 5e6, 2e13, 1.2, 'They know your players’ birthdays better than their mums.'],
+  ['Superfan Tattoos', 5e7, 2e15, 1.25, 'Permanent loyalty. Semi-permanent regret.'],
+  ['Fan-Owned Shares', 5e8, 2e17, 1.25, 'Every fan is now technically your boss.'],
+  ['Cult Following', 5e9, 2e19, 1.3, 'Robes are optional. Jerseys are not.'],
+  ['Global Fandom', 5e10, 2e21, 1.3, 'Every country has a {org} fan club.'],
+  ['Interplanetary Fandom', 5e11, 2e23, 1.4, 'Mars colony chants in low gravity.'],
+  ['Fandom Singularity', 5e12, 2e25, 1.5, 'Fans have become a single, loving hive mind.'],
 ];
 
 FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
@@ -359,7 +364,7 @@ FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
     icon: 'heart',
     tier: i,
     cost,
-    effects: [{ kind: 'fameExp', add: add_ }],
+    effects: [i < FAME_EXP_TIERS ? { kind: 'fameExp', add: add_ } : { kind: 'fameBonus', mult: add_ }],
     flavor,
     requirement: `Reach ${fans.toLocaleString('en-US')} fans this run`,
     unlock: (s) => s.fansRun >= fans,

@@ -42,6 +42,8 @@ export function describeEffect(e: Effect): string {
       return `Income +${pct(e.pct)}.`;
     case 'fameExp':
       return `Fans boost income more (fame power +${e.add}).`;
+    case 'fameBonus':
+      return `The fame bonus from your fans is ×${fmt(e.mult, 2)} as strong.`;
     case 'superfan':
       return `Income boosted by ${pct(e.factor)} of your Trophy Cabinet.`;
     case 'fansMult':

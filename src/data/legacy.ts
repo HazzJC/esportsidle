@@ -87,7 +87,7 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
   {
     id: 'fame',
     name: 'Legendary Fanbase',
-    desc: 'Fans ×1.5 and fans boost income more.',
+    desc: 'Fans ×1.5, and the fame bonus from them ×1.25.',
     icon: 'heart',
     cost: 10,
     requires: ['legacy'],
@@ -95,10 +95,10 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
     y: 1,
     effects: [
       { kind: 'fansMult', mult: 1.5 },
-      { kind: 'fameExp', add: 0.02 },
+      { kind: 'fameBonus', mult: 1.25 },
     ],
   },
-  { id: 'fame_2', name: 'Generational Fans', desc: 'Fans boost income even more.', icon: 'heart', cost: 100, requires: ['fame'], x: 4, y: 2, effects: [{ kind: 'fameExp', add: 0.03 }] },
+  { id: 'fame_2', name: 'Generational Fans', desc: 'The fame bonus from your fans ×1.5.', icon: 'heart', cost: 100, requires: ['fame'], x: 4, y: 2, effects: [{ kind: 'fameBonus', mult: 1.5 }] },
 
   // Offline & house
   {

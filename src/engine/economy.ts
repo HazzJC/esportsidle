@@ -19,13 +19,15 @@ export const BASE_OFFLINE_RATE = 0.2;
 export const BASE_OFFLINE_CAP_HOURS = 12;
 export const BASE_BENCH_SLOTS = 1;
 export const BASE_SPONSOR_SLOTS = 2;
-/** Sponsors can at most triple income. */
 /**
- * Fame is fans^fameExp, and fans grow without bound as teams climb the ladder. Upgrades that raise
- * the exponent therefore compound an already exponential quantity twice over, so the exponent is
- * capped: past this point fame upgrades still help, but they can no longer outgrow the economy.
+ * Fame is fans^fameExp, and fans grow without bound as teams climb the ladder. Raising the exponent
+ * compounds an already exponential quantity twice over, so only the first four Fame upgrades raise
+ * it, and this ceiling is exactly the base plus those four: it guards against a stray exponent
+ * source but never swallows a purchase (tests/fame.test.ts checks both). Every later Fame upgrade,
+ * and the legacy fame nodes, multiply the fame bonus instead (`fameBonus`), which grows like any
+ * other upgrade line.
  */
-export const MAX_FAME_EXP = 0.12;
+export const MAX_FAME_EXP = 0.13;
 
 export function emptyMods(): Mods {
   return {
@@ -38,6 +40,7 @@ export function emptyMods(): Mods {
     clickCpsPct: 0,
     globalMult: 1,
     fameExp: BASE_FAME_EXP,
+    fameBonusMult: 1,
     superfanFactors: [],
     fansMult: 1,
     hypeGainMult: 1,
@@ -116,6 +119,9 @@ export function applyEffect(m: Mods, e: Effect): void {
       break;
     case 'fameExp':
       m.fameExp += e.add;
+      break;
+    case 'fameBonus':
+      m.fameBonusMult *= e.mult;
       break;
     case 'superfan':
       m.superfanFactors.push(e.factor);
@@ -306,7 +312,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     opsFans += op.fansPerSec * st.owned;
   }
 
-  const fameMult = fameMultiplier(s.fans, mods.fameExp);
+  const fameMult = fameMultiplier(s.fans, mods.fameExp) * mods.fameBonusMult;
   const cabinet = cabinetCount(s) * CABINET_PER_ACHIEVEMENT;
   const superfanMult = cabinetIncomeMult(cabinetCount(s), mods.superfanFactors);
 

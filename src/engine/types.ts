@@ -49,6 +49,8 @@ export type Effect =
   | { kind: 'clickCpsPct'; pct: number }
   | { kind: 'globalPct'; pct: number }
   | { kind: 'fameExp'; add: number }
+  /** Multiplies the whole fame bonus: fans are worth that much more income. */
+  | { kind: 'fameBonus'; mult: number }
   | { kind: 'superfan'; factor: number }
   | { kind: 'fansMult'; mult: number }
   | { kind: 'hypeGain'; mult: number }
@@ -94,6 +96,8 @@ export interface Mods {
   clickCpsPct: number;
   globalMult: number;
   fameExp: number;
+  /** Multiplier on the fame bonus from later Fame upgrades and legacy. */
+  fameBonusMult: number;
   superfanFactors: number[];
   fansMult: number;
   hypeGainMult: number;

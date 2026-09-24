@@ -19,8 +19,32 @@
 
 ## Pending Changes
 
-### HQ redesign, drawn upgrade icons and brighter operation scenes
+### Fix: eight Fame upgrades did nothing, and other swallowed bonuses
 *Status: Pending*
+
+* **The Issue / Motivation**: A report said the fame exponent cap (`MAX_FAME_EXP = 0.12`) swallowed most of the Fame upgrade line. Checked against the engine, it was true:
+  * Base 0.08 plus Discord Server, Fan Subreddit and Fan Art Wall reached 0.115. Meet & Greets delivered +0.005 of its advertised +0.015.
+  * Fan Conventions through Fandom Singularity (2e11 to 2e25 cash) added exactly nothing, while their cards promised "fame power +0.02…0.04".
+  * Worse than reported: the legacy nodes Legendary Fanbase (+0.02) and Generational Fans (+0.03) reach the cap by themselves, so an org that owns them got nothing from any of the twelve cash upgrades.
+  * The existing test only checked that the cap held, not that the line still paid.
+  * The same check found two related cases:
+    * The VPN sponsor perk (+10% offline earnings per strength) added nothing once the three legacy offline nodes took offline efficiency to its 100% cap.
+    * Chef and Sports Psychologist cards showed "+65 base morale" and more, when base morale stops at 95 (65 plus 30).
+* **What Changed**:
+  * **Fame**:
+    * Only the first four Fame upgrades raise the exponent, and `MAX_FAME_EXP` is 0.13, exactly the base plus those four, so the cap guards against a stray source without swallowing a purchase.
+    * Fan Conventions through Fandom Singularity now multiply the fame bonus (×1.2, 1.2, 1.25, 1.25, 1.3, 1.3, 1.4, 1.5; a new `fameBonus` effect). A multiplier doesn't compound with the fanbase the way an exponent does, so the late line can't run away. Together they are ×8 at the top of the line.
+    * The legacy nodes are now fame bonus ×1.25 (Legendary Fanbase, alongside fans ×1.5) and ×1.5 (Generational Fans).
+    * Card text, the legacy descriptions, the Fans tooltip and the code comment now say what actually happens.
+  * **VPN sponsors** add offline hours (+6h per strength, uncapped) instead of offline efficiency. Sponsor perk scaling handles hour-based effects.
+  * **Morale**: Chef morale levels off at +15 and Psychologist at +12, through the staff effect ceiling. With decor's +19 that covers the 95 cap even for Homesick players, and the cards show what lands. Their other effects are unchanged.
+  * **Tests** (`tests/fame.test.ts`):
+    * Buying each Fame upgrade and legacy fame node in order must raise the fame bonus.
+    * Every fame-exponent source together must fit under the cap, and every offline efficiency source within 100%.
+    * A general guard: every store upgrade, bought in cost order, must change the game's modifiers. That fails for any future cap that silently eats a purchase, and it would have failed for this one.
+
+### HQ redesign, drawn upgrade icons and brighter operation scenes
+*Status: Committed* | `5ff945a` (Sep 23 2026)
 
 * **The Issue / Motivation**:
   * The HQ was hard to read at a glance. There was no summary of where income came from, the goal cards left gaps, and the operation lanes showed little beyond a count, with a cryptic level button.
@@ -46,13 +70,13 @@
     * Every HQ worker gets a thin rim of its lane colour, lifting dark sprites off dark scenes.
 
 ### Fix: black screen after offline progress (duplicate match key)
-*Status: Pending*
+*Status: Committed* | `ce5a011` (Sep 23 2026)
 
 * **The Issue / Motivation**: A returning player's save crashed on load with Svelte's `each_key_duplicate`, which the new recovery screen reported. The recent-results list under the logo keyed each match by `game-time`. Offline catch-up runs in coarse steps, so it can finish two matches for one team in the same tick; they got the same key and the first render threw. The bug dates from M2, and a long enough absence triggers it.
 * **What Changed**: Recent results are keyed by game, position and time (`ClickerPanel.svelte`). HQ season recaps also add their position to the key, as a guard against the same kind of collision (`Stories.svelte`). Reproduced with a save whose team had two matches at the same time: it crashed before the fix and loads after it.
 
 ### A recovery screen instead of a black page
-*Status: Pending*
+*Status: Committed* | `ac756be` (Sep 23 2026)
 
 * **The Issue / Motivation**: An existing player saw only a black screen on the GitHub Pages site, while a fresh browser (Edge) loaded fine. Pages lets browsers cache the page for 10 minutes. A page cached from before a deploy points at script files that no longer exist, and a save the new version can't draw would crash the same way. Either failure left an empty dark page, with no hint and no way to rescue the save.
 * **What Changed**:
@@ -61,7 +85,7 @@
   * `src/main.ts` clears any half-drawn page if the first render throws, so the card can appear.
 
 ### Operations reordered by real-world cost
-*Status: Pending*
+*Status: Committed* | `007841c` (Sep 23 2026)
 
 * **The Issue / Motivation**: A few operations were out of order for a progression ladder. The Gaming Café came before the cheaper Bootcamp House, the Esports Arena before the Broadcast Studio, and the Streaming Platform before the Game Studio. Ranked by rough real-world cost, the order runs: a house (~$1M), a café fit-out, a LAN venue, a broadcast stage (~$2–15M), an arena (~$10–100M), a competitive AAA game (~$100–500M), a platform (~$1B), then a global league.
 * **What Changed**:
@@ -533,7 +557,7 @@
   * Headless simulation runs revealed extreme hyperinflation ($10^{12}$ cash reached within an hour) caused by unbounded compounding exponents in fame and match prize scaling. The game also lacked audio feedback.
 * **What Changed**:
   * **Procedural WebAudio Synthesis**: Implemented 100% asset-free synthesized sound effects for clicks, purchases, drops, level-ups, and prestige.
-  * **Economy Invariant Fixes**: Capped `fameExp`, stopped match prizes from multiplying operations-linked income, and retuned league progression scaling.
+  * **Economy Invariant Fixes**: ~~Capped `fameExp` at 0.12~~ *(Changed 1 time since: the cap left eight Fame upgrades and both legacy fame nodes doing nothing; only the first four Fame upgrades now raise the exponent, up to a 0.13 cap that equals their total, and the rest multiply the fame bonus)*, stopped match prizes from multiplying operations-linked income, and retuned league progression scaling.
   * **Automated Headless Sim**: Added `scripts/sim.ts` to execute automated runs, sampling milestones and mathematical invariants over 5-hour simulated gameplay sessions.
 
 ---
