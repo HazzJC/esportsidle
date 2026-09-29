@@ -26,7 +26,7 @@ Every persona follows the tutorial closely, as a new player does.
 
 ```bash
 npm run sim:quick     # active, semi, idle x 2 seeds x 3 h, about 30 s: use while tuning
-npm run sim           # the full matrix: 34 runs, about 5-9 minutes on 18 workers
+npm run sim           # the full matrix: 39 runs, about 2.5 minutes on 18 workers
 npx tsx scripts/sim/report.ts output/sim/after --compare=output/sim/before
 npx tsx scripts/sim/paybacks.ts output/sim/full/active-1.json
 ```
@@ -45,7 +45,7 @@ npx tsx scripts/sim/paybacks.ts output/sim/full/active-1.json
 | PASS | Matches 10–50% of an active run (to the first Legacy point) | 20% |
 | PASS | Active play at least 1.5× faster to the first Legacy point than idling | 4.2× (idle: 5h43) |
 | PASS | No source over 90% of any run | largest 79.5% (matches, a 12-hour semi run) |
-| FAIL | No 10-minute window after the first 30 min over 90% one source | 7.6% of windows, all operations, in `semi` and `idle` |
+| FAIL | No 10-minute window after the first 30 min over 90% one source | 6.5% of windows, all operations, in `semi` and `idle` |
 | FAIL | Selling an hour after the first Legacy point beats staying by 1.5× over 3 hours | **staying wins ~10×** (sell ÷ stay: 0.04–0.19) |
 
 ## Pace

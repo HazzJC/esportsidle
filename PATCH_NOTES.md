@@ -74,7 +74,7 @@
     * `docs/economy.md` is rewritten as the single living write-up: how it is measured, the targets, pace, income mix over time, what each system is worth, paybacks, the late game, bugs found, and a ranked tuning list (not applied).
     * Deleted the dated audit docs it supersedes: `balance-audit-2026-09-20`, `progression-audit-2026-09-22`, `lategame-findings-2026-09-29`, and the generated `lategame-audit.md`.
     * `AGENTS.md` and `docs/content-catalog.md` point at the tooling. A stray Invitationals row in the catalog is back inside its table.
-  * **Baseline** (`npm run sim`: 34 runs, 8m50s on 18 workers):
+  * **Baseline** (`npm run sim`: 39 runs including the restart check, 2m30s on 18 workers):
     * The active player earns its first Legacy point at **1h22** (1h17–1h25 over five seeds), against a 2h45–4h target. Semi takes 3h51, idle 5h43, and casual 13h31 wall-clock (66 minutes of it with the game open).
     * **Staying in a run beats selling by about 10×**: from an hour after the first point, three more hours in the run end with 464–1,848 Legacy, while selling and replaying ends with 69–166. Income grows about 100× every 30 minutes and never levels off.
     * Matches climb to 71% of a 12-hour semi run and 66% of a 3-day casual game. Gear on established teams costs under a second of income. Snack upgrades pay back 12–22× slower than other upgrades.
