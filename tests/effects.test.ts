@@ -136,7 +136,8 @@ describe('effects reach the game, not just the modifier set', () => {
 
   it('keeps every match-prize source small enough that matches cannot run away from operations', () => {
     const s = everythingOwned();
-    // Pedigree is uncapped, but ten ranks is already a lot; the rest is finite.
+    // Everything owned with ten Pedigree ranks. A veteran with 150+ ranks is allowed up to 50
+    // (tests/slow/lategame-audit.test.ts); Pedigree has no ceiling, so that cap is the one that bites.
     expect(computeMods(s).prizeMult).toBeLessThan(15);
   });
 

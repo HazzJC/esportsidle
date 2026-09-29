@@ -359,25 +359,6 @@ describe('saves and sales', () => {
     expect(back.teams.smash).toBeUndefined();
   });
 
-  it('turns an old three-prospect draft into the single first player', () => {
-    const s = createNewGame(0, 1);
-    s.draft = [...s.draft!, ...createNewGame(0, 2).draft!, ...createNewGame(0, 3).draft!];
-    const back = decodeSave(encodeSave(s));
-    expect(back.draft).toHaveLength(1);
-  });
-
-  it('lets orgs from before the draft keep their founder and skip the tutorial', () => {
-    const s = foundedGame(0, 1);
-    const old = { ...s, version: 3 } as unknown as Record<string, unknown>;
-    delete old.tutorial;
-    delete old.draft;
-    delete old.quests;
-    const back = decodeSave(encodeSave(old as never).replace(/^ESI\d+/, 'ESI3'));
-    expect(back.tutorial.step).toBe('done');
-    expect(back.draft).toBeNull();
-    expect(back.players.founder).toBeDefined();
-  });
-
   it('brings the founding player back after a sale, name and look intact', () => {
     const s = createNewGame(0, 1);
     s.cash = 1e6;
@@ -417,13 +398,4 @@ describe('saves and sales', () => {
     expect(s.draft).toBeNull();
   });
 
-  it('brings the founder back after a sale for orgs that have one', () => {
-    const s = foundedGame(0, 1);
-    const tag = s.players.founder.tag;
-    s.earnedTotal = LEGACY_DIVISOR;
-    sellOrg(s, { charter: 'operator' });
-    expect(s.players.founder.tag).toBe(tag);
-    expect(s.teams.smash.lineup[0]).toBe('founder');
-    expect(s.draft).toBeNull();
-  });
 });

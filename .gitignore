@@ -10,3 +10,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Generated sim and audit output (regenerate with npm run sim)
+output/*
+!output/visual-comparisons/

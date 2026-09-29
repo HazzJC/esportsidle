@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { QUESTS } from '../src/data/quests';
-import { STAFF_MAP, effectAmount } from '../src/data/staff';
-import { PRODUCTS, TRENDS } from '../src/data/merch';
-import { HYPE_ASSIST_LEVEL, HYPE_MAX, HYPE_QUEST_ID, decayHype, hypeAssistActive } from '../src/engine/clicker';
-import { addDesign, analyzeDesign, generateDesign } from '../src/engine/designs';
+import { DESIGN_PALETTE, PRODUCTS, TRENDS } from '../src/data/merch';
+import { effectAmount, STAFF_MAP } from '../src/data/staff';
+import { addDesign, analyzeDesign, encodePixels, generateDesign } from '../src/engine/designs';
 import { computeMods, computeRates } from '../src/engine/economy';
-import { MANIA_SECONDS, TRENDING_THRESHOLD, TREND_SECONDS, noveltyOf, rotateTrend, setLineDesign, trendLength, unlockProduct } from '../src/engine/merch';
+import {
+  MANIA_SECONDS,
+  merchQualityCost,
+  noveltyOf,
+  rotateTrend,
+  setLineDesign,
+  TREND_SECONDS,
+  TRENDING_THRESHOLD,
+  trendLength,
+  unlockProduct,
+  upgradeMerchQuality,
+} from '../src/engine/merch';
 import { Rng } from '../src/engine/rng';
 import { staffPower } from '../src/engine/staff';
 import { foundedGame } from './fixtures';
@@ -113,24 +122,28 @@ describe('trend-briefed designs', () => {
   });
 });
 
-describe('hype streak assist', () => {
-  it('warms the crowd up to 80% while the quest is live, and not otherwise', () => {
-    const s = foundedGame(0, 31);
-    expect(QUESTS.some((q) => q.id === HYPE_QUEST_ID)).toBe(true);
-    s.quests.active = [{ id: HYPE_QUEST_ID, ready: false, base: 0 } as never];
-    expect(hypeAssistActive(s)).toBe(true);
-    s.hype = 0;
-    s.lastClickTime = -1000;
-    for (let i = 0; i < 200; i++) {
-      s.time += 1;
-      decayHype(s, 1);
-    }
-    expect(s.hype).toBeCloseTo(HYPE_MAX * HYPE_ASSIST_LEVEL);
-    s.quests.active = [];
-    for (let i = 0; i < 200; i++) {
-      s.time += 1;
-      decayHype(s, 1);
-    }
-    expect(s.hype).toBe(0);
+describe('merch finish and mania', () => {
+  it('makes upgraded, fresh merch and mania materially more profitable', () => {
+    const s = foundedGame(0, 4);
+    s.cash = 1e8;
+    s.ops.grinder.owned = 100;
+    s.fans = 1e6;
+    s.merch.unlocked.tee = true;
+    s.designs.test = {
+      id: 'test', name: 'Neon', size: 16, palette: [...DESIGN_PALETTE],
+      pixels: encodePixels(Array.from({ length: 256 }, (_, i) => i % 4 === 0 ? 7 : 9)),
+      handmade: true, createdAt: 0, version: 1,
+    };
+    s.merch.lines.tee = { designId: 'test', price: 1, launchedAt: 0, sold: 0, revenue: 0, quality: 0 };
+    const base = computeRates(s).merchCps;
+    expect(base).toBeGreaterThan(0);
+    const cost = merchQualityCost(s, 'tee');
+    expect(upgradeMerchQuality(s, 'tee')).toBe(true);
+    expect(s.cash).toBe(1e8 - cost);
+    expect(computeRates(s).merchCps).toBeGreaterThan(base);
+    s.merch.mania = { trend: s.merch.trend, productId: 'tee', endsAt: 400 };
+    expect(computeRates(s).merchCps).toBeGreaterThan(base * 4);
+    s.time = 500;
+    expect(computeRates(s).merchCps).toBeLessThan(base * 2);
   });
 });

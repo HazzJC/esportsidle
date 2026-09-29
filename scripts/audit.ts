@@ -17,6 +17,10 @@
  * Dynasty ranks, and records what every purchase was worth.
  *
  *   npx tsx scripts/audit.ts --mode=active --seed=1 --hours=10 --runs=4 --json=out/active-1.json
+ *
+ * --from=save.txt starts from an exported save instead of a new game (the lategame audit uses
+ * tests/fixtures/lategame-save.txt), and --sellnow sells that org on the first decision, so the
+ * run measured is the first one after a sale with the save's Legacy behind it.
  */
 import { GAMES } from '../src/data/games';
 import { GEAR_SLOTS } from '../src/data/gear';
@@ -47,8 +51,8 @@ import { playInvitation } from '../src/engine/tournament';
 import { operationsOpen } from '../src/engine/tutorial';
 import { INCOME_SOURCES, type GameState, type IncomeSource } from '../src/engine/types';
 import { buyUpgrade, storeUpgrades, upgradePrice } from '../src/engine/upgrades';
-import { encodeSave } from '../src/engine/save';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { decodeSave, encodeSave } from '../src/engine/save';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 declare const process: { argv: string[] };
 
@@ -69,6 +73,8 @@ const SAMPLE_EVERY = Number(args.interval ?? 600);
 const MAX_RUN_SECONDS = Number(args.maxrun ?? 4 * 3600);
 /** --save=path also writes the final game as a save string, for loading into the game to look at. */
 const SAVE_OUT = args.save ? String(args.save) : null;
+const FROM = args.from ? String(args.from) : null;
+const SELL_NOW = args.sellnow === 'true';
 
 const DECIDE_EVERY: Record<Mode, number> = { active: Number(args.decide ?? 20), semi: Number(args.decide ?? 120), passive: Number(args.decide ?? 600) };
 const MAX_BUYS: Record<Mode, number> = { active: 40, semi: 120, passive: 200 };
@@ -138,8 +144,9 @@ const sponsorPayouts: { run: number; at: number; amount: number; seconds: number
 // ---------------------------------------------------------------------------
 // Player model
 // ---------------------------------------------------------------------------
-const s = createNewGame(0, SEED);
+const s = FROM ? decodeSave(readFileSync(FROM, 'utf8')) : createNewGame(0, SEED);
 s.settings.onboarded = true;
+if (FROM) s.buffs = [];
 if (MODE === 'passive') for (const key of Object.keys(s.automation) as (keyof typeof s.automation)[]) s.automation[key].on = true;
 
 let wall = 0;
@@ -351,7 +358,8 @@ function maybeSell(): void {
   if (sales.length >= MAX_SALES) return;
   const pending = pendingLegacy(s);
   const runWall = wall - runStart;
-  if (!(pending >= Math.max(1, s.prestige.level) || (runWall >= MAX_RUN_SECONDS && pending >= 1))) return;
+  const forced = SELL_NOW && sales.length === 0 && pending >= 1;
+  if (!(forced || pending >= Math.max(1, s.prestige.level) || (runWall >= MAX_RUN_SECONDS && pending >= 1))) return;
   const nodeValues = valueNodes();
   const offer = mandateOffers(s)[0];
   sellOrg(s, { charter: 'operator', mandate: offer?.id ?? null });

@@ -9,9 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "sim": "tsx scripts/sim.ts"
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "sim": "tsx scripts/sim.ts",
+    "test:slow": "vitest run --project slow"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

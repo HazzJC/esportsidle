@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { autoRoles } from '../src/engine/automation';
 import { computeMods } from '../src/engine/economy';
 import { signListing } from '../src/engine/market';
 import { generatePlayer } from '../src/engine/players';
-import { previewAssign, previewSigning } from '../src/engine/roster';
 import { Rng } from '../src/engine/rng';
-import { foundedGame } from './fixtures';
-import { evaluateTeam, unlockGame } from '../src/engine/teams';
+import { previewAssign, previewSigning } from '../src/engine/roster';
+import { addToTeam, ensureTeam, evaluateTeam, unlockGame } from '../src/engine/teams';
 import type { GameState, Player } from '../src/engine/types';
+import { foundedGame } from './fixtures';
 
 const CTX = { cpsNoBuffs: 0, incomeBuff: 1, fansMult: 1 };
 
@@ -100,5 +101,41 @@ describe('roster previews', () => {
     // Any change of lineup costs some chemistry.
     s.teams.rocket.chemistry = 1;
     expect(previewAssign(s, 'rocket', 'sub', 1, mods)!.after.chemistry).toBeLessThan(1);
+  });
+});
+
+describe('role coaching', () => {
+  it('puts players on their own role when it is worth the disruption', () => {
+    const s = foundedGame(0, 11);
+    ensureTeam(s, 'rocket');
+    const mods = computeMods(s);
+    const squad = [0, 1, 2].map((role) => {
+      const p = generatePlayer(new Rng({ rng: 60 + role }), { id: `r${role}`, gameId: 'rocket', time: 0 });
+      p.role = role;
+      s.players[p.id] = p;
+      addToTeam(s, p, mods);
+      return p;
+    });
+    const team = s.teams.rocket;
+    // Put everyone in the wrong place: each plays at 85% until the coaches step in.
+    team.lineup = [squad[2].id, squad[0].id, squad[1].id];
+    autoRoles(s);
+    expect(team.lineup).toEqual([squad[0].id, squad[1].id, squad[2].id]);
+  });
+
+  it('leaves a lineup that is already right alone', () => {
+    const s = foundedGame(0, 11);
+    ensureTeam(s, 'rocket');
+    const mods = computeMods(s);
+    for (const role of [0, 1, 2]) {
+      const p = generatePlayer(new Rng({ rng: 70 + role }), { id: `q${role}`, gameId: 'rocket', time: 0 });
+      p.role = role;
+      s.players[p.id] = p;
+      addToTeam(s, p, mods);
+    }
+    const team = s.teams.rocket;
+    const before = [...team.lineup];
+    autoRoles(s);
+    expect(team.lineup).toEqual(before);
   });
 });

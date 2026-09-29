@@ -14,16 +14,11 @@ describe('content integrity', () => {
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
   });
 
-  it('defines 16 operations with increasing costs', () => {
-    expect(OPERATIONS).toHaveLength(16);
+  it('makes every operation cost and produce more than the one before', () => {
     for (let i = 1; i < OPERATIONS.length; i++) {
       expect(OPERATIONS[i].baseCost).toBeGreaterThan(OPERATIONS[i - 1].baseCost);
       expect(OPERATIONS[i].baseCps).toBeGreaterThan(OPERATIONS[i - 1].baseCps);
     }
-  });
-
-  it('ships a deep upgrade list', () => {
-    expect(UPGRADES.length).toBeGreaterThan(250);
   });
 });
 
@@ -33,7 +28,7 @@ describe('rates', () => {
     s.ops.grinder.owned = 10;
     s.ops.streamer.owned = 2;
     const r = computeRates(s);
-    expect(r.baseCps).toBeCloseTo(10 * 0.1 + 2 * 1);
+    expect(r.baseCps).toBeCloseTo(10 * OPERATIONS[0].baseCps + 2 * OPERATIONS[1].baseCps);
     expect(r.cps).toBeCloseTo(r.baseCps * r.globalMult);
   });
 

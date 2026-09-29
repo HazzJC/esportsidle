@@ -1,16 +1,18 @@
+/** An RNG stub that always rolls the given value. */
 import { describe, expect, it } from 'vitest';
 import { DECOR, ROOMS } from '../src/data/decor';
-import { STAFF } from '../src/data/staff';
+import { SEASON_PLANS } from '../src/data/seasonPlans';
+import { STAFF, STAFF_MAP, STAFF_SOFT_CAP } from '../src/data/staff';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { healthChances, rollHealth } from '../src/engine/health';
 import { refreshMarket, signListing } from '../src/engine/market';
 import { isAvailable } from '../src/engine/players';
-import type { Rng } from '../src/engine/rng';
-import { buyDecor, hireStaff, roomLevel, staffPrice } from '../src/engine/staff';
+import { geometricPrice } from '../src/engine/pricing';
+import { Rng } from '../src/engine/rng';
+import { buyDecor, hireStaff, roomLevel, staffPower, staffPrice } from '../src/engine/staff';
+import { autoSubstitute, benchPlayer, ensureTeam, updatePlayers } from '../src/engine/teams';
 import { foundedGame } from './fixtures';
-import { autoSubstitute, updatePlayers } from '../src/engine/teams';
 
-/** An RNG stub that always rolls the given value. */
 function fixedRng(value: number): Rng {
   return {
     next: () => value,
@@ -127,5 +129,76 @@ describe('gaming house', () => {
     expect(buyDecor(s, 'fridge')).toBe(true);
     expect(buyDecor(s, 'fridge')).toBe(false);
     expect(computeMods(s).energyRecoveryMult).toBeGreaterThan(before);
+  });
+});
+
+describe('coach and analyst scaling', () => {
+  const coach = STAFF_MAP.get('coach')!;
+
+  it('is unchanged up to the tenth hire and about half as strong by the fiftieth', () => {
+    for (const n of [1, 5, STAFF_SOFT_CAP]) {
+      expect(staffPower(n, 1, coach.softCapFrom), `at ${n}`).toBeCloseTo(Math.pow(n, 0.8), 6);
+    }
+    const at50 = staffPower(50, 1, coach.softCapFrom) / Math.pow(50, 0.8);
+    expect(at50).toBeGreaterThan(0.45);
+    expect(at50).toBeLessThan(0.6);
+  });
+
+  it('costs a little less to stack', () => {
+    expect(coach.costGrowth).toBeLessThan(1.15);
+    expect(geometricPrice(coach.baseCost, 30, 1, 1, coach.costGrowth)).toBeLessThan(geometricPrice(coach.baseCost, 30, 1, 1, 1.15));
+  });
+
+  it('leaves other staff alone', () => {
+    const chef = STAFF_MAP.get('chef')!;
+    expect(chef.softCapFrom).toBeUndefined();
+    expect(staffPower(50, 1, chef.softCapFrom)).toBeCloseTo(Math.pow(50, 0.8), 6);
+  });
+});
+
+describe('flu recovery mechanic', () => {
+  it('heals purely based on time without requiring benching', () => {
+    const s = foundedGame(0, 1);
+    const team = ensureTeam(s, 'smash');
+    const player = Object.values(s.players)[0];
+    // Put player in active team slot
+    team.lineup[0] = player.id;
+    player.status = { kind: 'sick', until: s.time + 30, reason: 'Flu' };
+    const mods = computeMods(s);
+
+    // 10 seconds pass: still sick
+    s.time += 10;
+    updatePlayers(s, 10, mods);
+    expect(player.status.kind).toBe('sick');
+
+    // 25 more seconds pass: recovered while still on active roster
+    s.time += 25;
+    updatePlayers(s, 25, mods);
+    expect(player.status.kind).toBe('healthy');
+    expect(player.status.until).toBe(0);
+    expect(team.lineup[0]).toBe(player.id);
+  });
+});
+
+describe('Bench recovery', () => {
+  it('benched players shake off an injury twice as fast', () => {
+    const s = foundedGame(0, 3);
+    const p = s.players.founder;
+    const mods = computeMods(s);
+    p.status = { kind: 'injured', until: s.time + 100, reason: 'Wrist strain' };
+    s.time += 10;
+    updatePlayers(s, 10, mods);
+    expect(p.status.until - s.time).toBeCloseTo(90);
+    expect(benchPlayer(s, 'smash', p.id, mods)).toBe(true);
+    s.time += 10;
+    updatePlayers(s, 10, mods);
+    expect(p.status.until - s.time).toBeCloseTo(70);
+  });
+
+  it('pushing for promotion raises the injury risk', () => {
+    const s = foundedGame(0, 3);
+    const p = s.players.founder;
+    const mods = computeMods(s);
+    expect(healthChances(p, mods, SEASON_PLANS.push.injuryRisk).injured).toBeGreaterThan(healthChances(p, mods, SEASON_PLANS.development.injuryRisk).injured);
   });
 });

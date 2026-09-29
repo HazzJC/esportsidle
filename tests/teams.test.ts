@@ -183,19 +183,3 @@ describe('transfer market', () => {
     expect(s.teams.smash.bench).toContain('founder');
   });
 });
-
-describe('save migration', () => {
-  it('upgrades a v1 save with no players by creating the founder', () => {
-    const v1 = createBaseState(0, 1) as unknown as Record<string, unknown>;
-    delete v1.players;
-    delete v1.teams;
-    delete v1.games;
-    delete v1.market;
-    v1.version = 1;
-    const text = encodeSave(v1 as never).replace(/^ESI\d+/, 'ESI1');
-    const s = decodeSave(text);
-    expect(s.players.founder).toBeDefined();
-    expect(s.teams.smash.lineup[0]).toBe('founder');
-    expect(s.games.smash.unlocked).toBe(true);
-  });
-});

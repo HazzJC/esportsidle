@@ -19,6 +19,33 @@
 
 ## Pending Changes
 
+### Test suite: reorganised by feature, dead tests removed, slow suite made opt-in
+*Status: Pending*
+
+* **The Issue / Motivation**: The suite had grown in batches. Seven files were named after the batch that added them rather than the feature they test, save migrations were spread over six files, and some tests checked nothing (a copy of the toast-duration formula tested against itself, a string compared with itself) or asserted that known exploits still worked. `tests/playtest-runner.ts` imported the removed `skipQuest`, so `npm run check` failed. `npm test` took 15.7 s, 20 s of CPU of it in two characterization tests that only logged numbers.
+* **What Changed**:
+  * **Deleted**:
+    * `tests/playtest-runner.ts`, an unused third copy of the sim that no longer compiled.
+    * `tests/playtest-results/`, a set of Sep-19 logs that nothing referenced.
+    * `tests/playtest-audit.test.ts`, a console.log characterization suite that pinned the season-erase and buffed-transfer exploits. Its one real invariant, that squads develop only while the game is open, moved to `save.test.ts`.
+    * The regenerable sim output under `output/`, which is now gitignored apart from `visual-comparisons/`.
+  * **Merged by feature**: `feedback-batch`, `user-feedback-fixes`, `new-features`, `balance-update`, `rebalance` and `merch-rebalance` were split into the matching files:
+    * new: `clicker`, `merch`, `market`, `players`, `automation`;
+    * existing: `staff`, `roster`, `fame`, `business`, `events`.
+    * `upgrade-audit` is now `effects.test.ts`.
+  * **One migrations file**: every save-migration and save-heal test now lives in `migrations.test.ts`:
+    * the v1, v2→v3 and v5→v6 migrations;
+    * founder healing;
+    * saves from before the first-player draft.
+  * **Removed**:
+    * The two no-op tests.
+    * The legacy-node cost pins and the `LEGACY_DIVISOR` pin, which is already covered in `prestige`.
+    * A third copy of "founder returns after a sale".
+    * The "at least 250 upgrades" and "exactly 16 operations" / "14 fame sources" count pins. Where needed they now read from the data.
+  * **Deterministic**: hand-written 27-field team literals now use `createTeam()`, and `createBaseState()` calls are seeded.
+  * **Lategame suite**: moved to `tests/slow/`. Its setup runs lazily, and it runs in its own vitest project (`npm run test:slow`); `npm test` runs the `unit` project only. It gained a "finds everything the budgets measure" invariant, because an `it.fails` budget whose lookup found nothing would otherwise pass on the TypeError. The fresh-run (<15) and veteran (<50) prize-stack caps now reference each other.
+  * **Result**: `npm test` takes 2.4 s (353 tests), `npm run test:slow` takes 15 s (14 plus 8 expected fails), and `npm run check` passes again.
+
 ### Test suite: ultra-lategame balance audit built on a real 1.8e50-earnings save
 *Status: Pending*
 
@@ -28,11 +55,11 @@
   * `scripts/lategame-lib.ts` and `scripts/lategame-checks.ts`: helpers that remove each owned thing in turn (every Legacy node, Dynasty track, upgrade, staff line, operation, team, sponsors, merch, fans, cabinet) and recompute income; lump-sum payouts in seconds of income; next-unit payback and elasticity for every operation and staff line; the whole bank spent on one line; merch's best and worst case; the cabinet and sponsor multiplier chains; numeric headroom to 1.8e308; a no-purchase forward projection.
   * `scripts/lategame-audit.ts` writes `docs/lategame-audit.md` and `output/lategame-audit/static.json`. It folds in any `play-*.json` from `scripts/audit.ts`.
   * `scripts/audit.ts` gained `--from=<save>` and `--sellnow=true`, so the existing progression bot can sell the veteran org and play the runs after it with that Legacy.
-  * `tests/lategame-audit.test.ts`: invariants (finite, headroom, formatting) plus budgets. Budgets that the working tree breaks are `it.fails`, so each flips red the moment a balance change fixes it and the `.fails` should then be removed.
+  * `tests/slow/lategame-audit.test.ts`: invariants (finite, headroom, formatting) plus budgets. Budgets that the working tree breaks are `it.fails`, so each flips red the moment a balance change fixes it and the `.fails` should then be removed.
   * Findings are in `docs/lategame-findings-2026-09-29.md`.
 
 ### Fix: the Prize line, click multipliers and Worlds-season events did nothing
-*Status: Pending*
+*Status: Committed* | `a01e3c3` (Sep 29 2026)
 
 * **The Issue / Motivation**: Audit of every store upgrade and legacy node (each removed in turn from an org that owns everything else, then measured against the real payouts on a 1-hour run and the late-game save). Every effect changed the modifier set, but two never reached the game:
   * **Match prize money**: `prizeMult` multiplied only the flat tier prize. A match prize is that flat amount plus a few seconds of operations income, and the flat part is 0.1% of it an hour into a run (10⁻²⁴ in the late-game save). So the eight Prize-line upgrades, Hall of Champions, Alumni Network, Pedigree ranks, Banking sponsors, the "Branch out" quest perk and the Worlds-season event (×1.5 prize for 5 minutes) paid nothing for matches while their cards said "Match prize money ×N". Only Invitationals used them.
