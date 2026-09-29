@@ -19,8 +19,69 @@
 
 ## Pending Changes
 
-### Test suite: reorganised by feature, dead tests removed, slow suite made opt-in
+### Balance tooling: one seeded, parallel playstyle simulator with source-over-time books
 *Status: Pending*
+
+* **The Issue / Motivation**: Balance numbers came from four overlapping harnesses (`scripts/sim.ts`, `scripts/audit.ts` plus `audit-report.ts`, `scripts/compare.ts`, and the broken test-only runner). All of them shared one bot shape:
+  * It bought perfectly, measuring about 140 purchases with a full income evaluation each and taking the best payback.
+  * It clicked five times a second, but only in fixed windows.
+  * It caught drops instantly and ignored hype chains.
+  * It ran one seed per process, with no parallelism.
+  * No bot played the ways people actually play: acting every 20–30 seconds with a crowd every ten minutes, or ten minutes on and fifty idle with the tab open. A 12-hour active run took up to 27 minutes.
+* **What Changed**:
+  * **`scripts/sim/`** replaces the old harnesses. The loop (`run-sim.ts`) is `audit.ts` refactored into a pure `runSim(options)`. It was checked byte-for-byte against `audit.ts` on seed 1 over 3 hours: every purchase, milestone, sample and sponsor payout is identical.
+  * **Personas** (`personas.ts`):
+    * `active` (the balance target): acts every 20–30 s, fills the meter for a crowd about every ten minutes, catches 85% of drops after a 1–6 s reaction, and pops 12 chain bubbles.
+    * `semi`: 10 minutes active, then 50 open and idle, every hour.
+    * `casual`: four sessions a day, closed in between, using the real offline path.
+    * `idle`: checks in every 10–15 minutes.
+    * `optimal`: the ceiling.
+    * `audit-compat`: the old bot, kept to check the simulator against.
+    * Every persona follows the tutorial closely. They now also answer world events, spend trophies on operation levels and trophy upgrades, and buy decor.
+  * **Buyers** (`buyers.ts`):
+    * `optimal` is the old exact-payback buyer.
+    * `human` judges payback through log-normal noise, sometimes ignores a category for a decision, and saves up for a favourite that is up to three minutes of income away.
+    * The player's own dice are seeded separately from the game's RNG.
+  * **Books every 10 simulated minutes** (`sampler` in `run-sim.ts`):
+    * each ledger source;
+    * the estimated share temporary buffs added (crowd, frenzy, other);
+    * sponsor, Legacy, fame and superfan multipliers;
+    * spending by kind, and cash moved outside the ledger;
+    * crowds, chains, and drops seen and caught;
+    * Legacy pending.
+  * **Matrix** (`matrix.ts`, `npm run sim` / `npm run sim:quick`): one child process per persona, seed and variant, run in parallel. The `full` preset:
+    * 5 personas × 5 seeds;
+    * `no-drops`, `no-merch`, `no-teams` and `no-clicks` variants;
+    * a restart check: from an hour after the first Legacy point, stay 3 h or sell and replay 3 h.
+  * **Report and targets**: `report.ts` writes `report.md` and a self-contained `report.html` of share-over-time charts. `targets.ts` holds the design targets as data; the report checks each one and marks it pass or fail:
+    * first Legacy at 2h45–4h active;
+    * a crowd every ~10 min;
+    * no source over 90% of a run or of a 10-minute window after 30 min;
+    * merch and matches each 10–40% / 10–50% of an active run;
+    * active play at least 1.5× faster than idle;
+    * selling at least 1.5× better than staying.
+  * **Payback audit** (`paybacks.ts`): prices every operation, level, upgrade (visible or within a day of income), staff hire, gear slot, merch finish and line, decor item, Legacy node and Dynasty rank at five points of a real run. It flags purchases that change nothing, purchases paying back 10× faster or slower than their kind, and cards whose stated ×N differs from what they did.
+  * **Faster engine**, identical results. These hot paths ran inside every income evaluation, so they speed up the game too:
+    * `playerEasterEgg` caches per player;
+    * gear stat multipliers look up only the slots that raise a stat;
+    * `computeRates` counts the cabinet once;
+    * `clickLogo` accepts precomputed modifiers.
+    * The simulator reuses modifiers when measuring operations, gear and merch finish.
+    * A 3-hour active run went from 140 s to 58 s with a byte-identical record.
+  * **Deleted**: `scripts/sim.ts`, `scripts/audit.ts`, `scripts/audit-report.ts`, `scripts/compare.ts`. `scripts/lategame-audit.ts` now plays forward with `scripts/sim/cli.ts` and writes its report under `output/`.
+  * **`tests/sim-smoke.test.ts`**: plays every persona for five minutes and checks determinism, so the simulator can't rot unnoticed again.
+  * **Docs**:
+    * `docs/economy.md` is rewritten as the single living write-up: how it is measured, the targets, pace, income mix over time, what each system is worth, paybacks, the late game, bugs found, and a ranked tuning list (not applied).
+    * Deleted the dated audit docs it supersedes: `balance-audit-2026-09-20`, `progression-audit-2026-09-22`, `lategame-findings-2026-09-29`, and the generated `lategame-audit.md`.
+    * `AGENTS.md` and `docs/content-catalog.md` point at the tooling. A stray Invitationals row in the catalog is back inside its table.
+  * **Baseline** (`npm run sim`: 34 runs, 8m50s on 18 workers):
+    * The active player earns its first Legacy point at **1h22** (1h17–1h25 over five seeds), against a 2h45–4h target. Semi takes 3h51, idle 5h43, and casual 13h31 wall-clock (66 minutes of it with the game open).
+    * **Staying in a run beats selling by about 10×**: from an hour after the first point, three more hours in the run end with 464–1,848 Legacy, while selling and replaying ends with 69–166. Income grows about 100× every 30 minutes and never levels off.
+    * Matches climb to 71% of a 12-hour semi run and 66% of a 3-day casual game. Gear on established teams costs under a second of income. Snack upgrades pay back 12–22× slower than other upgrades.
+    * **Bug found, not fixed**: the "The big exit" quest can never complete, because selling wipes the quest board before `orgsSold` increments.
+
+### Test suite: reorganised by feature, dead tests removed, slow suite made opt-in
+*Status: Committed* | `6a0d247` (Sep 29 2026)
 
 * **The Issue / Motivation**: The suite had grown in batches. Seven files were named after the batch that added them rather than the feature they test, save migrations were spread over six files, and some tests checked nothing (a copy of the toast-duration formula tested against itself, a string compared with itself) or asserted that known exploits still worked. `tests/playtest-runner.ts` imported the removed `skipQuest`, so `npm run check` failed. `npm test` took 15.7 s, 20 s of CPU of it in two characterization tests that only logged numbers.
 * **What Changed**:
@@ -47,7 +108,7 @@
   * **Result**: `npm test` takes 2.4 s (353 tests), `npm run test:slow` takes 15 s (14 plus 8 expected fails), and `npm run check` passes again.
 
 ### Test suite: ultra-lategame balance audit built on a real 1.8e50-earnings save
-*Status: Pending*
+*Status: Committed* | `6a0d247` (Sep 29 2026)
 
 * **The Issue / Motivation**: Every earlier audit stopped at a few hours into a fresh run, but real players sit 12 sales deep with Legacy in the trillions, where different things break. A player's very late-game save (12 sales, Legacy level 5.5e12, every Legacy node, 300 achievements) was supplied as a basis for finding what is out of hand there.
 * **What Changed**:

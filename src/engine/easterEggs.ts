@@ -25,9 +25,16 @@ function matchNormalised(norm: string): EasterEggId | null {
   return null;
 }
 
+/** Each player's match, kept until their tag or name changes. Ratings ask per stat, per player, per tick. */
+const playerCache = new WeakMap<Player, { tag: string; first: string; last: string; egg: EasterEggId | null }>();
+
 export function playerEasterEgg(p?: Player | null): EasterEggId | null {
   if (!p) return null;
-  return matchEasterEgg(p.tag) || matchEasterEgg(`${p.first} ${p.last}`) || matchEasterEgg(p.first) || null;
+  const hit = playerCache.get(p);
+  if (hit && hit.tag === p.tag && hit.first === p.first && hit.last === p.last) return hit.egg;
+  const egg = matchEasterEgg(p.tag) || matchEasterEgg(`${p.first} ${p.last}`) || matchEasterEgg(p.first) || null;
+  playerCache.set(p, { tag: p.tag, first: p.first, last: p.last, egg });
+  return egg;
 }
 
 export function hasTheOnlyCook(s: GameState): boolean {

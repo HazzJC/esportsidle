@@ -2,7 +2,7 @@ import { addBuff, hasBuff } from './buffs';
 import { emit } from './bus';
 import { computeMods, computeRates } from './economy';
 import { earnCash } from './wallet';
-import type { GameState } from './types';
+import type { GameState, Mods, Rates } from './types';
 
 export const HYPE_MAX = 100;
 /** A crowd takes 80 unboosted clicks. Pauses remain useful, but a long absence empties the meter. */
@@ -92,9 +92,14 @@ export interface ClickResult {
   crowd: boolean;
 }
 
-export function clickLogo(s: GameState): ClickResult {
-  const mods = computeMods(s);
-  const rates = computeRates(s, mods);
+/**
+ * One click on the logo. `ctx` lets a caller that clicks many times in a row (the balance simulator)
+ * reuse modifiers and rates it has already computed; it must recompute them after a click that
+ * started a crowd.
+ */
+export function clickLogo(s: GameState, ctx?: { mods: Mods; rates: Rates }): ClickResult {
+  const mods = ctx?.mods ?? computeMods(s);
+  const rates = ctx?.rates ?? computeRates(s, mods);
   const gain = rates.click;
   earnCash(s, gain, 'click');
   s.stats.clicksRun++;

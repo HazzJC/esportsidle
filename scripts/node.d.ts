@@ -8,4 +8,22 @@ declare module 'node:fs' {
   export function existsSync(path: string): boolean;
   export function readdirSync(path: string): string[];
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
+  export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
+}
+
+declare module 'node:os' {
+  export function availableParallelism(): number;
+}
+
+declare module 'node:child_process' {
+  interface Readable {
+    on(event: 'data', listener: (chunk: { toString(): string }) => void): void;
+  }
+  export interface ChildProcess {
+    stdout: Readable | null;
+    stderr: Readable | null;
+    on(event: 'exit', listener: (code: number | null) => void): void;
+  }
+  export function spawn(command: string, args: string[], options?: { cwd?: string; stdio?: unknown }): ChildProcess;
+  export function execSync(command: string, options?: { encoding: 'utf8' }): string;
 }

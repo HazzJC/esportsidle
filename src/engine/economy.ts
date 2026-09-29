@@ -313,8 +313,9 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   }
 
   const fameMult = fameMultiplier(s.fans, mods.fameExp) * mods.fameBonusMult;
-  const cabinet = cabinetCount(s) * CABINET_PER_ACHIEVEMENT;
-  const superfanMult = cabinetIncomeMult(cabinetCount(s), mods.superfanFactors);
+  const cabinetN = cabinetCount(s);
+  const cabinet = cabinetN * CABINET_PER_ACHIEVEMENT;
+  const superfanMult = cabinetIncomeMult(cabinetN, mods.superfanFactors);
 
   const globalMult = mods.globalMult * fameMult * superfanMult;
   const cpsNoBuffs = base * globalMult;
@@ -368,7 +369,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     buffIncomeMult: buffs.income,
     buffClickMult: buffs.click,
     cabinet,
-    cabinetCount: cabinetCount(s),
+    cabinetCount: cabinetN,
     teams,
     matchCps,
     matchFansPerSec: matchFans,

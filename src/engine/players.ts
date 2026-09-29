@@ -298,16 +298,23 @@ export function baseStat(p: Player, stat: StatKey): number {
 
 export function gearTraitMult(p: Player, slot: GearSlot): number {
   let m = 1;
-  for (const t of traitsOf(p)) m *= t.gearMult?.[slot] ?? 1;
+  for (const id of p.traits) {
+    const t = TRAIT_MAP.get(id);
+    if (t) m *= t.gearMult?.[slot] ?? 1;
+  }
   return m;
 }
+
+/** The gear slots that raise each stat, in slot order. Ratings ask for this per stat, per player, per tick. */
+const SLOTS_BY_STAT = new Map<string, typeof GEAR_SLOTS>();
+for (const slot of GEAR_SLOTS) for (const stat of slot.stats) SLOTS_BY_STAT.set(stat, [...(SLOTS_BY_STAT.get(stat) ?? []), slot]);
 
 /** Multiplier applied to a stat by all equipped gear. */
 export function gearStatMult(p: Player, stat: StatKey): number {
   let m = 1;
-  for (const slot of GEAR_SLOTS) {
+  for (const slot of SLOTS_BY_STAT.get(stat) ?? []) {
     const tier = p.gear[slot.id] ?? 0;
-    if (tier > 0 && slot.stats.includes(stat)) m *= Math.pow(slot.growth, tier * gearTraitMult(p, slot.id));
+    if (tier > 0) m *= Math.pow(slot.growth, tier * gearTraitMult(p, slot.id));
   }
   return m;
 }

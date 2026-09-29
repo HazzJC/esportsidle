@@ -12,9 +12,20 @@ Edit each list at its source so game text and values remain easy to audit.
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
 | Legacy unlocks and automation | `src/data/legacy.ts`, `src/data/automation.ts` | `src/engine/automation.ts` |
 | Hype meter, drops, and buffs | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
+| Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |
 
 Use the `when` condition on a ticker line to match the org's current scale. Timed world events should set the activity log's `endsAt` to the actual effect expiry, so the Active view clears when the effect does.
-| Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |
+
+## Balance tooling
+
+| What | Where |
+| --- | --- |
+| Balance targets (first Legacy time, income-share caps, restart pressure) | `scripts/sim/targets.ts` |
+| Simulated players (active, semi, casual, idle, optimal) | `scripts/sim/personas.ts` |
+| Parallel simulation matrix and report (`npm run sim`, `npm run sim:quick`) | `scripts/sim/matrix.ts`, `scripts/sim/report.ts` |
+| Payback of every purchase at points in a real run | `scripts/sim/paybacks.ts` |
+| Late-game checks on a veteran save (`npm run test:slow`) | `scripts/lategame-*.ts`, `tests/slow/` |
+| What the numbers currently say | `docs/economy.md` |
 
 ## Competition glossary
 

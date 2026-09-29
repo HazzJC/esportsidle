@@ -6,9 +6,9 @@
  *   npx tsx scripts/lategame-audit.ts                      # static checks + 2 short projections
  *   npx tsx scripts/lategame-audit.ts --hours=6 --seeds=3  # longer projections
  *
- * The play-forward half (sell the org, play new runs with the save's Legacy) is scripts/audit.ts:
- *   npx tsx scripts/audit.ts --mode=semi --hours=12 --runs=6 --from=tests/fixtures/lategame-save.txt \
- *     --sellnow=true --json=output/lategame-audit/play-semi.json
+ * The play-forward half (sell the org, play new runs with the save's Legacy) is the balance simulator:
+ *   npx tsx scripts/sim/cli.ts --persona=semi --hours=12 --runs=6 --from=tests/fixtures/lategame-save.txt \
+ *     --sellnow --json=output/lategame-audit/play-semi.json
  * This script folds any play-*.json it finds there into the report.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -24,7 +24,7 @@ const arg = (k: string, d: string) => process.argv.find((a) => a.startsWith(`--$
 const HOURS = Number(arg('hours', '2'));
 const SEEDS = Number(arg('seeds', '2'));
 const DIR = arg('dir', 'output/lategame-audit');
-const REPORT = arg('report', 'docs/lategame-audit.md');
+const REPORT = arg('report', 'output/lategame-audit/report.md');
 
 const save = loadLategameSave();
 const s = settled(save);
@@ -134,7 +134,7 @@ for (const p of projections) {
 }
 
 // Play-forward runs ---------------------------------------------------------
-for (const mode of ['passive', 'semi', 'active']) {
+for (const mode of ['idle', 'semi', 'active']) {
   const file = `${DIR}/play-${mode}.json`;
   if (!existsSync(file)) continue;
   const play = JSON.parse(readFileSync(file, 'utf8'));
