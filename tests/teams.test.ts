@@ -108,16 +108,17 @@ describe('teams and matches', () => {
     expect(changeTier(s, 'smash', 5)).toBe(false);
   });
 
-  it('prize upgrades do not multiply the income-linked share of prizes', () => {
+  it('prize multipliers cover the income-linked share, which is nearly all of a prize', () => {
     const s = foundedGame(0, 5);
     const mods = computeMods(s);
     const ctx = { cpsNoBuffs: 1e9, incomeBuff: 1, fansMult: 1 };
     const plain = evaluateTeam(s, s.teams.smash, mods, ctx);
-    const boosted = evaluateTeam(s, s.teams.smash, { ...mods, prizeMult: 100 }, ctx);
-    // The flat tier prize is tiny next to a 1e9 income share, so a 100x prize multiplier must stay
-    // nearly invisible here. If it ever multiplies the share too, match income becomes a multiple of
-    // operations income across every team and the economy runs away.
-    expect(boosted.winPrize).toBeLessThan(plain.winPrize * 2);
+    const boosted = evaluateTeam(s, s.teams.smash, { ...mods, prizeMult: 2 }, ctx);
+    // The flat tier prize is tiny next to a 1e9 income share. A multiplier that skipped the share
+    // paid nothing (the whole Prize line used to be dead), so it must double the payout.
+    expect(boosted.winPrize / plain.winPrize).toBeCloseTo(2, 6);
+    const event = evaluateTeam(s, s.teams.smash, { ...mods, gamePrizeMult: { smash: 1.5 } }, ctx);
+    expect(event.winPrize / plain.winPrize).toBeCloseTo(1.5, 6);
   });
 
   it('empty teams do not play', () => {

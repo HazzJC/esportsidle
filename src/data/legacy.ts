@@ -139,7 +139,7 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
   {
     id: 'drops_1',
     name: 'Hype Veterans',
-    desc: 'Hype Drops appear 15% more often and stay 50% longer.',
+    desc: 'Hype Drops arrive 15% sooner and stay 50% longer.',
     icon: 'zap',
     cost: 5,
     requires: ['legacy'],
@@ -167,7 +167,7 @@ export const LEGACY_NODES: LegacyNodeDef[] = [
   },
 
   // Teams & players
-  { id: 'teams_1', name: 'Alumni Network', desc: 'Prize money ×1.5.', icon: 'users', cost: 4, requires: ['legacy'], x: 7, y: 1, effects: [{ kind: 'prizeMult', mult: 1.5 }] },
+  { id: 'teams_1', name: 'Alumni Network', desc: 'Prize money ×1.25.', icon: 'users', cost: 4, requires: ['legacy'], x: 7, y: 1, effects: [{ kind: 'prizeMult', mult: 1.25 }] },
   { id: 'start_rocket', name: 'Rocket Soccar Charter', desc: 'Start each run with a Rocket Soccar team.', icon: 'car', cost: 10, requires: ['teams_1'], x: 7, y: 2, special: [{ kind: 'startGame', game: 'rocket' }] },
   { id: 'start_counter', name: 'Counter-Stroke Charter', desc: 'Start each run with a Counter-Stroke team.', icon: 'crosshair', cost: 60, requires: ['start_rocket'], x: 7, y: 3, special: [{ kind: 'startGame', game: 'counter' }] },
   {
@@ -301,7 +301,7 @@ export const DYNASTY_COST_GROWTH = 1.15;
 
 export const DYNASTY: DynastyDef[] = [
   { id: 'renown', name: 'Renown', icon: 'crown', perRank: '+3% income', effects: (r) => [{ kind: 'globalPct', pct: 0.03 * r }] },
-  { id: 'pedigree', name: 'Pedigree', icon: 'trophy', perRank: '+6% prize money', effects: (r) => [{ kind: 'prizeMult', mult: 1 + 0.06 * r }] },
+  { id: 'pedigree', name: 'Pedigree', icon: 'trophy', perRank: '+4% prize money', effects: (r) => [{ kind: 'prizeMult', mult: 1 + 0.04 * r }] },
   { id: 'following', name: 'Following', icon: 'heart', perRank: '+6% fans', effects: (r) => [{ kind: 'fansMult', mult: 1 + 0.06 * r }] },
   {
     id: 'academy',

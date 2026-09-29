@@ -326,8 +326,10 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     opCps[op.id] *= displayMult;
   }
 
-  const clickBase = (1 * doubling + grindBonus) * mods.clickMult;
-  const click = (clickBase + cps * mods.clickCpsPct) * buffs.click;
+  // The click multiplier covers the whole click. It used to scale only the flat base, which is a
+  // rounding error next to the income share within the first hour, so Click upgrades did nothing.
+  const clickBase = 1 * doubling + grindBonus;
+  const click = (clickBase + cps * mods.clickCpsPct) * mods.clickMult * buffs.click;
 
   const fansMult = mods.fansMult * buffs.fans;
   const teams: Record<string, TeamEval> = {};

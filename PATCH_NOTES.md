@@ -19,8 +19,40 @@
 
 ## Pending Changes
 
-### Fix: eight Fame upgrades did nothing, and other swallowed bonuses
+### Test suite: ultra-lategame balance audit built on a real 1.8e50-earnings save
 *Status: Pending*
+
+* **The Issue / Motivation**: Every earlier audit stopped at a few hours into a fresh run, but real players sit 12 sales deep with Legacy in the trillions, where different things break. A player's very late-game save (12 sales, Legacy level 5.5e12, every Legacy node, 300 achievements) was supplied as a basis for finding what is out of hand there.
+* **What Changed**:
+  * `tests/fixtures/lategame-save.txt`: the save, read-only.
+  * `scripts/lategame-lib.ts` and `scripts/lategame-checks.ts`: helpers that remove each owned thing in turn (every Legacy node, Dynasty track, upgrade, staff line, operation, team, sponsors, merch, fans, cabinet) and recompute income; lump-sum payouts in seconds of income; next-unit payback and elasticity for every operation and staff line; the whole bank spent on one line; merch's best and worst case; the cabinet and sponsor multiplier chains; numeric headroom to 1.8e308; a no-purchase forward projection.
+  * `scripts/lategame-audit.ts` writes `docs/lategame-audit.md` and `output/lategame-audit/static.json`. It folds in any `play-*.json` from `scripts/audit.ts`.
+  * `scripts/audit.ts` gained `--from=<save>` and `--sellnow=true`, so the existing progression bot can sell the veteran org and play the runs after it with that Legacy.
+  * `tests/lategame-audit.test.ts`: invariants (finite, headroom, formatting) plus budgets. Budgets that the working tree breaks are `it.fails`, so each flips red the moment a balance change fixes it and the `.fails` should then be removed.
+  * Findings are in `docs/lategame-findings-2026-09-29.md`.
+
+### Fix: the Prize line, click multipliers and Worlds-season events did nothing
+*Status: Pending*
+
+* **The Issue / Motivation**: Audit of every store upgrade and legacy node (each removed in turn from an org that owns everything else, then measured against the real payouts on a 1-hour run and the late-game save). Every effect changed the modifier set, but two never reached the game:
+  * **Match prize money**: `prizeMult` multiplied only the flat tier prize. A match prize is that flat amount plus a few seconds of operations income, and the flat part is 0.1% of it an hour into a run (10⁻²⁴ in the late-game save). So the eight Prize-line upgrades, Hall of Champions, Alumni Network, Pedigree ranks, Banking sponsors, the "Branch out" quest perk and the Worlds-season event (×1.5 prize for 5 minutes) paid nothing for matches while their cards said "Match prize money ×N". Only Invitationals used them.
+  * **Click multiplier**: `clickMult` (Golden Controller, Veteran Fingers, the "Hype streak" quest perk, the Party mandate) multiplied only the flat click base. Next to the "+% of income per click" part that base is about 7% of a click at 1 hour and nothing later, so those cards did nothing.
+  * Smaller mismatches: Superfan upgrades counted shadow achievements towards "Unlock N achievements" while the bonus ignores them; Hype Veterans said Drops appear "15% more often" when the interval is 15% shorter (about 18% more often).
+* **What Changed**:
+  * **Prize money** (`teams.ts`): `prizeMult` and the per-game event multiplier now multiply the whole match prize. To keep matches from becoming a scaled copy of the operations economy, the sources were retuned down: the eight Prize-line upgrades are ~~×2~~ ×1.15 each (×3 in total), Hall of Champions ~~×1.5~~ ×1.25, Alumni Network ~~×1.5~~ ×1.25, Pedigree ~~+6%~~ +4% per rank, Banking sponsors ~~+20%~~ +10% per strength. The Media Circus mandate's "prize money 20% lower" is now a real cost.
+  * **Clicks** (`economy.ts`): a click is `(base + income share) × clickMult × buffs`, so "Clicking is ×2 as powerful" is true.
+  * **Superfan** unlocks count cabinet achievements only, the same number the bonus uses. Hype Veterans now reads "arrive 15% sooner".
+  * **Tests** (`tests/upgrade-audit.test.ts`, `tests/teams.test.ts`):
+    * With every other upgrade, legacy node, dynasty rank and challenge reward owned, removing any one of them must change the modifiers or rates. This is the check that catches a cap swallowing a purchase, at the point where the caps bite.
+    * Every effect kind must change the modifier set.
+    * Prize and click multipliers must move real payouts; the product of all prize sources stays under 15×.
+    * Bench, market and sponsor slot totals, the offline efficiency and hours caps, and Superfan reachability (313 cabinet achievements against a top need of 200).
+    * Legacy unlocks that change a run: IPO Money, Family Home, Merch Archive, Global Brand Portfolio, Operations Manager. The old teams test that pinned "prizes ignore the income share" now asserts the opposite.
+  * **Checked and found working** (no change): every other legacy node and store upgrade group. Bench, market, sponsor slots and offline efficiency sit exactly at their caps (offline efficiency is 100% only with all three offline nodes, which is intended). The staff-upgrade morale, Designer and Chef ceilings are asymptotes by design, and Limited Edition Drops only matters in the first hour after a design launches (novelty then bottoms out).
+  * **Not re-run**: the multi-hour progression sims. The 1-hour run had prize money ×2 at most, so the early game moves little; the late game is where the retuned line matters.
+
+### Fix: eight Fame upgrades did nothing, and other swallowed bonuses
+*Status: Committed* | `7bd889e` (Sep 24 2026)
 
 * **The Issue / Motivation**: A report said the fame exponent cap (`MAX_FAME_EXP = 0.12`) swallowed most of the Fame upgrade line. Checked against the engine, it was true:
   * Base 0.08 plus Discord Server, Fan Subreddit and Fan Art Wall reached 0.115. Meet & Greets delivered +0.005 of its advertised +0.015.
@@ -432,7 +464,7 @@
 * **The Issue / Motivation**:
   * Completing the Legacy Tree left end-game players with no sink for Legacy Points. Smurfing in lower leagues was too lucrative compared to taking on challenging promotions.
 * **What Changed**:
-  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs.
+  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs. *(Changed 1 time since: Pedigree gives +4% prize money per rank instead of ~~+6%~~, because it now multiplies the whole match prize)*
   * **Match Stakes & Morale**: Lopsided matches with $>75\%$ win probability suffer up to a $50\%$ penalty to prizes and fan gains to discourage smurfing. Added team morale states (*Fired Up*, *Frustrated*, *Bored*).
   * **Decor Artwork**: Designed custom SVG models for all 16 Gaming House decor pieces.
   * **Notification Settings**: Added categorical notification mute controls in Options and top headers.
@@ -557,7 +589,7 @@
   * Headless simulation runs revealed extreme hyperinflation ($10^{12}$ cash reached within an hour) caused by unbounded compounding exponents in fame and match prize scaling. The game also lacked audio feedback.
 * **What Changed**:
   * **Procedural WebAudio Synthesis**: Implemented 100% asset-free synthesized sound effects for clicks, purchases, drops, level-ups, and prestige.
-  * **Economy Invariant Fixes**: ~~Capped `fameExp` at 0.12~~ *(Changed 1 time since: the cap left eight Fame upgrades and both legacy fame nodes doing nothing; only the first four Fame upgrades now raise the exponent, up to a 0.13 cap that equals their total, and the rest multiply the fame bonus)*, stopped match prizes from multiplying operations-linked income, and retuned league progression scaling.
+  * **Economy Invariant Fixes**: ~~Capped `fameExp` at 0.12~~ *(Changed 1 time since: the cap left eight Fame upgrades and both legacy fame nodes doing nothing; only the first four Fame upgrades now raise the exponent, up to a 0.13 cap that equals their total, and the rest multiply the fame bonus)*, ~~stopped match prizes from multiplying operations-linked income~~ *(Changed 1 time since: prize multipliers left the whole Prize line dead, because the operations-linked share is over 99% of a match prize a few minutes in; they now cover the whole prize and the line was retuned down)*, and retuned league progression scaling.
   * **Automated Headless Sim**: Added `scripts/sim.ts` to execute automated runs, sampling milestones and mathematical invariants over 5-hour simulated gameplay sessions.
 
 ---

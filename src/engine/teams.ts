@@ -268,12 +268,13 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   const stakes = stakesMult(chance);
   const popularity = s.games[team.gameId]?.popularity ?? 1;
   const cut = available > 0 ? cutSum / available : 0;
-  // Prize upgrades multiply the flat tier prize only. The income-linked share exists to keep matches
-  // relevant as operations grow; multiplying it as well would make each team a scaled copy of the
-  // whole economy, so total income became a large multiple of operations income and ran away.
-  const flat = game.basePrize * Math.pow(PRIZE_GROWTH, team.tier) * mods.prizeMult * (mods.gamePrizeMult[game.id] ?? 1);
+  // Prize multipliers cover the whole prize. The income-linked share is over 99% of it a few minutes
+  // in, so a multiplier on the flat tier prize alone paid nothing (and Worlds-season events with it).
+  // The prize line is tuned small for that reason: tests/teams.test.ts caps the product of every
+  // source, because a large one would make matches a scaled copy of the operations economy.
+  const flat = game.basePrize * Math.pow(PRIZE_GROWTH, team.tier);
   const share = ctx.cpsNoBuffs * prizeSeconds(team.tier);
-  const gross = (flat + share) * popularity * ctx.incomeBuff;
+  const gross = (flat + share) * mods.prizeMult * (mods.gamePrizeMult[game.id] ?? 1) * popularity * ctx.incomeBuff;
   const winPrize = gross * (1 - cut) * stakes;
   const lossPrize = winPrize * LOSS_PRIZE_RATIO;
   const fansWin = FAN_BASE * Math.pow(FAN_GROWTH, team.tier) * popularity * ctx.fansMult * (available > 0 ? fansSum / available : 1) * stakes;

@@ -1,5 +1,6 @@
 import { fmt } from '../engine/format';
 import type { Effect, GameState } from '../engine/types';
+import { ACHIEVEMENT_MAP } from './achievements';
 import { OPERATIONS, getOp } from './operations';
 import { STAFF } from './staff';
 
@@ -374,6 +375,13 @@ FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
 // ---------------------------------------------------------------------------
 // Superfans: income scales with the trophy cabinet (achievements)
 // ---------------------------------------------------------------------------
+/** Achievements in the trophy cabinet. Shadow ones don't count towards the bonus, so they don't count here. */
+const cabinetAchievements = (s: GameState): number =>
+  Object.keys(s.achievements).filter((id) => {
+    const def = ACHIEVEMENT_MAP.get(id);
+    return def !== undefined && !def.shadow;
+  }).length;
+
 const SUPERFANS: [string, number, number, number, string][] = [
   ['Superfan Volunteers', 13, 9e6, 0.1, 'They hand out flyers. Nobody asked them to.'],
   ['Superfan Street Team', 25, 9e9, 0.125, 'Wheat-pasting your logo on every surface.'],
@@ -397,7 +405,7 @@ SUPERFANS.forEach(([name, need, cost, factor, flavor], i) => {
     effects: [{ kind: 'superfan', factor }],
     flavor,
     requirement: `Unlock ${need} achievements`,
-    unlock: (s) => Object.keys(s.achievements).length >= need,
+    unlock: (s) => cabinetAchievements(s) >= need,
   });
 });
 
@@ -406,6 +414,8 @@ SUPERFANS.forEach(([name, need, cost, factor, flavor], i) => {
 // ---------------------------------------------------------------------------
 const matchesPlayed = (s: GameState): number => s.stats.matchesWon + s.stats.matchesLost;
 
+/** Each rung multiplies the whole match prize, so all eight are ×3. Keep it small: see evaluateTeam. */
+const PRIZE_LINE_MULT = 1.15;
 const PRIZE_LINE: [string, number, number, string][] = [
   ['Prize Pool Analyst', 10, 5_000, 'Knows exactly which tournaments actually pay out.'],
   ['Bracket Lawyer', 60, 500_000, 'Finds a loophole in every rulebook.'],
@@ -424,7 +434,7 @@ PRIZE_LINE.forEach(([name, wins, cost, flavor], i) => {
     icon: 'trophy',
     tier: i + 1,
     cost,
-    effects: [{ kind: 'prizeMult', mult: 2 }],
+    effects: [{ kind: 'prizeMult', mult: PRIZE_LINE_MULT }],
     flavor,
     requirement: `Win ${wins.toLocaleString('en-US')} matches`,
     unlock: (s) => s.stats.matchesWon >= wins,
@@ -722,7 +732,7 @@ add({
 const TROPHY_LINE: { name: string; cost: number; effect: Effect; flavor: string }[] = [
   { name: 'Trophy Case Lighting', cost: 3, effect: { kind: 'globalPct', pct: 0.05 }, flavor: 'Spotlights make everything look more expensive.' },
   { name: 'Golden Controller', cost: 8, effect: { kind: 'clickMult', mult: 2 }, flavor: 'Heavy, impractical, magnificent.' },
-  { name: 'Hall of Champions', cost: 20, effect: { kind: 'prizeMult', mult: 1.5 }, flavor: 'Opponents walk past it on the way to lose.' },
+  { name: 'Hall of Champions', cost: 20, effect: { kind: 'prizeMult', mult: 1.25 }, flavor: 'Opponents walk past it on the way to lose.' },
   { name: 'Retired Jerseys', cost: 40, effect: { kind: 'fansMult', mult: 1.5 }, flavor: 'Hanging from the rafters of the gaming house.' },
   { name: 'Dynasty Banner', cost: 80, effect: { kind: 'globalPct', pct: 0.25 }, flavor: 'Visible from orbit. Probably.' },
   { name: 'Trophy Vault', cost: 150, effect: { kind: 'tournamentReward', mult: 2 }, flavor: 'Laser grid. Tiny, dramatic laser grid.' },
