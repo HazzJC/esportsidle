@@ -1,6 +1,7 @@
 <script lang="ts">
   import { GENRE_WEIGHTS, getGame } from '../../data/games';
-  import { GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
+  import { GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
+  import { tierName } from '../../data/leagues';
   import { NATIONS } from '../../data/names';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
@@ -9,6 +10,7 @@
     STAT_LABEL,
     baseStat,
     gearStatMult,
+    gearLeague,
     gearTraitMult,
     gearUpgradeCost,
     isAvailable,
@@ -253,11 +255,15 @@
             {/each}
           </div>
         {:else if tab === 'gear'}
+          {@const league = gearLeague(v.s, p)}
+          {#if league > 0}
+            <div class="muted small gear-league">Priced for {tierName(league)}: gear costs ×{fmt(Math.pow(GEAR_LEAGUE_GROWTH, league))} at the best league this team has reached.</div>
+          {/if}
           <div class="gear">
             {#each GEAR_SLOTS as gs (gs.id)}
               {@const tier = p.gear[gs.id]}
               {@const maxed = tier >= GEAR_MAX_TIER}
-              {@const cost = gearUpgradeCost(p, gs.id, v.m)}
+              {@const cost = gearUpgradeCost(p, gs.id, v.m, gearLeague(v.s, p))}
               {@const tm = gearTraitMult(p, gs.id)}
               {@const rarity = gearRarity(tier)}
               <div class="gear-row" class:maxed style="--r:{rarity.color}">

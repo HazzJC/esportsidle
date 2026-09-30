@@ -54,9 +54,9 @@ describe('ratings and gear', () => {
     const base = skillRating(founder);
     s.cash = 1e9;
     for (const slot of GEAR_SLOTS) {
-      const c1 = gearUpgradeCost(founder, slot.id, mods);
+      const c1 = gearUpgradeCost(founder, slot.id, mods, 0);
       expect(buyGear(s, 'founder', slot.id, mods)).toBe(true);
-      expect(gearUpgradeCost(founder, slot.id, mods)).toBeGreaterThan(c1);
+      expect(gearUpgradeCost(founder, slot.id, mods, 0)).toBeGreaterThan(c1);
     }
     expect(skillRating(founder)).toBeGreaterThan(base * 1.2);
   });

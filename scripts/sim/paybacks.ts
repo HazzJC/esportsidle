@@ -28,7 +28,7 @@ import { UPGRADES } from '../../src/data/upgrades';
 import { computeMods, computeRates } from '../../src/engine/economy';
 import { MAX_MERCH_QUALITY, merchQualityCost } from '../../src/engine/merch';
 import { operationLevelCost, unitPrice } from '../../src/engine/operations';
-import { gearUpgradeCost, playerRating } from '../../src/engine/players';
+import { gearLeague, gearUpgradeCost, playerRating } from '../../src/engine/players';
 import { dynastyCost, dynastyRank } from '../../src/engine/prestige';
 import { decodeSave } from '../../src/engine/save';
 import { staffPrice } from '../../src/engine/staff';
@@ -175,7 +175,7 @@ function audit(label: string, save: GameState): Row[] {
     if (starters.length === 0) continue;
     const weakest = starters.reduce((a, b) => (playerRating(a, game, team.tier, null) <= playerRating(b, game, team.tier, null) ? a : b));
     for (const slot of GEAR_SLOTS) {
-      const cost = gearUpgradeCost(weakest, slot.id, mods);
+      const cost = gearUpgradeCost(weakest, slot.id, mods, gearLeague(s, weakest));
       if (!Number.isFinite(cost)) continue;
       add('gear', `${team.gameId}:${slot.id}`, `${game.name} ${slot.name} tier ${(weakest.gear[slot.id] ?? 0) + 1}`, soon(cost), 'cash', cost, (c) => c.players[weakest.id].gear[slot.id]++);
     }

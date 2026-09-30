@@ -30,6 +30,7 @@ import {
   cancelContract,
   generateOffer,
   GOAL_EARNINGS_SHARE,
+  goalShareRate,
   goalProgress,
   goalReward,
   goalTarget,
@@ -335,7 +336,7 @@ describe('sponsor goal payouts', () => {
     const c = withSponsor(s);
     s.earnedRun = c.earnedAt! + 1e15;
     s.time += c.goal.rewardSeconds;
-    expect(goalReward(s, c, 100)).toBeCloseTo(100 * c.goal.rewardSeconds, 0);
+    expect(goalReward(s, c, 100)).toBeCloseTo(100 * c.goal.rewardSeconds * goalShareRate(c.goal.kind), 0);
   });
 
   it('pays the goal out once, through the sponsor ledger', () => {

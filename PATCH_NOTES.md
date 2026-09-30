@@ -19,8 +19,57 @@
 
 ## Pending Changes
 
-### Fix: "The big exit" quest could never be completed, and the sell screen said quests were kept
+### Balance: runs stop compounding without limit (plateau pass, phase 2 of the economy refinements)
 *Status: Pending*
+
+* **The Issue / Motivation**: The balance simulator's baseline (`docs/economy.md`) found several things compounding without limit:
+  * Matches reached 71% of a 12-hour semi-active run and 98% of the veteran save.
+  * Merch swung 480× between its worst and best case.
+  * Gear on established teams cost under a second of income, which made league tiers (and with them fans and fame) free to climb.
+  * Talent Agents, Team Managers and Pedigree had no ceiling.
+  * A hard sponsor goal could pay 280% of what the org earned during the deal.
+* **What Changed**:
+  * **Gear is priced by league** (`src/data/gear.ts`, `players.ts`): every league tier a team's best result reaches this run doubles gear prices (`GEAR_LEAGUE_GROWTH = 2`), in step with opponents. The player card says "Priced for {league}". Relegation doesn't make gear cheaper. Gear paybacks went from under 10 s to about an hour.
+  * **Fans per league tier** grow ×1.5 per tier instead of ~~×1.9~~ (`FAN_GROWTH`, `src/data/leagues.ts`).
+  * **Fame knee**: above 100M fans, fame grows at half its usual exponent (`FAME_KNEE_FANS`, `FAME_KNEE_SLOPE` in `economy.ts`). Fame 6 hours into an active run: ×50 (was ×89).
+  * **Teams and merch lines share their income-linked earnings**: n teams earn n^0.65 times one team (`TEAM_SHARE_EXPONENT`), and n selling merch lines earn n^0.5 times one line (`MERCH_LINE_SHARE_EXPONENT`). Fielding every game or product no longer multiplies income by 12 or 10.
+  * **Merch spikes**:
+    * Mania is ×2.5 (was ~~×4~~).
+    * Merch Spotlight is ×3 (was ~~×5~~, `MERCH_SPOTLIGHT_MULT`).
+    * A stale design still sells half as well (`NOVELTY_FLOOR` 0.5, was ~~0.25~~).
+    * The veteran save's worst-to-best merch swing is 11.8× (was 480×).
+  * **Caps**:
+    * Team Managers level off at twice as fast.
+    * Talent Agents soft-cap from ten hires and level off at ×3 sponsor income (they were ~~uncapped~~).
+    * Pedigree levels off at ×2 prize money.
+    * The stale "sponsor total is capped" comment in `economy.ts` now describes the code.
+  * **Sponsor goals** pay 35% of what the org earned during the deal, a bigger share for harder goals, but never more than 75% (`GOAL_SHARE_MAX`; drop goals used to pay ~~280%~~). The advertised ceiling uses the same share. The largest goal in an active run fell from 26 min of income to under 4 min.
+  * **Simulator targets**: "a run levels off" (income growth in the 3 h after the first Legacy point) and "matches under 60% of a long semi run". The late-game check uses the live Spotlight and mania values.
+  * **Tests**: the merch mania test reads `MANIA_BONUS`, and the sponsor headline test uses `goalShareRate`. Four late-game budgets now pass and lost their `it.fails`: matches ≤ 90%, operations ≥ 5%, Agent multiplier under 10, and no 100+-owned line repaying in under 30 s.
+* **Result** (`npm run sim`, 5 seeds; before → after):
+  * **Mix**: an active 6-hour run is operations 24%, matches 27%, merch 26%, drops 22%. A 12-hour semi run has matches at 40% (was 71%). The largest share of any run is 63% (was 79.5%).
+  * **Paybacks** now lengthen through a run instead of shortening: operations 8m at 30m → 23–43m at 2–3 h.
+  * **Pace**: the first Legacy point moved from 1h22 to 1h31 (active) and 3h51 to 4h28 (semi). Pace is the next phase.
+  * **Still failing**: income still grows ×2e8 in the 3 h after the first Legacy point, and staying still beats selling (0.08×). Base operations income (Cookie Clicker's own building ladder) grows ×50–160 an hour until the last building is bought around hour 5–6.
+
+### Design report: what to build after the first Legacy
+*Status: Pending* (first draft went in with `f328057`; later corrections are uncommitted)
+
+* **The Issue / Motivation**: Two AI-written idea lists and two Cookie Clicker deep dives proposed late-game features. Several of them fix problems the game already solves (multiplicative buff stacking, a rival org, Trophies as a non-cash currency), and none mention what `docs/economy.md` found: after the first Legacy point, staying in the run beats selling about ten times over, so nothing built for run 2 onwards would be seen.
+* **What Changed**:
+  * New `docs/design-roadmap.md`, docs only, no game or balance change. It covers:
+    * what the code already has against what the lists claim is missing;
+    * research on what idle players like and dislike, and why Cookie Clicker's mechanisms work and where they chafe;
+    * seven design principles;
+    * a ranked verdict on each idea, with how it would be built in this codebase and what to push back on;
+    * a phased sequence and the open decisions.
+  * Step 0 of the roadmap is the economy floor already listed in `docs/economy.md`.
+  * New `docs/implementation-plan.md`, docs only: a phased plan for six workstreams (HQ UI/UX, Legacy tree, price-curve validation, offline never being the best way to play, features A1/A2/A3/A4/A6, and the quest system), with findings from the code and the running game, acceptance tests and open decisions.
+    * Finding recorded there: the 16 operation prices and base outputs are an exact copy of Cookie Clicker's (×1.15 growth, 25% refund), so the price curve is not what makes income outrun costs; uncoupled multipliers are.
+    * Finding recorded there: offline is 100% efficient for up to 72 hours at max Legacy nodes, which becomes more attractive once the economy levels off.
+
+### Fix: "The big exit" quest could never be completed, and the sell screen said quests were kept
+*Status: Committed* | `f328057` (Sep 30 2026)
 
 * **The Issue / Motivation**: The balance report found that the last quest, "The big exit" (sell the org), could never pay out:
   * It counts `stats.orgsSold`, but selling cleared the quest board before the sale was counted.
@@ -144,7 +193,7 @@
   * **Click multiplier**: `clickMult` (Golden Controller, Veteran Fingers, the "Hype streak" quest perk, the Party mandate) multiplied only the flat click base. Next to the "+% of income per click" part that base is about 7% of a click at 1 hour and nothing later, so those cards did nothing.
   * Smaller mismatches: Superfan upgrades counted shadow achievements towards "Unlock N achievements" while the bonus ignores them; Hype Veterans said Drops appear "15% more often" when the interval is 15% shorter (about 18% more often).
 * **What Changed**:
-  * **Prize money** (`teams.ts`): `prizeMult` and the per-game event multiplier now multiply the whole match prize. To keep matches from becoming a scaled copy of the operations economy, the sources were retuned down: the eight Prize-line upgrades are ~~×2~~ ×1.15 each (×3 in total), Hall of Champions ~~×1.5~~ ×1.25, Alumni Network ~~×1.5~~ ×1.25, Pedigree ~~+6%~~ +4% per rank, Banking sponsors ~~+20%~~ +10% per strength. The Media Circus mandate's "prize money 20% lower" is now a real cost.
+  * **Prize money** (`teams.ts`): `prizeMult` and the per-game event multiplier now multiply the whole match prize. To keep matches from becoming a scaled copy of the operations economy, the sources were retuned down: the eight Prize-line upgrades are ~~×2~~ ×1.15 each (×3 in total), Hall of Champions ~~×1.5~~ ×1.25, Alumni Network ~~×1.5~~ ×1.25, Pedigree ~~+6%~~ +4% per rank (levelling off at ×2 since the Phase 2 plateau pass), Banking sponsors ~~+20%~~ +10% per strength. The Media Circus mandate's "prize money 20% lower" is now a real cost.
   * **Clicks** (`economy.ts`): a click is `(base + income share) × clickMult × buffs`, so "Clicking is ×2 as powerful" is true.
   * **Superfan** unlocks count cabinet achievements only, the same number the bonus uses. Hype Veterans now reads "arrive 15% sooner".
   * **Tests** (`tests/upgrade-audit.test.ts`, `tests/teams.test.ts`):
@@ -253,8 +302,8 @@
   * **Merch rebalance**:
     * Merch Designers now keep designs fresh for longer and make each trend last longer, with only a small sales boost. Every designer bonus levels off at a ceiling (at most twice as fresh, trends 75% longer, +30% sales), through a new `max` on staff effects (`effectAmount` in `src/data/staff.ts`).
     * The merch sales multiplier upgrades are now ×1.25, ×1.5, ×1.25 and ×1.25 (Limited Edition Drops ×1.5 freshness), and Cult Merch is ×1.5.
-    * Finishes add 0.15 a level (×2.5 at Q10). Trend matching is ×2 and a line earns 0.5× its share of operations income (`MERCH_INCOME_SCALE`).
-    * Mania is ×4 and lasts 60–120 seconds.
+    * Finishes add 0.15 a level (×2.5 at Q10). Trend matching is ×2 and a line earns 0.5× its share of operations income (`MERCH_INCOME_SCALE`) ~~per line~~, split between lines as n^0.5. *(Changed 1 time since: Phase 2 plateau pass)*
+    * Mania is ~~×4~~ ×2.5 and lasts 60–120 seconds. *(Changed 1 time since: Phase 2 plateau pass)*
     * A design a line sold in the last two hours comes back no fresher than it left, so swapping designs back and forth doesn't reset freshness.
     * Audit result: active players following trends earn about 2–3× operations from merch, semi-active 0.3–0.5×, passive under 0.1×.
   * **Chasing trends**:
@@ -330,7 +379,7 @@
   * **Merch that physically changes** (`2c355cb`, `c61a3fb`): bespoke art per product in the gear style, with three builds each (Q0 basic, Q2 better made, Q4 premium; for example blank tee → ringer tee → raglan crest tee). Holographic foil arrives at Q6, a limited-run hang tag at Q7, a gold signature at Q8, a collector's box at Q9 and a Hall of Fame display case at Q10. The Studio preview tilts towards the pointer, pops on upgrade and shows a strip of every look the product will reach. `tests/merch-art.test.ts` covers every product and finish.
   * **Gamer tags** (`2c355cb`): 288 tag words, prefixes, and 490 parody handles of real pros.
   * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers ~~(up to 40, 26px, flat 24px sprites on flat strips)~~ *(Changed 2 times since: taller strips, bigger workers, up to 32, in 243122c; redrawn buildings and layered scenes in 14b8824)*, and the four stat cards are gone.
-  * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most.
+  * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most ~~with no ceiling~~, and level off at twice as fast. *(Changed 1 time since: Phase 2 plateau pass)*
   * **Sponsors** (`5160ae5`): ten tiers (six to ten behind the Global Brand Portfolio legacy node), perks that scale with tier and goal difficulty, no hidden income cap, no goals that the org would finish in under five minutes at its recent pace, two-zone cards ("While signed" / "Goal bonus · paid once") and parody logos for all 36 brands.
   * **Invitationals** (`424938d`): the Hype Drop sends an invitation showing the chance to win each round. Spending 10%, 25% or 50% of cash on preparation raises it, and an unanswered invite plays itself after two minutes. A team level with its league wins the bracket a little over half the time, and invites are about 70% more common. One glossary covers the competition words (docs/content-catalog.md): match, season, league title, Season MVP, Invitational, grudge match (was derby).
   * **Teams room** (`8727c16`): the Roster tab is folded into Teams. Each team is a room with a parody game logo, one role-labelled desk per player drawn like the House, and a wooden bench of player cards ~~(desks stretched to the full column on narrow screens)~~ *(Changed 1 time since: desks capped at their normal size, a sticky team switcher and foldable team cards, in 4f7b344 and 243122c)*. Players move by pointer drag (long press on touch), with the change in win chance shown and no layout movement. Clicking a player opens their gear and stats. Rival orgs get knock-off crests.
@@ -569,7 +618,7 @@
 * **The Issue / Motivation**:
   * Completing the Legacy Tree left end-game players with no sink for Legacy Points. Smurfing in lower leagues was too lucrative compared to taking on challenging promotions.
 * **What Changed**:
-  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs. *(Changed 1 time since: Pedigree gives +4% prize money per rank instead of ~~+6%~~, because it now multiplies the whole match prize)*
+  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs. *(Changed 2 times since: Pedigree gives +4% prize money per rank instead of ~~+6%~~, because it now multiplies the whole match prize; ~~uncapped~~ Pedigree now levels off at ×2)*
   * **Match Stakes & Morale**: Lopsided matches with $>75\%$ win probability suffer up to a $50\%$ penalty to prizes and fan gains to discourage smurfing. Added team morale states (*Fired Up*, *Frustrated*, *Bored*).
   * **Decor Artwork**: Designed custom SVG models for all 16 Gaming House decor pieces.
   * **Notification Settings**: Added categorical notification mute controls in Options and top headers.

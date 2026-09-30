@@ -16,7 +16,7 @@ import {
   SKIN_TONES,
 } from '../data/cosmetics';
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
-import { GEAR_COST_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
+import { GEAR_COST_GROWTH, GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_PREFIXES, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
@@ -450,18 +450,24 @@ export function levelUpStats(p: Player, rng: Rng): void {
 // Gear
 // ---------------------------------------------------------------------------
 
-export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>): number {
+/** The league tier a player's gear is priced at: the best their team has reached this run. */
+export function gearLeague(s: GameState, p: Player): number {
+  return s.teams[p.gameId]?.bestTier ?? 0;
+}
+
+/** Price of the next tier of one gear slot. `league` is gearLeague(s, p). */
+export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, league: number): number {
   const def = GEAR_SLOTS.find((g) => g.id === slot)!;
   const tier = p.gear[slot] ?? 0;
   if (tier >= GEAR_MAX_TIER) return Infinity;
-  return Math.ceil(def.baseCost * Math.pow(GEAR_COST_GROWTH, tier) * getGame(p.gameId).costScale * mods.gearCostMult);
+  return Math.ceil(def.baseCost * Math.pow(GEAR_COST_GROWTH, tier) * getGame(p.gameId).costScale * Math.pow(GEAR_LEAGUE_GROWTH, league) * mods.gearCostMult);
 }
 
 export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>): boolean {
   const p = s.players[playerId];
   // Potato League challenge: no gear upgrades.
   if (!p || s.prestige.challenge === 'potato') return false;
-  const cost = gearUpgradeCost(p, slot, mods);
+  const cost = gearUpgradeCost(p, slot, mods, gearLeague(s, p));
   if (!Number.isFinite(cost) || s.cash < cost) return false;
   s.cash -= cost;
   p.gear[slot]++;

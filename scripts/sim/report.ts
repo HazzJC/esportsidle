@@ -13,6 +13,9 @@ import {
   ACTIVE_VS_IDLE_SPEEDUP,
   CROWDS_PER_ACTIVE_HOUR,
   FIRST_LEGACY_ACTIVE,
+  GROWTH_WINDOW_SECONDS,
+  MAX_GROWTH_AFTER_FIRST_LEGACY,
+  MAX_SEMI_MATCH_SHARE,
   MAX_SOURCE_SHARE,
   SELL_OVER_STAY,
   WINDOW_GRACE_SECONDS,
@@ -145,6 +148,30 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
         pass: v >= band[0] && v <= band[1],
       });
     }
+  }
+  if (active.length) {
+    // Income over the half hour ending at `t`, from the books rather than a single rate reading.
+    const incomeAt = (r: SimRecord, t: number) => {
+      const xs = r.samples.filter((x) => x.run === 1 && x.runWall > t - 1800 && x.runWall <= t + 1e-9).map((x) => windowShare(x).total / 600);
+      return xs.length ? mean(xs) : NaN;
+    };
+    const growth = active.map((r) => {
+      const fl = firstLegacy(r);
+      if (!Number.isFinite(fl) || fl + GROWTH_WINDOW_SECONDS > r.hours * HOUR) return NaN;
+      return incomeAt(r, fl + GROWTH_WINDOW_SECONDS) / incomeAt(r, fl);
+    });
+    const measured = growth.filter(Number.isFinite);
+    const m = median(measured);
+    rows.push({
+      target: `A run levels off: income grows at most ×${MAX_GROWTH_AFTER_FIRST_LEGACY} in the ${hms(GROWTH_WINDOW_SECONDS)} after the first Legacy point (active)`,
+      result: measured.length ? `median ×${sci(m)} (${growth.map((g) => (Number.isFinite(g) ? `×${sci(g)}` : 'n/a')).join(', ')})` : 'runs too short to measure',
+      pass: measured.length ? m <= MAX_GROWTH_AFTER_FIRST_LEGACY : null,
+    });
+  }
+  const semi = fresh(rs, 'semi');
+  if (semi.length) {
+    const v = median(semi.map((r) => shares(r).match));
+    rows.push({ target: `Matches under ${pct(MAX_SEMI_MATCH_SHARE)} of a long semi-active run`, result: `median ${pct(v)} over ${semi[0].hours}h`, pass: v <= MAX_SEMI_MATCH_SHARE });
   }
   if (active.length && idle.length) {
     const ratio = median(idle.map(firstLegacy)) / median(active.map(firstLegacy));

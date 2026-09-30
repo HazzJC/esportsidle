@@ -18,7 +18,7 @@ import { STAFF } from '../../src/data/staff';
 import { computeMods, computeRates } from '../../src/engine/economy';
 import { MAX_MERCH_QUALITY, merchQualityCost, upgradeMerchQuality } from '../../src/engine/merch';
 import { buyOperation, isOperationRevealed, levelUpOperation, operationLevelCost, unitPrice } from '../../src/engine/operations';
-import { buyGear, gearUpgradeCost, playerRating } from '../../src/engine/players';
+import { buyGear, gearLeague, gearUpgradeCost, playerRating } from '../../src/engine/players';
 import { buyDecor, hireStaff, isStaffUnlocked, roomLevel, staffPrice } from '../../src/engine/staff';
 import { sectionOpen } from '../../src/engine/sections';
 import { operationsOpen } from '../../src/engine/tutorial';
@@ -96,7 +96,7 @@ export function candidates(s: GameState, base: number, opts: CandidateOptions): 
       if (starters.length === 0) continue;
       const weakest = starters.reduce((a, b) => (playerRating(a, game, team.tier, null) <= playerRating(b, game, team.tier, null) ? a : b));
       for (const slot of GEAR_SLOTS) {
-        const cost = gearUpgradeCost(weakest, slot.id, mods);
+        const cost = gearUpgradeCost(weakest, slot.id, mods, gearLeague(s, weakest));
         if (!Number.isFinite(cost) || !soon(cost)) continue;
         const gain = measure(
           () => weakest.gear[slot.id]++,

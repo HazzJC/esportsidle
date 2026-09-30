@@ -212,13 +212,13 @@ describe('world events', () => {
   it('a flash sale lowers gear prices until it expires', () => {
     const s = richState();
     const p = s.players.founder;
-    const before = gearUpgradeCost(p, 'pc', computeMods(s));
+    const before = gearUpgradeCost(p, 'pc', computeMods(s), 0);
     fireEvent(s, 'gear_sale', ctxFor(s));
-    expect(gearUpgradeCost(p, 'pc', computeMods(s))).toBeLessThan(before);
+    expect(gearUpgradeCost(p, 'pc', computeMods(s), 0)).toBeLessThan(before);
     s.time += 1000;
     s.events.nextAt = s.time + 1000;
     updateWorldEvents(s, ctxFor(s));
-    expect(gearUpgradeCost(p, 'pc', computeMods(s))).toBe(before);
+    expect(gearUpgradeCost(p, 'pc', computeMods(s), 0)).toBe(before);
   });
 });
 

@@ -12,12 +12,14 @@ export const TREND_ELASTICITY = 1.3;
 export const PRICE_MIN = 0.5;
 export const PRICE_MAX = 3;
 export const NOVELTY_SECONDS = 1800;
-export const NOVELTY_FLOOR = 0.25;
+/** A stale design still sells half as well (was a quarter, which made merch swing 23× between neglect and care). */
+export const NOVELTY_FLOOR = 0.5;
 export const TREND_SECONDS = 900;
 export const TRENDING_THRESHOLD = 0.6;
 export const TREND_BONUS = 2;
 /** A mania is a short spike: the right product in the right style, for a minute or two. */
-export const MANIA_BONUS = 4;
+/** ×2.5 (was ×4): with trend, Spotlight and freshness it multiplied into a 480× swing. */
+export const MANIA_BONUS = 2.5;
 export const MANIA_SECONDS: [number, number] = [60, 120];
 /**
  * A perfect line earns this share of operations income for each point of its product's cpsShare.
@@ -25,6 +27,8 @@ export const MANIA_SECONDS: [number, number] = [60, 120];
  * line kept on trend with fresh designs earns a few times it.
  */
 export const MERCH_INCOME_SCALE = 0.5;
+/** n selling lines earn n^this times one line from the income-linked part of sales (see evaluateMerch). */
+export const MERCH_LINE_SHARE_EXPONENT = 0.5;
 /** Switching back to a design a line sold recently keeps its old freshness, unless it has been rested this long. */
 export const DESIGN_REST_SECONDS = 7200;
 export const MAX_MERCH_QUALITY = 10;
@@ -71,6 +75,14 @@ export interface MerchEval {
 export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, incomeBuff: number): MerchEval {
   const lines: Record<string, MerchLineRate> = {};
   let cps = 0;
+  // Lines split the income-linked part of sales between them: n lines sell n^MERCH_LINE_SHARE_EXPONENT
+  // times what one line would, so a full catalogue cannot make merch most of the economy.
+  let selling = 0;
+  for (const product of PRODUCTS) {
+    const line = s.merch.lines[product.id];
+    if (s.merch.unlocked[product.id] && line?.designId && s.designs[line.designId]) selling++;
+  }
+  const lineSplit = Math.pow(Math.max(1, selling), 1 - MERCH_LINE_SHARE_EXPONENT);
   for (const product of PRODUCTS) {
     const line = s.merch.lines[product.id];
     if (!s.merch.unlocked[product.id] || !line?.designId) continue;
@@ -84,7 +96,7 @@ export function evaluateMerch(s: GameState, mods: Mods, cpsNoBuffs: number, inco
       && (s.merch.mania.productId === product.id || (s.merch.mania.trend === s.merch.trend && trending));
     const quality = appeal.total * appeal.total * (trending ? TREND_BONUS : 1)
       * (mania ? MANIA_BONUS : 1) * novelty * pf * finishSalesMult(line.quality ?? 0);
-    const fromIncome = cpsNoBuffs * product.cpsShare * MERCH_INCOME_SCALE * quality * mods.merchMult;
+    const fromIncome = (cpsNoBuffs * product.cpsShare * MERCH_INCOME_SCALE * quality * mods.merchMult) / lineSplit;
     const fromFans = Math.pow(1 + s.fans / 1000, 0.6) * product.basePrice * 0.12 * quality * mods.merchMult;
     const lineCps = (fromIncome + fromFans) * incomeBuff;
     const profitPerUnit = product.basePrice * Math.max(0.01, clampPrice(line.price) - UNIT_COST);

@@ -109,12 +109,12 @@ describe('lategame budgets: lump sums', () => {
 });
 
 describe('lategame budgets: income mix', () => {
-  it.fails('matches are not more than 90% of steady income', () => {
+  it('matches are not more than 90% of steady income', () => {
     const { base } = ctx();
     expect(base.match / base.total).toBeLessThan(0.9);
   });
 
-  it.fails('operations are at least 5% of steady income', () => {
+  it('operations are at least 5% of steady income', () => {
     const { base } = ctx();
     expect(base.ops / base.total).toBeGreaterThan(0.05);
   });
@@ -145,7 +145,7 @@ describe('lategame budgets: multipliers', () => {
     expect(c.marginal).toBeLessThan(0.05);
   });
 
-  it.fails('the Agent line multiplies sponsor income by under 10', () => {
+  it('the Agent line multiplies sponsor income by under 10', () => {
     expect(sponsorChain(ctx().save).agentMult).toBeLessThan(10);
   });
 
@@ -159,7 +159,7 @@ describe('lategame budgets: multipliers', () => {
 });
 
 describe('lategame budgets: spending', () => {
-  it.fails('no line with 100+ owned repays its next unit in under 30 seconds', () => {
+  it('no line with 100+ owned repays its next unit in under 30 seconds', () => {
     for (const p of cashPaybacks().filter((x) => x.owned >= 100)) expect(p.paybackSeconds, `${p.kind} ${p.id}`).toBeGreaterThan(30);
   });
 

@@ -32,3 +32,13 @@ export const ACTIVE_VS_IDLE_SPEEDUP = 1.5;
  * three more hours in the same run.
  */
 export const SELL_OVER_STAY = 1.5;
+
+/**
+ * A run should level off: from the first Legacy point, three more hours may grow income by at most
+ * this factor. While a run keeps compounding, staying always beats selling.
+ */
+export const MAX_GROWTH_AFTER_FIRST_LEGACY = 100;
+export const GROWTH_WINDOW_SECONDS = 3 * 3600;
+
+/** Matches may be a big earner in a long semi-active run, but not most of it. */
+export const MAX_SEMI_MATCH_SHARE = 0.6;

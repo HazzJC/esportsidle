@@ -5,6 +5,12 @@ export type GearSlot = 'pc' | 'monitor' | 'mouse' | 'keyboard' | 'headset' | 'ch
 
 export const GEAR_MAX_TIER = 15;
 export const GEAR_COST_GROWTH = 11;
+/**
+ * Gear is priced for the league a team has reached: every league tier its best result this run adds
+ * this factor to the price, in step with opponents doubling in strength per tier. "Pro League gear
+ * costs Pro League prices", so gear stays a real choice on established teams instead of pocket change.
+ */
+export const GEAR_LEAGUE_GROWTH = 2;
 
 export interface GearSlotDef {
   id: GearSlot;

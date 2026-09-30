@@ -7,10 +7,10 @@ import { ACHIEVEMENTS } from '../src/data/achievements';
 import { TRENDS } from '../src/data/merch';
 import { OPERATIONS } from '../src/data/operations';
 import { STAFF } from '../src/data/staff';
-import { clickDrop, hypeTrainPayout } from '../src/engine/drops';
+import { MERCH_SPOTLIGHT_MULT, clickDrop, hypeTrainPayout } from '../src/engine/drops';
 import { tick } from '../src/engine/game';
 import { cabinetCount, cabinetIncomeMult, cabinetMarginalGain, computeMods, computeRates } from '../src/engine/economy';
-import { optimalPrice } from '../src/engine/merch';
+import { MANIA_BONUS, optimalPrice } from '../src/engine/merch';
 import { maxAffordable, operationLevelCost, unitPrice } from '../src/engine/operations';
 import { Rng } from '../src/engine/rng';
 import { goalRewardPotential, sponsorBonuses } from '../src/engine/sponsors';
@@ -127,8 +127,8 @@ export function merchEnvelope(save: GameState): Envelope[] {
     { label: 'stale designs, off trend, price 3.0', merchOverOps: worst },
     { label: 'as saved', merchOverOps: ratio(s) },
     { label: 'fresh designs, on trend, tuned price', merchOverOps: best },
-    { label: '... plus a Merch Spotlight drop (x5)', merchOverOps: best * 5 },
-    { label: '... plus a merch mania on the same product (x4 more)', merchOverOps: best * 20 },
+    { label: `... plus a Merch Spotlight drop (x${MERCH_SPOTLIGHT_MULT})`, merchOverOps: best * MERCH_SPOTLIGHT_MULT },
+    { label: `... plus a merch mania on the same product (x${MANIA_BONUS} more)`, merchOverOps: best * MERCH_SPOTLIGHT_MULT * MANIA_BONUS },
   ];
 }
 

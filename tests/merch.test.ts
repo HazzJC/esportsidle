@@ -4,6 +4,7 @@ import { effectAmount, STAFF_MAP } from '../src/data/staff';
 import { addDesign, analyzeDesign, encodePixels, generateDesign } from '../src/engine/designs';
 import { computeMods, computeRates } from '../src/engine/economy';
 import {
+  MANIA_BONUS,
   MANIA_SECONDS,
   merchQualityCost,
   noveltyOf,
@@ -142,7 +143,7 @@ describe('merch finish and mania', () => {
     expect(s.cash).toBe(1e8 - cost);
     expect(computeRates(s).merchCps).toBeGreaterThan(base);
     s.merch.mania = { trend: s.merch.trend, productId: 'tee', endsAt: 400 };
-    expect(computeRates(s).merchCps).toBeGreaterThan(base * 4);
+    expect(computeRates(s).merchCps).toBeGreaterThan(base * MANIA_BONUS);
     s.time = 500;
     expect(computeRates(s).merchCps).toBeLessThan(base * 2);
   });

@@ -61,9 +61,13 @@ export const WIN_CURVE = 2.5;
  * it demands — keep this near OPPONENT_GROWTH, never far above it.
  */
 export const PRIZE_GROWTH = 2.2;
-/** Fans per win at tier 0 and growth per tier. Kept below PRIZE_GROWTH: fans feed fame and merch. */
+/**
+ * Fans per win at tier 0 and growth per tier. Well below PRIZE_GROWTH: fans feed fame and merch, and
+ * teams climb about a tier per season, so fans grow like FAN_GROWTH^(tiers climbed). At 1.9 that was
+ * ×1000 an hour and the run never levelled off; 1.5 keeps promotions exciting without compounding.
+ */
 export const FAN_BASE = 2;
-export const FAN_GROWTH = 1.9;
+export const FAN_GROWTH = 1.5;
 export const LOSS_FAN_RATIO = 0.25;
 export const LOSS_PRIZE_RATIO = 0.1;
 
@@ -82,6 +86,8 @@ export function opponentRating(tier: number): number {
  * with operations income across every team and run away.
  */
 export const PRIZE_CPS_SECONDS = 0.8;
+/** n teams earn n^this times one team from the income-linked part of prizes (see teamShareDivisor). */
+export const TEAM_SHARE_EXPONENT = 0.65;
 
 export function prizeSeconds(tier: number): number {
   return PRIZE_CPS_SECONDS + 0.05 * Math.min(tier, 10);
