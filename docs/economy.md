@@ -37,7 +37,7 @@ npx tsx scripts/sim/paybacks.ts output/sim/full/active-1.json
 
 ## First sale opens with the final building (30 Sep 2026)
 
-Since  the first sale waits for the first Multiverse Championship, and  is 1e18, so the first point arrives with it and ticks up. Full matrix (, five seeds, runs long enough for every persona to reach the end of the ladder):
+Since `5f61dd2` the first sale waits for the first Multiverse Championship, and `LEGACY_DIVISOR` is 1e18, so the first point arrives with it and ticks up. Full matrix (`npm run sim`, five seeds, runs long enough for every persona to reach the end of the ladder):
 
 | persona | first Legacy point | time the game was open |
 | --- | --- | --- |
