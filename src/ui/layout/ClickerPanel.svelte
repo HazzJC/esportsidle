@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CROWD_BUFF_ID, HYPE_ASSIST_LEVEL, HYPE_MAX, hypeAssistActive } from '../../engine/clicker';
-  import { fmt, fmtTime, money } from '../../engine/format';
+  import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import Toasts from '../components/Toasts.svelte';
   import OrgLogo from '../components/OrgLogo.svelte';
@@ -166,7 +166,7 @@
             title: 'Sell the Org',
             icon: 'crown',
             iconColor: 'var(--gold)',
-            lines: [`Selling now earns ${fmt(pendingLegacy(game.view.s))} legacy: +1% income forever each.`, { text: 'Open the Legacy tab to sell.', tone: 'muted' }],
+            lines: [`Selling now earns ${fmt(pendingLegacy(game.view.s))} legacy: +${fmtPct(v.m.legacyLevelPct)} income forever each.`, { text: 'Open the Legacy tab to sell.', tone: 'muted' }],
           })}
         >
           <Icon name="crown" size={13} /> +{fmt(pending)} legacy

@@ -174,7 +174,7 @@ From `tests/fixtures/lategame-save.txt`: 12 sales, Legacy level 5.5e12, 1.8e50 l
 
 ## Bugs found
 
-- **"The big exit" quest can never be completed.** `sell_org` counts `stats.orgsSold` in delta mode, but `sellOrg` wipes the quest board (`prestige.ts:384`) before it increments `orgsSold` (`:398`). The quest's baseline therefore resets at exactly the moment it would complete. Its +3 Legacy and 10 trophies are unreachable.
+- ~~**"The big exit" quest can never be completed.**~~ Fixed: the sale pays it (`completeQuestOnSale`).
 
 ## Proposed tuning (not applied)
 
@@ -196,7 +196,7 @@ Ranked by impact on the targets. Each should be followed by `npm run sim:quick`,
 4. **Give operations a late role.**
    - They fall to about 10% of income by hour 6.
    - Cookie Clicker keeps buildings central through synergy and tier upgrades that keep coming. Extend the operation tier ladder or add per-operation fame synergies, so the base the multipliers sit on keeps growing.
-5. **Fix `sell_org`**: check the quest before the board is wiped, or count the sale into the new run's quest.
+5. ~~**Fix `sell_org`**~~ done.
 6. **Rework the Legacy level term for the long game.** Use a log or sqrt of level, or a capped per-level %, so selling keeps paying for veterans and staying in save 1 stops being viable (see the restart check above).
 7. **Cap Talent Agents** with the same soft cap coaches have.
 8. **Make snack upgrades worth buying**: +2–5% at their prices is 12–22× worse than anything next to them. Either cheaper, or ×1.1–1.25.

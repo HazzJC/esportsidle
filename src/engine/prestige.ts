@@ -19,6 +19,7 @@ import { UPGRADE_MAP } from '../data/upgrades';
 import { emit } from './bus';
 import { fmt } from './format';
 import { refreshMarket } from './market';
+import { completeQuestOnSale } from './quests';
 import { generatePlayer, skillRating } from './players';
 import { gainFans } from './wallet';
 import { Rng } from './rng';
@@ -210,6 +211,8 @@ export interface SellOptions {
   charter?: string | null;
   /** One of mandateOffers(s) for the next run, or null to play without one. */
   mandate?: string | null;
+  /** Which reward "The big exit" pays if the sale completes it (0: Legacy points, 1: trophies). */
+  questReward?: number;
 }
 
 /** Starting advantages from owned legacy nodes and the Founding Charter, applied to a fresh run. */
@@ -298,6 +301,8 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
   if (gained < 1) return null;
   const firstSale = s.prestige.runs === 0;
   const offered = mandateOffers(s).map((m) => m.id);
+  // Pays "The big exit" while its reward (trophies land on a team's shelf) can still reach the org.
+  completeQuestOnSale(s, options.questReward ?? 0, new Rng(s));
 
   const players = Object.values(s.players);
   const mvp = [...players].sort((a, b) => b.wins - a.wins)[0];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUESTS, QUEST_MAP } from '../src/data/quests';
+import { QUEST_MAP, QUESTS } from '../src/data/quests';
 import { FIRST_PLAYER_PRICE, TUTORIAL_INJURY_SECONDS } from '../src/data/tutorial';
 import { clickLogo } from '../src/engine/clicker';
 import { customiseDraft, signDraftPick } from '../src/engine/draft';
@@ -9,14 +9,30 @@ import { signListing } from '../src/engine/market';
 import { buyOperation } from '../src/engine/operations';
 import { completeOnboarding } from '../src/engine/org';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
-import { QUEST_SLOTS, claimQuest, fillQuests, nextQuest, questPerkLabels, questPerkSources, questProgress, updateQuests } from '../src/engine/quests';
+import {
+  claimQuest,
+  fillQuests,
+  nextQuest,
+  QUEST_SLOTS,
+  questPerkLabels,
+  questPerkSources,
+  questProgress,
+  updateQuests,
+} from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { sectionOpen, updateSections } from '../src/engine/sections';
+import { MARKET_UNLOCK_CASH, sectionOpen, updateSections } from '../src/engine/sections';
 import { hireStaff } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
-import { benchPlayer } from '../src/engine/teams';
-import { CALM_START_SECONDS, calmStart, operationsOpen, restDuringTutorial, skipTutorial, updateTutorial } from '../src/engine/tutorial';
+import { benchPlayer, playMatch } from '../src/engine/teams';
+import {
+  CALM_START_SECONDS,
+  calmStart,
+  operationsOpen,
+  restDuringTutorial,
+  skipTutorial,
+  updateTutorial,
+} from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
 import { foundedGame } from './fixtures';
 
@@ -398,4 +414,49 @@ describe('saves and sales', () => {
     expect(s.draft).toBeNull();
   });
 
+});
+
+describe('the first match', () => {
+  it('is always a win, however unlikely', () => {
+    const s = foundedGame(0, 3);
+    const team = s.teams.smash;
+    team.tier = 20;
+    const ev = computeRates(s).teams.smash;
+    expect(ev.winChance).toBeLessThan(0.01);
+    expect(playMatch(s, team, ev, computeMods(s), new Rng({ rng: 1 })).win).toBe(true);
+    // Only the first: the rest go the way the odds say.
+    let wins = 0;
+    for (let i = 0; i < 10; i++) if (playMatch(s, team, ev, computeMods(s), new Rng({ rng: 2 + i })).win) wins++;
+    expect(wins).toBe(0);
+    expect(s.stats.worstLoseStreak).toBe(10);
+    expect(s.stats.bestWinStreak).toBe(1);
+    // A forced win is not an upset.
+    expect(s.stats.upsetWins).toBe(0);
+  });
+});
+
+describe('the market', () => {
+  it('opens after the tutorial, the first time the org has $500', () => {
+    const s = createNewGame(0, 1);
+    s.cash = 100;
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    s.cash = 1e6;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(false); // still in the tutorial
+    skipTutorial(s);
+    s.cash = MARKET_UNLOCK_CASH - 1;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(false);
+    s.cash = MARKET_UNLOCK_CASH;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(true);
+    s.cash = 0;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(true);
+  });
+
+  it('leaves the Teams tab open from the very start', () => {
+    const s = createNewGame(0, 1);
+    expect(sectionOpen(s, 'teams')).toBe(true);
+  });
 });

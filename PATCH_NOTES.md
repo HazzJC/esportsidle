@@ -19,8 +19,25 @@
 
 ## Pending Changes
 
-### Balance tooling: one seeded, parallel playstyle simulator with source-over-time books
+### Fix: "The big exit" quest could never be completed, and the sell screen said quests were kept
 *Status: Pending*
+
+* **The Issue / Motivation**: The balance report found that the last quest, "The big exit" (sell the org), could never pay out:
+  * It counts `stats.orgsSold`, but selling cleared the quest board before the sale was counted.
+  * In the next run it reappeared with the new count as its baseline, and the next sale cleared it again.
+  * Its +3 Legacy points or 10 trophies were unreachable.
+  * The sell screen also listed "Quest progress" under **You keep**, when every quest and quest perk is lost.
+  * The Legacy chip's tooltip always said "+1% income forever each", ignoring Heritage and Endowment.
+* **What Changed**:
+  * `sellOrg` pays "The big exit" itself when the quest is on the board (`completeQuestOnSale` in `src/engine/quests.ts`). It pays the Legacy points by default, or the trophies with `questReward: 1`, and counts as a claimed quest.
+  * The sell screen says so ("Quest complete: selling finishes 'The big exit' for +3 legacy points") and moves quests to **You lose**.
+  * The Legacy chip tooltip shows the real per-level bonus.
+  * Tests:
+    * `tests/prestige.test.ts` covers both rewards and a sale without the quest.
+    * `tests/guidance.test.ts` is folded into `onboarding.test.ts` and a new `achievements.test.ts`.
+
+### Balance tooling: one seeded, parallel playstyle simulator with source-over-time books
+*Status: Committed* | `d4bfd31`, `7f63446` (Sep 29 2026)
 
 * **The Issue / Motivation**: Balance numbers came from four overlapping harnesses (`scripts/sim.ts`, `scripts/audit.ts` plus `audit-report.ts`, `scripts/compare.ts`, and the broken test-only runner). All of them shared one bot shape:
   * It bought perfectly, measuring about 140 purchases with a full income evaluation each and taking the best payback.

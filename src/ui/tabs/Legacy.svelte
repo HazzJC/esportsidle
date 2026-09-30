@@ -5,6 +5,7 @@
   import { MANDATE_MAP } from '../../data/mandates';
   import { CHALLENGES, DYNASTY, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
   import { describeEffect } from '../../engine/describe';
+  import { saleCompletesQuest } from '../../engine/quests';
   import { tierName } from '../../data/leagues';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
@@ -350,6 +351,13 @@
         (+{fmtPct(pending * v.m.legacyLevelPct)} income forever and {fmt(pending)} points to spend).
       </p>
 
+      {#if saleCompletesQuest(s)}
+        <div class="first-sale">
+          <Icon name="flag" size={16} color="var(--gold)" />
+          <span><b>Quest complete:</b> selling finishes "The big exit" for +3 legacy points.</span>
+        </div>
+      {/if}
+
       {#if p.runs === 0}
         <div class="first-sale">
           <Icon name="crown" size={16} color="var(--gold)" />
@@ -389,7 +397,7 @@
             <li>Cosmetics: org name, logo, jersey and designs</li>
             <li>Achievements and all-time stats</li>
             {#if s.players.founder}<li>Your founder's look and tag</li>{/if}
-            <li>Quest progress, trophy shelf and your rival</li>
+            <li>Trophy shelf and your rival</li>
             {#if hasSpecial(s, 'keepDecor')}<li>Gaming House decor</li>{/if}
             {#if hasSpecial(s, 'keepMerch')}<li>Unlocked merch products</li>{/if}
           </ul>
@@ -400,6 +408,7 @@
             <li>Cash, fans and operations</li>
             <li>Teams, players, staff and sponsors</li>
             <li>Upgrades (except trophy upgrades)</li>
+            <li>Quests and quest perks (the line starts again)</li>
           </ul>
         </div>
       </div>
