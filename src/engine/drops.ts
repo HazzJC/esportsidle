@@ -9,6 +9,8 @@ import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone } from './types
 import { earnCash, gainFans } from './wallet';
 
 export const DROP_LIFETIME = 13;
+/** Merch Spotlight's boost to merch sales (was ×5, which stacked with mania and trend into a 480× swing). */
+export const MERCH_SPOTLIGHT_MULT = 3;
 export const CHAIN_LIFETIME = 6;
 export const DROP_INTERVAL: [number, number] = [180, 600];
 export const FIRST_DROP: [number, number] = [45, 120];
@@ -129,8 +131,8 @@ const OUTCOMES: Outcome[] = [
     weight: (s) => Object.values(s.merch.lines).some((line) => line.designId) ? 12 : 0,
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 90);
-      addBuff(s, { id: 'merch_surge', name: 'Merch Spotlight', icon: 'shirt', tone: 'good', desc: 'Merch sales ×5', duration: d, effects: [{ kind: 'merch', mult: 5 }] });
-      return { outcome: 'merch_surge', title: 'Merch Spotlight!', body: `Merch sales ×5 for ${fmtTime(d)}.`, icon: 'shirt', tone: 'gold' };
+      addBuff(s, { id: 'merch_surge', name: 'Merch Spotlight', icon: 'shirt', tone: 'good', desc: `Merch sales ×${MERCH_SPOTLIGHT_MULT}`, duration: d, effects: [{ kind: 'merch', mult: MERCH_SPOTLIGHT_MULT }] });
+      return { outcome: 'merch_surge', title: 'Merch Spotlight!', body: `Merch sales ×${MERCH_SPOTLIGHT_MULT} for ${fmtTime(d)}.`, icon: 'shirt', tone: 'gold' };
     },
   },
   {

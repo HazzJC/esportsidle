@@ -298,10 +298,13 @@ export interface DynastyDef {
 
 export const DYNASTY_BASE_COST = 5;
 export const DYNASTY_COST_GROWTH = 1.15;
+/** The most Pedigree can add to prize money (+100%, so ×2). */
+export const PEDIGREE_MAX = 1;
 
 export const DYNASTY: DynastyDef[] = [
   { id: 'renown', name: 'Renown', icon: 'crown', perRank: '+3% income', effects: (r) => [{ kind: 'globalPct', pct: 0.03 * r }] },
-  { id: 'pedigree', name: 'Pedigree', icon: 'trophy', perRank: '+4% prize money', effects: (r) => [{ kind: 'prizeMult', mult: 1 + 0.04 * r }] },
+  // Prize money was the one Dynasty track that compounded with match income; it now levels off at ×2.
+  { id: 'pedigree', name: 'Pedigree', icon: 'trophy', perRank: '+4% prize money, levelling off at ×2', effects: (r) => [{ kind: 'prizeMult', mult: 1 + PEDIGREE_MAX * (1 - Math.exp((-0.04 * r) / PEDIGREE_MAX)) }] },
   { id: 'following', name: 'Following', icon: 'heart', perRank: '+6% fans', effects: (r) => [{ kind: 'fansMult', mult: 1 + 0.06 * r }] },
   {
     id: 'academy',

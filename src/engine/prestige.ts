@@ -19,6 +19,7 @@ import { UPGRADE_MAP } from '../data/upgrades';
 import { emit } from './bus';
 import { fmt } from './format';
 import { refreshMarket } from './market';
+import { completeQuestOnSale } from './quests';
 import { generatePlayer, skillRating } from './players';
 import { gainFans } from './wallet';
 import { Rng } from './rng';
@@ -27,11 +28,12 @@ import { addToTeam, createTeam, ensureTeam } from './teams';
 import type { Effect, GameState, HallOfFameEntry, Player, Rarity } from './types';
 
 /**
- * All-time earnings needed for the first legacy point; later points follow a cube curve. This is
- * the dial that sets when a run can end: the sim reaches this figure at roughly three hours of
- * active play, which is the intended window for a first prestige.
+ * All-time earnings for the first legacy point; later points follow a cube curve (8 points at 8×,
+ * 27 at 27×). Set so the first point lands about when an active org buys its first Multiverse
+ * Championship (3-4 hours in, with 1e18-7e18 earned) and ticks up from there. It was 1e12 before
+ * v7, which handed a first sale 100-200 points; saves are rescaled on load (see save.ts).
  */
-export const LEGACY_DIVISOR = 1e12;
+export const LEGACY_DIVISOR = 1e18;
 export const BASE_LEGACY_LEVEL_PCT = 0.01;
 export const LEGEND_RATING_BONUS = 0.05;
 export const LEGEND_FANS_BONUS = 0.02;
@@ -53,8 +55,21 @@ export function nextLegacyThreshold(s: GameState): number {
   return Math.pow(next, 3) * LEGACY_DIVISOR;
 }
 
+/** The last operation on the ladder. Buying the first one is what opens the first sale. */
+export const FINAL_OPERATION = OPERATIONS[OPERATIONS.length - 1];
+
+/**
+ * Whether the org can be sold at all. The first sale waits until the org has climbed the whole
+ * operations ladder once (its first Multiverse Championship, `FINAL_OPERATION`): about three to four hours of active play,
+ * the intended window for a first prestige, and the point where a run's growth starts to level off.
+ * Legacy points build up from the start, so a first sale is a large one.
+ */
+export function legacyUnlocked(s: GameState): boolean {
+  return s.prestige.runs > 0 || s.ops[FINAL_OPERATION.id].highest > 0;
+}
+
 export function canSell(s: GameState): boolean {
-  return pendingLegacy(s) >= 1;
+  return legacyUnlocked(s) && pendingLegacy(s) >= 1;
 }
 
 /**
@@ -210,6 +225,8 @@ export interface SellOptions {
   charter?: string | null;
   /** One of mandateOffers(s) for the next run, or null to play without one. */
   mandate?: string | null;
+  /** Which reward "The big exit" pays if the sale completes it (0: Legacy points, 1: trophies). */
+  questReward?: number;
 }
 
 /** Starting advantages from owned legacy nodes and the Founding Charter, applied to a fresh run. */
@@ -295,9 +312,11 @@ function resetPlayerForNewRun(p: Player): Player {
 
 export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntry | null {
   const gained = pendingLegacy(s);
-  if (gained < 1) return null;
+  if (gained < 1 || !legacyUnlocked(s)) return null;
   const firstSale = s.prestige.runs === 0;
   const offered = mandateOffers(s).map((m) => m.id);
+  // Pays "The big exit" while its reward (trophies land on a team's shelf) can still reach the org.
+  completeQuestOnSale(s, options.questReward ?? 0, new Rng(s));
 
   const players = Object.values(s.players);
   const mvp = [...players].sort((a, b) => b.wins - a.wins)[0];

@@ -6,11 +6,6 @@ import { cleanOrgName, completeOnboarding } from '../src/engine/org';
 import { teamKit, unlockGame } from '../src/engine/teams';
 import { mix, readableOn, shade } from '../src/ui/color';
 
-/** Re-labels a current save as an older version so it runs through the migrations. */
-function asVersion(text: string, version: number): string {
-  return text.replace(/^ESI\d+/, `ESI${version}`);
-}
-
 describe('palette data', () => {
   it('only ships valid colours', () => {
     for (const c of RARITY_COLORS) expect(isHexColor(c)).toBe(true);
@@ -54,37 +49,6 @@ describe('interface tone and team colours', () => {
 
     s.teams.smash.kit = null;
     expect(teamKit(s, 'smash').primary).toBe('#112233');
-  });
-});
-
-describe('v2 -> v3 migration', () => {
-  it('moves saves still wearing the original neon kit onto the new default', () => {
-    const s = foundedGame(0, 1);
-    s.org.primary = LEGACY_KIT.primary;
-    s.org.secondary = LEGACY_KIT.secondary;
-    const loaded = decodeSave(asVersion(encodeSave(s), 2));
-    expect(loaded.org.primary).toBe(DEFAULT_KIT.primary);
-    expect(loaded.org.secondary).toBe(DEFAULT_KIT.secondary);
-  });
-
-  it('leaves any other kit alone', () => {
-    const s = foundedGame(0, 1);
-    s.org.primary = LEGACY_KIT.primary;
-    s.org.secondary = '#123456';
-    const loaded = decodeSave(asVersion(encodeSave(s), 2));
-    expect(loaded.org.primary).toBe(LEGACY_KIT.primary);
-    expect(loaded.org.secondary).toBe('#123456');
-  });
-
-  it('gives old teams no kit of their own and asks old players to pick a tone', () => {
-    const s = foundedGame(0, 1) as unknown as { teams: Record<string, Record<string, unknown>>; settings: Record<string, unknown> };
-    delete s.teams.smash.kit;
-    delete s.settings.onboarded;
-    delete s.settings.uiAccent;
-    const loaded = decodeSave(asVersion(encodeSave(s as never), 2));
-    expect(loaded.teams.smash.kit).toBeNull();
-    expect(loaded.settings.onboarded).toBe(false);
-    expect(loaded.settings.uiAccent).toBe(DEFAULT_TONE);
   });
 });
 

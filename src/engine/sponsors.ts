@@ -46,6 +46,16 @@ export function goalLabel(kind: SponsorGoalKind, target: number): string {
 
 /** The share of what the org earned during a deal that finishing its goal pays out. */
 export const GOAL_EARNINGS_SHARE = 0.35;
+/**
+ * Harder goals pay a bigger share, but never more than this much of what the deal earned. Without it a
+ * drop goal (×8) paid 280% of the deal's earnings, and its advertised value was hours of income.
+ */
+export const GOAL_SHARE_MAX = 0.75;
+
+/** The share of the deal's earnings a goal of this kind pays. */
+export function goalShareRate(kind: SponsorGoalKind): number {
+  return Math.min(GOAL_SHARE_MAX, GOAL_EARNINGS_SHARE * goalDifficultyBonus(kind));
+}
 
 export function goalDifficultyBonus(kind: SponsorGoalKind): number {
   return kind === 'drops' ? 8 : kind === 'tournaments' ? 5 : kind === 'titles' ? 3 : 1;
@@ -56,24 +66,24 @@ export function goalDifficultyBonus(kind: SponsorGoalKind): number {
  *
  * A goal used to pay a flat slice of current income, so a deal that completed the moment it was
  * signed — which late-game orgs do constantly — handed over an hour of earnings for nothing. Now the
- * bonus is a share of what the org actually earned while the deal ran, capped by the contract's
- * headline value, and scaled down when the goal is finished early. Running the full goal time and
+ * bonus is a share of what the org actually earned while the deal ran (bigger for harder goals, never
+ * over GOAL_SHARE_MAX), capped by the contract's headline value of that share of goal-time income, and scaled down when the goal is finished early. Running the full goal time and
  * earning well is what pays.
  */
 export function goalReward(s: GameState, c: SponsorContract, cpsNoBuffs: number): number {
   const floor = 500 * (c.tier + 1);
   const full = c.goal.rewardSeconds;
   const pace = Math.min(1, Math.max(0, s.time - c.signedAt) / Math.max(1, full));
-  const headline = Math.max(0, cpsNoBuffs) * full * goalDifficultyBonus(c.goal.kind);
+  const headline = Math.max(0, cpsNoBuffs) * full * goalShareRate(c.goal.kind);
   // Contracts signed before this rule have no baseline, so they keep the old headline value.
   const earnedDuring = c.earnedAt === undefined ? null : Math.max(0, s.earnedRun - c.earnedAt);
-  const share = earnedDuring === null ? headline : earnedDuring * GOAL_EARNINGS_SHARE * goalDifficultyBonus(c.goal.kind);
+  const share = earnedDuring === null ? headline : earnedDuring * goalShareRate(c.goal.kind);
   return Math.max(floor, Math.min(headline, share) * pace);
 }
 
 /** The most a goal could pay if the deal runs its full goal time: what an offer advertises. */
 export function goalRewardPotential(tier: number, rewardSeconds: number, cpsNoBuffs: number, kind: SponsorGoalKind = 'wins'): number {
-  return Math.max(500 * (tier + 1), Math.max(0, cpsNoBuffs) * rewardSeconds * goalDifficultyBonus(kind));
+  return Math.max(500 * (tier + 1), Math.max(0, cpsNoBuffs) * rewardSeconds * goalShareRate(kind));
 }
 
 export function goalProgress(s: GameState, c: SponsorContract): number {

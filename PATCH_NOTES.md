@@ -19,8 +19,183 @@
 
 ## Pending Changes
 
-### Test suite: ultra-lategame balance audit built on a real 1.8e50-earnings save
+### Balance: the first Legacy point comes with the first Multiverse Championship
 *Status: Pending*
+
+* **The Issue / Motivation**: The active player could sell at 1h22–1h31, midway up the operations ladder, for a handful of points. After that, three more hours in the run earned about ten times more Legacy than selling and replaying. The design goal is a first prestige 3–4 hours into an active run, once the whole ladder has been climbed. From there Legacy should tick up, rather than arrive as a large pile.
+* **What Changed**:
+  * **First sale waits for the final operation** (`legacyUnlocked` in `src/engine/prestige.ts`). An org that has never sold must buy its first Multiverse Championship (`FINAL_OPERATION`) before it can sell. After the first sale this no longer applies.
+    * `canSell`, the sale offer, the HQ suggestion, the clicker chip and "The big exit" quest all respect it.
+    * The Legacy tab shows the points waiting and "Your first sale opens when you buy your first Multiverse Championship, the last operation".
+  * **`LEGACY_DIVISOR` is 1e18** (was ~~1e12~~). Active players have 1e18–7e18 earned when they buy the final building, so the first point lands with it and ticks up (8 points at 8e18, 27 at 2.7e19).
+  * **Save v7 migration** (`src/engine/save.ts`): Legacy levels, unspent points and Hall of Fame gains are divided by 100 (`LEGACY_RESCALE_V7`, the cube root of the millionfold divisor change). Every org stays where it was against its own earnings, and an org that had sold keeps at least level 1. The reference veteran save goes from Legacy 5.5e12 to 5.5e10.
+  * **Simulator**:
+    * The first-Legacy milestone and the bot's sale use `canSell`.
+    * The active target is now 3–4 h (was 2h45–4h).
+    * The full matrix runs longer (active 8 h, semi and idle 16 h, casual 4 days, optimal 4 h) so every persona can reach the ladder's end; the quick preset runs 5 h.
+  * **Tests**: `finishLadder()` fixture for sale tests, v6 → v7 migration tests, and the veteran-save invariant updated for the rescale.
+* **Result** (active persona, five seeds):
+  * The first Multiverse Championship and the first point land at 3h30, 3h37, 3h55, 3h59 and 4h14 (median 3h55).
+  * Points waiting: 1–3 at 4 h, 6–17 at 5 h, 24–35 at 6 h, 96–124 at 8 h.
+  * `docs/economy.md` gets the full matrix (semi, idle, casual, the stay-or-sell check) once the long runs are summarised.
+* **For reviewers**: a first sale is now small (1–3 points plus the free root node and four founding points), so selling right away is worth little. Making early Legacy strong (a larger, tapering per-level bonus and starter kits) is the next phase.
+
+### Balance: runs stop compounding without limit (plateau pass, phase 2 of the economy refinements)
+*Status: Pending*
+
+* **The Issue / Motivation**: The balance simulator's baseline (`docs/economy.md`) found several things compounding without limit:
+  * Matches reached 71% of a 12-hour semi-active run and 98% of the veteran save.
+  * Merch swung 480× between its worst and best case.
+  * Gear on established teams cost under a second of income, which made league tiers (and with them fans and fame) free to climb.
+  * Talent Agents, Team Managers and Pedigree had no ceiling.
+  * A hard sponsor goal could pay 280% of what the org earned during the deal.
+* **What Changed**:
+  * **Gear is priced by league** (`src/data/gear.ts`, `players.ts`): every league tier a team's best result reaches this run doubles gear prices (`GEAR_LEAGUE_GROWTH = 2`), in step with opponents. The player card says "Priced for {league}". Relegation doesn't make gear cheaper. Gear paybacks went from under 10 s to about an hour.
+  * **Fans per league tier** grow ×1.5 per tier instead of ~~×1.9~~ (`FAN_GROWTH`, `src/data/leagues.ts`).
+  * **Fame knee**: above 100M fans, fame grows at half its usual exponent (`FAME_KNEE_FANS`, `FAME_KNEE_SLOPE` in `economy.ts`). Fame 6 hours into an active run: ×50 (was ×89).
+  * **Teams and merch lines share their income-linked earnings**: n teams earn n^0.65 times one team (`TEAM_SHARE_EXPONENT`), and n selling merch lines earn n^0.5 times one line (`MERCH_LINE_SHARE_EXPONENT`). Fielding every game or product no longer multiplies income by 12 or 10.
+  * **Merch spikes**:
+    * Mania is ×2.5 (was ~~×4~~).
+    * Merch Spotlight is ×3 (was ~~×5~~, `MERCH_SPOTLIGHT_MULT`).
+    * A stale design still sells half as well (`NOVELTY_FLOOR` 0.5, was ~~0.25~~).
+    * The veteran save's worst-to-best merch swing is 11.8× (was 480×).
+  * **Caps**:
+    * Team Managers level off at twice as fast.
+    * Talent Agents soft-cap from ten hires and level off at ×3 sponsor income (they were ~~uncapped~~).
+    * Pedigree levels off at ×2 prize money.
+    * The stale "sponsor total is capped" comment in `economy.ts` now describes the code.
+  * **Sponsor goals** pay 35% of what the org earned during the deal, a bigger share for harder goals, but never more than 75% (`GOAL_SHARE_MAX`; drop goals used to pay ~~280%~~). The advertised ceiling uses the same share. The largest goal in an active run fell from 26 min of income to under 4 min.
+  * **Simulator targets**: "a run levels off" (income growth in the 3 h after the first Legacy point) and "matches under 60% of a long semi run". The late-game check uses the live Spotlight and mania values.
+  * **Tests**: the merch mania test reads `MANIA_BONUS`, and the sponsor headline test uses `goalShareRate`. Four late-game budgets now pass and lost their `it.fails`: matches ≤ 90%, operations ≥ 5%, Agent multiplier under 10, and no 100+-owned line repaying in under 30 s.
+* **Result** (`npm run sim`, 5 seeds; before → after):
+  * **Mix**: an active 6-hour run is operations 24%, matches 27%, merch 26%, drops 22%. A 12-hour semi run has matches at 40% (was 71%). The largest share of any run is 63% (was 79.5%).
+  * **Paybacks** now lengthen through a run instead of shortening: operations 8m at 30m → 23–43m at 2–3 h.
+  * **Pace**: the first Legacy point moved from 1h22 to 1h31 (active) and 3h51 to 4h28 (semi). Pace is the next phase.
+  * **Still failing**: income still grows ×2e8 in the 3 h after the first Legacy point, and staying still beats selling (0.08×). Base operations income (Cookie Clicker's own building ladder) grows ×50–160 an hour until the last building is bought around hour 5–6.
+
+### Design report: what to build after the first Legacy
+*Status: Pending* (first draft went in with `f328057`; later corrections are uncommitted)
+
+* **The Issue / Motivation**: Two AI-written idea lists and two Cookie Clicker deep dives proposed late-game features. Several of them fix problems the game already solves (multiplicative buff stacking, a rival org, Trophies as a non-cash currency), and none mention what `docs/economy.md` found: after the first Legacy point, staying in the run beats selling about ten times over, so nothing built for run 2 onwards would be seen.
+* **What Changed**:
+  * New `docs/design-roadmap.md`, docs only, no game or balance change. It covers:
+    * what the code already has against what the lists claim is missing;
+    * research on what idle players like and dislike, and why Cookie Clicker's mechanisms work and where they chafe;
+    * seven design principles;
+    * a ranked verdict on each idea, with how it would be built in this codebase and what to push back on;
+    * a phased sequence and the open decisions.
+  * Step 0 of the roadmap is the economy floor already listed in `docs/economy.md`.
+  * New `docs/implementation-plan.md`, docs only: a phased plan for six workstreams (HQ UI/UX, Legacy tree, price-curve validation, offline never being the best way to play, features A1/A2/A3/A4/A6, and the quest system), with findings from the code and the running game, acceptance tests and open decisions.
+    * Finding recorded there: the 16 operation prices and base outputs are an exact copy of Cookie Clicker's (×1.15 growth, 25% refund), so the price curve is not what makes income outrun costs; uncoupled multipliers are.
+    * Finding recorded there: offline is 100% efficient for up to 72 hours at max Legacy nodes, which becomes more attractive once the economy levels off.
+
+### Fix: "The big exit" quest could never be completed, and the sell screen said quests were kept
+*Status: Committed* | `f328057` (Sep 30 2026)
+
+* **The Issue / Motivation**: The balance report found that the last quest, "The big exit" (sell the org), could never pay out:
+  * It counts `stats.orgsSold`, but selling cleared the quest board before the sale was counted.
+  * In the next run it reappeared with the new count as its baseline, and the next sale cleared it again.
+  * Its +3 Legacy points or 10 trophies were unreachable.
+  * The sell screen also listed "Quest progress" under **You keep**, when every quest and quest perk is lost.
+  * The Legacy chip's tooltip always said "+1% income forever each", ignoring Heritage and Endowment.
+* **What Changed**:
+  * `sellOrg` pays "The big exit" itself when the quest is on the board (`completeQuestOnSale` in `src/engine/quests.ts`). It pays the Legacy points by default, or the trophies with `questReward: 1`, and counts as a claimed quest.
+  * The sell screen says so ("Quest complete: selling finishes 'The big exit' for +3 legacy points") and moves quests to **You lose**.
+  * The Legacy chip tooltip shows the real per-level bonus.
+  * Tests:
+    * `tests/prestige.test.ts` covers both rewards and a sale without the quest.
+    * `tests/guidance.test.ts` is folded into `onboarding.test.ts` and a new `achievements.test.ts`.
+
+### Balance tooling: one seeded, parallel playstyle simulator with source-over-time books
+*Status: Committed* | `d4bfd31`, `7f63446` (Sep 29 2026)
+
+* **The Issue / Motivation**: Balance numbers came from four overlapping harnesses (`scripts/sim.ts`, `scripts/audit.ts` plus `audit-report.ts`, `scripts/compare.ts`, and the broken test-only runner). All of them shared one bot shape:
+  * It bought perfectly, measuring about 140 purchases with a full income evaluation each and taking the best payback.
+  * It clicked five times a second, but only in fixed windows.
+  * It caught drops instantly and ignored hype chains.
+  * It ran one seed per process, with no parallelism.
+  * No bot played the ways people actually play: acting every 20–30 seconds with a crowd every ten minutes, or ten minutes on and fifty idle with the tab open. A 12-hour active run took up to 27 minutes.
+* **What Changed**:
+  * **`scripts/sim/`** replaces the old harnesses. The loop (`run-sim.ts`) is `audit.ts` refactored into a pure `runSim(options)`. It was checked byte-for-byte against `audit.ts` on seed 1 over 3 hours: every purchase, milestone, sample and sponsor payout is identical.
+  * **Personas** (`personas.ts`):
+    * `active` (the balance target): acts every 20–30 s, fills the meter for a crowd about every ten minutes, catches 85% of drops after a 1–6 s reaction, and pops 12 chain bubbles.
+    * `semi`: 10 minutes active, then 50 open and idle, every hour.
+    * `casual`: four sessions a day, closed in between, using the real offline path.
+    * `idle`: checks in every 10–15 minutes.
+    * `optimal`: the ceiling.
+    * `audit-compat`: the old bot, kept to check the simulator against.
+    * Every persona follows the tutorial closely. They now also answer world events, spend trophies on operation levels and trophy upgrades, and buy decor.
+  * **Buyers** (`buyers.ts`):
+    * `optimal` is the old exact-payback buyer.
+    * `human` judges payback through log-normal noise, sometimes ignores a category for a decision, and saves up for a favourite that is up to three minutes of income away.
+    * The player's own dice are seeded separately from the game's RNG.
+  * **Books every 10 simulated minutes** (`sampler` in `run-sim.ts`):
+    * each ledger source;
+    * the estimated share temporary buffs added (crowd, frenzy, other);
+    * sponsor, Legacy, fame and superfan multipliers;
+    * spending by kind, and cash moved outside the ledger;
+    * crowds, chains, and drops seen and caught;
+    * Legacy pending.
+  * **Matrix** (`matrix.ts`, `npm run sim` / `npm run sim:quick`): one child process per persona, seed and variant, run in parallel. The `full` preset:
+    * 5 personas × 5 seeds;
+    * `no-drops`, `no-merch`, `no-teams` and `no-clicks` variants;
+    * a restart check: from an hour after the first Legacy point, stay 3 h or sell and replay 3 h.
+  * **Report and targets**: `report.ts` writes `report.md` and a self-contained `report.html` of share-over-time charts. `targets.ts` holds the design targets as data; the report checks each one and marks it pass or fail:
+    * first Legacy at 2h45–4h active;
+    * a crowd every ~10 min;
+    * no source over 90% of a run or of a 10-minute window after 30 min;
+    * merch and matches each 10–40% / 10–50% of an active run;
+    * active play at least 1.5× faster than idle;
+    * selling at least 1.5× better than staying.
+  * **Payback audit** (`paybacks.ts`): prices every operation, level, upgrade (visible or within a day of income), staff hire, gear slot, merch finish and line, decor item, Legacy node and Dynasty rank at five points of a real run. It flags purchases that change nothing, purchases paying back 10× faster or slower than their kind, and cards whose stated ×N differs from what they did.
+  * **Faster engine**, identical results. These hot paths ran inside every income evaluation, so they speed up the game too:
+    * `playerEasterEgg` caches per player;
+    * gear stat multipliers look up only the slots that raise a stat;
+    * `computeRates` counts the cabinet once;
+    * `clickLogo` accepts precomputed modifiers.
+    * The simulator reuses modifiers when measuring operations, gear and merch finish.
+    * A 3-hour active run went from 140 s to 58 s with a byte-identical record.
+  * **Deleted**: `scripts/sim.ts`, `scripts/audit.ts`, `scripts/audit-report.ts`, `scripts/compare.ts`. `scripts/lategame-audit.ts` now plays forward with `scripts/sim/cli.ts` and writes its report under `output/`.
+  * **`tests/sim-smoke.test.ts`**: plays every persona for five minutes and checks determinism, so the simulator can't rot unnoticed again.
+  * **Docs**:
+    * `docs/economy.md` is rewritten as the single living write-up: how it is measured, the targets, pace, income mix over time, what each system is worth, paybacks, the late game, bugs found, and a ranked tuning list (not applied).
+    * Deleted the dated audit docs it supersedes: `balance-audit-2026-09-20`, `progression-audit-2026-09-22`, `lategame-findings-2026-09-29`, and the generated `lategame-audit.md`.
+    * `AGENTS.md` and `docs/content-catalog.md` point at the tooling. A stray Invitationals row in the catalog is back inside its table.
+  * **Baseline** (`npm run sim`: 39 runs including the restart check, 2m30s on 18 workers):
+    * The active player earns its first Legacy point at **1h22** (1h17–1h25 over five seeds), against a 2h45–4h target. Semi takes 3h51, idle 5h43, and casual 13h31 wall-clock (66 minutes of it with the game open).
+    * **Staying in a run beats selling by about 10×**: from an hour after the first point, three more hours in the run end with 464–1,848 Legacy, while selling and replaying ends with 69–166. Income grows about 100× every 30 minutes and never levels off.
+    * Matches climb to 71% of a 12-hour semi run and 66% of a 3-day casual game. Gear on established teams costs under a second of income. Snack upgrades pay back 12–22× slower than other upgrades.
+    * **Bug found, not fixed**: the "The big exit" quest can never complete, because selling wipes the quest board before `orgsSold` increments.
+
+### Test suite: reorganised by feature, dead tests removed, slow suite made opt-in
+*Status: Committed* | `6a0d247` (Sep 29 2026)
+
+* **The Issue / Motivation**: The suite had grown in batches. Seven files were named after the batch that added them rather than the feature they test, save migrations were spread over six files, and some tests checked nothing (a copy of the toast-duration formula tested against itself, a string compared with itself) or asserted that known exploits still worked. `tests/playtest-runner.ts` imported the removed `skipQuest`, so `npm run check` failed. `npm test` took 15.7 s, 20 s of CPU of it in two characterization tests that only logged numbers.
+* **What Changed**:
+  * **Deleted**:
+    * `tests/playtest-runner.ts`, an unused third copy of the sim that no longer compiled.
+    * `tests/playtest-results/`, a set of Sep-19 logs that nothing referenced.
+    * `tests/playtest-audit.test.ts`, a console.log characterization suite that pinned the season-erase and buffed-transfer exploits. Its one real invariant, that squads develop only while the game is open, moved to `save.test.ts`.
+    * The regenerable sim output under `output/`, which is now gitignored apart from `visual-comparisons/`.
+  * **Merged by feature**: `feedback-batch`, `user-feedback-fixes`, `new-features`, `balance-update`, `rebalance` and `merch-rebalance` were split into the matching files:
+    * new: `clicker`, `merch`, `market`, `players`, `automation`;
+    * existing: `staff`, `roster`, `fame`, `business`, `events`.
+    * `upgrade-audit` is now `effects.test.ts`.
+  * **One migrations file**: every save-migration and save-heal test now lives in `migrations.test.ts`:
+    * the v1, v2→v3 and v5→v6 migrations;
+    * founder healing;
+    * saves from before the first-player draft.
+  * **Removed**:
+    * The two no-op tests.
+    * The legacy-node cost pins and the `LEGACY_DIVISOR` pin, which is already covered in `prestige`.
+    * A third copy of "founder returns after a sale".
+    * The "at least 250 upgrades" and "exactly 16 operations" / "14 fame sources" count pins. Where needed they now read from the data.
+  * **Deterministic**: hand-written 27-field team literals now use `createTeam()`, and `createBaseState()` calls are seeded.
+  * **Lategame suite**: moved to `tests/slow/`. Its setup runs lazily, and it runs in its own vitest project (`npm run test:slow`); `npm test` runs the `unit` project only. It gained a "finds everything the budgets measure" invariant, because an `it.fails` budget whose lookup found nothing would otherwise pass on the TypeError. The fresh-run (<15) and veteran (<50) prize-stack caps now reference each other.
+  * **Result**: `npm test` takes 2.4 s (353 tests), `npm run test:slow` takes 15 s (14 plus 8 expected fails), and `npm run check` passes again.
+
+### Test suite: ultra-lategame balance audit built on a real 1.8e50-earnings save
+*Status: Committed* | `6a0d247` (Sep 29 2026)
 
 * **The Issue / Motivation**: Every earlier audit stopped at a few hours into a fresh run, but real players sit 12 sales deep with Legacy in the trillions, where different things break. A player's very late-game save (12 sales, Legacy level 5.5e12, every Legacy node, 300 achievements) was supplied as a basis for finding what is out of hand there.
 * **What Changed**:
@@ -28,18 +203,18 @@
   * `scripts/lategame-lib.ts` and `scripts/lategame-checks.ts`: helpers that remove each owned thing in turn (every Legacy node, Dynasty track, upgrade, staff line, operation, team, sponsors, merch, fans, cabinet) and recompute income; lump-sum payouts in seconds of income; next-unit payback and elasticity for every operation and staff line; the whole bank spent on one line; merch's best and worst case; the cabinet and sponsor multiplier chains; numeric headroom to 1.8e308; a no-purchase forward projection.
   * `scripts/lategame-audit.ts` writes `docs/lategame-audit.md` and `output/lategame-audit/static.json`. It folds in any `play-*.json` from `scripts/audit.ts`.
   * `scripts/audit.ts` gained `--from=<save>` and `--sellnow=true`, so the existing progression bot can sell the veteran org and play the runs after it with that Legacy.
-  * `tests/lategame-audit.test.ts`: invariants (finite, headroom, formatting) plus budgets. Budgets that the working tree breaks are `it.fails`, so each flips red the moment a balance change fixes it and the `.fails` should then be removed.
+  * `tests/slow/lategame-audit.test.ts`: invariants (finite, headroom, formatting) plus budgets. Budgets that the working tree breaks are `it.fails`, so each flips red the moment a balance change fixes it and the `.fails` should then be removed.
   * Findings are in `docs/lategame-findings-2026-09-29.md`.
 
 ### Fix: the Prize line, click multipliers and Worlds-season events did nothing
-*Status: Pending*
+*Status: Committed* | `a01e3c3` (Sep 29 2026)
 
 * **The Issue / Motivation**: Audit of every store upgrade and legacy node (each removed in turn from an org that owns everything else, then measured against the real payouts on a 1-hour run and the late-game save). Every effect changed the modifier set, but two never reached the game:
   * **Match prize money**: `prizeMult` multiplied only the flat tier prize. A match prize is that flat amount plus a few seconds of operations income, and the flat part is 0.1% of it an hour into a run (10⁻²⁴ in the late-game save). So the eight Prize-line upgrades, Hall of Champions, Alumni Network, Pedigree ranks, Banking sponsors, the "Branch out" quest perk and the Worlds-season event (×1.5 prize for 5 minutes) paid nothing for matches while their cards said "Match prize money ×N". Only Invitationals used them.
   * **Click multiplier**: `clickMult` (Golden Controller, Veteran Fingers, the "Hype streak" quest perk, the Party mandate) multiplied only the flat click base. Next to the "+% of income per click" part that base is about 7% of a click at 1 hour and nothing later, so those cards did nothing.
   * Smaller mismatches: Superfan upgrades counted shadow achievements towards "Unlock N achievements" while the bonus ignores them; Hype Veterans said Drops appear "15% more often" when the interval is 15% shorter (about 18% more often).
 * **What Changed**:
-  * **Prize money** (`teams.ts`): `prizeMult` and the per-game event multiplier now multiply the whole match prize. To keep matches from becoming a scaled copy of the operations economy, the sources were retuned down: the eight Prize-line upgrades are ~~×2~~ ×1.15 each (×3 in total), Hall of Champions ~~×1.5~~ ×1.25, Alumni Network ~~×1.5~~ ×1.25, Pedigree ~~+6%~~ +4% per rank, Banking sponsors ~~+20%~~ +10% per strength. The Media Circus mandate's "prize money 20% lower" is now a real cost.
+  * **Prize money** (`teams.ts`): `prizeMult` and the per-game event multiplier now multiply the whole match prize. To keep matches from becoming a scaled copy of the operations economy, the sources were retuned down: the eight Prize-line upgrades are ~~×2~~ ×1.15 each (×3 in total), Hall of Champions ~~×1.5~~ ×1.25, Alumni Network ~~×1.5~~ ×1.25, Pedigree ~~+6%~~ +4% per rank (levelling off at ×2 since the Phase 2 plateau pass), Banking sponsors ~~+20%~~ +10% per strength. The Media Circus mandate's "prize money 20% lower" is now a real cost.
   * **Clicks** (`economy.ts`): a click is `(base + income share) × clickMult × buffs`, so "Clicking is ×2 as powerful" is true.
   * **Superfan** unlocks count cabinet achievements only, the same number the bonus uses. Hype Veterans now reads "arrive 15% sooner".
   * **Tests** (`tests/upgrade-audit.test.ts`, `tests/teams.test.ts`):
@@ -148,8 +323,8 @@
   * **Merch rebalance**:
     * Merch Designers now keep designs fresh for longer and make each trend last longer, with only a small sales boost. Every designer bonus levels off at a ceiling (at most twice as fresh, trends 75% longer, +30% sales), through a new `max` on staff effects (`effectAmount` in `src/data/staff.ts`).
     * The merch sales multiplier upgrades are now ×1.25, ×1.5, ×1.25 and ×1.25 (Limited Edition Drops ×1.5 freshness), and Cult Merch is ×1.5.
-    * Finishes add 0.15 a level (×2.5 at Q10). Trend matching is ×2 and a line earns 0.5× its share of operations income (`MERCH_INCOME_SCALE`).
-    * Mania is ×4 and lasts 60–120 seconds.
+    * Finishes add 0.15 a level (×2.5 at Q10). Trend matching is ×2 and a line earns 0.5× its share of operations income (`MERCH_INCOME_SCALE`) ~~per line~~, split between lines as n^0.5. *(Changed 1 time since: Phase 2 plateau pass)*
+    * Mania is ~~×4~~ ×2.5 and lasts 60–120 seconds. *(Changed 1 time since: Phase 2 plateau pass)*
     * A design a line sold in the last two hours comes back no fresher than it left, so swapping designs back and forth doesn't reset freshness.
     * Audit result: active players following trends earn about 2–3× operations from merch, semi-active 0.3–0.5×, passive under 0.1×.
   * **Chasing trends**:
@@ -225,7 +400,7 @@
   * **Merch that physically changes** (`2c355cb`, `c61a3fb`): bespoke art per product in the gear style, with three builds each (Q0 basic, Q2 better made, Q4 premium; for example blank tee → ringer tee → raglan crest tee). Holographic foil arrives at Q6, a limited-run hang tag at Q7, a gold signature at Q8, a collector's box at Q9 and a Hall of Fame display case at Q10. The Studio preview tilts towards the pointer, pops on upgrade and shows a strip of every look the product will reach. `tests/merch-art.test.ts` covers every product and finish.
   * **Gamer tags** (`2c355cb`): 288 tag words, prefixes, and 490 parody handles of real pros.
   * **Quests and HQ** (`fc807ca`): the quest line is linear with no "Later"; perks last for the current run only, and hovering a perk shows the quest that gave it. HQ operations are drawn as Cookie Clicker-style rows of little workers ~~(up to 40, 26px, flat 24px sprites on flat strips)~~ *(Changed 2 times since: taller strips, bigger workers, up to 32, in 243122c; redrawn buildings and layered scenes in 14b8824)*, and the four stat cards are gone.
-  * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most.
+  * **Staff** (`bfb4d86`): AI Trainers now train (XP, with some extra energy drain) instead of adding rating. Team Managers front-load: the first few matter most ~~with no ceiling~~, and level off at twice as fast. *(Changed 1 time since: Phase 2 plateau pass)*
   * **Sponsors** (`5160ae5`): ten tiers (six to ten behind the Global Brand Portfolio legacy node), perks that scale with tier and goal difficulty, no hidden income cap, no goals that the org would finish in under five minutes at its recent pace, two-zone cards ("While signed" / "Goal bonus · paid once") and parody logos for all 36 brands.
   * **Invitationals** (`424938d`): the Hype Drop sends an invitation showing the chance to win each round. Spending 10%, 25% or 50% of cash on preparation raises it, and an unanswered invite plays itself after two minutes. A team level with its league wins the bracket a little over half the time, and invites are about 70% more common. One glossary covers the competition words (docs/content-catalog.md): match, season, league title, Season MVP, Invitational, grudge match (was derby).
   * **Teams room** (`8727c16`): the Roster tab is folded into Teams. Each team is a room with a parody game logo, one role-labelled desk per player drawn like the House, and a wooden bench of player cards ~~(desks stretched to the full column on narrow screens)~~ *(Changed 1 time since: desks capped at their normal size, a sticky team switcher and foldable team cards, in 4f7b344 and 243122c)*. Players move by pointer drag (long press on touch), with the change in win chance shown and no layout movement. Clicking a player opens their gear and stats. Rival orgs get knock-off crests.
@@ -391,7 +566,7 @@
   * **Contextual Auto-Pause**: Front-office automation now automatically pauses when the player is browsing the Market, Gear, or Lineup screens.
   * **Auto-Buy Logic Fixes**: Fixed auto-sponsor tier adherence and respected empty roster slot toggles ~~which only bought players for the active lineup~~ *(Changed 1 time since: coaches can now be instructed to buy bench players via coach_bench legacy purchase)*.
   * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts ~~without visual distinction between contract perks and permanent rewards~~ *(Changed 2 times since: Temporary vs Permanent tags in de295ff, two-zone "While signed" / "Goal bonus" cards in 5160ae5)*.
-  * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to $10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session.
+  * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to ~~$10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session~~. *(Changed 1 time since: raised to 1e18 and gated on the first Multiverse Championship, so the first point comes 3–4 hours into an active run)*
   * **Easter Eggs**: Added special custom traits and buffs for community members and iconic pros (*Faker*, *TheOnlyCook*, *Varantha*, etc.) ~~which were not available in the market~~ *(Changed 1 time since: legendary easter egg players now have a rare 1% chance to appear as legacy prospects on the transfer market)*.
 
 ---
@@ -464,7 +639,7 @@
 * **The Issue / Motivation**:
   * Completing the Legacy Tree left end-game players with no sink for Legacy Points. Smurfing in lower leagues was too lucrative compared to taking on challenging promotions.
 * **What Changed**:
-  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs. *(Changed 1 time since: Pedigree gives +4% prize money per rank instead of ~~+6%~~, because it now multiplies the whole match prize)*
+  * **Dynasty Ranks**: Added 4 infinite-sink prestige tracks (Income, Prize Money, Fan Growth, Team Rating/XP) with escalating costs. *(Changed 2 times since: Pedigree gives +4% prize money per rank instead of ~~+6%~~, because it now multiplies the whole match prize; ~~uncapped~~ Pedigree now levels off at ×2)*
   * **Match Stakes & Morale**: Lopsided matches with $>75\%$ win probability suffer up to a $50\%$ penalty to prizes and fan gains to discourage smurfing. Added team morale states (*Fired Up*, *Frustrated*, *Bored*).
   * **Decor Artwork**: Designed custom SVG models for all 16 Gaming House decor pieces.
   * **Notification Settings**: Added categorical notification mute controls in Options and top headers.

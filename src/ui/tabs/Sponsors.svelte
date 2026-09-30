@@ -1,7 +1,7 @@
 <script lang="ts">
   import { BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { GOAL_EARNINGS_SHARE, MIN_GOAL_SECONDS, goalDifficultyBonus, goalLabel, goalProgress, goalReward, goalRewardPotential, maxSponsorTier, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
+  import { GOAL_EARNINGS_SHARE, MIN_GOAL_SECONDS, goalLabel, goalShareRate, goalProgress, goalReward, goalRewardPotential, maxSponsorTier, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
   import { brandLogoSvg } from '../brandArt';
   import { rarityColor } from '../theme';
   import type { SponsorOffer } from '../../engine/types';
@@ -104,7 +104,7 @@
                         icon: 'badge-check',
                         lines: [
                           `Hitting the goal now pays ${money(payout)}, once.`,
-                          { text: `It is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs${goalDifficultyBonus(c.goal.kind) > 1 ? `, ×${goalDifficultyBonus(c.goal.kind)} for a harder goal` : ''}, up to ${money(potential)}.`, tone: 'muted' },
+                          { text: `It is ${Math.round(goalShareRate(c.goal.kind) * 100)}% of what your org earns while the deal runs${goalShareRate(c.goal.kind) > GOAL_EARNINGS_SHARE ? ' (a harder goal pays a bigger share)' : ''}, up to ${money(potential)}.`, tone: 'muted' },
                           { text: `A goal hit early pays proportionally less: the full bonus needs ${fmtTime(c.goal.rewardSeconds)} on the contract.`, tone: 'muted' },
                           ...(c.tier >= 2 ? [{ text: 'Also puts a trophy on your shelf.', tone: 'gold' as const }] : []),
                         ],
@@ -164,7 +164,7 @@
                     icon: 'badge-check',
                     lines: [
                       `Worth up to ${money(payout)}, paid once${offer.tier >= 2 ? ', plus a trophy for the shelf' : ''}.`,
-                      { text: `The bonus is ${Math.round(GOAL_EARNINGS_SHARE * 100)}% of what your org earns while the deal runs, and pays less if the goal is hit early.`, tone: 'muted' },
+                      { text: `The bonus is ${Math.round(goalShareRate(offer.goal.kind) * 100)}% of what your org earns while the deal runs, and pays less if the goal is hit early.`, tone: 'muted' },
                       { text: `Goals are set so your org needs at least ${fmtTime(MIN_GOAL_SECONDS)} at its recent pace.`, tone: 'muted' },
                     ],
                   })}

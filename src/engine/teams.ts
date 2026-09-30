@@ -5,6 +5,7 @@ import {
   LOSS_FAN_RATIO,
   LOSS_PRIZE_RATIO,
   PRIZE_GROWTH,
+  TEAM_SHARE_EXPONENT,
   PROMOTE_WINS,
   RELEGATE_WINS,
   SEASON_LENGTH,
@@ -47,6 +48,11 @@ export const MAX_MATCHES_PER_TICK = 20;
  * start losing interest, so the button lights up exactly when staying put starts to cost money.
  */
 export const CHALLENGE_WIN_CHANCE = STAKES_START;
+
+/** What each team's income-linked prize is divided by, so n teams earn n^TEAM_SHARE_EXPONENT times one team. */
+export function teamShareDivisor(s: GameState): number {
+  return Math.pow(Math.max(1, Object.keys(s.teams).length), 1 - TEAM_SHARE_EXPONENT);
+}
 
 export function createTeam(gameId: string): TeamState {
   const game = getGame(gameId);
@@ -273,7 +279,9 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
   // The prize line is tuned small for that reason: tests/teams.test.ts caps the product of every
   // source, because a large one would make matches a scaled copy of the operations economy.
   const flat = game.basePrize * Math.pow(PRIZE_GROWTH, team.tier);
-  const share = ctx.cpsNoBuffs * prizeSeconds(team.tier);
+  // Each team takes a share of operations income, split across the org: n teams earn n^0.65 times
+  // one team, not n times, so fielding all twelve games cannot turn matches into most of the economy.
+  const share = (ctx.cpsNoBuffs * prizeSeconds(team.tier)) / teamShareDivisor(s);
   const gross = (flat + share) * mods.prizeMult * (mods.gamePrizeMult[game.id] ?? 1) * popularity * ctx.incomeBuff;
   const winPrize = gross * (1 - cut) * stakes;
   const lossPrize = winPrize * LOSS_PRIZE_RATIO;

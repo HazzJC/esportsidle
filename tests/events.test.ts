@@ -1,17 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { GEAR_SLOTS } from '../src/data/gear';
 import { UPGRADES } from '../src/data/upgrades';
-import { applyDropOutcome, clickDrop, dramaShare, spawnDrop, updateDrops } from '../src/engine/drops';
+import {
+  applyDropOutcome,
+  clickDrop,
+  dramaShare,
+  PR_CLEANUP_SECONDS,
+  returnScandalFans,
+  rideOutDrama,
+  SCANDAL_FAN_SHARE,
+  SCANDAL_SECONDS,
+  scandalFanLoss,
+  spawnDrop,
+  updateDrops,
+} from '../src/engine/drops';
 import { computeMods, computeRates } from '../src/engine/economy';
+import { advance } from '../src/engine/game';
 import { refreshMarket, signListing } from '../src/engine/market';
 import { levelUpOperation } from '../src/engine/operations';
 import { gearUpgradeCost } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
-import { foundedGame } from './fixtures';
-import { INVITATION_STAKES, invitationOdds, playInvitation, runTournament, updateInvitation } from '../src/engine/tournament';
+import { createBaseState } from '../src/engine/state';
 import { unlockGame } from '../src/engine/teams';
+import { INVITATION_STAKES, invitationOdds, playInvitation, runTournament, updateInvitation } from '../src/engine/tournament';
 import type { GameState } from '../src/engine/types';
-import { WORLD_EVENTS, fireEvent, offerChoice, resolveChoice, updateWorldEvents } from '../src/engine/worldEvents';
+import { fireEvent, offerChoice, resolveChoice, retentionBids, updateWorldEvents, WORLD_EVENTS } from '../src/engine/worldEvents';
+import { foundedGame } from './fixtures';
 
 function ctxFor(s: GameState) {
   const mods = computeMods(s);
@@ -198,13 +212,13 @@ describe('world events', () => {
   it('a flash sale lowers gear prices until it expires', () => {
     const s = richState();
     const p = s.players.founder;
-    const before = gearUpgradeCost(p, 'pc', computeMods(s));
+    const before = gearUpgradeCost(p, 'pc', computeMods(s), 0);
     fireEvent(s, 'gear_sale', ctxFor(s));
-    expect(gearUpgradeCost(p, 'pc', computeMods(s))).toBeLessThan(before);
+    expect(gearUpgradeCost(p, 'pc', computeMods(s), 0)).toBeLessThan(before);
     s.time += 1000;
     s.events.nextAt = s.time + 1000;
     updateWorldEvents(s, ctxFor(s));
-    expect(gearUpgradeCost(p, 'pc', computeMods(s))).toBe(before);
+    expect(gearUpgradeCost(p, 'pc', computeMods(s), 0)).toBe(before);
   });
 });
 
@@ -227,5 +241,78 @@ describe('trophies', () => {
     const trophyUpgrades = UPGRADES.filter((u) => u.group === 'trophy');
     expect(trophyUpgrades.length).toBeGreaterThan(0);
     expect(trophyUpgrades.every((u) => u.currency === 'trophies')).toBe(true);
+  });
+});
+
+describe('riding out the drama', () => {
+  it('trades fans and a slump for the cash a PR team would cost', () => {
+    const s = foundedGame(0, 8);
+    s.fans = 10_000;
+    const cash = s.cash;
+    const leaving = scandalFanLoss(s);
+    expect(leaving).toBe(Math.floor(10_000 * SCANDAL_FAN_SHARE));
+    expect(rideOutDrama(s)).toBe(true);
+    expect(s.cash).toBe(cash);
+    expect(s.fans).toBe(10_000 - leaving);
+    expect(s.events.calmUntil).toBe(s.time + PR_CLEANUP_SECONDS);
+    expect(s.buffs.find((b) => b.id === 'scandal')).toBeDefined();
+  });
+
+  it('gives the fans back when it blows over', () => {
+    const s = foundedGame(0, 8);
+    s.fans = 10_000;
+    rideOutDrama(s);
+    const afterWalkout = s.fans;
+    expect(returnScandalFans(s)).toBe(0);
+    advance(s, SCANDAL_SECONDS + 5);
+    expect(s.events.fansHeld).toBe(0);
+    expect(s.fans).toBeGreaterThanOrEqual(afterWalkout + Math.floor(10_000 * SCANDAL_FAN_SHARE));
+  });
+});
+
+describe('Transfer Choice Priority', () => {
+  it('unshifts poaching transfer offers to front of pending queue', () => {
+    const s = createBaseState(0, 1);
+    s.events.pending = [
+      {
+        id: 1,
+        eventId: 'generic_event',
+        title: 'Regular Event',
+        body: 'Just a normal event',
+        icon: 'newspaper',
+        options: [],
+        defaultOption: 0,
+        data: {},
+        expiresAt: 100,
+      },
+    ];
+
+    offerChoice(s, {
+      eventId: 'poaching_offer',
+      title: 'Transfer Offer',
+      body: 'Rival wants your player',
+      icon: 'handshake',
+      options: [],
+      defaultOption: 0,
+      data: {},
+    });
+
+    expect(s.events.pending[0].eventId).toBe('poaching_offer');
+    expect(s.events.pending[1].eventId).toBe('generic_event');
+  });
+});
+
+describe('retention bids', () => {
+  it('prices retention from current cash and the player career', () => {
+    const s = foundedGame(0, 6);
+    const p = s.players.founder;
+    s.cash = 1e6;
+    const early = retentionBids(s, p);
+    p.level = 41;
+    p.seasons = 8;
+    const veteran = retentionBids(s, p);
+    expect(veteran[0]).toBeGreaterThan(early[0]);
+    expect(veteran[0]).toBeGreaterThanOrEqual(s.cash * 0.05);
+    expect(veteran[2]).toBeLessThanOrEqual(s.cash * 0.25);
   });
 });

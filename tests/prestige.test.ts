@@ -16,16 +16,18 @@ import {
   pendingLegacy,
   sellOrg,
 } from '../src/engine/prestige';
+import { SELL_QUEST_ID } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { hireStaff } from '../src/engine/staff';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 import { hasRosterSpace, unlockGame } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
 
 function wealthy(level = 3): GameState {
   const s = foundedGame(0, 31);
   s.earnedTotal = Math.pow(level, 3) * LEGACY_DIVISOR;
+  finishLadder(s);
   s.earnedRun = s.earnedTotal;
   return s;
 }
@@ -120,6 +122,29 @@ describe('selling the org', () => {
     expect(s.market.listings.length).toBeGreaterThan(0);
     expect(s.stats.orgsSold).toBe(1);
     expect(canSell(s)).toBe(false);
+  });
+
+  it('pays "The big exit" when the sale completes it, which the quest board never could', () => {
+    const s = wealthy(3);
+    s.quests.active = [{ id: SELL_QUEST_ID, base: s.stats.orgsSold, ready: false }];
+    const claimed = s.quests.claimed;
+    sellOrg(s, { charter: 'operator' });
+    expect(s.prestige.points).toBe(3 + FOUNDING_POINTS + 3);
+    expect(s.quests.claimed).toBe(claimed + 1);
+
+    const t = wealthy(3);
+    t.quests.active = [{ id: SELL_QUEST_ID, base: t.stats.orgsSold, ready: false }];
+    const trophies = t.trophies;
+    sellOrg(t, { charter: 'operator', questReward: 1 });
+    expect(t.prestige.points).toBe(3 + FOUNDING_POINTS);
+    expect(t.trophies).toBe(trophies + 10);
+  });
+
+  it('pays nothing extra when the quest is not on the board', () => {
+    const s = wealthy(3);
+    s.quests.active = [];
+    sellOrg(s, { charter: 'operator' });
+    expect(s.prestige.points).toBe(3 + FOUNDING_POINTS);
   });
 
   it('refuses to sell without pending legacy', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advance, applyOfflineProgress } from '../src/engine/game';
+import { advance, applyOfflineProgress, tick } from '../src/engine/game';
 import { computeRates } from '../src/engine/economy';
 import {
   BACKUP_KEYS,
@@ -123,5 +123,17 @@ describe('progress over time', () => {
     const s = foundedGame(0, 1);
     s.lastSaved = 0;
     expect(applyOfflineProgress(s, 5000)).toBeNull();
+  });
+
+  it('develops the squad only while the game is open', () => {
+    const baseline = foundedGame(0, 4);
+    baseline.ops.streamer.owned = 10;
+    const online = structuredClone(baseline);
+    const offline = structuredClone(baseline);
+    for (let i = 0; i < 3600; i++) tick(online, 1);
+    advance(offline, 3600, true);
+    expect(offline.players.founder.level).toBe(baseline.players.founder.level);
+    expect(offline.teams.smash.seasonNumber).toBe(baseline.teams.smash.seasonNumber);
+    expect(online.players.founder.level).toBeGreaterThan(offline.players.founder.level);
   });
 });

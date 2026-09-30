@@ -1,3 +1,4 @@
+import { FINAL_OPERATION } from '../src/engine/prestige';
 import { openAllSections } from '../src/engine/sections';
 import { addFounder, createNewGame } from '../src/engine/state';
 import { CALM_START_SECONDS, skipTutorial } from '../src/engine/tutorial';
@@ -15,4 +16,10 @@ export function foundedGame(now = 0, seed?: number): GameState {
   openAllSections(s);
   s.stats.playtimeTotal = CALM_START_SECONDS;
   return s;
+}
+
+/** Marks the operations ladder climbed once (a first Multiverse Championship), which opens the first sale. */
+export function finishLadder(s: GameState): void {
+  const st = s.ops[FINAL_OPERATION.id];
+  st.highest = Math.max(1, st.highest);
 }

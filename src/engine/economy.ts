@@ -245,8 +245,8 @@ export function computeMods(s: GameState): Mods {
   const sponsors = sponsorBonuses(s);
   for (const st of sponsors.stats) applyStat(m, st.stat, st.amount);
   for (const e of sponsors.effects) applyEffect(m, e);
-  // Sponsor bonuses stack across slots, brands and staff, so the total is capped.
-  // What the contracts say is what they pay: there used to be a silent cap at +200%.
+  // Contracts pay what they say, times sponsorIncomeMult (upgrades, Talent Agents, mandates). There is
+  // no cap on the total; the Talent Agent line levels off at ×3 on its own.
   m.sponsorIncomePct = sponsors.incomePct * m.sponsorIncomeMult;
   m.globalMult *= 1 + m.sponsorIncomePct;
   m.fameExp = Math.min(MAX_FAME_EXP, m.fameExp);
@@ -282,8 +282,19 @@ export function cabinetCount(s: GameState): number {
   return n;
 }
 
+/**
+ * Past this many fans, fame grows at FAME_KNEE_SLOPE of its usual rate. Early fame is unchanged;
+ * late in a run fans keep growing with the league ladder, and without the knee fame turned that
+ * into an ever-steeper income multiplier (×89 six hours into a run).
+ */
+export const FAME_KNEE_FANS = 1e8;
+export const FAME_KNEE_SLOPE = 0.5;
+
 export function fameMultiplier(fans: number, exponent: number): number {
-  return Math.pow(1 + Math.max(0, fans) / 100, exponent);
+  const x = 1 + Math.max(0, fans) / 100;
+  const knee = 1 + FAME_KNEE_FANS / 100;
+  if (x <= knee) return Math.pow(x, exponent);
+  return Math.pow(knee, exponent) * Math.pow(x / knee, exponent * FAME_KNEE_SLOPE);
 }
 
 export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
@@ -313,8 +324,9 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   }
 
   const fameMult = fameMultiplier(s.fans, mods.fameExp) * mods.fameBonusMult;
-  const cabinet = cabinetCount(s) * CABINET_PER_ACHIEVEMENT;
-  const superfanMult = cabinetIncomeMult(cabinetCount(s), mods.superfanFactors);
+  const cabinetN = cabinetCount(s);
+  const cabinet = cabinetN * CABINET_PER_ACHIEVEMENT;
+  const superfanMult = cabinetIncomeMult(cabinetN, mods.superfanFactors);
 
   const globalMult = mods.globalMult * fameMult * superfanMult;
   const cpsNoBuffs = base * globalMult;
@@ -368,7 +380,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
     buffIncomeMult: buffs.income,
     buffClickMult: buffs.click,
     cabinet,
-    cabinetCount: cabinetCount(s),
+    cabinetCount: cabinetN,
     teams,
     matchCps,
     matchFansPerSec: matchFans,

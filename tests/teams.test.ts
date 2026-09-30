@@ -54,9 +54,9 @@ describe('ratings and gear', () => {
     const base = skillRating(founder);
     s.cash = 1e9;
     for (const slot of GEAR_SLOTS) {
-      const c1 = gearUpgradeCost(founder, slot.id, mods);
+      const c1 = gearUpgradeCost(founder, slot.id, mods, 0);
       expect(buyGear(s, 'founder', slot.id, mods)).toBe(true);
-      expect(gearUpgradeCost(founder, slot.id, mods)).toBeGreaterThan(c1);
+      expect(gearUpgradeCost(founder, slot.id, mods, 0)).toBeGreaterThan(c1);
     }
     expect(skillRating(founder)).toBeGreaterThan(base * 1.2);
   });
@@ -181,21 +181,5 @@ describe('transfer market', () => {
     expect(assignSlot(s, 'smash', listing.player.id, 0)).toBe(true);
     expect(s.teams.smash.lineup[0]).toBe(listing.player.id);
     expect(s.teams.smash.bench).toContain('founder');
-  });
-});
-
-describe('save migration', () => {
-  it('upgrades a v1 save with no players by creating the founder', () => {
-    const v1 = createBaseState(0, 1) as unknown as Record<string, unknown>;
-    delete v1.players;
-    delete v1.teams;
-    delete v1.games;
-    delete v1.market;
-    v1.version = 1;
-    const text = encodeSave(v1 as never).replace(/^ESI\d+/, 'ESI1');
-    const s = decodeSave(text);
-    expect(s.players.founder).toBeDefined();
-    expect(s.teams.smash.lineup[0]).toBe('founder');
-    expect(s.games.smash.unlocked).toBe(true);
   });
 });

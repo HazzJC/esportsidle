@@ -16,3 +16,12 @@ Whenever you complete work or prepare changes for a PR/review, you MUST update `
 1. Add an entry under `## Pending Changes` marked as `[Status: Pending]`. Detail both **The Issue / Motivation** (what was broken, missing, or requested) and **What Changed** (the exact code, balance, UI, or mechanical updates).
 2. When modifying, tuning, or replacing existing mechanics, locate the earlier patch note entries describing that system, apply a markdown strikethrough `~~...~~` to the superseded behavior, and add/increment a bracketed note indicating how many times it has evolved: `*(Changed N times since: ...)*`.
 3. When starting or finishing work on top of previously committed work, inspect `PATCH_NOTES.md` for any remaining `[Status: Pending]` entries that are now committed in git, and update their header to `[Status: Committed]` (including their commit hash and date).
+
+# Balance testing
+
+`docs/economy.md` is the living write-up of the economy; keep it current instead of adding dated audit docs. Design targets live in `scripts/sim/targets.ts` and simulated players in `scripts/sim/personas.ts`.
+
+- `npm test` is the fast unit suite (seconds). `npm run test:slow` runs suites built on big saves.
+- `npm run sim:quick` (a couple of minutes) after a balance change; `npm run sim` for the full seeded matrix, which writes `output/sim/full/report.md` and `report.html`. Compare runs with `npx tsx scripts/sim/report.ts <dir> --compare=<old dir>`.
+- Simulations run in parallel child processes and take minutes, so start them in the background and keep working.
+- A speed-up to the simulator must leave a seeded record byte-identical (check with `--persona=audit-compat` or any fixed seed before and after).

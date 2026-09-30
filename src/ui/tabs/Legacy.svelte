@@ -5,9 +5,11 @@
   import { MANDATE_MAP } from '../../data/mandates';
   import { CHALLENGES, DYNASTY, LEGACY_NODES, LEGACY_NODE_MAP, type LegacyNodeDef } from '../../data/legacy';
   import { describeEffect } from '../../engine/describe';
+  import { saleCompletesQuest } from '../../engine/quests';
   import { tierName } from '../../data/leagues';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
+    FINAL_OPERATION,
     FOUNDING_POINTS,
     LEGACY_DIVISOR,
     activeChallenge,
@@ -18,6 +20,7 @@
     dynastyUnlocked,
     hasSpecial,
     legacyFor,
+    legacyUnlocked,
     mandateOffers,
     nextLegacyThreshold,
     nodeState,
@@ -153,9 +156,14 @@
     </div>
     <div class="sell">
       <div class="pending">
-        <span class="muted small">Selling now earns</span>
+        <span class="muted small">{legacyUnlocked(s) ? 'Selling now earns' : 'Legacy waiting'}</span>
         <span class="gain num">+{fmt(pending)} legacy</span>
       </div>
+      {#if !legacyUnlocked(s)}
+        <span class="small locked-note">
+          <Icon name="lock" size={12} /> Your first sale opens when you buy your first {FINAL_OPERATION.name}, the last operation.
+        </span>
+      {/if}
       <span class="bar"><i style="width:{progress * 100}%"></i></span>
       <span class="dim small">Next point at {money(nextLegacyThreshold(s))} earned all time (currently {money(s.earnedTotal)})</span>
       <button class="btn gold" disabled={!canSell(s)} onclick={openSell}><Icon name="crown" size={15} /> Sell the Org</button>
@@ -350,6 +358,13 @@
         (+{fmtPct(pending * v.m.legacyLevelPct)} income forever and {fmt(pending)} points to spend).
       </p>
 
+      {#if saleCompletesQuest(s)}
+        <div class="first-sale">
+          <Icon name="flag" size={16} color="var(--gold)" />
+          <span><b>Quest complete:</b> selling finishes "The big exit" for +3 legacy points.</span>
+        </div>
+      {/if}
+
       {#if p.runs === 0}
         <div class="first-sale">
           <Icon name="crown" size={16} color="var(--gold)" />
@@ -389,7 +404,7 @@
             <li>Cosmetics: org name, logo, jersey and designs</li>
             <li>Achievements and all-time stats</li>
             {#if s.players.founder}<li>Your founder's look and tag</li>{/if}
-            <li>Quest progress, trophy shelf and your rival</li>
+            <li>Trophy shelf and your rival</li>
             {#if hasSpecial(s, 'keepDecor')}<li>Gaming House decor</li>{/if}
             {#if hasSpecial(s, 'keepMerch')}<li>Unlocked merch products</li>{/if}
           </ul>
@@ -400,6 +415,7 @@
             <li>Cash, fans and operations</li>
             <li>Teams, players, staff and sponsors</li>
             <li>Upgrades (except trophy upgrades)</li>
+            <li>Quests and quest perks (the line starts again)</li>
           </ul>
         </div>
       </div>
@@ -547,6 +563,12 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+  }
+  .locked-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
   }
   .gain {
     font-family: var(--font-display);

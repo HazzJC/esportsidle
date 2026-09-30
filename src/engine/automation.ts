@@ -7,7 +7,7 @@ import { OPERATIONS } from '../data/operations';
 import { buyOperation, unitPrice } from './operations';
 import { money } from './format';
 import { signListing } from './market';
-import { buyGear, gearUpgradeCost, isAvailable, playerRating, skillRating } from './players';
+import { buyGear, gearLeague, gearUpgradeCost, isAvailable, playerRating, skillRating } from './players';
 import { assignSlot } from './teams';
 import { offerRequirements, signOffer } from './sponsors';
 import type { GameState, Mods, Player } from './types';
@@ -182,7 +182,7 @@ function autoGear(s: GameState, mods: Mods): void {
         const p = id ? s.players[id] : undefined;
         if (!p) continue;
         for (const g of GEAR_SLOTS) {
-          const cost = gearUpgradeCost(p, g.id, mods);
+          const cost = gearUpgradeCost(p, g.id, mods, gearLeague(s, p));
           if (Number.isFinite(cost) && (!best || cost < best.cost)) best = { p, slot: g.id, cost };
         }
       }

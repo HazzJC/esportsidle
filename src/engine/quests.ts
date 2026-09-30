@@ -178,3 +178,26 @@ export function questPerkSources(s: GameState): { label: string; quest: string; 
 export function questsLeft(s: GameState): number {
   return QUESTS.filter((d) => s.quests.done[d.id] === undefined).length;
 }
+
+/** The quest that selling the org completes. */
+export const SELL_QUEST_ID = 'sell_org';
+
+/** Whether selling now would complete "The big exit". */
+export function saleCompletesQuest(s: GameState): boolean {
+  return s.quests.active.some((q) => q.id === SELL_QUEST_ID);
+}
+
+/**
+ * Pays "The big exit" as part of a sale. Selling clears the quest board before the sale counts, so
+ * the quest could never be finished and claimed the usual way; the sale pays it instead.
+ */
+export function completeQuestOnSale(s: GameState, choice: number, rng: Rng): boolean {
+  const def = QUEST_MAP.get(SELL_QUEST_ID);
+  if (!def || !saleCompletesQuest(s)) return false;
+  const reward = def.rewards[choice] ?? def.rewards[0];
+  applyReward(s, reward, { cps: 0, fansPerSec: 0 }, rng);
+  s.quests.done[SELL_QUEST_ID] = s.time;
+  s.quests.picks[SELL_QUEST_ID] = def.rewards.indexOf(reward);
+  s.quests.claimed++;
+  return true;
+}

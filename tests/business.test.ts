@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DESIGN_PALETTE, PRODUCTS } from '../src/data/merch';
-import { BRANDS, BRAND_MAP, GOAL_INFO, SPONSOR_TIERS } from '../src/data/sponsors';
+import { BRAND_MAP, BRANDS, GOAL_INFO, SPONSOR_TIERS } from '../src/data/sponsors';
 import {
   addDesign,
   analyzeDesign,
@@ -26,9 +26,24 @@ import {
 } from '../src/engine/merch';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { MIN_GOAL_SECONDS, cancelContract, generateOffer, goalProgress, goalTarget, maxSponsorTier, offerPerkScale, refreshOffers, scaleSponsorEffect, signOffer, updateSponsors } from '../src/engine/sponsors';
+import {
+  cancelContract,
+  generateOffer,
+  GOAL_EARNINGS_SHARE,
+  goalShareRate,
+  goalProgress,
+  goalReward,
+  goalTarget,
+  maxSponsorTier,
+  MIN_GOAL_SECONDS,
+  offerPerkScale,
+  refreshOffers,
+  scaleSponsorEffect,
+  signOffer,
+  updateSponsors,
+} from '../src/engine/sponsors';
+import type { Design, GameState, SponsorContract, SponsorOffer } from '../src/engine/types';
 import { foundedGame } from './fixtures';
-import type { Design, GameState, SponsorOffer } from '../src/engine/types';
 
 function design(size: number, fill: (x: number, y: number) => number, handmade = true): Design {
   const values = new Uint8Array(size * size);
@@ -273,5 +288,80 @@ describe('sponsors', () => {
     signOffer(s, offer.id, computeMods(s));
     expect(cancelContract(s, s.sponsors.active[0].id)).toBe(true);
     expect(s.sponsors.active).toHaveLength(0);
+  });
+});
+
+/** A signed contract ready to complete its goal. */
+function withSponsor(s: GameState, tier = 2): SponsorContract {
+  s.fansRun = 1e12;
+  s.fans = 1e12;
+  s.teams.smash.tier = 12;
+  s.teams.smash.bestTier = 12;
+  const offer = {
+    id: s.nextId++,
+    brandId: BRANDS[0].id,
+    tier,
+    incomePct: SPONSOR_TIERS[tier].incomePct,
+    duration: 3600,
+    goal: { kind: 'wins' as const, target: 5, rewardSeconds: SPONSOR_TIERS[tier].goalSeconds },
+  };
+  s.sponsors.offers.push(offer);
+  signOffer(s, offer.id, { sponsorSlots: 4 });
+  return s.sponsors.active[s.sponsors.active.length - 1];
+}
+
+describe('sponsor goal payouts', () => {
+  it('pays a share of what the org earned while the deal ran', () => {
+    const s = foundedGame(0, 4);
+    const c = withSponsor(s);
+    s.earnedRun = c.earnedAt! + 1e6;
+    s.time += c.goal.rewardSeconds;
+    // The headline value is far larger than the share, so the share is what pays.
+    expect(goalReward(s, c, 1e6)).toBeCloseTo(1e6 * GOAL_EARNINGS_SHARE, 0);
+  });
+
+  it('pays proportionally less for a goal finished early', () => {
+    const s = foundedGame(0, 4);
+    const c = withSponsor(s);
+    s.earnedRun = c.earnedAt! + 1e6;
+    s.time += c.goal.rewardSeconds / 4;
+    const quick = goalReward(s, c, 1e6);
+    s.time += (c.goal.rewardSeconds * 3) / 4;
+    expect(quick).toBeLessThan(goalReward(s, c, 1e6));
+    expect(quick).toBeCloseTo(1e6 * GOAL_EARNINGS_SHARE * 0.25, 0);
+  });
+
+  it('never pays more than the contract headline, however rich the org got', () => {
+    const s = foundedGame(0, 4);
+    const c = withSponsor(s);
+    s.earnedRun = c.earnedAt! + 1e15;
+    s.time += c.goal.rewardSeconds;
+    expect(goalReward(s, c, 100)).toBeCloseTo(100 * c.goal.rewardSeconds * goalShareRate(c.goal.kind), 0);
+  });
+
+  it('pays the goal out once, through the sponsor ledger', () => {
+    const s = foundedGame(0, 4);
+    const c = withSponsor(s);
+    s.stats.matchesWon = c.baseline + c.goal.target;
+    s.earnedRun = c.earnedAt! + 1e6;
+    s.time += c.goal.rewardSeconds;
+    const mods = computeMods(s);
+    updateSponsors(s, { rng: new Rng(s), mods, rates: computeRates(s, mods) }, 1, false);
+    expect(c.completed).toBe(true);
+    expect(s.incomeRun.sponsor).toBeGreaterThan(0);
+    const paid = s.incomeRun.sponsor;
+    updateSponsors(s, { rng: new Rng(s), mods, rates: computeRates(s, mods) }, 1, false);
+    expect(s.incomeRun.sponsor).toBe(paid);
+  });
+
+  it('puts a trophy for a big sponsor goal on the shelf as well as in the bank', () => {
+    const s = foundedGame(0, 4);
+    const c = withSponsor(s, 3);
+    const before = s.trophyCase.length;
+    s.stats.matchesWon = c.baseline + c.goal.target;
+    const mods = computeMods(s);
+    updateSponsors(s, { rng: new Rng(s), mods, rates: computeRates(s, mods) }, 1, false);
+    expect(s.trophyCase.length).toBe(before + 1);
+    expect(s.trophyCase[0].kind).toBe('sponsor');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUESTS, QUEST_MAP } from '../src/data/quests';
+import { QUEST_MAP, QUESTS } from '../src/data/quests';
 import { FIRST_PLAYER_PRICE, TUTORIAL_INJURY_SECONDS } from '../src/data/tutorial';
 import { clickLogo } from '../src/engine/clicker';
 import { customiseDraft, signDraftPick } from '../src/engine/draft';
@@ -9,16 +9,32 @@ import { signListing } from '../src/engine/market';
 import { buyOperation } from '../src/engine/operations';
 import { completeOnboarding } from '../src/engine/org';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
-import { QUEST_SLOTS, claimQuest, fillQuests, nextQuest, questPerkLabels, questPerkSources, questProgress, updateQuests } from '../src/engine/quests';
+import {
+  claimQuest,
+  fillQuests,
+  nextQuest,
+  QUEST_SLOTS,
+  questPerkLabels,
+  questPerkSources,
+  questProgress,
+  updateQuests,
+} from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { sectionOpen, updateSections } from '../src/engine/sections';
+import { MARKET_UNLOCK_CASH, sectionOpen, updateSections } from '../src/engine/sections';
 import { hireStaff } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
-import { benchPlayer } from '../src/engine/teams';
-import { CALM_START_SECONDS, calmStart, operationsOpen, restDuringTutorial, skipTutorial, updateTutorial } from '../src/engine/tutorial';
+import { benchPlayer, playMatch } from '../src/engine/teams';
+import {
+  CALM_START_SECONDS,
+  calmStart,
+  operationsOpen,
+  restDuringTutorial,
+  skipTutorial,
+  updateTutorial,
+} from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 
 const ctx = (s: GameState) => {
   const r = computeRates(s);
@@ -226,6 +242,7 @@ describe('tabs that open as the org grows', () => {
     const s = foundedGame(0, 1);
     expect(sectionOpen(s, 'staff')).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     updateSections(s);
     expect(sectionOpen(s, 'staff')).toBe(true);
@@ -303,6 +320,7 @@ describe('quests', () => {
     expect(questPerkSources(s)[0].quest).toBe(QUEST_MAP.get('grinders_10')!.title);
     const claimed = s.quests.claimed;
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(questPerkLabels(s)).toHaveLength(0);
     expect(s.quests.done).toEqual({});
@@ -359,31 +377,13 @@ describe('saves and sales', () => {
     expect(back.teams.smash).toBeUndefined();
   });
 
-  it('turns an old three-prospect draft into the single first player', () => {
-    const s = createNewGame(0, 1);
-    s.draft = [...s.draft!, ...createNewGame(0, 2).draft!, ...createNewGame(0, 3).draft!];
-    const back = decodeSave(encodeSave(s));
-    expect(back.draft).toHaveLength(1);
-  });
-
-  it('lets orgs from before the draft keep their founder and skip the tutorial', () => {
-    const s = foundedGame(0, 1);
-    const old = { ...s, version: 3 } as unknown as Record<string, unknown>;
-    delete old.tutorial;
-    delete old.draft;
-    delete old.quests;
-    const back = decodeSave(encodeSave(old as never).replace(/^ESI\d+/, 'ESI3'));
-    expect(back.tutorial.step).toBe('done');
-    expect(back.draft).toBeNull();
-    expect(back.players.founder).toBeDefined();
-  });
-
   it('brings the founding player back after a sale, name and look intact', () => {
     const s = createNewGame(0, 1);
     s.cash = 1e6;
     customiseDraft(s, { tag: 'Ace', look: { hair: 4 } });
     expect(signDraftPick(s, s.draft![0].player.id, { benchSlots: 0 }).ok).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(s.players.founder).toMatchObject({ tag: 'Ace' });
     expect(s.players.founder.look.hair).toBe(4);
@@ -397,6 +397,7 @@ describe('saves and sales', () => {
     s.cash = 1e6;
     expect(signListing(s, listing.player.id, computeMods(s)).ok).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(Object.keys(s.players)).toHaveLength(0);
     expect(s.draft).toHaveLength(1);
@@ -411,19 +412,56 @@ describe('saves and sales', () => {
     const star = s.players[listing.player.id];
     s.prestige.nodes.keep_player = 1;
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator', keepPlayerId: star.id });
     expect(s.teams.smash.lineup[0]).toBe(star.id);
     expect(s.prestige.reserve).toHaveLength(0);
     expect(s.draft).toBeNull();
   });
 
-  it('brings the founder back after a sale for orgs that have one', () => {
-    const s = foundedGame(0, 1);
-    const tag = s.players.founder.tag;
-    s.earnedTotal = LEGACY_DIVISOR;
-    sellOrg(s, { charter: 'operator' });
-    expect(s.players.founder.tag).toBe(tag);
-    expect(s.teams.smash.lineup[0]).toBe('founder');
-    expect(s.draft).toBeNull();
+});
+
+describe('the first match', () => {
+  it('is always a win, however unlikely', () => {
+    const s = foundedGame(0, 3);
+    const team = s.teams.smash;
+    team.tier = 20;
+    const ev = computeRates(s).teams.smash;
+    expect(ev.winChance).toBeLessThan(0.01);
+    expect(playMatch(s, team, ev, computeMods(s), new Rng({ rng: 1 })).win).toBe(true);
+    // Only the first: the rest go the way the odds say.
+    let wins = 0;
+    for (let i = 0; i < 10; i++) if (playMatch(s, team, ev, computeMods(s), new Rng({ rng: 2 + i })).win) wins++;
+    expect(wins).toBe(0);
+    expect(s.stats.worstLoseStreak).toBe(10);
+    expect(s.stats.bestWinStreak).toBe(1);
+    // A forced win is not an upset.
+    expect(s.stats.upsetWins).toBe(0);
+  });
+});
+
+describe('the market', () => {
+  it('opens after the tutorial, the first time the org has $500', () => {
+    const s = createNewGame(0, 1);
+    s.cash = 100;
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    s.cash = 1e6;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(false); // still in the tutorial
+    skipTutorial(s);
+    s.cash = MARKET_UNLOCK_CASH - 1;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(false);
+    s.cash = MARKET_UNLOCK_CASH;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(true);
+    s.cash = 0;
+    updateSections(s);
+    expect(sectionOpen(s, 'market')).toBe(true);
+  });
+
+  it('leaves the Teams tab open from the very start', () => {
+    const s = createNewGame(0, 1);
+    expect(sectionOpen(s, 'teams')).toBe(true);
   });
 });
