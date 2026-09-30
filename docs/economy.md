@@ -35,6 +35,25 @@ npx tsx scripts/sim/paybacks.ts output/sim/full/active-1.json
 - **Seeds:** runs are deterministic per seed. The five seeds agree closely (the active player's first Legacy point lands between 1h26 and 1h46), so one seed is enough for quick comparisons.
 - **Estimates:** the buff-uplift columns are estimates. They split the extra income among the active buffs in proportion to log(multiplier).
 
+## First sale opens with the final building (30 Sep 2026)
+
+Since  the first sale waits for the first Multiverse Championship, and  is 1e18, so the first point arrives with it and ticks up. Full matrix (, five seeds, runs long enough for every persona to reach the end of the ladder):
+
+| persona | first Legacy point | time the game was open |
+| --- | --- | --- |
+| active | **3h55** (3h30–4h14): target 3–4 h, **PASS** | all of it |
+| semi | 10h02 (9h05–10h06) | about 1h40 active |
+| casual | 37h48 wall-clock (37h31–48h02) | 2h48 |
+| idle | 14h53 (13h25–14h56) | open, rarely looked at |
+| optimal (ceiling) | 2h12 (1h08–2h20) | all of it |
+
+- Points tick up rather than arrive as a pile: an active org has 1–3 points waiting at 4 h, 6–17 at 5 h, 24–35 at 6 h, and about 100 at 8 h.
+- **Levels off:** income growth in the 3 h after the first point fell from ×2.5e8 to ×8.6e4, because the point now lands where the building ladder flattens. That is still above the ×100 target.
+- **Staying still beats selling** (sell ÷ stay 0.07–0.12), because a first sale is only 1–3 points. Early Legacy has to become worth taking; that is the next phase.
+- **Mix:** no source above 52% of any run, and matches are 42% of a 16-hour semi run.
+
+The sections below describe the plateau pass (before the gate).
+
 ## Targets
 
 | | target | now | was |
