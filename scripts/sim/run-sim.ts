@@ -21,7 +21,7 @@ import { computeMods, computeRates } from '../../src/engine/economy';
 import { applyOfflineProgress, tick } from '../../src/engine/game';
 import { signListing } from '../../src/engine/market';
 import { TRENDING_THRESHOLD, optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../../src/engine/merch';
-import { buyDynasty, buyNode, dynastyCost, dynastyRank, mandateOffers, nodeState, pendingLegacy, sellOrg } from '../../src/engine/prestige';
+import { buyDynasty, buyNode, canSell, dynastyCost, dynastyRank, mandateOffers, nodeState, pendingLegacy, sellOrg } from '../../src/engine/prestige';
 import { claimQuest } from '../../src/engine/quests';
 import { Rng } from '../../src/engine/rng';
 import { decodeSave, encodeSave } from '../../src/engine/save';
@@ -321,6 +321,7 @@ export function runSim(opts: SimOptions): SimRecord {
     if (sales.length >= maxSales) return;
     const pending = pendingLegacy(s);
     const runWall = wall - runStart;
+    if (!canSell(s)) return;
     const forced = opts.sellNow === true && sales.length === 0 && pending >= 1;
     if (!(forced || pending >= Math.max(1, s.prestige.level) || (runWall >= maxRunSeconds && pending >= 1))) return;
     const nodeValues = valueNodes();
@@ -352,7 +353,7 @@ export function runSim(opts: SimOptions): SimRecord {
     if (s.tutorial.step === 'done') mark('tutorial done');
     if (s.sponsors.active.length > 0) mark('first sponsor');
     if (Object.keys(s.merch.unlocked).length > 0) mark('merch launched');
-    if (pendingLegacy(s) >= 1) mark('first legacy point');
+    if (canSell(s)) mark('first legacy point');
     for (const tier of [3, 6, 9, 12, 15, 18]) if (Math.max(0, ...Object.values(s.teams).map((t) => t.bestTier)) >= tier) mark(`tier ${tier}`);
   }
 

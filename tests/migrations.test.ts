@@ -6,11 +6,11 @@ import { computeRates } from '../src/engine/economy';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
-import { decodeSave, encodeSave } from '../src/engine/save';
+import { LEGACY_RESCALE_V7, decodeSave, encodeSave } from '../src/engine/save';
 import { createBaseState, createNewGame } from '../src/engine/state';
 import { createTeam, endSeason } from '../src/engine/teams';
 import type { TeamEval } from '../src/engine/types';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 
 /** Re-labels a current save as an older version so it runs through the migrations. */
 function asVersion(text: string, version: number): string {
@@ -150,6 +150,7 @@ describe('founder migration and save healing', () => {
 
     // Verify founder survives prestige
     decoded.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(decoded);
     sellOrg(decoded);
     expect(decoded.players.founder).toBeDefined();
     expect(decoded.players.founder.tag).toBe('OriginalAce');
@@ -218,5 +219,28 @@ describe('saves from before the first-player draft', () => {
     expect(back.tutorial.step).toBe('done');
     expect(back.draft).toBeNull();
     expect(back.players.founder).toBeDefined();
+  });
+});
+
+describe('v6 -> v7 Legacy rescale', () => {
+  const v6Save = (level: number, points: number) => {
+    const s = foundedGame(0, 3);
+    s.prestige.level = level;
+    s.prestige.points = points;
+    s.prestige.runs = level > 0 ? 3 : 0;
+    const raw = JSON.parse(JSON.stringify(s));
+    raw.version = 6;
+    return `ESI6.${LZString.compressToBase64(JSON.stringify(raw))}`;
+  };
+
+  it('shrinks Legacy levels and points by the cube root of the divisor change', () => {
+    const s = decodeSave(v6Save(5.5e12, 5.4e9));
+    expect(s.prestige.level).toBe(5.5e12 / LEGACY_RESCALE_V7);
+    expect(s.prestige.points).toBe(5.4e9 / LEGACY_RESCALE_V7);
+  });
+
+  it('keeps at least one level for an org that had sold, and leaves a new org at zero', () => {
+    expect(decodeSave(v6Save(3, 7)).prestige.level).toBe(1);
+    expect(decodeSave(v6Save(0, 0)).prestige.level).toBe(0);
   });
 });

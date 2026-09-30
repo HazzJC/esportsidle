@@ -1,6 +1,6 @@
 /**
  * Ultra-lategame balance suite, built on a real save (tests/fixtures/lategame-save.txt): 12 sales,
- * every Legacy node, Legacy level 5.5e12, 1.8e50 lifetime earnings.
+ * every Legacy node, Legacy level 5.5e12 (5.5e10 after the v7 rescale), 1.8e50 lifetime earnings.
  *
  * Two kinds of test:
  *  - invariants (plain `it`): the save loads, nothing goes non-finite, and every thing a budget looks
@@ -59,7 +59,8 @@ describe('lategame save: invariants', () => {
   it('loads as the expected org', () => {
     const { s } = ctx();
     expect(s.prestige.runs).toBe(12);
-    expect(s.prestige.level).toBeGreaterThan(1e12);
+    // 5.5e12 before the v7 rescale, 5.5e10 after it.
+    expect(s.prestige.level).toBeGreaterThan(1e10);
     expect(Object.keys(s.prestige.nodes).length).toBeGreaterThan(40);
   });
 

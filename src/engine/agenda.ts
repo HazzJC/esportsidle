@@ -5,7 +5,7 @@ import { fmt, fmtTime, money } from './format';
 import { MERCH_UNLOCK_FANS, isMerchUnlocked } from './merch';
 import { teamMood } from './mood';
 import { isAvailable, transferValue } from './players';
-import { pendingLegacy } from './prestige';
+import { canSell, pendingLegacy } from './prestige';
 import { previewSigning } from './roster';
 import { offerRequirements, sponsorsUnlocked } from './sponsors';
 import type { GameState, Mods, Rates } from './types';
@@ -223,7 +223,7 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
 // ---------------------------------------------------------------------------
 function opportunity(s: GameState, mods: Mods, rates: Rates): AgendaItem | null {
   const pending = pendingLegacy(s);
-  if (pending >= Math.max(1, s.prestige.level)) {
+  if (canSell(s) && pending >= Math.max(1, s.prestige.level)) {
     return {
       icon: 'crown',
       title: `Sell the org for +${fmt(pending)} legacy`,

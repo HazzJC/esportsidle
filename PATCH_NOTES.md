@@ -19,6 +19,27 @@
 
 ## Pending Changes
 
+### Balance: the first Legacy point comes with the first Multiverse Championship
+*Status: Pending*
+
+* **The Issue / Motivation**: The active player could sell at 1h22–1h31, midway up the operations ladder, for a handful of points. After that, three more hours in the run earned about ten times more Legacy than selling and replaying. The design goal is a first prestige 3–4 hours into an active run, once the whole ladder has been climbed. From there Legacy should tick up, rather than arrive as a large pile.
+* **What Changed**:
+  * **First sale waits for the final operation** (`legacyUnlocked` in `src/engine/prestige.ts`). An org that has never sold must buy its first Multiverse Championship (`FINAL_OPERATION`) before it can sell. After the first sale this no longer applies.
+    * `canSell`, the sale offer, the HQ suggestion, the clicker chip and "The big exit" quest all respect it.
+    * The Legacy tab shows the points waiting and "Your first sale opens when you buy your first Multiverse Championship, the last operation".
+  * **`LEGACY_DIVISOR` is 1e18** (was ~~1e12~~). Active players have 1e18–7e18 earned when they buy the final building, so the first point lands with it and ticks up (8 points at 8e18, 27 at 2.7e19).
+  * **Save v7 migration** (`src/engine/save.ts`): Legacy levels, unspent points and Hall of Fame gains are divided by 100 (`LEGACY_RESCALE_V7`, the cube root of the millionfold divisor change). Every org stays where it was against its own earnings, and an org that had sold keeps at least level 1. The reference veteran save goes from Legacy 5.5e12 to 5.5e10.
+  * **Simulator**:
+    * The first-Legacy milestone and the bot's sale use `canSell`.
+    * The active target is now 3–4 h (was 2h45–4h).
+    * The full matrix runs longer (active 8 h, semi and idle 16 h, casual 4 days, optimal 4 h) so every persona can reach the ladder's end; the quick preset runs 5 h.
+  * **Tests**: `finishLadder()` fixture for sale tests, v6 → v7 migration tests, and the veteran-save invariant updated for the rescale.
+* **Result** (active persona, five seeds):
+  * The first Multiverse Championship and the first point land at 3h30, 3h37, 3h55, 3h59 and 4h14 (median 3h55).
+  * Points waiting: 1–3 at 4 h, 6–17 at 5 h, 24–35 at 6 h, 96–124 at 8 h.
+  * `docs/economy.md` gets the full matrix (semi, idle, casual, the stay-or-sell check) once the long runs are summarised.
+* **For reviewers**: a first sale is now small (1–3 points plus the free root node and four founding points), so selling right away is worth little. Making early Legacy strong (a larger, tapering per-level bonus and starter kits) is the next phase.
+
 ### Balance: runs stop compounding without limit (plateau pass, phase 2 of the economy refinements)
 *Status: Pending*
 
@@ -545,7 +566,7 @@
   * **Contextual Auto-Pause**: Front-office automation now automatically pauses when the player is browsing the Market, Gear, or Lineup screens.
   * **Auto-Buy Logic Fixes**: Fixed auto-sponsor tier adherence and respected empty roster slot toggles ~~which only bought players for the active lineup~~ *(Changed 1 time since: coaches can now be instructed to buy bench players via coach_bench legacy purchase)*.
   * **Payout Transparency**: Added explicit dollar calculations to active sponsor cards and contracts ~~without visual distinction between contract perks and permanent rewards~~ *(Changed 2 times since: Temporary vs Permanent tags in de295ff, two-zone "While signed" / "Goal bonus" cards in 5160ae5)*.
-  * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to $10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session.
+  * **Prestige Acceleration**: Lowered `LEGACY_DIVISOR` from $10^{15}$ to ~~$10^{12}$ ($1\text{ Trillion}$), making the first prestige attainable within a reasonable 2–3 hour session~~. *(Changed 1 time since: raised to 1e18 and gated on the first Multiverse Championship, so the first point comes 3–4 hours into an active run)*
   * **Easter Eggs**: Added special custom traits and buffs for community members and iconic pros (*Faker*, *TheOnlyCook*, *Varantha*, etc.) ~~which were not available in the market~~ *(Changed 1 time since: legendary easter egg players now have a rare 1% chance to appear as legacy prospects on the transfer market)*.
 
 ---

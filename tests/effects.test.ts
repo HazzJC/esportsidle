@@ -11,7 +11,7 @@ import { LEGACY_DIVISOR, buyNode, sellOrg } from '../src/engine/prestige';
 import { maxSponsorTier } from '../src/engine/sponsors';
 import { evaluateTeam, rosterCapacity } from '../src/engine/teams';
 import type { Effect, GameState } from '../src/engine/types';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 
 /** An org with every store upgrade, legacy node, challenge and dynasty rank, and every operation and staff type. */
 function everythingOwned(): GameState {
@@ -183,6 +183,7 @@ describe('legacy unlocks that change how a run starts or plays', () => {
   function sold(nodes: string[], setup?: (s: GameState) => void): GameState {
     const s = foundedGame(0, 31);
     s.earnedTotal = Math.pow(5, 3) * LEGACY_DIVISOR;
+    finishLadder(s);
     s.earnedRun = s.earnedTotal;
     s.prestige.points = 10_000;
     s.prestige.nodes.legacy = 1;

@@ -5,7 +5,7 @@ import { computeMods, computeRates } from '../src/engine/economy';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 import { unlockGame } from '../src/engine/teams';
 import type { GameState, Player } from '../src/engine/types';
 
@@ -78,6 +78,7 @@ describe('HQ agenda', () => {
   it('suggests selling once pending legacy at least doubles it', () => {
     const s = fullRocket();
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     const opp = agenda(s).opportunity!;
     expect(opp.title).toMatch(/Sell the org/);
     expect(opp.action?.target).toEqual({ kind: 'tab', tab: 'legacy' });

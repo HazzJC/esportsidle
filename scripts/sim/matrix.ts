@@ -34,7 +34,7 @@ const OUT = String(args.out ?? `output/sim/${PRESET}`);
 const JOBS = Math.max(1, Number(args.jobs ?? availableParallelism() - 2));
 
 /** Hours per persona, long enough to reach the first Legacy point with room to spare. */
-const FULL_HOURS: Record<string, number> = { active: 6, optimal: 3, semi: 12, idle: 10, casual: 72 };
+const FULL_HOURS: Record<string, number> = { active: 8, optimal: 4, semi: 16, idle: 16, casual: 96 };
 /** The restart check plays this long after the snapshot, staying or selling. */
 const RESTART_HOURS = 3;
 /** The restart check starts this long after the first Legacy point. */
@@ -47,7 +47,7 @@ function job(persona: string, seed: number, hours: number, extra: string[] = [],
 }
 
 const PRESETS: Record<string, () => Job[]> = {
-  quick: () => ['active', 'semi', 'idle'].flatMap((p) => [1, 2].map((seed) => job(p, seed, 3))),
+  quick: () => ['active', 'semi', 'idle'].flatMap((p) => [1, 2].map((seed) => job(p, seed, 5))),
   full: () => [
     ...Object.entries(FULL_HOURS).flatMap(([p, hours]) =>
       [1, 2, 3, 4, 5].map((seed) =>

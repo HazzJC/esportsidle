@@ -7,7 +7,7 @@ import { refreshMarket } from '../src/engine/market';
 import { FOUNDING_POINTS, LEGACY_DIVISOR, mandateOffers, sellOrg } from '../src/engine/prestige';
 import { Rng } from '../src/engine/rng';
 import { generateOffer, sponsorsUnlocked } from '../src/engine/sponsors';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 import type { GameState } from '../src/engine/types';
 import { refreshUpgradeUnlocks } from '../src/engine/upgrades';
 
@@ -15,6 +15,7 @@ import { refreshUpgradeUnlocks } from '../src/engine/upgrades';
 function sellable(points = 1): GameState {
   const s = foundedGame(0, 7);
   s.earnedTotal = Math.pow(points, 3) * LEGACY_DIVISOR;
+  finishLadder(s);
   s.earnedRun = s.earnedTotal;
   return s;
 }
@@ -42,6 +43,7 @@ describe('the first sale', () => {
     const s = sellable(1);
     sellOrg(s, { charter: 'scout' });
     s.earnedTotal = 8 * LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(s.prestige.charter).toBe('scout');
   });
@@ -90,6 +92,7 @@ describe('run mandates', () => {
     sellOrg(s, { charter: 'operator', mandate: pick.id });
     expect(s.prestige.mandate).toBe(pick.id);
     s.earnedTotal = 8 * LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, {});
     expect(s.prestige.mandate).toBeNull();
   });

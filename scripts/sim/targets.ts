@@ -6,8 +6,8 @@
  * Change a target here, never in the report.
  */
 
-/** A first playthrough (no Legacy) should earn its first Legacy point in about three hours of active play. */
-export const FIRST_LEGACY_ACTIVE: [number, number] = [2.75 * 3600, 4 * 3600];
+/** A first playthrough (no Legacy) should earn its first Legacy point, which comes with the first Multiverse Championship, in three to four hours of active play. */
+export const FIRST_LEGACY_ACTIVE: [number, number] = [3 * 3600, 4 * 3600];
 
 /** The active player fills the hype meter for a Crowd Goes Wild about every ten minutes. */
 export const CROWDS_PER_ACTIVE_HOUR: [number, number] = [4.5, 8];

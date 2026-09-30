@@ -34,7 +34,7 @@ import {
   updateTutorial,
 } from '../src/engine/tutorial';
 import type { GameState } from '../src/engine/types';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 
 const ctx = (s: GameState) => {
   const r = computeRates(s);
@@ -242,6 +242,7 @@ describe('tabs that open as the org grows', () => {
     const s = foundedGame(0, 1);
     expect(sectionOpen(s, 'staff')).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     updateSections(s);
     expect(sectionOpen(s, 'staff')).toBe(true);
@@ -319,6 +320,7 @@ describe('quests', () => {
     expect(questPerkSources(s)[0].quest).toBe(QUEST_MAP.get('grinders_10')!.title);
     const claimed = s.quests.claimed;
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(questPerkLabels(s)).toHaveLength(0);
     expect(s.quests.done).toEqual({});
@@ -381,6 +383,7 @@ describe('saves and sales', () => {
     customiseDraft(s, { tag: 'Ace', look: { hair: 4 } });
     expect(signDraftPick(s, s.draft![0].player.id, { benchSlots: 0 }).ok).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(s.players.founder).toMatchObject({ tag: 'Ace' });
     expect(s.players.founder.look.hair).toBe(4);
@@ -394,6 +397,7 @@ describe('saves and sales', () => {
     s.cash = 1e6;
     expect(signListing(s, listing.player.id, computeMods(s)).ok).toBe(true);
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator' });
     expect(Object.keys(s.players)).toHaveLength(0);
     expect(s.draft).toHaveLength(1);
@@ -408,6 +412,7 @@ describe('saves and sales', () => {
     const star = s.players[listing.player.id];
     s.prestige.nodes.keep_player = 1;
     s.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(s);
     sellOrg(s, { charter: 'operator', keepPlayerId: star.id });
     expect(s.teams.smash.lineup[0]).toBe(star.id);
     expect(s.prestige.reserve).toHaveLength(0);

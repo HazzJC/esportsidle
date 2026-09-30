@@ -5,7 +5,7 @@
   import Toasts from '../components/Toasts.svelte';
   import OrgLogo from '../components/OrgLogo.svelte';
   import { designUrl } from '../designImage';
-  import { pendingLegacy } from '../../engine/prestige';
+  import { canSell, pendingLegacy } from '../../engine/prestige';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
@@ -158,7 +158,7 @@
         {fmt(s.fans)} fans
         <span class="muted">+{fmt(r.fansPerSec, 1)}/s</span>
       </span>
-      {#if pending >= 1}
+      {#if pending >= 1 && canSell(s)}
         <button
           class="legacy-chip num"
           onclick={() => ((game.tab = 'legacy'), (game.mobileView = 'center'))}

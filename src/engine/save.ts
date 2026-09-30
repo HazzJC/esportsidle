@@ -63,7 +63,23 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
       for (const n of OP_ACH_THRESHOLDS) swapKey(raw.achievements, `op_${a}_${n}`, `op_${b}_${n}`);
     }
   },
+  // v7 raised LEGACY_DIVISOR a millionfold (1e12 to 1e18), so the first point comes with the final
+  // operation. Legacy is a cube root of earnings, so every org's level and unspent points shrink by
+  // cbrt(1e6) = 100, which keeps each one where it was against its own earnings. An org that had
+  // sold keeps at least one level.
+  6: (raw) => {
+    const p = raw.prestige;
+    if (!isPlainObject(p)) return;
+    if (typeof p.level === 'number' && p.level > 0) p.level = Math.max(1, Math.round(p.level / LEGACY_RESCALE_V7));
+    if (typeof p.points === 'number' && p.points > 0) p.points = Math.round(p.points / LEGACY_RESCALE_V7);
+    if (Array.isArray(p.hallOfFame)) {
+      for (const e of p.hallOfFame) if (isPlainObject(e) && typeof e.legacyGained === 'number') e.legacyGained = Math.round(e.legacyGained / LEGACY_RESCALE_V7);
+    }
+  },
 };
+
+/** How much v7 shrank Legacy levels and points: the cube root of the divisor's millionfold rise. */
+export const LEGACY_RESCALE_V7 = 100;
 
 /** The pairs of operations that traded places in v6. */
 export const OP_REORDER_V6: [string, string][] = [

@@ -1,5 +1,5 @@
 import { isMerchUnlocked } from '../engine/merch';
-import { pendingLegacy } from '../engine/prestige';
+import { canSell } from '../engine/prestige';
 import { sponsorsUnlocked } from '../engine/sponsors';
 import { sectionOpen } from '../engine/sections';
 import { isStaffUnlocked } from '../engine/staff';
@@ -299,7 +299,7 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.orgsSold,
     target: 1,
     mode: 'delta',
-    available: (s) => s.stats.orgsSold > 0 || pendingLegacy(s) >= 1,
+    available: (s) => s.stats.orgsSold > 0 || canSell(s),
     rewards: [{ kind: 'legacy', amount: 3 }, trophies(10)],
   },
 ];

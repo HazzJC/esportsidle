@@ -20,13 +20,14 @@ import { SELL_QUEST_ID } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { hireStaff } from '../src/engine/staff';
-import { foundedGame } from './fixtures';
+import { finishLadder, foundedGame } from './fixtures';
 import { hasRosterSpace, unlockGame } from '../src/engine/teams';
 import type { GameState } from '../src/engine/types';
 
 function wealthy(level = 3): GameState {
   const s = foundedGame(0, 31);
   s.earnedTotal = Math.pow(level, 3) * LEGACY_DIVISOR;
+  finishLadder(s);
   s.earnedRun = s.earnedTotal;
   return s;
 }

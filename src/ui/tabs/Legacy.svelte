@@ -9,6 +9,7 @@
   import { tierName } from '../../data/leagues';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import {
+    FINAL_OPERATION,
     FOUNDING_POINTS,
     LEGACY_DIVISOR,
     activeChallenge,
@@ -19,6 +20,7 @@
     dynastyUnlocked,
     hasSpecial,
     legacyFor,
+    legacyUnlocked,
     mandateOffers,
     nextLegacyThreshold,
     nodeState,
@@ -154,9 +156,14 @@
     </div>
     <div class="sell">
       <div class="pending">
-        <span class="muted small">Selling now earns</span>
+        <span class="muted small">{legacyUnlocked(s) ? 'Selling now earns' : 'Legacy waiting'}</span>
         <span class="gain num">+{fmt(pending)} legacy</span>
       </div>
+      {#if !legacyUnlocked(s)}
+        <span class="small locked-note">
+          <Icon name="lock" size={12} /> Your first sale opens when you buy your first {FINAL_OPERATION.name}, the last operation.
+        </span>
+      {/if}
       <span class="bar"><i style="width:{progress * 100}%"></i></span>
       <span class="dim small">Next point at {money(nextLegacyThreshold(s))} earned all time (currently {money(s.earnedTotal)})</span>
       <button class="btn gold" disabled={!canSell(s)} onclick={openSell}><Icon name="crown" size={15} /> Sell the Org</button>
@@ -556,6 +563,12 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+  }
+  .locked-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
   }
   .gain {
     font-family: var(--font-display);
