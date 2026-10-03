@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishSalesMult } from '../../data/merch';
+  import { FINISH_ART_LEVELS, FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishName, finishSalesMult } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
-  import { MAX_MERCH_QUALITY, MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, TREND_BONUS, TRENDING_THRESHOLD, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
+  import { MERCH_UNLOCK_FANS, PRICE_MAX, PRICE_MIN, TREND_BONUS, TRENDING_THRESHOLD, isMerchUnlocked, merchQualityCost, optimalPrice } from '../../engine/merch';
   import type { Design } from '../../engine/types';
   import Avatar from '../components/Avatar.svelte';
   import DesignImage from '../components/DesignImage.svelte';
@@ -20,7 +20,7 @@
   import { tooltip, type TipContent } from '../tooltip.svelte';
 
   /** Pip indices for the finish track, one per purchasable level. */
-  const FINISH_PIPS = Array.from({ length: MAX_MERCH_QUALITY }, (_, i) => i);
+  const FINISH_PIPS = Array.from({ length: FINISH_ART_LEVELS }, (_, i) => i);
 
   let editing = $state<{ id: string | null } | null>(null);
   let confirmDelete = $state<string | null>(null);
@@ -180,17 +180,18 @@
             {@const rate = v.r.merchLines[p.id]}
             {@const d = line.designId ? s.designs[line.designId] : undefined}
             {@const q = line.quality ?? 0}
-            {@const maxed = q >= MAX_MERCH_QUALITY}
+            {@const art = Math.min(q, FINISH_ART_LEVELS)}
             {@const cost = merchQualityCost(s, p.id)}
+            {@const upcoming = nextMerchMilestone(p.id, q)}
             <div class="product" class:live={!!rate}>
               <div class="phead">
-                <MerchIcon productId={p.id} quality={line.quality ?? 0} primary={s.org.primary} secondary={s.org.secondary} size={30} showLevel={false} />
+                <MerchIcon productId={p.id} quality={art} primary={s.org.primary} secondary={s.org.secondary} size={30} showLevel={false} />
                 <b>{p.name}</b>
                 {#if rate?.trending}<span class="chip trending">Trending</span>{/if}
                 <span class="pcps num">{money(rate?.cps ?? 0, 1)}/s</span>
               </div>
               <div class="pbody">
-                <MerchPreview productId={p.id} design={d} quality={line.quality ?? 0} primary={s.org.primary} secondary={s.org.secondary} />
+                <MerchPreview productId={p.id} design={d} quality={art} primary={s.org.primary} secondary={s.org.secondary} />
                 <div class="controls">
                   <select value={line.designId ?? ''} onchange={(e) => game.setLineDesign(p.id, e.currentTarget.value || null)} aria-label="{p.name} design">
                     <option value="">No design (not selling)</option>
@@ -212,25 +213,22 @@
                   <span class="dim small">Sweet spot ≈ ×{optimalPrice(rate?.trending ?? false).toFixed(2)}</span>
                 </div>
               </div>
-              <div class="finish-row" class:maxed style="--r:{rarityColor(finishBand(q))}">
+              <div class="finish-row" class:masterwork={q >= FINISH_ART_LEVELS} style="--r:{rarityColor(finishBand(q))}">
                 <div class="finfo">
                   <div class="fname">
-                    {FINISH_NAMES[q]}
+                    {finishName(q)}
                     <span class="rarity">{rarityName(finishBand(q))} finish</span>
                   </div>
                   <div class="fdesc muted">
                     Sales ×{finishSalesMult(q).toFixed(2)}
-                    {#if !maxed}<span class="good"> → ×{finishSalesMult(q + 1).toFixed(2)}</span>{/if}
+                    <span class="good"> → ×{finishSalesMult(q + 1).toFixed(2)}</span>
                   </div>
                   <div class="pips" aria-hidden="true">
                     {#each FINISH_PIPS as i (i)}<i class:on={i < q}></i>{/each}
                   </div>
-                  {#if !maxed}
-                    {@const upcoming = nextMerchMilestone(p.id, q)}
-                    <div class="next dim">
-                      Next: {FINISH_NAMES[q + 1]}{#if upcoming}{' '}<span class="new-look">· new look at Q{upcoming.q}: {upcoming.name}</span>{/if}
-                    </div>
-                  {/if}
+                  <div class="next dim">
+                    Next: {finishName(q + 1)}{#if upcoming}{' '}<span class="new-look">· new look at Q{upcoming.q}: {upcoming.name}</span>{/if}
+                  </div>
                   <div class="looks" aria-label="Looks this product unlocks">
                     {#each merchMilestones(p.id) as m (m.q)}
                       <span
@@ -248,13 +246,9 @@
                     {/each}
                   </div>
                 </div>
-                {#if maxed}
-                  <span class="chip gold-text">MAX</span>
-                {:else}
-                  <button class="btn small" class:primary={s.cash >= cost} disabled={s.cash < cost} onclick={() => game.upgradeMerchQuality(p.id)}>
-                    <Icon name="sparkles" size={13} /> {money(cost)}
-                  </button>
-                {/if}
+                <button class="btn small" class:primary={s.cash >= cost} disabled={s.cash < cost} onclick={() => game.upgradeMerchQuality(p.id)}>
+                  <Icon name="sparkles" size={13} /> {money(cost)}
+                </button>
               </div>
               {#if rate}
                 <div class="pstats small">
@@ -486,7 +480,7 @@
     border: 1px solid color-mix(in srgb, var(--r) 35%, var(--line));
     background: linear-gradient(90deg, color-mix(in srgb, var(--r) 10%, transparent), transparent 70%);
   }
-  .finish-row.maxed {
+  .finish-row.masterwork {
     border-color: color-mix(in srgb, var(--r) 70%, transparent);
   }
   .finfo {

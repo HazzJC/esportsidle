@@ -3,6 +3,7 @@ import LZString from 'lz-string';
 import { GAMES } from '../data/games';
 import { OP_ACH_THRESHOLDS } from '../data/operations';
 import { sanitizeDesign } from './designs';
+import { tierElo } from './elo';
 import { createFounder } from './players';
 import { Rng } from './rng';
 import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state';
@@ -94,6 +95,15 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
         icon: 'clock',
         tone: 'gold',
       });
+    }
+  },
+  // v9 gave every team an Elo, which gates promotion (it starts at its tier's level, so nothing moves),
+  // and smoothed income-linked prices through `priceIncome` (0 means "read the income itself" until the first tick).
+  8: (raw) => {
+    const teams = raw.teams;
+    if (!isPlainObject(teams)) return;
+    for (const team of Object.values(teams)) {
+      if (isPlainObject(team) && typeof team.elo !== 'number') team.elo = tierElo(typeof team.tier === 'number' ? team.tier : 0);
     }
   },
 };

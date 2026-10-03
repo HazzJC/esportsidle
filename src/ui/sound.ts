@@ -9,6 +9,7 @@ export type SoundId =
   | 'buy'
   | 'upgrade'
   | 'achievement'
+  | 'quest'
   | 'drop'
   | 'dropClick'
   | 'dramaBad'
@@ -19,7 +20,7 @@ export type SoundId =
   | 'legacy';
 
 const lastPlayed = new Map<SoundId, number>();
-const MIN_GAP_MS: Partial<Record<SoundId, number>> = { click: 30, buy: 45, win: 250, upgrade: 60 };
+const MIN_GAP_MS: Partial<Record<SoundId, number>> = { click: 30, buy: 45, win: 250, upgrade: 60, quest: 400 };
 
 interface Voice {
   out: AudioNode;
@@ -179,6 +180,18 @@ export function playSound(id: SoundId, volume: number): void {
       chord(g, [60, 63, 67, 70], t, 0.01, 0.9, 0.09, [900, 5000], 0.5);
       [79, 82, 86, 91].forEach((m, i) => bell(g, midiHz(m), t + 0.07 + i * 0.07, 0.6, 0.07, 3.5, 1.8, 0.45, i % 2 ? 0.25 : -0.25));
       break;
+    case 'quest': {
+      // The quest console lights its lamp: a relay clack, a bright major arpeggio climbing the
+      // board's chirps, and a held chime. Major and rising where the achievement stab is minor and heavy.
+      hiss(g, t, 0.03, 0.2, 3200, 1800, 1.2);
+      thump(g, t, 220, 90, 0.09, 0.3, 2);
+      const run = [72, 76, 79, 84];
+      run.forEach((m, i) => pluck(g, midiHz(m), t + 0.07 + i * 0.075, 0.2, 0.1, 3600 + i * 600, 0.25, (i - 1.5) * 0.2));
+      const landed = t + 0.07 + (run.length - 1) * 0.075;
+      chord(g, run, landed, 0.01, 0.7, 0.07, [1200, 5200], 0.45);
+      bell(g, midiHz(96), landed + 0.03, 0.9, 0.06, 3.01, 1.4, 0.5, 0.15);
+      break;
+    }
     case 'drop':
       // Something appears: a quick upward whoosh and a glassy ping.
       hiss(g, t, 0.35, 0.1, 500, 7000, 2.5, 0.3, 0.3, 0.25);

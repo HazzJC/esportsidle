@@ -17,7 +17,7 @@ export interface OperationDef {
    * Price growth per unit owned, when it isn't Cookie Clicker's ×1.15 (PRICE_GROWTH). The top four
    * operations get steeper: a run that has climbed the whole ladder keeps growing by buying more of
    * them, and at ×1.15 each one was cheap next to the income the ladder brings, so a run never
-   * levelled off (docs/economy.md, WS3).
+   * levelled off.
    */
   priceGrowth?: number;
   /** Multiplies the price of this operation's ×2 tier upgrades (the top four: a hundredfold). */

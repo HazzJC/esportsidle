@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TITLE_WINS } from '../src/data/leagues';
 import { computeRates } from '../src/engine/economy';
+import { promotionElo } from '../src/engine/elo';
 import { subscribe } from '../src/engine/bus';
 import { generatePlayer } from '../src/engine/players';
 import { LEGACY_DIVISOR, sellOrg } from '../src/engine/prestige';
@@ -82,6 +83,7 @@ describe('season recaps and the trophy shelf', () => {
     team.seasonWins = TITLE_WINS;
     team.seasonPlayed = 16;
     team.seasonStats = { founder: TITLE_WINS };
+    team.elo = promotionElo(0);
     const notices: string[] = [];
     const unsubscribe = subscribe((event) => {
       if (event.type === 'toast') notices.push(`${event.title} ${event.body ?? ''}`);

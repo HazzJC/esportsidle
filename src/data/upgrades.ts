@@ -206,8 +206,17 @@ for (const [aId, bId, name1, name2] of SYNERGIES) {
 }
 
 // ---------------------------------------------------------------------------
-// Clicking: gain % of income per click
+// Clicking: flat cash per click to start with, then a small share of income per click
 // ---------------------------------------------------------------------------
+/**
+ * The first four give flat cash on every click, sized to the money around when they appear, so an early
+ * click upgrade is a real jump. The rest give a small share of income per click: a percentage of
+ * income would spiral as income grows, so those are small and the list is long.
+ */
+const CLICK_FLAT_UPGRADES = 4;
+/** Flat cash per click is a fraction of the upgrade's price. */
+const CLICK_FLAT_PER_COST = 1 / 2000;
+const CLICK_PCT = 0.005;
 const CLICK_LINE: [string, number, string][] = [
   ['Rubber Grip Mouse', 5e4, 'Sweaty palms? Not anymore.'],
   ['Honeycomb Shell Mouse', 5e6, 'Lighter mouse, heavier wallet.'],
@@ -232,7 +241,7 @@ CLICK_LINE.forEach(([name, cost, flavor], i) => {
     icon: 'mouse-pointer-click',
     tier: i,
     cost,
-    effects: [{ kind: 'clickCpsPct', pct: 0.01 }],
+    effects: [i < CLICK_FLAT_UPGRADES ? { kind: 'clickAdd', add: cost * CLICK_FLAT_PER_COST } : { kind: 'clickCpsPct', pct: CLICK_PCT }],
     flavor,
     requirement: `Earn ${need.toExponential(0).replace('e+', 'e')} cash from clicking`,
     unlock: (s) => s.stats.clickCashRun >= need,
@@ -319,6 +328,13 @@ const SNACKS: [string, number, number, string][] = [
   ['Big Bang Brunch', 1e23, 0.05, 'Where it all began.'],
 ];
 
+/**
+ * A snack is a small, flat boost, so it is priced like one: a tenth of the figure in the table above,
+ * which is now the earnings that make it appear. Before, the late ones cost more than their few
+ * percent were ever worth.
+ */
+const SNACK_PRICE_DIVISOR = 10;
+
 SNACKS.forEach(([name, cost, pct, flavor], i) => {
   add({
     id: `snack_${i}`,
@@ -326,7 +342,7 @@ SNACKS.forEach(([name, cost, pct, flavor], i) => {
     group: 'snack',
     icon: i % 3 === 0 ? 'pizza' : i % 3 === 1 ? 'utensils' : 'coffee',
     tier: Math.min(11, Math.floor(i / 2)),
-    cost,
+    cost: cost / SNACK_PRICE_DIVISOR,
     effects: [{ kind: 'globalPct', pct }],
     flavor,
     requirement: `Earn ${(cost / 5).toExponential(0).replace('e+', 'e')} cash this run`,
@@ -339,9 +355,19 @@ SNACKS.forEach(([name, cost, pct, flavor], i) => {
 // ---------------------------------------------------------------------------
 /**
  * The first four raise the fame exponent (up to MAX_FAME_EXP). The rest multiply the fame bonus: an
- * exponent compounds with the fanbase, a multiplier doesn't, so the late line can't run away.
+ * exponent compounds with the fanbase, a multiplier doesn't, so the late line can't run away. Each
+ * fan is worth less as the org grows (fanValue), so the last four are the weighty ones: a real
+ * multiplier plus something fame has not done before. Cult Following opens Fan Donations (a Hype
+ * Drop that pays out more with every later fame upgrade); Global Fandom and Fandom Singularity lift
+ * merch; Cult Following and Interplanetary Fandom lift sponsor deals.
  */
 const FAME_EXP_TIERS = 4;
+const FAME_EXTRAS: Record<number, Effect[]> = {
+  8: [{ kind: 'sponsorIncome', mult: 1.25 }],
+  9: [{ kind: 'merchMult', mult: 1.3 }],
+  10: [{ kind: 'sponsorIncome', mult: 1.35 }],
+  11: [{ kind: 'merchMult', mult: 1.4 }],
+};
 const FAME_LINE: [string, number, number, number, string][] = [
   ['Discord Server', 50, 5_000, 0.01, 'Rule 1: be nice. Rule 2: no, seriously.'],
   ['Fan Subreddit', 500, 200_000, 0.01, 'Mostly memes. Occasionally tactical analysis. Mostly memes.'],
@@ -351,12 +377,10 @@ const FAME_LINE: [string, number, number, number, string][] = [
   ['Stan Accounts', 5e6, 2e13, 1.2, 'They know your players’ birthdays better than their mums.'],
   ['Superfan Tattoos', 5e7, 2e15, 1.25, 'Permanent loyalty. Semi-permanent regret.'],
   ['Fan-Owned Shares', 5e8, 2e17, 1.25, 'Every fan is now technically your boss.'],
-  // Fame stops growing with fans at FAME_CAP_FANS (around the end of the ladder), so the last four are
-  // modest: they were ×1.3-1.5 each, free next to late income, and kept a finished run compounding.
-  ['Cult Following', 5e9, 2e19, 1.1, 'Robes are optional. Jerseys are not.'],
-  ['Global Fandom', 5e10, 2e21, 1.1, 'Every country has a {org} fan club.'],
-  ['Interplanetary Fandom', 5e11, 2e23, 1.1, 'Mars colony chants in low gravity.'],
-  ['Fandom Singularity', 5e12, 2e25, 1.1, 'Fans have become a single, loving hive mind.'],
+  ['Cult Following', 5e9, 2e19, 1.3, 'Robes are optional. Jerseys are not. The donation box is always full.'],
+  ['Global Fandom', 5e10, 2e21, 1.35, 'Every country has a {org} fan club.'],
+  ['Interplanetary Fandom', 5e11, 2e23, 1.4, 'Mars colony chants in low gravity.'],
+  ['Fandom Singularity', 5e12, 2e25, 1.5, 'Fans have become a single, loving hive mind.'],
 ];
 
 FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
@@ -367,7 +391,7 @@ FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
     icon: 'heart',
     tier: i,
     cost,
-    effects: [i < FAME_EXP_TIERS ? { kind: 'fameExp', add: add_ } : { kind: 'fameBonus', mult: add_ }],
+    effects: [i < FAME_EXP_TIERS ? { kind: 'fameExp', add: add_ } : { kind: 'fameBonus', mult: add_ }, ...(FAME_EXTRAS[i] ?? [])],
     flavor,
     requirement: `Reach ${fans.toLocaleString('en-US')} fans this run`,
     unlock: (s) => s.fansRun >= fans,
@@ -385,21 +409,21 @@ const cabinetAchievements = (s: GameState): number =>
   }).length;
 
 /**
- * The superfan line is the cabinet's (Cookie Clicker's milk and kittens). The first three arrive during
- * the climb and do the heavy lifting; from the fourth on they arrive once the ladder is climbed, so
- * they are small. Each used to be ×2 or more for a price late income made free, and they kept a
- * finished run compounding (docs/economy.md, WS3).
+ * The superfan line is the cabinet's. The first three arrive during the climb and do the heavy
+ * lifting; the six after arrive once the ladder is climbed and are smaller, but they are meant to be
+ * felt: at a full cabinet each is worth about +45%.
  */
+const LATE_SUPERFAN = 0.035;
 const SUPERFANS: [string, number, number, number, string][] = [
   ['Superfan Volunteers', 13, 9e6, 0.1, 'They hand out flyers. Nobody asked them to.'],
   ['Superfan Street Team', 25, 9e8, 0.125, 'Wheat-pasting your logo on every surface.'],
   ['Superfan Moderators', 50, 9e12, 0.1, 'Unpaid. Unstoppable. Slightly power-mad.'],
-  ['Superfan Artists', 75, 9e16, 0.025, 'Your logo, reimagined in 400 styles.'],
-  ['Superfan Analysts', 100, 9e19, 0.025, 'Spreadsheets of every match you’ve ever played.'],
-  ['Superfan Cosplayers', 125, 9e22, 0.025, 'Foam armour so detailed it has patch notes.'],
-  ['Superfan Influencers', 150, 9e25, 0.025, 'Every post: #ad (not actually sponsored).'],
-  ['Superfan Council', 175, 9e28, 0.025, 'A democratically elected body of screamers.'],
-  ['Superfan Pantheon', 200, 9e31, 0.025, 'Ascended beyond mere fandom.'],
+  ['Superfan Artists', 75, 9e16, LATE_SUPERFAN, 'Your logo, reimagined in 400 styles.'],
+  ['Superfan Analysts', 100, 9e19, LATE_SUPERFAN, 'Spreadsheets of every match you’ve ever played.'],
+  ['Superfan Cosplayers', 125, 9e22, LATE_SUPERFAN, 'Foam armour so detailed it has patch notes.'],
+  ['Superfan Influencers', 150, 9e25, LATE_SUPERFAN, 'Every post: #ad (not actually sponsored).'],
+  ['Superfan Council', 175, 9e28, LATE_SUPERFAN, 'A democratically elected body of screamers.'],
+  ['Superfan Pantheon', 200, 9e31, LATE_SUPERFAN, 'Ascended beyond mere fandom.'],
 ];
 
 SUPERFANS.forEach(([name, need, cost, factor, flavor], i) => {

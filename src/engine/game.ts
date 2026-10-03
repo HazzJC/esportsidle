@@ -8,7 +8,8 @@ import { decayHype } from './clicker';
 import { returnScandalFans, updateDrops } from './drops';
 import { updateInvitation } from './tournament';
 import { updateWorldEvents } from './worldEvents';
-import { OFFLINE_HARD_CAP_HOURS, OFFLINE_TAPER, computeMods, computeRates } from './economy';
+import { OFFLINE_FADE_HOURS, computeMods, computeRates } from './economy';
+import { updatePriceIncome } from './baseIncome';
 import { updateMarket } from './market';
 import { updateMerch } from './merch';
 import { updateSponsors } from './sponsors';
@@ -50,6 +51,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   const mods = computeMods(s);
   const rates = computeRates(s, mods);
   const factor = offline ? mods.offlineRate : 1;
+  updatePriceIncome(s, rates.cpsNoBuffs, dt);
 
   earnCash(s, rates.cps * dt * factor, 'ops');
   for (const op of OPERATIONS) s.ops[op.id].produced += rates.opCps[op.id] * dt * factor;
@@ -122,10 +124,10 @@ export function advance(s: GameState, seconds: number, offline = false): Advance
 
 export interface OfflineReport {
   awaySeconds: number;
-  /** Seconds of play credited: the full-rate window plus half of the time after it, up to the hard cap. */
+  /** Seconds of play credited: the full-rate window plus the fading time after it. */
   countedSeconds: number;
   rate: number;
-  /** The full-rate window, and how much of the time away fell inside it and in the half-rate stretch. */
+  /** The full-rate window, and how much of the time away fell inside it and in the fading stretch. */
   windowSeconds: number;
   fullSeconds: number;
   taperSeconds: number;
@@ -136,15 +138,17 @@ export interface OfflineReport {
 }
 
 /**
- * How much of an absence offline progress credits (WS4): the full rate for the window, half of it
- * from there to OFFLINE_HARD_CAP_HOURS, nothing after. Returned as seconds of play at the full
- * offline rate, so the half-rate stretch counts half its length.
+ * How much of an absence offline progress credits: the full rate for the window, then a rate that
+ * fades but never stops. Time past the window counts as FADE · ln(1 + extra / FADE), so the first
+ * extra hours are worth nearly their full length and a week away still pays more than a day. Returned
+ * as seconds of play at the offline rate.
  */
 export function offlineCredit(awaySeconds: number, mods: Pick<Mods, 'offlineWindowHours'>): { window: number; full: number; taper: number; counted: number } {
   const away = Math.max(0, awaySeconds);
   const window = mods.offlineWindowHours * 3600;
   const full = Math.min(away, window);
-  const taper = Math.max(0, Math.min(away, OFFLINE_HARD_CAP_HOURS * 3600) - window) * OFFLINE_TAPER;
+  const fade = OFFLINE_FADE_HOURS * 3600;
+  const taper = away > window ? fade * Math.log(1 + (away - window) / fade) : 0;
   return { window, full, taper, counted: full + taper };
 }
 

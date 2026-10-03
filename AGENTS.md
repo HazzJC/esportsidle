@@ -17,11 +17,12 @@ Whenever you complete work or prepare changes for a PR/review, you MUST update `
 2. When modifying, tuning, or replacing existing mechanics, locate the earlier patch note entries describing that system, apply a markdown strikethrough `~~...~~` to the superseded behavior, and add/increment a bracketed note indicating how many times it has evolved: `*(Changed N times since: ...)*`.
 3. When starting or finishing work on top of previously committed work, inspect `PATCH_NOTES.md` for any remaining `[Status: Pending]` entries that are now committed in git, and update their header to `[Status: Committed]` (including their commit hash and date).
 
-# Balance testing
+# Balance and the economy
 
-`docs/economy.md` is the living write-up of the economy; keep it current instead of adding dated audit docs. Design targets live in `scripts/sim/targets.ts` and simulated players in `scripts/sim/personas.ts`.
+The game is tuned by playing it, not against numeric targets. Fun sometimes runs against what is "correct", and the old targets were retired on purpose.
 
-- `npm test` is the fast unit suite (seconds). `npm run test:slow` runs suites built on big saves.
-- `npm run sim:quick` (a couple of minutes) after a balance change; `npm run sim` for the full seeded matrix, which writes `output/sim/full/report.md` and `report.html`. Compare runs with `npx tsx scripts/sim/report.ts <dir> --compare=<old dir>`.
-- Simulations run in parallel child processes and take minutes, so start them in the background and keep working.
-- A speed-up to the simulator must leave a seeded record byte-identical (check with `--persona=audit-compat` or any fixed seed before and after).
+- **Ignore `docs/archive/` and `output/sim/`.** They hold analysis and simulation output from earlier versions of the game (pace targets, restart pressure, income-share caps, price-curve checks, the late-game audit). Do not read them to decide how anything should behave, do not treat their numbers as requirements, and do not update them. See `docs/archive/README.md`.
+- `docs/economy.md` describes the rules as they work now (no targets, no measured tables). Keep it current when a rule changes, and add a `PATCH_NOTES.md` entry.
+- Do not add pass/fail balance targets, income-growth budgets or "levels off by hour N" tests. Unit tests check that mechanics work and stay consistent (a price follows its formula, a curve never reaches zero), not that the economy hits a pace.
+- Principles to keep: nothing stops adding (slow on a curve that never reaches zero, and show the player); rewards are never worthless and never break a run; income-linked prices use base income (`engine/baseIncome.ts`), never anything a hype streak can move; anything that levels off is explained in the interface.
+- `npm test` is the unit suite (seconds). `scripts/sim/cli.ts` (`npm run sim -- --persona=active --hours=4`) plays the real engine as a simulated player (`scripts/sim/personas.ts`) and writes a record, for looking at what a playstyle does. It has nothing to pass or fail.

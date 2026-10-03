@@ -1,6 +1,7 @@
 import { ACHIEVEMENT_MAP } from '../data/achievements';
 import { subscribe, type GameEvent } from '../engine/bus';
 import { applyChain, clickLogo, type ClickResult } from '../engine/clicker';
+import { baseIncome } from '../engine/baseIncome';
 import { computeMods, computeRates } from '../engine/economy';
 import { fmt, fmtTime, money, setNumberFormat, type NumberFormat } from '../engine/format';
 import { advance, applyOfflineProgress, offlineCredit, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
@@ -374,7 +375,8 @@ class GameStore {
       case 'toast':
         if (e.channel && !this.state.settings.notify[e.channel]) break;
         this.toast({ title: e.title, body: e.body, icon: e.icon, tone: e.tone ?? 'info', channel: e.channel });
-        if (e.tone === 'gold') this.sfx('win');
+        if (e.sound) this.sfx(e.sound);
+        else if (e.tone === 'gold') this.sfx('win');
         else if (e.tone === 'bad') this.sfx('error');
         break;
       case 'achievement': {
@@ -677,7 +679,7 @@ class GameStore {
   }
 
   rerollMarket(): boolean {
-    const ok = rerollMarket(this.state, new Rng(this.state), computeMods(this.state), this.view.r.cpsNoBuffs);
+    const ok = rerollMarket(this.state, new Rng(this.state), computeMods(this.state), baseIncome(this.state, this.view.r));
     if (ok) this.refresh();
     return ok;
   }
@@ -711,8 +713,7 @@ class GameStore {
   }
 
   changeTier(gameId: string, delta: number): void {
-    const winChance = this.view.r.teams[gameId]?.winChance ?? 0;
-    if (changeTier(this.state, gameId, delta, winChance)) this.refresh();
+    if (changeTier(this.state, gameId, delta)) this.refresh();
   }
 
   setTeamOption(gameId: string, key: 'autoPromote' | 'autoSub', value: boolean): void {
@@ -782,7 +783,7 @@ class GameStore {
   }
 
   calmDrama(): void {
-    if (calmDrama(this.state, this.view.r.cpsNoBuffs)) {
+    if (calmDrama(this.state, baseIncome(this.state, this.view.r))) {
       this.toast({ title: 'PR team deployed', body: 'No Drama Drops for the next 30 minutes.', icon: 'shield', tone: 'good' }, 3000);
       this.refresh();
     }

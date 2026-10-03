@@ -3,10 +3,11 @@
   import { OPERATIONS } from '../../data/operations';
   import { UPGRADES, UPGRADE_MAP } from '../../data/upgrades';
   import { describeEffect } from '../../engine/describe';
-  import { FAME_CAP_FANS, OFFLINE_HARD_CAP_HOURS, OFFLINE_TAPER, cabinetCount } from '../../engine/economy';
+  import { OFFLINE_FADE_HOURS, cabinetCount, fanStage } from '../../engine/economy';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { totalOperationsOwned } from '../../engine/operations';
   import { INCOME_SOURCES, type IncomeSource } from '../../engine/types';
+  import FanCurve from '../components/FanCurve.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { opSpriteSvg } from '../opsArt';
@@ -124,11 +125,11 @@
       rows: [
         ['Base production', `${money(r.baseCps, 1)}/s`],
         ['Upgrades', `×${fmt(m.globalMult, 2)}`],
-        ['Fame (fans)', `×${r.fameMult.toFixed(3)} (power ${m.fameExp.toFixed(3)}${s.fans >= FAME_CAP_FANS ? ', topped out' : ''})`],
+        ['Fame (fans)', `×${r.fameMult.toFixed(3)} (power ${m.fameExp.toFixed(3)} · ${fanStage(s.fans).stage.name})`],
         ['Superfans', `×${r.superfanMult.toFixed(3)}`],
         ['Trophy Cabinet', `${fmtPct(r.cabinet)} (${cabinetCount(s)} achievements)`],
         ['Active buffs', `×${fmt(r.buffIncomeMult, 2)}`],
-        ['Offline', `${fmtPct(m.offlineRate)} for ${m.offlineWindowHours}h, then ${fmtPct(m.offlineRate * OFFLINE_TAPER)} up to ${OFFLINE_HARD_CAP_HOURS}h`],
+        ['Offline', `${fmtPct(m.offlineRate)} for ${m.offlineWindowHours}h, then fading (about half after ${OFFLINE_FADE_HOURS}h more)`],
       ],
     },
   ]);
@@ -147,6 +148,11 @@
       </div>
     {/each}
   </div>
+
+  <section class="card">
+    <h3 class="section-title"><Icon name="heart" size={14} /> How well known you are</h3>
+    <FanCurve fans={s.fans} />
+  </section>
 
   <section class="card">
     <h3 class="section-title">Where the money comes from <span class="dim">· this run</span></h3>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { OPERATIONS } from '../../data/operations';
   import { activityEntries } from '../../engine/activity';
+  import { baseIncome } from '../../engine/baseIncome';
   import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
@@ -77,7 +78,7 @@
   const showLevels = $derived(s.stats.trophiesTotal > 0);
   const drama = $derived(dramaShare(s, v.m));
   const calm = $derived(s.events.calmUntil > s.time);
-  const prCost = $derived(prCleanupCost(r.cpsNoBuffs));
+  const prCost = $derived(prCleanupCost(baseIncome(s, r)));
   const fansAtRisk = $derived(scandalFanLoss(s));
   const fansAway = $derived(s.events.fansHeld);
 

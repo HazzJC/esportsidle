@@ -204,8 +204,20 @@ describe('operations manager', () => {
     const mods = computeMods(s);
     const expected = [...OPERATIONS].reverse().find((op) => unitPrice(op, 0, mods.opCostMult) <= budget)!;
     autoOperations(s, mods);
-    expect(s.ops[expected.id].owned).toBe(1);
+    // It starts with the priciest it can afford and keeps buying rounds while the budget lasts.
+    expect(s.ops[expected.id].owned).toBeGreaterThanOrEqual(1);
     expect(1e8 - s.cash).toBeLessThanOrEqual(budget);
     expect(OPERATIONS.filter((op) => op.baseCost > expected.baseCost).every((op) => s.ops[op.id].owned === 0)).toBe(true);
+  });
+
+  it('is not held to one building per building per pass: a big budget buys many', () => {
+    const s = foundedGame(0, 5);
+    s.cash = 1e12;
+    s.prestige.nodes.operations_manager = Date.now();
+    s.automation.operations = { on: true, maxCostPct: 0.5 };
+    autoOperations(s, computeMods(s));
+    const bought = OPERATIONS.reduce((n, op) => n + s.ops[op.id].owned, 0);
+    expect(bought).toBeGreaterThan(OPERATIONS.length);
+    expect(1e12 - s.cash).toBeLessThanOrEqual(0.5e12);
   });
 });

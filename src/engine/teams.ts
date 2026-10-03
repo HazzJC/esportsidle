@@ -6,8 +6,6 @@ import {
   LOSS_PRIZE_RATIO,
   PRIZE_GROWTH,
   TEAM_SHARE_EXPONENT,
-  PROMOTE_WINS,
-  RELEGATE_WINS,
   SEASON_LENGTH,
   TITLE_WINS,
   opponentRating,
@@ -32,7 +30,8 @@ import {
   skillRating,
   traitsOf,
 } from './players';
-import { MOODS, STAKES_START, recordForm, resetFormForTier, stakesMult, teamMood } from './mood';
+import { MOODS, engagementMult, recordForm, resetFormForTier, teamMood } from './mood';
+import { canPromote, recordEloResult, relegationElo, teamElo, tierElo } from './elo';
 import { calmStart } from './tutorial';
 import { Rng } from './rng';
 import { automationActive } from './automation';
@@ -43,12 +42,6 @@ import { earnCash, gainFans, gainTrophies } from './wallet';
 
 export const HISTORY_LENGTH = 12;
 export const MAX_MATCHES_PER_TICK = 20;
-/**
- * Win chance needed to challenge into a tier the team has never reached. The same point where crowds
- * start losing interest, so the button lights up exactly when staying put starts to cost money.
- */
-export const CHALLENGE_WIN_CHANCE = STAKES_START;
-
 /** What each team's income-linked prize is divided by, so n teams earn n^TEAM_SHARE_EXPONENT times one team. */
 export function teamShareDivisor(s: GameState): number {
   return Math.pow(Math.max(1, Object.keys(s.teams).length), 1 - TEAM_SHARE_EXPONENT);
@@ -68,6 +61,7 @@ export function createTeam(gameId: string): TeamState {
     bench: [],
     tier: 0,
     bestTier: 0,
+    elo: tierElo(0),
     seasonNumber: 1,
     seasonPlayed: 0,
     seasonWins: 0,
@@ -270,8 +264,8 @@ export function evaluateTeam(s: GameState, team: TeamState, mods: Mods, ctx: Tea
     teamPlan(team).rating;
   const opponent = opponentRating(team.tier) * mods.opponentMult;
   const chance = active ? winChance(rating, opponent) : 0;
-  // Foregone conclusions draw smaller crowds and purses (see mood.ts).
-  const stakes = stakesMult(chance);
+  // Foregone conclusions draw smaller crowds and purses, and the best matches are close ones (see mood.ts).
+  const stakes = engagementMult(chance);
   const popularity = s.games[team.gameId]?.popularity ?? 1;
   const cut = available > 0 ? cutSum / available : 0;
   // Prize multipliers cover the whole prize. The income-linked share is over 99% of it a few minutes
@@ -394,6 +388,7 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   team.seasonPlayed++;
   if (win) team.seasonWins++;
   if (game.teamSize > 1) team.chemistry = Math.min(1, team.chemistry + 0.01);
+  recordEloResult(team, win);
 
   const hasBench = team.bench.length > 0;
   const plan = teamPlan(team);
@@ -409,10 +404,12 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
       p.wins++;
       team.seasonStats[p.id] = (team.seasonStats[p.id] ?? 0) + 1;
     }
-    const levels = grantXp(p, baseXp * plan.xp * mood.xp * playerXpMult(p), rng);
+    // Lopsided matches teach little: XP follows how much of a contest the match was.
+    const levels = grantXp(p, baseXp * plan.xp * mood.xp * ev.stakes * playerXpMult(p), rng);
     checkPlayerMilestones(s, p, win, levels);
     applyMorale(p, (win ? mood.moraleWin : mood.moraleLoss) - (opponent.rival && !win ? 4 + Math.min(12, (s.rival?.heat ?? 0) * 2) : 0), mods);
-    drainEnergy(p, mods, plan.drain);
+    // Winning without effort wears players down in its own way: they get restless, and tire sooner.
+    drainEnergy(p, mods, plan.drain * (1 + 0.6 * (1 - ev.stakes)));
     if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench, plan.injuryRisk);
   }
   // Bench players train alongside; how much depends on the plan.
@@ -431,10 +428,13 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   const game = getGame(team.gameId);
   const wins = team.seasonWins;
   const record = `${wins}-${SEASON_LENGTH - wins}`;
-  const promoted = wins >= PROMOTE_WINS && team.autoPromote;
-  const relegated = !promoted && wins <= RELEGATE_WINS && team.tier > 0;
+  // Promotion goes by Elo, not the season's record: a team that has shown it plays a tier higher moves
+  // up whatever its win rate, and one that has fallen well behind its tier drops down.
+  const elo = teamElo(team);
+  const promoted = team.autoPromote && canPromote(team);
+  const relegated = !promoted && team.tier > 0 && elo < relegationElo(team.tier);
   recordSeason(s, team, { title: wins >= TITLE_WINS, promoted, relegated });
-  const resultBody: string[] = [`${record} in the ${tierName(team.tier)}.`];
+  const resultBody: string[] = [`${record} in the ${tierName(team.tier)} (Elo ${Math.round(elo)}).`];
   if (wins >= TITLE_WINS) {
     team.titles++;
     s.stats.seasonTitles++;
@@ -447,7 +447,7 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
     resultBody.push(`+1 trophy and ${money(bonus)} bonus.`);
     if (team.lastSeason?.mvp) resultBody.push(`Season MVP: ${team.lastSeason.mvp}.`);
   }
-  if (wins >= PROMOTE_WINS && team.autoPromote) {
+  if (promoted) {
     team.tier++;
     resetFormForTier(team);
     team.bestTier = Math.max(team.bestTier, team.tier);
@@ -526,15 +526,15 @@ export function retirePlayer(s: GameState, p: Player): void {
 }
 
 /**
- * Manually move a team down, back up to a tier it already reached, or one tier higher when it is
- * dominating its current tier. Resets the current season.
+ * Manually move a team down, back up to a tier it already reached, or one tier higher once its Elo
+ * is high enough for promotion. Resets the current season. Elo is kept: it describes the roster, not the league.
  */
-export function changeTier(s: GameState, gameId: string, delta: number, winChance = 0): boolean {
+export function changeTier(s: GameState, gameId: string, delta: number): boolean {
   const team = s.teams[gameId];
   if (!team || (delta !== 1 && delta !== -1)) return false;
   const next = team.tier + delta;
   if (next < 0) return false;
-  if (delta === 1 && next > team.bestTier && winChance < CHALLENGE_WIN_CHANCE) return false;
+  if (delta === 1 && next > team.bestTier && !canPromote(team)) return false;
   team.tier = next;
   team.bestTier = Math.max(team.bestTier, next);
   resetFormForTier(team);

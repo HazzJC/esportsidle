@@ -1,5 +1,5 @@
 /**
- * The quest data model (docs/implementation-plan.md, WS6.1): every quest names the mechanic it
+ * The quest data model (docs/quest-tour.md): every quest names the mechanic it
  * teaches, rewards come in kinds, and the newer kinds (tools, tokens, operation affinities,
  * cosmetics, titles) pay once and persist as they should.
  */

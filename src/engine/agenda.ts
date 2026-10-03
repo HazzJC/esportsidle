@@ -1,6 +1,7 @@
 import { GAMES, getGame } from '../data/games';
 import { QUEST_MAP, type Mechanic } from '../data/quests';
-import { RELEGATE_WINS, SEASON_LENGTH, tierName } from '../data/leagues';
+import { tierName } from '../data/leagues';
+import { relegationElo, teamElo } from './elo';
 import { SPONSORS_UNLOCK_FANS } from '../data/sponsors';
 import { fmt, fmtTime, money } from './format';
 import { MERCH_UNLOCK_FANS, isMerchUnlocked } from './merch';
@@ -203,14 +204,14 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
     // On course for relegation.
     () => {
       for (const { g, team } of teams) {
-        if (team.tier === 0 || team.seasonPlayed < 6) continue;
-        const remaining = SEASON_LENGTH - team.seasonPlayed;
-        const projected = team.seasonWins + remaining * (rates.teams[g.id]?.winChance ?? 0);
-        if (projected > RELEGATE_WINS + 0.5) continue;
+        if (team.tier === 0) continue;
+        // Elo falls a little at a time, so warn while the team is still within a season of the drop.
+        const margin = teamElo(team) - relegationElo(team.tier);
+        if (margin > 40) continue;
         return {
           icon: 'trending-down',
           title: `${g.name} is heading for relegation`,
-          detail: `${team.seasonWins}-${team.seasonPlayed - team.seasonWins} this season in the ${tierName(team.tier)}. Push for Promotion or a stronger lineup could save it.`,
+          detail: `Elo ${Math.round(teamElo(team))} in the ${tierName(team.tier)}, close to the ${Math.round(relegationElo(team.tier))} where it drops a tier. A stronger lineup or better gear could save it.`,
           action: { label: 'Teams', target: { kind: 'tab', tab: 'teams' } },
         };
       }

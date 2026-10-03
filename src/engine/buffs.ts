@@ -9,6 +9,12 @@ export interface BuffSpec {
   desc: string;
   duration: number;
   effects: BuffEffect[];
+  /**
+   * What catching the same buff again does while it is running. By default the new one replaces it
+   * (the longer end wins). `half` adds half the new duration on top of what is left, so a repeat
+   * catch is never wasted: used for the good Hype Drop buffs.
+   */
+  extend?: 'half';
 }
 
 export interface BuffTotals {
@@ -23,7 +29,8 @@ export interface BuffTotals {
 export function addBuff(s: GameState, spec: BuffSpec): Buff {
   const existing = s.buffs.find((b) => b.id === spec.id);
   if (existing) {
-    existing.endsAt = Math.max(existing.endsAt, s.time + spec.duration);
+    const stacked = spec.extend === 'half' && existing.endsAt > s.time ? existing.endsAt + spec.duration / 2 : 0;
+    existing.endsAt = Math.max(existing.endsAt, s.time + spec.duration, stacked);
     existing.effects = spec.effects;
     existing.desc = spec.desc;
     return existing;

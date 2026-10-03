@@ -1,7 +1,8 @@
 import type { Buff, NotifyChannel, Tone } from './types';
 
 export type GameEvent =
-  | { type: 'toast'; title: string; body?: string; icon?: string; tone?: Tone; channel?: NotifyChannel }
+  /** `sound` picks a dedicated jingle in place of the tone's default chime. */
+  | { type: 'toast'; title: string; body?: string; icon?: string; tone?: Tone; channel?: NotifyChannel; sound?: 'quest' }
   | { type: 'achievement'; id: string }
   | { type: 'buffStart'; buff: Buff }
   | { type: 'buffEnd'; buff: Buff }

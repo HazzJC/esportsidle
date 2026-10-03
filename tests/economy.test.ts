@@ -63,14 +63,10 @@ describe('rates', () => {
     expect(r.baseCps).toBeCloseTo(20 + 8 * 1.1);
   });
 
-  it('caps the fame exponent however many fame upgrades are owned', () => {
+  it('keeps the fame exponent at its ceiling however many fame upgrades are owned', () => {
     const s = foundedGame(0, 1);
     for (const u of UPGRADES) if (u.effects.some((e) => e.kind === 'fameExp')) s.upgrades[u.id] = 0;
-    const m = computeMods(s);
-    expect(m.fameExp).toBeLessThanOrEqual(MAX_FAME_EXP);
-    // Fans grow without bound with league tier, so an uncapped exponent turns fame into the entire
-    // economy: at a quadrillion fans every extra 0.01 of exponent is worth another ~1.4x forever.
-    expect(fameMultiplier(1e15, m.fameExp)).toBeLessThan(100);
+    expect(computeMods(s).fameExp).toBeLessThanOrEqual(MAX_FAME_EXP);
   });
 
   it('scales with fans and buffs', () => {

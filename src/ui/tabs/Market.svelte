@@ -2,7 +2,8 @@
   import { GAMES, getGame } from '../../data/games';
   import { TRAIT_MAP, TRAITS } from '../../data/traits';
   import { fmtPct, fmtTime, money } from '../../engine/format';
-  import { isPinned, pinnedRival, rerollCost } from '../../engine/market';
+  import { baseIncome } from '../../engine/baseIncome';
+  import { REROLL_RESET_SECONDS, isPinned, pinnedRival, rerollCost, rerollResetsIn, rerollsInWindow } from '../../engine/market';
   import { ALL_STATS, RARITIES, STAT_LABEL } from '../../engine/players';
   import { tick } from 'svelte';
   import { hasRosterSpace } from '../../engine/teams';
@@ -20,7 +21,9 @@
   const v = $derived(game.view);
   const unlocked = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked));
   const listings = $derived(v.s.market.listings.filter((l) => !game.marketFilter || l.player.gameId === game.marketFilter));
-  const cost = $derived(rerollCost(v.r.cpsNoBuffs, v.s.market.rerolls));
+  const rerolls = $derived(rerollsInWindow(v.s));
+  const cost = $derived(rerollCost(baseIncome(v.s, v.r), rerolls));
+  const resetsIn = $derived(rerollResetsIn(v.s));
 
   const guidePages = $derived(marketGuide(v.s));
 
@@ -50,8 +53,21 @@
     </div>
     <div class="head-actions">
       <button class="btn" onclick={help} title="How to read the market and a player"><Icon name="help" size={14} /> Guide</button>
-      <button class="btn" disabled={v.s.cash < cost} onclick={() => game.rerollMarket()}>
-        <Icon name="refresh-cw" size={14} /> Scout now · {money(cost)}
+      <button
+        class="btn"
+        disabled={v.s.cash < cost}
+        onclick={() => game.rerollMarket()}
+        use:tooltip={() => ({
+          title: 'Scout now',
+          icon: 'refresh-cw',
+          lines: [
+            'Brings in a fresh set of players straight away.',
+            'The price doubles with every scout trip in a row. After ' + fmtTime(REROLL_RESET_SECONDS) + ' without one it drops back to the starting price, and each trip restarts that wait.',
+            rerolls > 0 ? { text: 'Price back to normal in ' + fmtTime(resetsIn) + '.', tone: 'muted' as const } : { text: 'At the starting price.', tone: 'good' as const },
+          ],
+        })}
+      >
+        <Icon name="refresh-cw" size={14} /> Scout now · {money(cost)}{#if rerolls > 0}<span class="dim small"> · resets in {fmtTime(resetsIn)}</span>{/if}
       </button>
     </div>
   </header>

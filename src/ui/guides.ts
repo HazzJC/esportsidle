@@ -1,9 +1,8 @@
 import { GAMES, GENRE_LABEL, GENRE_WEIGHTS } from '../data/games';
-import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, TITLE_WINS } from '../data/leagues';
+import { ELO_PER_TIER, SEASON_LENGTH, TITLE_WINS } from '../data/leagues';
 import { SEASON_PLANS, SEASON_PLAN_ORDER } from '../data/seasonPlans';
 import { ALL_STATS, STAT_LABEL } from '../engine/players';
 import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN } from '../engine/mood';
-import { CHALLENGE_WIN_CHANCE } from '../engine/teams';
 import { BENCH_RECOVERY_MULT } from '../engine/health';
 import type { GameState, StatKey } from '../engine/types';
 import { STAT_INFO } from './statInfo';
@@ -34,9 +33,14 @@ export function teamsGuide(): GuidePage[] {
       icon: 'trophy',
       intro: `Every team plays its matches on its own, ${SEASON_LENGTH} to a season, in a league tier. Higher tiers pay far more prize money and bring more fans, but the opponents are tougher.`,
       points: [
-        { term: 'Promotion', icon: 'trending-up', text: `Win ${PROMOTE_WINS} or more matches in a season to move up a tier.` },
+        {
+          term: 'Elo and promotion',
+          icon: 'trending-up',
+          text: `Every team has an Elo: what it has shown it can do. It rises most when the team beats better sides and barely at all when it stomps weaker ones. A tier is about ${Math.round(ELO_PER_TIER)} Elo apart, and a team moves up at the end of a season once it is nearly at the next tier's level.`,
+        },
+        { term: 'The sweet spot', icon: 'flame', text: 'Close matches are the best ones: prize money, fans and XP are highest when the team wins a little more than half. Winning every match, or losing most of them, pays less.' },
         { term: 'League title', icon: 'trophy', text: `${TITLE_WINS} or more wins is a league title: a trophy and a cash bonus. The team's top performer is named Season MVP.` },
-        { term: 'Relegation', icon: 'trending-down', text: `${RELEGATE_WINS} or fewer wins drops the team a tier.` },
+        { term: 'Relegation', icon: 'trending-down', text: 'A team whose Elo has fallen well below its tier drops down one.' },
       ],
     },
     {
@@ -60,7 +64,7 @@ export function teamsGuide(): GuidePage[] {
         {
           term: 'Challenge',
           icon: 'arrow-up',
-          text: `Jump up a tier right now. It unlocks once the team is winning ${pct(CHALLENGE_WIN_CHANCE)} of its matches, or any time to return to a tier it has already reached.`,
+          text: `Jump up a tier right now. It unlocks once the team's Elo is high enough for promotion, or any time to return to a tier it has already reached.`,
         },
         { term: 'Drop tier', icon: 'arrow-down', text: 'Step down a tier right now: easier opponents, smaller prizes.' },
         { term: 'Either way', icon: 'refresh-cw', text: 'The season starts again from zero in the new tier.' },
@@ -89,7 +93,7 @@ export function teamsGuide(): GuidePage[] {
         {
           term: 'Auto-promote',
           icon: 'trending-up',
-          text: `On: a season with ${PROMOTE_WINS}+ wins moves the team up. Off: it stays in its tier until you challenge. League titles and relegation still happen.`,
+          text: `On: at the end of a season the team moves up once its Elo is high enough. Off: it stays in its tier until you challenge. League titles and relegation still happen.`,
         },
         {
           term: 'Auto-sub',

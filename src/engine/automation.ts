@@ -21,6 +21,8 @@ export const AUTOMATION_LOG_SIZE = 8;
 /** Caps on how much one pass may buy, so a single pass never spends in an uncontrolled burst. */
 const MAX_UPGRADES_PER_PASS = 10;
 const MAX_GEAR_PER_PASS = 25;
+/** Rounds of "one more of each building" in one pass; the budget runs out first long before this for a small org. */
+const MAX_OPERATION_ROUNDS = 20;
 
 /** Unlocked by the org's growth, or from the start of every run by the matching Founding Charter. */
 export function automationUnlocked(s: GameState, id: AutomationId): boolean {
@@ -62,14 +64,20 @@ export function runAutomation(s: GameState, mods: Mods, options?: AutomationOpti
 export function autoOperations(s: GameState, mods: Mods): void {
   let budget = s.cash * s.automation.operations.maxCostPct;
   let bought = 0;
-  for (const op of [...OPERATIONS].reverse().filter((op) => op.index >= 3)) {
-    // One unit per building per pass keeps the manager moving down the list.
-    const price = unitPrice(op, s.ops[op.id].owned, mods.opCostMult, mods.opFirstUnits[op.id]);
-    if (price > budget || price > s.cash) continue;
-    if (buyOperation(s, op.id, 1)) {
-      budget -= price;
-      bought++;
+  // Rounds of one unit per building, priciest first, until the budget is spent: a big budget buys
+  // many in a pass, and a small one still moves down the list.
+  for (let round = 0; round < MAX_OPERATION_ROUNDS; round++) {
+    let boughtThisRound = 0;
+    for (const op of [...OPERATIONS].reverse().filter((op) => op.index >= 3)) {
+      const price = unitPrice(op, s.ops[op.id].owned, mods.opCostMult, mods.opFirstUnits[op.id]);
+      if (price > budget || price > s.cash) continue;
+      if (buyOperation(s, op.id, 1)) {
+        budget -= price;
+        boughtThisRound++;
+      }
     }
+    bought += boughtThisRound;
+    if (boughtThisRound === 0) break;
   }
   if (bought) log(s, `Operations manager bought ${bought} building${bought === 1 ? '' : 's'}, starting with the priciest.`);
 }

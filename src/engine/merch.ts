@@ -31,7 +31,6 @@ export const MERCH_INCOME_SCALE = 0.5;
 export const MERCH_LINE_SHARE_EXPONENT = 0.5;
 /** Switching back to a design a line sold recently keeps its old freshness, unless it has been rested this long. */
 export const DESIGN_REST_SECONDS = 7200;
-export const MAX_MERCH_QUALITY = 10;
 export const MERCH_UNLOCK_FANS = 25_000;
 
 export function clampPrice(price: number): number {
@@ -187,7 +186,7 @@ export function setLinePrice(s: GameState, productId: string, price: number): bo
 export function merchQualityCost(s: GameState, productId: string): number {
   const product = PRODUCT_MAP.get(productId);
   const line = s.merch.lines[productId];
-  if (!product || !line || (line.quality ?? 0) >= MAX_MERCH_QUALITY) return Infinity;
+  if (!product || !line) return Infinity;
   return Math.ceil(product.unlockCost * 0.4 * Math.pow(2, line.quality ?? 0));
 }
 

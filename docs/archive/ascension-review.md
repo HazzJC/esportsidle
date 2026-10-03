@@ -1,3 +1,5 @@
+> **ARCHIVED: outdated analysis from an earlier version of the game. Do not use it as guidance or update it. See `docs/archive/README.md`.**
+
 # Cookie Clicker's progression, stage by stage, and what Esports Idle should take from it
 
 You said the Cookie Clicker ascension tree is the gold standard for progression. I agree, and this review explains why it works, where it chafes, and exactly how Esports Idle compares. It feeds the Legacy v2 design in `docs/implementation-plan.md` (WS2).

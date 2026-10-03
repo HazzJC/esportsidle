@@ -1,6 +1,7 @@
 /**
- * Runs one simulation and writes its record as JSON. matrix.ts runs many of these in parallel;
- * run it directly to look at one persona and seed:
+ * Plays the real engine second by second as a simulated player and writes the record as JSON: a way to
+ * watch what a playstyle does, with nothing to pass or fail. (The old balance targets and the matrix
+ * report that checked them are gone; see docs/archive/README.md.) Look at one persona and seed:
  *
  *   npx tsx scripts/sim/cli.ts --persona=active --seed=1 --hours=4 --json=output/sim/active-1.json
  *

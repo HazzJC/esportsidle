@@ -48,6 +48,8 @@ export type Effect =
   | { kind: 'grindAdd'; add: number }
   | { kind: 'grindAddMult'; mult: number }
   | { kind: 'clickMult'; mult: number }
+  /** Flat cash on every click, before the click multiplier: the early click upgrades, which matter when income is small. */
+  | { kind: 'clickAdd'; add: number }
   | { kind: 'clickCpsPct'; pct: number }
   | { kind: 'globalPct'; pct: number }
   | { kind: 'fameExp'; add: number }
@@ -60,7 +62,7 @@ export type Effect =
   | { kind: 'opCostMult'; mult: number }
   | { kind: 'upgradeCostMult'; mult: number }
   | { kind: 'offlineRate'; add: number }
-  /** Hours of the offline full-rate window (capped at MAX_OFFLINE_WINDOW_HOURS). */
+  /** Hours of the offline full-rate window (worth less past OFFLINE_WINDOW_FULL_VALUE_HOURS). */
   | { kind: 'offlineWindow'; hours: number }
   | { kind: 'prizeMult'; mult: number }
   | { kind: 'benchSlots'; add: number }
@@ -103,6 +105,7 @@ export interface Mods {
   grindAdd: number;
   grindAddMult: number;
   clickMult: number;
+  clickAdd: number;
   clickCpsPct: number;
   globalMult: number;
   fameExp: number;
@@ -115,7 +118,7 @@ export interface Mods {
   opCostMult: number;
   upgradeCostMult: number;
   offlineRate: number;
-  /** Hours away that earn the full offline rate; after them, half of it, up to OFFLINE_HARD_CAP_HOURS. */
+  /** Hours away that earn the full offline rate; after them the rate fades but never stops. */
   offlineWindowHours: number;
   prizeMult: number;
   benchSlots: number;
@@ -170,7 +173,7 @@ export interface TeamEval {
   rating: number;
   opponent: number;
   winChance: number;
-  /** Prize and fan multiplier: lopsided matches draw smaller crowds. */
+  /** Prize, fan and XP multiplier for how much of a contest this is (engagement in mood.ts). */
   stakes: number;
   winPrize: number;
   lossPrize: number;
@@ -386,6 +389,8 @@ export interface TeamState {
   bench: string[];
   tier: number;
   bestTier: number;
+  /** What the team has shown it can do (see engine/elo.ts). Gates promotion. Missing on teams from before Elo. */
+  elo?: number;
   seasonNumber: number;
   seasonPlayed: number;
   seasonWins: number;
@@ -420,7 +425,10 @@ export interface MarketListing {
 export interface MarketState {
   listings: MarketListing[];
   nextRefresh: number;
+  /** Rerolls in the current window; the price doubles with each and resets REROLL_RESET_SECONDS after the last. */
   rerolls: number;
+  /** When the last reroll happened. Missing on saves from before the window. */
+  lastRerollAt?: number;
   /** Player ids held through market refreshes: at most one per game and role. */
   pinned: string[];
   scouting?: {
@@ -890,6 +898,12 @@ export interface GameState {
   guides: Record<string, boolean>;
   nextId: number;
   popularityClock: number;
+  /**
+   * Operations income without temporary buffs, smoothed over a few minutes. Every price that is tied
+   * to income reads this, so a hype streak ending or a purchase just made never reprices anything
+   * suddenly. 0 until the first tick of a run.
+   */
+  priceIncome: number;
   stats: Stats;
   settings: Settings;
 }

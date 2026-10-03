@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CROWD_BUFF_ID, HYPE_ASSIST_LEVEL, HYPE_MAX, hypeAssistActive } from '../../engine/clicker';
-  import { FAME_CAP_FANS } from '../../engine/economy';
+  import { fanStage } from '../../engine/economy';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import Icon from '../components/Icon.svelte';
   import Toasts from '../components/Toasts.svelte';
@@ -128,9 +128,8 @@
       lines: [
         `${fmt(s.fans)} fans, gaining ${fmt(r.fansPerSec, 1)} per second.`,
         { text: `Fame multiplies all income by ×${r.fameMult.toFixed(3)}.`, tone: 'good' },
-        s.fans >= FAME_CAP_FANS
-          ? { text: `Fame power ${m.fameExp.toFixed(3)}${m.fameBonusMult > 1 ? `, bonus ×${m.fameBonusMult.toFixed(2)}` : ''}. Fame has topped out: fans past ${fmt(FAME_CAP_FANS)} add no more, but Fame upgrades still raise it.`, tone: 'muted' as const }
-          : { text: `Fame power ${m.fameExp.toFixed(3)}${m.fameBonusMult > 1 ? `, bonus ×${m.fameBonusMult.toFixed(2)}` : ''}. More fans (up to ${fmt(FAME_CAP_FANS)}) and every Fame upgrade raise it.`, tone: 'muted' as const },
+        { text: `${fanStage(s.fans).stage.name}: a new fan is worth ${fanStage(s.fans).value >= 0.995 ? 'a full fan' : `${fanStage(s.fans).value.toFixed(fanStage(s.fans).value < 0.1 ? 3 : 2)}× a first fan`}. The better known you are, the less each one adds, but never nothing.`, tone: 'muted' as const },
+        { text: `Fame power ${m.fameExp.toFixed(3)}${m.fameBonusMult > 1 ? `, bonus ×${m.fameBonusMult.toFixed(2)}` : ''}. More fans and every Fame upgrade raise it. The Stats tab shows the road ahead.`, tone: 'muted' as const },
       ],
     };
   };

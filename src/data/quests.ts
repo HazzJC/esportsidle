@@ -8,7 +8,7 @@ import { STAFF } from './staff';
 
 /**
  * Every mechanic a player can be taught. The first run's quest line is a tour: each quest makes the
- * player use one of these once (docs/implementation-plan.md, WS6), and a test checks that every one
+ * player use one of these once (docs/quest-tour.md), and a test checks that every one
  * is taught by some quest.
  */
 export const MECHANICS = [
