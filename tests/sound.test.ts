@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { subscribe, type GameEvent } from '../src/engine/bus';
 import { QUESTS } from '../src/data/quests';
 import { updateQuests } from '../src/engine/quests';
@@ -38,12 +38,20 @@ class FakeAudioContext {
   }
 }
 
-beforeAll(() => {
-  (globalThis as { window?: unknown }).window = { AudioContext: FakeAudioContext };
+beforeEach(() => {
+  vi.resetModules();
+  started.length = 0;
+  vi.stubGlobal('window', { AudioContext: FakeAudioContext });
+  vi.spyOn(performance, 'now').mockReturnValue(0);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('quest complete sound', () => {
-  it('plays a layered jingle and ignores an immediate repeat', async () => {
+  it('plays a layered jingle at time zero and debounces until 400 ms', async () => {
     const { playSound } = await import('../src/ui/sound');
     started.length = 0;
     playSound('quest', 0.5);
@@ -52,15 +60,41 @@ describe('quest complete sound', () => {
     const first = started.length;
     playSound('quest', 0.5);
     expect(started.length).toBe(first);
+    vi.mocked(performance.now).mockReturnValue(399);
+    playSound('quest', 0.5);
+    expect(started.length).toBe(first);
+    vi.mocked(performance.now).mockReturnValue(400);
+    playSound('quest', 0.5);
+    expect(started.length).toBe(first * 2);
   });
 
   it('is silent at zero volume', async () => {
     const { playSound } = await import('../src/ui/sound');
-    vi.useFakeTimers();
     started.length = 0;
     playSound('quest', 0);
-    vi.useRealTimers();
     expect(started.length).toBe(0);
+    playSound('quest', 0.5);
+    expect(started.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it.each([
+    ['click', 30],
+    ['buy', 45],
+    ['win', 250],
+    ['upgrade', 60],
+  ] as const)('plays the first %s immediately and respects its %i ms gap', async (id, gap) => {
+    const { playSound } = await import('../src/ui/sound');
+    playSound(id, 0.5);
+    const first = started.length;
+    expect(first).toBeGreaterThan(0);
+    playSound(id, 0.5);
+    expect(started.length).toBe(first);
+    vi.mocked(performance.now).mockReturnValue(gap - 1);
+    playSound(id, 0.5);
+    expect(started.length).toBe(first);
+    vi.mocked(performance.now).mockReturnValue(gap);
+    playSound(id, 0.5);
+    expect(started.length).toBe(first * 2);
   });
 });
 

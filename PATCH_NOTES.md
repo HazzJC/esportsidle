@@ -19,6 +19,16 @@
 
 ## Pending Changes
 
+### Fix the sound debounce that blocked the 0.2.0 deployment [Status: Committed]
+*Commit*: `7f8a7bd` (Oct 3 2026)
+
+* **The Issue / Motivation**: PR #10 merged, but its GitHub Pages workflow failed in `tests/sound.test.ts`: the first quest jingle started zero audio nodes. `playSound` treated a sound with no playback history as though it had played at time zero, suppressing its first use during the debounce window. Fast CI workers exposed this while slower local runs passed.
+* **What Changed**:
+  * `src/ui/sound.ts` checks the debounce gap only when that sound has a recorded previous play. First sounds play immediately, including at clock time zero; existing repeat gaps are preserved.
+  * `tests/sound.test.ts` uses a controlled clock, fresh audio modules and restored globals for each test. Regression coverage checks the quest jingle at zero, repeats before and exactly at 400 ms, silent calls leaving playback available, and the first-play and gap boundaries of click, buy, win and upgrade sounds.
+  * No economy or save changes. Redeploy through the existing Build & Deploy workflow after verification.
+* **Validation**: The controlled-clock regressions reproduce the original failure before the fix. After the fix, all 472 unit tests pass, `npm run check` reports zero errors and warnings, and `npm run build` succeeds.
+
 ### 0.2.0: a guided first run, staff tools, team rooms and match fixtures
 *Status: Committed* | `90b1586` (Oct 3 2026)
 
@@ -77,7 +87,7 @@
 * **What Changed** (`src/ui/sound.ts`, `src/engine/bus.ts`, `src/engine/quests.ts`, `src/ui/game.svelte.ts`, new `tests/sound.test.ts`; no balance or save change):
   * New `quest` sound: a relay clack and a short sub knock (the quest console is a piece of hardware), a four-note major arpeggio of plucks climbing C5-E5-G5-C6, then a detuned major chord and a high FM bell holding the landing. Major and rising, where the achievement stab is minor and heavy and `promote` is a five-note run with a thump. Debounced to one per 400 ms so a burst of quests finishing together does not stack.
   * The toast event gains an optional `sound` hint (`'quest'`); `updateQuests` sets it on "Quest complete", and the game plays it instead of the tone's default chime. Claiming the reward still plays `win`.
-  * `tests/sound.test.ts` runs the sound against a stub audio context (layer count, debounce, silence at zero volume) and checks the quest toast asks for it.
+  * ~~`tests/sound.test.ts` runs the sound against a stub audio context (layer count, debounce, silence at zero volume) and checks the quest toast asks for it.~~ *(Changed 1 time since: the clock is controlled and audio modules and globals are isolated per test; first-play and debounce-boundary regressions cover every debounced sound, alongside the original jingle and toast checks.)*
 
 ### HQ visual pass: the quest board and run perks become a skeuomorphic console
 *Status: Committed* | `a583f01`, notes `6a2737e` (Oct 3 2026)

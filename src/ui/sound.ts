@@ -148,7 +148,8 @@ export function playSound(id: SoundId, volume: number): void {
   if (volume <= 0) return;
   const gap = MIN_GAP_MS[id];
   const nowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
-  if (gap && nowMs - (lastPlayed.get(id) ?? 0) < gap) return;
+  const previous = lastPlayed.get(id);
+  if (gap && previous !== undefined && nowMs - previous < gap) return;
   lastPlayed.set(id, nowMs);
   const g = audioGraph();
   if (!g) return;
