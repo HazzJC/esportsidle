@@ -1,4 +1,5 @@
 import { GAMES, getGame, type Genre } from '../data/games';
+import { RIVAL_ORGS } from '../data/names';
 import {
   FAN_BASE,
   FAN_GROWTH,
@@ -47,6 +48,13 @@ export function teamShareDivisor(s: GameState): number {
   return Math.pow(Math.max(1, Object.keys(s.teams).length), 1 - TEAM_SHARE_EXPONENT);
 }
 
+/** A new team's first fixture, before any match has drawn the next one: fixed per game, so it is never random. */
+function firstOpponent(gameId: string): string {
+  let h = 0;
+  for (let i = 0; i < gameId.length; i++) h = (h * 31 + gameId.charCodeAt(i)) >>> 0;
+  return RIVAL_ORGS[h % RIVAL_ORGS.length];
+}
+
 export function createTeam(gameId: string): TeamState {
   const game = getGame(gameId);
   return {
@@ -71,6 +79,7 @@ export function createTeam(gameId: string): TeamState {
     chemistry: 0,
     form: 0.5,
     history: [],
+    nextOpponent: { name: firstOpponent(gameId), rival: false },
     wins: 0,
     losses: 0,
     streak: 0,
@@ -350,7 +359,11 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
       win = true;
     }
   }
-  const opponent = pickOpponent(s, rng);
+  // The opponent was drawn when the last match ended, so the Teams tab could bill the fixture. A drawn
+  // rival that is no longer the rival (or a team from before fixtures) draws again.
+  const billed = team.nextOpponent;
+  const opponent = billed && (!billed.rival || billed.name === s.rival?.name) ? billed : pickOpponent(s, rng);
+  team.nextOpponent = pickOpponent(s, rng);
   const prize = (win ? ev.winPrize : ev.lossPrize) * (opponent.rival ? 1.5 + Math.min(1.5, (s.rival?.heat ?? 0) * 0.2) : 1);
   // Grudge matches: wins against the rival bring in extra fans.
   const fans = (win ? ev.fansWin : ev.fansWin * LOSS_FAN_RATIO) * (opponent.rival && win ? RIVAL_FANS_MULT : 1);

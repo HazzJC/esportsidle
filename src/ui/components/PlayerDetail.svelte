@@ -35,6 +35,8 @@
   import Modal from './Modal.svelte';
   import RosterImpact from './RosterImpact.svelte';
   import { previewAssign } from '../../engine/roster';
+  import { untrack } from 'svelte';
+  import { hinted } from '../hints';
 
   /** Pip indices for the 15-step gear track. */
   const PIPS = Array.from({ length: GEAR_MAX_TIER }, (_, i) => i);
@@ -55,6 +57,24 @@
 
   const v = $derived(game.view);
   const p = $derived(game.selectedPlayer ? v.s.players[game.selectedPlayer] : undefined);
+  /** While "Gear up" is live the kit opens on the Gear tab and the cheapest upgrade pulses. */
+  const gearHint = $derived(hinted(v.s, 'player'));
+  let openedFor: string | null = null;
+  $effect(() => {
+    const id = game.selectedPlayer;
+    if (id && id !== openedFor && untrack(() => gearHint)) tab = 'gear';
+    openedFor = id;
+  });
+  const cheapestGear = $derived.by(() => {
+    if (!p || !gearHint) return null;
+    let best: { id: string; cost: number } | null = null;
+    for (const gs of GEAR_SLOTS) {
+      if (p.gear[gs.id] >= GEAR_MAX_TIER) continue;
+      const cost = gearPrice(v.s, p, gs.id, v.m, v.r);
+      if (!best || cost < best.cost) best = { id: gs.id, cost };
+    }
+    return best;
+  });
 
   $effect(() => {
     game.viewingGear = !!(game.selectedPlayer && tab === 'gear');
@@ -217,7 +237,7 @@
       <section class="main">
         <nav class="tabs">
           {#each TABS as t (t.id)}
-            <button class:active={tab === t.id} onclick={() => (tab = t.id)}><Icon name={t.icon} size={14} /> {t.label}</button>
+            <button class:active={tab === t.id} class:tut-target={gearHint && t.id === 'gear' && tab !== 'gear'} onclick={() => (tab = t.id)}><Icon name={t.icon} size={14} /> {t.label}</button>
           {/each}
         </nav>
 
@@ -260,6 +280,18 @@
           {#if league > 0}
             <div class="muted small gear-league">Priced for {tierName(league)}: gear costs ×{fmt(Math.pow(GEAR_LEAGUE_GROWTH, league))} at the best league this team has reached, and never less than {GEAR_INCOME_FLOOR_SECONDS} seconds of what the team earns at your base income, with no buffs ({money(GEAR_INCOME_FLOOR_SECONDS * teamIncome(v.s, p.gameId, v.m, v.r))}).</div>
           {/if}
+          {#if gearHint && cheapestGear}
+            {@const slotName = GEAR_SLOTS.find((x) => x.id === cheapestGear.id)?.name ?? 'item'}
+            <div class="gear-tip">
+              <Icon name="sparkles" size={15} />
+              <span>
+                Each item boosts the stats beside it, and better gear also puts {p.tag} in a better rig.
+                {v.s.cash >= cheapestGear.cost
+                  ? `The ${slotName} is the cheapest upgrade right now: buy it to finish the quest.`
+                  : `The cheapest upgrade is the ${slotName} at ${money(cheapestGear.cost)}. Click your logo or wait for income to afford it.`}
+              </span>
+            </div>
+          {/if}
           <div class="gear">
             {#each GEAR_SLOTS as gs (gs.id)}
               {@const tier = p.gear[gs.id]}
@@ -288,7 +320,7 @@
                 {#if maxed}
                   <span class="chip gold-text">MAX</span>
                 {:else}
-                  <button class="btn small" class:primary={v.s.cash >= cost} disabled={v.s.cash < cost} onclick={() => game.buyGear(p.id, gs.id)}>
+                  <button class="btn small" class:primary={v.s.cash >= cost} class:tut-target={cheapestGear?.id === gs.id} disabled={v.s.cash < cost} onclick={() => game.buyGear(p.id, gs.id)}>
                     {money(cost)}
                   </button>
                 {/if}
@@ -552,6 +584,22 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
+  }
+  .gear-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    color: var(--accent);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .gear-tip span {
+    color: var(--text);
   }
   .gear-row {
     display: flex;

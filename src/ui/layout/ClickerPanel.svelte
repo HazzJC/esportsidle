@@ -9,6 +9,8 @@
   import { canSell, pendingLegacy } from '../../engine/prestige';
   import { game } from '../game.svelte';
   import { tooltip, type TipContent } from '../tooltip.svelte';
+  import { hinted } from '../hints';
+  import TutArrow from '../components/TutArrow.svelte';
 
   interface Floater {
     id: number;
@@ -34,6 +36,8 @@
   const s = $derived(v.s);
   const r = $derived(v.r);
 
+  /** The tutorial's first step and the hype quest both point at the logo. */
+  const logoHint = $derived(s.settings.onboarded && (s.tutorial.step === 'click' || hinted(s, 'logo')));
   const crowd = $derived(s.buffs.find((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time));
   const ringPct = $derived(crowd ? (crowd.endsAt - s.time) / (crowd.endsAt - crowd.startedAt) : s.hype / HYPE_MAX);
   const pending = $derived(pendingLegacy(s));
@@ -191,6 +195,7 @@
     </div>
   </div>
 
+  {#if logoHint}<TutArrow label={s.tutorial.step === 'click' ? 'Click your logo' : 'Fill the hype meter'} />{/if}
   <div class="stage" bind:this={stage}>
     <div class="spotlight" class:crowd={!!crowd}></div>
     <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
@@ -205,7 +210,7 @@
         stroke-dasharray="{Math.max(0, Math.min(1, ringPct)) * 100} 100"
       />
     </svg>
-    <button class="logo" class:crowd={!!crowd} class:tut-target={s.tutorial.step === 'click'} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
+    <button class="logo" class:crowd={!!crowd} class:tut-target={logoHint} onclick={onClick} onkeydown={onKeyDown} aria-label="Hype your org (click)">
       <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={190} {logoUrl} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
     </button>
     {#each particles as p (p.id)}
@@ -455,7 +460,7 @@
   .logo.tut-target {
     animation:
       bob 5s ease-in-out infinite,
-      tut-glow 2.4s ease-in-out infinite;
+      tut-pulse 1.8s ease-out infinite;
   }
   .logo:hover {
     transform: scale(1.03);

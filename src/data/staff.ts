@@ -35,6 +35,17 @@ export function effectAmount(e: StatAmount, power: number): number {
   return e.max === undefined ? raw : e.max * (1 - Math.exp(-raw / e.max));
 }
 
+/** Quality-of-life tools the first hire of a staff role brings for the rest of the run. */
+export type QolId = 'advisor' | 'buy10' | 'buyAll' | 'buyMax' | 'sell' | 'buy100' | 'allLines';
+
+export interface QolDef {
+  id: QolId;
+  name: string;
+  icon: string;
+  /** What it does, in one line. */
+  desc: string;
+}
+
 export interface StaffDef {
   id: string;
   index: number;
@@ -58,6 +69,8 @@ export interface StaffDef {
   requirement: string;
   unlock: (s: GameState) => boolean;
   upgradeNames: [string, string, string];
+  /** The tool the first hire of this role brings, kept until the org is sold. */
+  qol?: QolDef;
 }
 
 export const STAFF_EXPONENT = 0.8;
@@ -90,6 +103,7 @@ const RAW: RawStaff[] = [
     requirement: 'Sign a player or play 20 matches',
     unlock: (s) => s.stats.playersSigned >= 1 || matches(s) >= 20,
     upgradeNames: ['Coaching Certification', 'Tactical Masterclass', 'Hall of Fame Coaching Staff'],
+    qol: { id: 'advisor', name: 'Game plan', icon: 'list-checks', desc: 'Your coach keeps a game plan on the Staff page: the next goal, any team in trouble and the best opportunity right now.' },
   },
   {
     id: 'chef',
@@ -107,6 +121,7 @@ const RAW: RawStaff[] = [
     requirement: 'Play 40 matches',
     unlock: (s) => matches(s) >= 40,
     upgradeNames: ['Nutrition Degrees', 'Michelin-Starred Kitchen', 'Molecular Meal Plans'],
+    qol: { id: 'buy10', name: 'Bulk orders', icon: 'layers', desc: 'Buy operations and hire staff 10 at a time.' },
   },
   {
     id: 'scout',
@@ -120,6 +135,7 @@ const RAW: RawStaff[] = [
     requirement: 'Sign 2 players',
     unlock: (s) => s.stats.playersSigned >= 2,
     upgradeNames: ['Scouting Combine', 'Global Talent Radar', 'Precognitive Scouting'],
+    qol: { id: 'buyAll', name: 'Shopping list', icon: 'list-plus', desc: 'A Buy all button in the store picks up every upgrade you can afford.' },
   },
   {
     id: 'physio',
@@ -152,6 +168,7 @@ const RAW: RawStaff[] = [
     requirement: 'Reach league tier 4 with any team',
     unlock: (s) => bestTier(s) >= 3,
     upgradeNames: ['Opponent Dossiers', 'Big Data Room', 'Predictive Meta Models'],
+    qol: { id: 'buyMax', name: 'Number crunching', icon: 'calculator', desc: 'A Max button buys or hires as many as you can afford.' },
   },
   {
     id: 'social',
@@ -168,6 +185,7 @@ const RAW: RawStaff[] = [
     requirement: 'Reach 5,000 fans',
     unlock: (s) => s.fansRun >= 5_000,
     upgradeNames: ['Content Calendar', 'Viral Strategy Team', 'Algorithm Whisperers'],
+    qol: { id: 'buy100', name: 'Going viral', icon: 'trending-up', desc: 'Buy operations and hire staff 100 at a time.' },
   },
   {
     id: 'psych',
@@ -235,6 +253,7 @@ const RAW: RawStaff[] = [
     requirement: 'Unlock a merch product',
     unlock: (s) => Object.keys(s.merch.unlocked).length > 0,
     upgradeNames: ['Screen-Printing Workshop', 'Design Collective', 'Fashion Week Runway'],
+    qol: { id: 'allLines', name: 'House style', icon: 'palette', desc: 'Put one design on every merch line at once in the Studio.' },
   },
   {
     id: 'agent',
@@ -249,6 +268,7 @@ const RAW: RawStaff[] = [
     requirement: 'Sign a sponsor',
     unlock: (s) => s.stats.sponsorsSigned >= 1,
     upgradeNames: ['Contract Templates', 'Hardball Negotiators', 'Legendary Super-Agent'],
+    qol: { id: 'sell', name: 'Resale deals', icon: 'arrow-left-right', desc: 'Sell operations back in the store.' },
   },
 ];
 

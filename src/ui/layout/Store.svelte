@@ -6,8 +6,12 @@
   import { bulkPrice, isOperationRevealed, maxAffordable, sellRefund } from '../../engine/operations';
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
   import { operationsOpen } from '../../engine/tutorial';
+  import { sectionOpen } from '../../engine/sections';
+  import { bulkAmount, bulkAmounts, hasQol, qolSource } from '../../engine/staff';
+  import type { QolId } from '../../data/staff';
   import Icon from '../components/Icon.svelte';
   import TutArrow from '../components/TutArrow.svelte';
+  import { hinted } from '../hints';
   import { game } from '../game.svelte';
   import { opBand, opColor, rarityName, tierColor, tierRank, upgradeBand } from '../theme';
   import { opSpriteSvg } from '../opsArt';
@@ -55,7 +59,23 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
-  const amount = $derived(s.settings.buyAmount);
+  /** Bulk amounts, selling and Buy all come with staff hires (data/staff.ts `qol`). */
+  const amounts = $derived(bulkAmounts(s));
+  const amount = $derived(bulkAmount(s));
+  const canSell = $derived(hasQol(s, 'sell'));
+  const canBuyAll = $derived(hasQol(s, 'buyAll'));
+  /** Once Staff is open the tools still to come show as locked buttons, so the player knows where they come from. */
+  const showTools = $derived(sectionOpen(s, 'staff') || amounts.length > 1 || canSell);
+  const AMOUNT_QOL: Record<number, QolId> = { 10: 'buy10', 100: 'buy100', [-1]: 'buyMax' };
+
+  function toolTip(id: QolId): TipContent {
+    const src = qolSource(id);
+    return {
+      title: src?.qol?.name ?? 'Locked',
+      icon: 'lock',
+      lines: [src?.qol?.desc ?? '', { text: src ? `Comes with your first ${src.name}. Hire one in the Staff tab.` : 'Comes with staff.', tone: 'cyan' }],
+    };
+  }
   const upgrades = $derived(storeUpgrades(s));
   const shownUpgrades = $derived(expanded ? upgrades : upgrades.slice(0, COLLAPSED_UPGRADES));
   const affordable = $derived(upgrades.filter((u) => u.currency === 'cash' && canAffordUpgrade(s, u, v.m)).length);
@@ -67,7 +87,9 @@
   const shownOps = $derived(OPERATIONS.slice(0, Math.min(OPERATIONS.length, lastRevealed + 2)));
   const opsOpen = $derived(operationsOpen(s));
   /** The operation the tutorial is asking for, which pulses until it is bought. */
-  const tutorialOp = $derived(s.tutorial.step === 'grinder' ? 'grinder' : s.tutorial.step === 'streamer' ? 'streamer' : null);
+  const tutorialOp = $derived(s.tutorial.step === 'grinder' ? 'grinder' : s.tutorial.step === 'streamer' ? 'streamer' : hinted(s, 'store') ? 'grinder' : null);
+  /** "Read the patch notes" points at the cheapest upgrade on the shelf. */
+  const hintUpgrade = $derived(hinted(s, 'upgrades') ? [...upgrades].filter((u) => u.currency === 'cash').sort((a, b) => upgradePrice(a, v.m) - upgradePrice(b, v.m))[0]?.id : undefined);
 
   function upgradeTip(def: UpgradeDef): TipContent {
     const { s, m } = game.view;
@@ -109,6 +131,11 @@
     };
   }
 
+  // Selling waits for the staff who bring it; a saved "sell" falls back to buying.
+  $effect(() => {
+    if (mode === 'sell' && !canSell) mode = 'buy';
+  });
+
   function rowInfo(op: OperationDef): { n: number; price: number; ok: boolean } {
     const st = s.ops[op.id];
     const costMult = v.m.opCostMult;
@@ -136,7 +163,7 @@
   <section class="upgrades">
     <header class="section-head">
       <h2 class="section-title">Upgrades <span class="count">{upgrades.length}</span></h2>
-      {#if affordable > 1}
+      {#if affordable > 1 && canBuyAll}
         <button class="btn small" onclick={() => game.buyAllUpgrades()}>Buy all ({affordable})</button>
       {/if}
     </header>
@@ -149,6 +176,7 @@
           {@const drawn = def.art ? null : upgradeIconSvg(def.icon, def.group, tierColor(def.tier))}
           <button
             class="upgrade"
+            class:tut-target={hintUpgrade === def.id}
             class:ok
             class:hi={def.tier >= 7}
             style="--c:{tierColor(def.tier)}; --rank:{tierRank(def.tier)}"
@@ -188,17 +216,27 @@
   <section class="ops">
     <header class="section-head">
       <h2 class="section-title">Operations</h2>
-      <div class="controls">
-        <div class="seg">
-          <button class:active={mode === 'buy'} onclick={() => (mode = 'buy')}>Buy</button>
-          <button class:active={mode === 'sell'} class:sell={mode === 'sell'} onclick={() => (mode = 'sell')}>Sell</button>
+      {#if showTools}
+        <div class="controls">
+          <div class="seg">
+            <button class:active={mode === 'buy'} onclick={() => (mode = 'buy')}>Buy</button>
+            {#if canSell}
+              <button class:active={mode === 'sell'} class:sell={mode === 'sell'} onclick={() => (mode = 'sell')}>Sell</button>
+            {:else}
+              <button class="locked" aria-disabled="true" use:tooltip={() => toolTip('sell')}><Icon name="lock" size={10} /> Sell</button>
+            {/if}
+          </div>
+          <div class="seg">
+            {#each AMOUNTS as a (a.value)}
+              {#if amounts.includes(a.value)}
+                <button class:active={amount === a.value} onclick={() => game.setSetting('buyAmount', a.value)}>{a.label}</button>
+              {:else}
+                <button class="locked" aria-disabled="true" use:tooltip={() => toolTip(AMOUNT_QOL[a.value])}><Icon name="lock" size={10} /> {a.label}</button>
+              {/if}
+            {/each}
+          </div>
         </div>
-        <div class="seg">
-          {#each AMOUNTS as a (a.value)}
-            <button class:active={amount === a.value} onclick={() => game.setSetting('buyAmount', a.value)}>{a.label}</button>
-          {/each}
-        </div>
-      </div>
+      {/if}
     </header>
 
     <div class="op-list">
@@ -212,7 +250,7 @@
         {#each shownOps as op (op.id)}
           {#if isOperationRevealed(s, op)}
             {@const info = rowInfo(op)}
-            {#if tutorialOp === op.id}<TutArrow label={s.ops[op.id].owned > 0 ? `Buy a ${op.name}` : `Buy your first ${op.name}`} />{/if}
+            {#if tutorialOp === op.id}<TutArrow label={s.tutorial.step !== 'done' ? (s.ops[op.id].owned > 0 ? `Buy a ${op.name}` : `Buy your first ${op.name}`) : `Buy Grinders: ${s.ops[op.id].owned}/10`} />{/if}
             <button
               class="op"
               class:no={!info.ok}
@@ -435,6 +473,15 @@
   .seg button.active.sell {
     background: color-mix(in srgb, var(--red) 20%, transparent);
     color: var(--red);
+  }
+  /* A tool that comes with a staff hire: visible, so the player knows it exists, but not yet theirs. */
+  .seg button.locked {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--dim);
+    opacity: 0.6;
+    cursor: help;
   }
   .op-list {
     flex: 1;

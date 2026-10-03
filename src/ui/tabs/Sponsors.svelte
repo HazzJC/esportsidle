@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { BASE_SPONSOR_TIERS, BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
+  import { hinted } from '../hints';
+  import { BASE_SPONSOR_TIERS, BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS, STARTER_DEALS, brandPerk } from '../../data/sponsors';
+  import Collapsible from '../components/Collapsible.svelte';
   import { LEGACY_NODE_MAP } from '../../data/legacy';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { GOAL_EARNINGS_SHARE, MIN_GOAL_SECONDS, goalLabel, goalShareRate, goalProgress, goalReward, goalRewardPotential, maxSponsorTier, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
@@ -14,6 +16,7 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
+  const sponsorHint = $derived(hinted(s, 'sponsors'));
   const unlocked = $derived(sponsorsUnlocked(s));
   const slots = $derived(v.m.sponsorSlots);
   const activeCategories = $derived(new Set(s.sponsors.active.map((c) => BRAND_MAP.get(c.brandId)?.category)));
@@ -58,6 +61,27 @@
       </div>
     </div>
   {:else}
+    <Collapsible id="sponsor-how" title="How a deal works">
+      <div class="how">
+        <div class="step">
+          <span class="hicon"><Icon name="clock" size={16} /></span>
+          <b>While it runs</b>
+          <span>The contract adds a share to <i>all</i> your income and gives its perk (morale, fans, XP and more). Hit its goal before the time runs out and the bonus is paid there and then.</span>
+        </div>
+        <div class="step">
+          <span class="hicon"><Icon name="calendar-clock" size={16} /></span>
+          <b>When it ends</b>
+          <span>The boost and the perk stop, and the slot is free for a new brand. A goal you met was already paid; one you missed pays nothing. Nothing else is lost.</span>
+        </div>
+        <div class="step">
+          <span class="hicon"><Icon name="x" size={16} /></span>
+          <b>Ending it early</b>
+          <span>You can walk away at any time to free the slot for a better deal. The boost and perk stop at once and an unfinished goal pays nothing, but there is no penalty.</span>
+        </div>
+      </div>
+      <p class="slots-note muted small">You have {slots} sponsor slot{slots === 1 ? '' : 's'}. One brand per category at a time.{slots === 1 ? ' The quest for your first deal adds a second slot.' : ''}</p>
+    </Collapsible>
+
     {#if v.m.sponsorIncomePct > 0}
       <div class="total">
         <Icon name="trending-up" size={18} />
@@ -73,7 +97,7 @@
         <div class="cards">
           {#each s.sponsors.active as c (c.id)}
             {@const brand = BRAND_MAP.get(c.brandId)}
-            {@const info = brand ? CATEGORY_INFO[brand.category] : undefined}
+            {@const info = brand ? brandPerk(brand) : undefined}
             {@const progress = goalProgress(s, c)}
             {#if brand && info}
               <div class="card active" style="--bc:{brand.color}">
@@ -123,7 +147,9 @@
                 </div>
                 <div class="foot">
                   {#if confirmCancel === c.id}
-                    <button class="btn small danger" onclick={() => (game.cancelSponsor(c.id), (confirmCancel = null))}>End contract?</button>
+                    <span class="warn-text small">{c.completed ? 'The boost and perk stop now. The goal bonus is already yours.' : 'The boost and perk stop now, and the unfinished goal pays nothing.'}</span>
+                    <button class="btn small" onclick={() => (confirmCancel = null)}>Keep it</button>
+                    <button class="btn small danger" onclick={() => (game.cancelSponsor(c.id), (confirmCancel = null))}>End contract</button>
                   {:else}
                     <button class="btn small" onclick={() => (confirmCancel = c.id)}>End early</button>
                   {/if}
@@ -143,8 +169,9 @@
         <div class="cards">
           {#each s.sponsors.offers as offer (offer.id)}
             {@const brand = BRAND_MAP.get(offer.brandId)}
-            {@const info = brand ? CATEGORY_INFO[brand.category] : undefined}
+            {@const info = brand ? brandPerk(brand) : undefined}
             {@const block = blocker(offer)}
+            {@const starter = offer.starter ? STARTER_DEALS.find((d) => d.brandId === offer.brandId) : undefined}
             {@const payout = goalRewardPotential(offer.tier, offer.goal.rewardSeconds, v.r.cpsNoBuffs, offer.goal.kind)}
             {#if brand && info}
               <div class="card" style="--bc:{brand.color}">
@@ -156,6 +183,7 @@
                   </div>
                 </div>
                 <p class="slogan small">“{brand.slogan}”</p>
+                {#if starter}<p class="pitch"><Icon name="sparkles" size={13} /> {starter.pitch}</p>{/if}
                 <div class="zone during">
                   <div class="zone-head"><Icon name="clock" size={12} /> While signed <span class="num dim">· {fmtTime(offer.duration)} contract</span></div>
                   <div class="zone-line"><Icon name="trending-up" size={13} /> <b class="num">+{fmtPct(offer.incomePct * v.m.sponsorIncomeMult, false, 1)}</b> all income</div>
@@ -180,7 +208,7 @@
                   </div>
                 </div>
                 <div class="foot">
-                  <button class="btn small" class:primary={!block} disabled={!!block} onclick={() => game.signSponsor(offer.id)}>
+                  <button class="btn small" class:primary={!block} class:tut-target={sponsorHint && !block} disabled={!!block} onclick={() => game.signSponsor(offer.id)}>
                     {block ?? 'Sign'}
                   </button>
                 </div>
@@ -226,6 +254,56 @@
 </div>
 
 <style>
+  .how {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 8px;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .step b {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--text);
+  }
+  .hicon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .slots-note {
+    margin: 6px 0 0;
+  }
+  .pitch {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text);
+    background: color-mix(in srgb, var(--bc) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bc) 35%, transparent);
+  }
+  .warn-text {
+    color: var(--gold);
+    flex: 1;
+  }
   .logo {
     flex: none;
     width: 44px;

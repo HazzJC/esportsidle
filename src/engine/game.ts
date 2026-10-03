@@ -20,6 +20,7 @@ import { Rng } from './rng';
 import { updatePlayers, updateTeams } from './teams';
 import { calmStart, updateTutorial } from './tutorial';
 import { updateSections } from './sections';
+import { checkHouseMove } from './staff';
 import type { GameState, Mods, Rates } from './types';
 import { refreshUpgradeUnlocks } from './upgrades';
 import { earnCash, gainFans } from './wallet';
@@ -99,6 +100,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
     updateTutorial(s);
     updateQuests(s);
     updateSections(s);
+    if (!offline) checkHouseMove(s);
   }
   return { mods, rates };
 }

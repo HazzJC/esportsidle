@@ -133,6 +133,25 @@ const ART: Record<string, Art> = {
     circ(24, 29, 6.4, K.white, o(0.8)) +
     twinkle(24, 29, 4, c),
 
+  // Binoculars over a prospect's card: scouting the transfer market.
+  scout: (c) =>
+    ground(16) +
+    aura(24, 22, 18, c) +
+    rr(8, 6, 22, 30, 2.4, K.white, o()) +
+    rr(8, 6, 22, 6, 2.4, c, o()) +
+    rect(8.5, 10, 21, 2, c) +
+    circ(19, 19, 4.4, '#e8b893', o(0.8)) +
+    path('M12 32Q12.5 25 19 25Q25.5 25 26 32Z', K.black3, o(0.8)) +
+    rr(22, 26, 9, 14, 3.5, K.black2, o()) +
+    rr(33, 26, 9, 14, 3.5, K.black2, o()) +
+    rect(29, 29, 6, 5, K.black3, o(0.8)) +
+    circ(26.5, 37, 4.2, K.ink, o()) +
+    circ(37.5, 37, 4.2, K.ink, o()) +
+    circ(26.5, 37, 2.8, c, op(0.85)) +
+    circ(37.5, 37, 2.8, c, op(0.85)) +
+    shine('M25 35.6A2 2 0 0 1 27 35', 1, 0.8) +
+    shine('M36 35.6A2 2 0 0 1 38 35', 1, 0.8),
+
   // A winner's medal on a ribbon.
   medal: (c) =>
     ground(12) +

@@ -1,7 +1,10 @@
 <svelte:options namespace="svg" />
 
 <script lang="ts">
+  import { SKIN_TONES } from '../../data/cosmetics';
   import { gearRarity, type GearSlot } from '../../data/gear';
+  import { matchEasterEgg } from '../../engine/easterEggs';
+  import { gearArtMarkup } from '../gearArt';
   import type { Player } from '../../engine/types';
   import { shade } from '../color';
   import Avatar from './Avatar.svelte';
@@ -34,6 +37,18 @@
   const gear = $derived(player.gear);
   // Glowing effects take the rarity colour of the item producing them.
   const glow = (slot: GearSlot) => gearRarity(gear[slot]).color;
+  /** The desk surface the keyboard, hands and charm sit on: the starter crate is lower than a real desk. */
+  const deskTop = $derived(gear.desk === 0 ? -56 : -62);
+  const skin = $derived(matchEasterEgg(player.tag) === 'varantha' ? '#4f558a' : (SKIN_TONES[player.look.skin] ?? SKIN_TONES[0]));
+  // The lucky charm (the composure item) stands on the desk. Drawn from constants in gearArt.ts.
+  const charmArt = $derived(gearArtMarkup('charm', gear.charm ?? 0));
+  const playing = $derived(status === 'playing');
+  /** Each player types at their own tempo, so a full floor never moves in step. */
+  const tempo = $derived.by(() => {
+    let h = 0;
+    for (let i = 0; i < player.id.length; i++) h = (h * 31 + player.id.charCodeAt(i)) % 997;
+    return { delay: (h % 10) / 10, speed: 0.32 + (h % 5) * 0.03 };
+  });
   const badge = $derived(
     status === 'playing'
       ? { icon: 'gamepad-2', fill: '#1f9d5c' }
@@ -81,7 +96,7 @@
   {/if}
 
   <!-- Player -->
-  <g transform="translate(-36 -116)">
+  <g transform="translate(-36 -124)">
     <Avatar look={player.look} gear={player.gear} {primary} {secondary} size={72} mode="bust" tag={player.tag} />
   </g>
 
@@ -107,11 +122,24 @@
   {/if}
 
   <!-- Keyboard & mouse -->
-  <rect x="-20" y={gear.desk === 0 ? -61 : -67} width="40" height="5" rx="1.5" fill={gear.keyboard >= 5 ? '#1d1d21' : '#d9d6cf'} />
+  <rect x="-20" y={deskTop - 5} width="40" height="5" rx="1.5" fill={gear.keyboard >= 5 ? '#1d1d21' : '#d9d6cf'} />
   {#if gear.keyboard >= 5}
-    <rect x="-18" y={gear.desk === 0 ? -60 : -66} width="36" height="1.4" fill={secondary} filter="url(#{uid}-glow)" />
+    <rect x="-18" y={deskTop - 4} width="36" height="1.4" fill={secondary} filter="url(#{uid}-glow)" />
   {/if}
-  <ellipse cx="28" cy={gear.desk === 0 ? -59 : -65} rx="4" ry="2.5" fill={gear.mouse >= 5 ? secondary : '#cfcac0'} />
+  <ellipse cx="28" cy={deskTop - 3} rx="4" ry="2.5" fill={gear.mouse >= 5 ? secondary : '#cfcac0'} />
+
+  <!-- Arms and hands: the left hand on the keys, the right on the mouse. -->
+  <g class="arms" class:playing style="--tempo:{tempo.speed}s; --delay:{tempo.delay}s">
+    <path d="M-21 {deskTop + 1} Q-19 {deskTop - 4} -10 {deskTop - 6}" fill="none" stroke={shade(primary, -0.15)} stroke-width="7" stroke-linecap="round" />
+    <path d="M21 {deskTop + 1} Q25 {deskTop - 2} 27 {deskTop - 5}" fill="none" stroke={shade(primary, -0.15)} stroke-width="7" stroke-linecap="round" />
+    <g class="hand keys">
+      <ellipse cx="-8" cy={deskTop - 6.5} rx="4.2" ry="2.8" fill={skin} stroke="rgba(0,0,0,0.35)" stroke-width="0.8" />
+      <path d="M-10 {deskTop - 4.5} v1.6 M-7.5 {deskTop - 4.3} v1.6 M-5 {deskTop - 4.5} v1.4" stroke={shade(skin, -0.3)} stroke-width="0.9" stroke-linecap="round" />
+    </g>
+    <g class="hand mouse">
+      <ellipse cx="28" cy={deskTop - 5.5} rx="4" ry="2.8" fill={skin} stroke="rgba(0,0,0,0.35)" stroke-width="0.8" />
+    </g>
+  </g>
 
   <!-- Monitors -->
   {#snippet monitor(cx: number)}
@@ -173,6 +201,11 @@
     <circle cx="90" cy="-40" r="6" fill="#fff" opacity="0.8" />
   {/if}
 
+  <!-- The lucky charm: the composure item, standing on the desk in front of the screens. -->
+  <g class="charm" class:lit={(gear.charm ?? 0) >= 11} transform="translate(-41 {deskTop - 19}) scale(0.4)">
+    {@html charmArt}
+  </g>
+
   <!-- Status badge -->
   <g transform="translate(30 -120)">
     <circle r="11" fill={badge.fill} stroke="#0e0e10" stroke-width="2" />
@@ -200,6 +233,37 @@
   }
   .blink {
     animation: blink 1.2s steps(2) infinite;
+  }
+  /* Typing: the key hand taps at the player's own tempo, the mouse hand flicks now and then. */
+  .arms.playing .hand.keys {
+    animation: type var(--tempo) ease-in-out var(--delay) infinite alternate;
+  }
+  .arms.playing .hand.mouse {
+    animation: flick 2.2s ease-in-out var(--delay) infinite;
+  }
+  .charm.lit {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
+  }
+  @keyframes type {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-1.3px);
+    }
+  }
+  @keyframes flick {
+    0%,
+    55%,
+    100% {
+      transform: translate(0, 0);
+    }
+    65% {
+      transform: translate(2px, -0.6px);
+    }
+    80% {
+      transform: translate(-1.5px, 0.4px);
+    }
   }
   .orb {
     animation: pulse 2s ease-in-out infinite;

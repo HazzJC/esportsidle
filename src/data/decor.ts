@@ -27,7 +27,7 @@ export interface DecorDef {
   effects: StatAmount[];
 }
 
-export const DECOR: DecorDef[] = [
+export const DECOR: DecorDef[] = ([
   { id: 'posters', name: 'Esports Posters', icon: 'image', cost: 500, room: 0, desc: 'Signed posters of your heroes.', effects: [{ stat: 'morale', amount: 2 }] },
   {
     id: 'rgb',
@@ -132,6 +132,16 @@ export const DECOR: DecorDef[] = [
       { stat: 'energyRecovery', amount: 0.2 },
     ],
   },
-];
+  { id: 'ringLight', name: 'Ring Light', icon: 'lightbulb', cost: 1_500, room: 0, desc: 'Every stream looks professional. Every face looks surprised.', effects: [{ stat: 'fans', amount: 0.02 }] },
+  { id: 'snackDrawer', name: 'Snack Drawer', icon: 'pizza', cost: 4_000, room: 0, desc: 'Bottomless, until the support player finds it.', effects: [{ stat: 'energyRecovery', amount: 0.03 }, { stat: 'morale', amount: 1 }] },
+  { id: 'soundproofing', name: 'Soundproofing', icon: 'layers', cost: 60_000, room: 1, desc: 'The neighbours stop complaining. The shouting continues.', effects: [{ stat: 'moraleSwing', amount: 0.05 }] },
+  { id: 'monitorWall', name: 'VOD Monitor Wall', icon: 'monitor', cost: 250_000, room: 1, desc: 'Nine screens of replays, all paused on the same mistake.', effects: [{ stat: 'xp', amount: 0.03 }] },
+  { id: 'homeGym', name: 'Home Gym', icon: 'dumbbell', cost: 3e7, room: 2, desc: 'Wrist curls, posture work and one treadmill used as a coat rack.', effects: [{ stat: 'injury', amount: 0.1 }, { stat: 'energyRecovery', amount: 0.05 }] },
+  { id: 'proKitchen', name: 'Pro Kitchen', icon: 'chef-hat', cost: 2e11, room: 3, desc: 'Steel counters, a pizza oven and a fridge that orders its own groceries.', effects: [{ stat: 'sickness', amount: 0.15 }, { stat: 'morale', amount: 3 }] },
+  { id: 'simPod', name: 'Simulation Pods', icon: 'cpu', cost: 5e14, room: 4, desc: "Practise against perfect copies of next week’s opponents.", effects: [{ stat: 'xp', amount: 0.08 }] },
+  { id: 'fanLounge', name: 'Fan Lounge', icon: 'users', cost: 5e16, room: 4, desc: 'Meet-and-greets, signed shirts and a queue round the campus.', effects: [{ stat: 'fans', amount: 0.06 }, { stat: 'playerFans', amount: 0.1 }] },
+  { id: 'hydroGarden', name: 'Hydroponic Garden', icon: 'sprout', cost: 5e18, room: 5, desc: 'Fresh salad, grown in orbit. Tastes faintly of ozone.', effects: [{ stat: 'sickness', amount: 0.15 }, { stat: 'morale', amount: 4 }] },
+  // Listed by house, then price, so the shop reads cheapest first in each room.
+] satisfies DecorDef[]).sort((a, b) => a.room - b.room || a.cost - b.cost);
 
 export const DECOR_MAP: Map<string, DecorDef> = new Map(DECOR.map((d) => [d.id, d]));

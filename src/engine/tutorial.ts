@@ -1,6 +1,7 @@
-import { TUTORIAL_INJURY_SECONDS, TUTORIAL_ORDER, TUTORIAL_STEPS, tutorialPlayer, type TutorialStep, type TutorialStepDef } from '../data/tutorial';
+import { FIRST_WIN_BONUS, TUTORIAL_INJURY_SECONDS, TUTORIAL_ORDER, TUTORIAL_STEPS, tutorialPlayer, type TutorialStep, type TutorialStepDef } from '../data/tutorial';
 import { emit } from './bus';
 import type { GameState } from './types';
+import { earnCash } from './wallet';
 
 export function tutorialIndex(step: TutorialStep): number {
   return TUTORIAL_ORDER.indexOf(step);
@@ -27,8 +28,12 @@ function stepDone(s: GameState, def: TutorialStepDef): boolean {
   return p.value >= p.target;
 }
 
-/** Sets up what a step needs as it starts. The rest step hurts the first player, briefly. */
+/**
+ * Sets up what a step needs as it starts. The first win pays its bonus as the match step ends, and the
+ * rest step hurts the first player, briefly.
+ */
 function enterStep(s: GameState, step: TutorialStep): void {
+  if (step === 'rest') payFirstWinBonus(s);
   if (step !== 'rest') return;
   const p = tutorialPlayer(s);
   if (!p) return;
@@ -40,6 +45,20 @@ function enterStep(s: GameState, step: TutorialStep): void {
     icon: 'bandage',
     tone: 'bad',
     channel: 'players',
+  });
+}
+
+/** The first win's bonus, paid once as the tutorial's match step is finished. */
+function payFirstWinBonus(s: GameState): void {
+  if (s.tutorial.firstWinPaid) return;
+  s.tutorial.firstWinPaid = true;
+  earnCash(s, FIRST_WIN_BONUS, 'event');
+  emit({
+    type: 'toast',
+    title: `First win bonus: +$${FIRST_WIN_BONUS}`,
+    body: 'A local café wants its logo on your stream. Put it towards a Ranked Grinder and your first Streamer.',
+    icon: 'coins',
+    tone: 'gold',
   });
 }
 

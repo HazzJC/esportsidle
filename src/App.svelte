@@ -5,6 +5,7 @@
   import Coach from './ui/components/Coach.svelte';
   import DropLayer from './ui/components/DropLayer.svelte';
   import HypeChain from './ui/components/HypeChain.svelte';
+  import MoveIn from './ui/components/MoveIn.svelte';
   import Onboarding from './ui/components/Onboarding.svelte';
   import Toasts from './ui/components/Toasts.svelte';
   import TournamentModal from './ui/components/TournamentModal.svelte';
@@ -45,6 +46,7 @@
   <HypeChain />
   <ChoicePanel />
   <TournamentModal />
+  <MoveIn />
   <Toasts />
   <Tooltip />
   {#if !s.settings.onboarded}

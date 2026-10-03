@@ -364,6 +364,130 @@ const ART: Record<string, DecorArtDef> = {
       circ(18.3, 14.2, 1, '#4ade80', op(0.6)) +
       rr(24, 15, 3, 5, 1, K.greyL, 'transform="rotate(25 25.5 17.5)"'),
   },
+
+  // A ring light on a tripod, the phone clipped in the middle.
+  ringLight: {
+    floor: true,
+    draw: (c) =>
+      line('M24 30V42M24 42L16 46M24 42L32 46M24 42V46', K.greyD, 1.4) +
+      glow(24, 17, 15, c, 0.18) +
+      circ(24, 17, 12, 'none', stroke(K.white, 4)) +
+      circ(24, 17, 12, 'none', `${stroke(c, 1)} ${op(0.6)}`) +
+      rr(21, 11, 6, 11, 1.2, K.ink) +
+      rect(22, 12.5, 4, 8, c, op(0.45)) +
+      rect(23, 29, 2, 2, K.greyD),
+  },
+
+  // A desk drawer pulled out, packed with crisps, sweets and energy bars.
+  snackDrawer: {
+    floor: true,
+    draw: (c) =>
+      rr(6, 20, 36, 22, 2, K.wood, stroke(K.woodD, 1)) +
+      rr(8, 14, 32, 12, 1.5, K.woodD) +
+      rr(10, 9, 8, 12, 1.5, '#e0474c') +
+      rect(11, 12, 6, 3, '#ffd23f') +
+      rr(19, 7, 7, 14, 1.5, '#4f9dff') +
+      circ(22.5, 12, 2, K.white) +
+      rr(27, 10, 11, 5, 2, '#ffd23f', 'transform="rotate(-12 32 12)"') +
+      rr(28, 14, 10, 6, 1.5, c) +
+      rr(19, 29, 10, 3, 1.5, K.beige) +
+      circ(24, 30.5, 0.9, K.woodD),
+  },
+
+  // Acoustic foam panels in the team colour, pinned up in a checkerboard.
+  soundproofing: {
+    floor: false,
+    draw: (c) =>
+      rr(5, 5, 38, 38, 2, K.black, stroke(K.black3, 0.8)) +
+      [0, 1, 2].map((r) => [0, 1, 2].map((k) => {
+        const x = 7 + k * 12;
+        const y = 7 + r * 12;
+        const on = (r + k) % 2 === 0;
+        return rect(x, y, 10, 10, on ? c : K.black2, on ? op(0.55) : '') +
+          path(`M${x} ${y}L${x + 5} ${y + 5}L${x + 10} ${y}Z`, '#fff', op(0.1)) +
+          path(`M${x} ${y + 10}L${x + 5} ${y + 5}L${x + 10} ${y + 10}Z`, '#000', op(0.2));
+      }).join('')).join(''),
+  },
+
+  // Nine screens of replays, all paused on the same mistake.
+  monitorWall: {
+    floor: false,
+    draw: (c) =>
+      rr(4, 6, 40, 30, 2, K.ink) +
+      [0, 1, 2].map((r) => [0, 1, 2].map((k) => rect(6 + k * 12.6, 8 + r * 9, 11.4, 8, K.black2) + rect(7 + k * 12.6, 9 + r * 9, 9.4, 6, c, op(0.35 + ((r + k) % 3) * 0.15))).join('')).join('') +
+      circ(23.5, 21, 3.4, 'none', stroke(K.red, 1.2)) +
+      rect(22, 36, 4, 6, K.black3) +
+      rr(16, 42, 16, 2.5, 1, K.black3),
+  },
+
+  // A weight bench with a loaded bar, and a kettlebell beside it.
+  homeGym: {
+    floor: true,
+    draw: (c) =>
+      rr(8, 30, 26, 5, 2, K.black2) +
+      line('M12 35V42M30 35V42', K.greyD, 2) +
+      line('M10 24V30M32 24V30', K.greyL, 1.6) +
+      line('M5 22H37', K.silver, 2) +
+      rr(3, 17, 4, 10, 1, c) +
+      rr(35, 17, 4, 10, 1, c) +
+      rr(7.5, 18.5, 2.5, 7, 1, K.black3) +
+      rr(32, 18.5, 2.5, 7, 1, K.black3) +
+      circ(40, 39, 5, K.black2) +
+      path('M37 35Q40 30 43 35', 'none', stroke(K.black2, 2)),
+  },
+
+  // A pizza oven with a fire inside, steel counter and a hanging pan.
+  proKitchen: {
+    floor: true,
+    draw: (c) =>
+      rect(4, 28, 40, 14, K.silver, stroke(K.silverD, 0.8)) +
+      rect(4, 26, 40, 3, K.greyL) +
+      line('M10 33H18M30 33H38', K.silverD, 1) +
+      path('M12 26V16Q24 4 36 16V26Z', '#8a5a3c') +
+      path('M17 26V19Q24 12 31 19V26Z', K.ink) +
+      path('M20 26Q21 20 24 18Q24 22 27 21Q28 24 28 26Z', '#ff8a3d') +
+      path('M22 26Q23 23 24 22Q25 24 26 26Z', K.goldL) +
+      glow(24, 22, 9, c, 0.18) +
+      line('M40 6V12', K.greyD, 1) +
+      circ(40, 15, 3.4, K.black2),
+  },
+
+  // A row of egg-shaped simulation pods with glowing visors.
+  simPod: {
+    floor: true,
+    draw: (c) =>
+      [10, 24, 38].map((x, i) =>
+        ell(x, 30, 6.4, 13, K.white, stroke(K.greyL, 0.8)) +
+        ell(x, 25, 4.4, 5.4, K.ink) +
+        ell(x, 25, 3.4, 4.2, c, op(0.45 + i * 0.15)) +
+        rect(x - 4, 41, 8, 3, K.greyD)).join('') +
+      glow(24, 25, 8, c, 0.2),
+  },
+
+  // A signing table with a queue of fans' heads and a banner.
+  fanLounge: {
+    floor: true,
+    draw: (c) =>
+      rect(6, 6, 36, 9, c, op(0.7)) +
+      rect(10, 9, 28, 3, K.white, op(0.8)) +
+      [10, 17, 24, 31, 38].map((x, i) => circ(x, 24 - (i % 2), 3.6, ['#f6d0ae', '#b87b4f', '#e9b98f', '#6b4028', '#ffe3cc'][i]) + path(`M${x - 4.5} 34Q${x} 26 ${x + 4.5} 34Z`, [K.red, '#4f9dff', K.green, K.gold, '#a97bff'][i])).join('') +
+      rr(4, 33, 40, 6, 1.5, K.wood) +
+      rect(6, 39, 3, 5, K.woodD) +
+      rect(39, 39, 3, 5, K.woodD) +
+      rect(20, 31, 8, 3, K.white),
+  },
+
+  // Racks of lettuce growing under purple lamps, with a drip line.
+  hydroGarden: {
+    floor: true,
+    draw: (c) =>
+      rect(6, 6, 36, 3, '#a97bff') +
+      rect(6, 9, 36, 4, '#a97bff', op(0.18)) +
+      [18, 32].map((y) => rr(5, y, 38, 5, 1.5, K.greyL) + [10, 18, 26, 34].map((x) => circ(x, y - 2, 3.4, K.green) + circ(x - 1.4, y - 3, 1.6, '#7ccf5a')).join('')).join('') +
+      line('M8 37V43M40 37V43', K.greyD, 1.6) +
+      line('M24 13V16', c, 1, op(0.8)) +
+      circ(24, 16.6, 0.8, c),
+  },
 };
 
 export const DECOR_ART_IDS: string[] = Object.keys(ART);

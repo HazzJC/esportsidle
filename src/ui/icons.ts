@@ -146,6 +146,11 @@ import {
   VolumeX,
   CircleHelp,
   EyeOff,
+  ArrowLeftRight,
+  Calculator,
+  ListChecks,
+  ListPlus,
+  Eye,
 } from '@lucide/svelte';
 
 export const ICONS: Record<string, typeof Sparkles> = {
@@ -162,6 +167,11 @@ export const ICONS: Record<string, typeof Sparkles> = {
   'volume-x': VolumeX,
   help: CircleHelp,
   'eye-off': EyeOff,
+  eye: Eye,
+  'arrow-left-right': ArrowLeftRight,
+  calculator: Calculator,
+  'list-checks': ListChecks,
+  'list-plus': ListPlus,
   circle: Circle,
   eraser: Eraser,
   'graduation-cap': GraduationCap,

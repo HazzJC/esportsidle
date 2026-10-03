@@ -13,7 +13,9 @@ export type GameEvent =
   /** The org can be sold for the first time. */
   | { type: 'saleReady' }
   /** A centre tab has just opened. */
-  | { type: 'section'; id: string; text: string };
+  | { type: 'section'; id: string; text: string }
+  /** The org has earned enough this run to move into a bigger house (ROOMS[level]). */
+  | { type: 'house'; level: number };
 
 type Listener = (event: GameEvent) => void;
 

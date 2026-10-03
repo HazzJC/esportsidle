@@ -54,6 +54,11 @@ export interface BrandDef {
   category: SponsorCategory;
   color: string;
   slogan: string;
+  /**
+   * The brand's own perk in place of its category's. The three snack brands each do something
+   * different, so the first deal an org signs is a real choice between them.
+   */
+  perk?: Omit<CategoryInfo, 'label'>;
 }
 
 export const BRANDS: BrandDef[] = [
@@ -65,8 +70,22 @@ export const BRANDS: BrandDef[] = [
   { id: 'hyperx', name: 'HyperExtreme', category: 'peripherals', color: '#ff2bd6', slogan: 'Now 40% more extreme.' },
   { id: 'steelseriesly', name: 'SteelSeriesly', category: 'peripherals', color: '#ff8a3d', slogan: 'Seriously steel.' },
   { id: 'crunchy', name: 'Crunchy Chips Co.', category: 'snacks', color: '#ffc83d', slogan: 'Crunch responsibly (not on mic).' },
-  { id: 'doritoes', name: 'Doritoes', category: 'snacks', color: '#ff8a3d', slogan: 'Orange fingers, gold trophies.' },
-  { id: 'nacho', name: 'Nacho Average Snacks', category: 'snacks', color: '#d9a441', slogan: 'Cheesier than your plays.' },
+  {
+    id: 'doritoes',
+    name: 'Doritoes',
+    category: 'snacks',
+    color: '#ff8a3d',
+    slogan: 'Orange fingers, gold trophies.',
+    perk: { icon: 'heart', perk: (k) => `+${pct(0.15 * k)} fans`, stats: [{ stat: 'fans', amount: 0.15 }] },
+  },
+  {
+    id: 'nacho',
+    name: 'Nacho Average Snacks',
+    category: 'snacks',
+    color: '#d9a441',
+    slogan: 'Cheesier than your plays.',
+    perk: { icon: 'dumbbell', perk: (k) => `+${pct(0.12 * k)} player XP`, stats: [{ stat: 'xp', amount: 0.12 }] },
+  },
   { id: 'verizoom', name: 'Verizoom', category: 'telecom', color: '#ff4d6d', slogan: 'Can you hear me now? Good.' },
   { id: 'teleping', name: 'TelePing', category: 'telecom', color: '#22e4ff', slogan: 'Single-digit ping or your money back*.' },
   { id: 'fibre', name: 'Fibre Optimus', category: 'telecom', color: '#8b5cff', slogan: 'Transform your connection.' },
@@ -96,6 +115,34 @@ export const BRANDS: BrandDef[] = [
 ];
 
 export const BRAND_MAP: Map<string, BrandDef> = new Map(BRANDS.map((b) => [b.id, b]));
+
+/** What a brand's deal does: its own perk if it has one, otherwise its category's. */
+export function brandPerk(brand: BrandDef): CategoryInfo {
+  const info = CATEGORY_INFO[brand.category];
+  return brand.perk ? { label: info.label, ...brand.perk } : info;
+}
+
+export interface StarterDeal {
+  brandId: string;
+  /** One line on what makes this deal different from the other two. */
+  pitch: string;
+  goal: SponsorGoalKind;
+  /** The goal before the pace check (goals are never set so low the org would clear them in minutes). */
+  target: number;
+  /** Contract length in seconds. */
+  duration: number;
+}
+
+/**
+ * The first deal an org ever signs is a choice between three snack brands, one tier-1 contract each:
+ * a safe goal and happier players, more fans, or a harder goal with the biggest bonus and faster
+ * learning. Every later offer is drawn at random from every brand.
+ */
+export const STARTER_DEALS: StarterDeal[] = [
+  { brandId: 'crunchy', pitch: 'The safe bet: an easy goal, and happier players while it runs.', goal: 'wins', target: 10, duration: 900 },
+  { brandId: 'doritoes', pitch: 'The crowd-pleaser: more fans from everything while it runs.', goal: 'fans', target: 2_000, duration: 1_200 },
+  { brandId: 'nacho', pitch: 'The big payday: the biggest income boost, a harder goal that pays the largest share, and players who learn faster.', goal: 'drops', target: 3, duration: 1_800 },
+];
 
 export interface SponsorTier {
   fans: number;

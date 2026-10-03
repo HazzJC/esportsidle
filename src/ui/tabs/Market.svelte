@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hinted } from '../hints';
   import { GAMES, getGame } from '../../data/games';
   import { TRAIT_MAP, TRAITS } from '../../data/traits';
   import { fmtPct, fmtTime, money } from '../../engine/format';
@@ -19,6 +20,7 @@
   import { statTip } from '../statInfo';
 
   const v = $derived(game.view);
+  const marketHint = $derived(hinted(v.s, 'market'));
   const unlocked = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked));
   const listings = $derived(v.s.market.listings.filter((l) => !game.marketFilter || l.player.gameId === game.marketFilter));
   const rerolls = $derived(rerollsInWindow(v.s));
@@ -211,6 +213,7 @@
               <button
                 class="btn small"
                 class:primary={afford && space}
+                class:tut-target={marketHint && afford && space && !isLegacy}
                 class:legacy-btn={isLegacy}
                 disabled={!afford || !space}
                 onclick={() => game.signPlayer(p.id)}

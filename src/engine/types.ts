@@ -401,6 +401,8 @@ export interface TeamState {
   /** Recent results as a moving average from 0 (all losses) to 1 (all wins). Drives team mood. */
   form: number;
   history: MatchRecord[];
+  /** Who the next match is against, drawn when the last one ended. Missing until the first match is played. */
+  nextOpponent?: { name: string; rival: boolean } | null;
   wins: number;
   losses: number;
   streak: number;
@@ -591,6 +593,8 @@ export interface SponsorOffer {
   /** How strong the category perk is on this deal: tier strength times goal difficulty. */
   perkScale?: number;
   goal: { kind: SponsorGoalKind; target: number; rewardSeconds: number };
+  /** One of the three snack deals offered for the org's very first sponsorship. */
+  starter?: boolean;
 }
 
 /** A snapshot of how fast each sponsor goal is progressing, for pacing new offers. */
@@ -727,6 +731,8 @@ export interface QuestState {
 
 export interface TutorialState {
   step: TutorialStep;
+  /** The first win's bonus has been paid (it is paid once, as the match step ends). */
+  firstWinPaid?: boolean;
 }
 
 /** Popup categories the player can mute. Anything the player did themselves is always shown. */
@@ -889,6 +895,8 @@ export interface GameState {
   /** The three first-player prospects offered when a run starts with an empty roster. */
   draft: MarketListing[] | null;
   tutorial: TutorialState;
+  /** The house level the org has already been told it moved into this run (see checkHouseMove). */
+  roomSeen?: number;
   quests: QuestState;
   /** Section (centre tab) id -> simulated time it opened. Sections open as the org grows. */
   sections: Record<string, number>;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { QUESTS, QUEST_MAP, type QuestDef, type QuestReward } from '../../data/quests';
   import { fmt } from '../../engine/format';
-  import { describeReward, nextQuest, questPerkSources, questProgress, rewardDetail } from '../../engine/quests';
+  import { describeReward, nextQuest, questLineWait, questPerkSources, questProgress, rewardDetail } from '../../engine/quests';
   import { tooltip } from '../tooltip.svelte';
   import { game } from '../game.svelte';
   import { questColor, questEmblemSvg, rewardArtSvg } from '../questArt';
@@ -11,6 +11,8 @@
   const SEGMENTS = 24;
   /** A perk claimed this recently (simulated seconds) flickers on as its niche lights. */
   const FRESH_SECONDS = 6;
+  /** Up to this many perks show as plaques with their words; past it the shelf folds into a row of emblems. */
+  const PLAQUE_LIMIT = 4;
 
   const v = $derived(game.view);
   const s = $derived(v.s);
@@ -18,6 +20,8 @@
   const doneCount = $derived(QUESTS.filter((q) => s.quests.done[q.id] !== undefined).length);
   const perks = $derived(questPerkSources(s));
   const upNext = $derived(nextQuest(s));
+  const wait = $derived(questLineWait(s));
+  const compact = $derived(perks.length > PLAQUE_LIMIT);
   /** One lamp per quest in the line: lit when done, pulsing while live, dark still to come. */
   const rail = $derived.by(() => {
     const active = new Set(s.quests.active.map((q) => q.id));
@@ -83,7 +87,12 @@
               <span class="meter" aria-hidden="true">
                 {#each { length: SEGMENTS } as _, i (i)}<i class:on={p.complete || i < lit}></i>{/each}
               </span>
-              {#if upNext && upNext.id !== def.id}<span class="snext">Next <Icon name="chevron-right" size={11} /> {upNext.title}</span>{/if}
+              <div class="sfoot">
+                {#if def.hint && !p.complete}
+                  <button class="showme" onclick={() => game.showQuestHint(def.hint!)}><Icon name="eye" size={12} /> Show me</button>
+                {/if}
+                {#if upNext && upNext.id !== def.id}<span class="snext">Next <Icon name="chevron-right" size={11} /> {upNext.title}</span>{/if}
+              </div>
             </div>
           </div>
 
@@ -106,23 +115,42 @@
 
     {#if s.quests.active.length === 0}
       <div class="bezel">
-        <div class="screen standby">
-          <Icon name="clock" size={16} />
-          <span>{upNext ? `Next: ${upNext.title}. It opens as your org grows.` : 'More quests appear as your org grows.'}</span>
-        </div>
+        {#if wait}
+          {@const lit = wait.target ? Math.round(Math.min(1, (wait.value ?? 0) / wait.target) * SEGMENTS) : 0}
+          <div class="screen standby">
+            <div class="sline">
+              <span class="sicon dim-icon" style="--c:{questColor(wait.quest.id)}">{@html questEmblemSvg(wait.quest)}</span>
+              <span class="wtext">
+                <span class="wlabel"><Icon name="clock" size={11} /> Up next: {wait.quest.title}</span>
+                <b>{wait.text}</b>
+              </span>
+            </div>
+            {#if wait.target}
+              <span class="meter" aria-hidden="true">
+                {#each { length: SEGMENTS } as _, i (i)}<i class:on={i < lit}></i>{/each}
+              </span>
+            {/if}
+          </div>
+        {:else}
+          <div class="screen standby">
+            <Icon name="clock" size={16} />
+            <span>More quests appear as your org grows.</span>
+          </div>
+        {/if}
       </div>
     {/if}
 
     {#if perks.length > 0}
       <div class="perks">
         <span class="engrave"><Icon name="sparkles" size={11} /> Run perks · {perks.length}</span>
-        <ul class="shelf">
+        <ul class="shelf" class:compact>
           {#each perks as perk, i (i)}
             {@const def = QUEST_MAP.get(perk.id)}
             <li
               class="plaque"
               class:fresh={s.time - perk.claimedAt < FRESH_SECONDS}
               style="--c:{questColor(perk.id)}"
+              aria-label={perk.label}
               use:tooltip={() => ({
                 title: perk.label,
                 icon: perk.icon,
@@ -131,10 +159,12 @@
               })}
             >
               <span class="niche">{#if def}{@html questEmblemSvg(def)}{/if}</span>
-              <span class="ptext">
-                <b>{perk.label}</b>
-                <span class="from">{perk.quest}</span>
-              </span>
+              {#if !compact}
+                <span class="ptext">
+                  <b>{perk.label}</b>
+                  <span class="from">{perk.quest}</span>
+                </span>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -309,7 +339,7 @@
       inset 0 1px 2px rgba(0, 0, 0, 0.8),
       0 1px 0 rgba(255, 255, 255, 0.08);
   }
-  /* The glass: a phosphor glow in the interface tone, scanlines, and a glare across the top. */
+  /* The display: a flat, dark panel tinted by the interface tone. No scanlines or glare. */
   .screen {
     position: relative;
     display: flex;
@@ -320,24 +350,9 @@
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #000;
-    color: color-mix(in srgb, var(--accent) 35%, #c9cdd0);
-    background: radial-gradient(130% 150% at 50% 0%, color-mix(in srgb, var(--accent) 15%, #07090a), #030405 78%);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
-      inset 0 0 22px rgba(0, 0, 0, 0.75);
-  }
-  .screen::before,
-  .screen::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-  .screen::before {
-    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
-  }
-  .screen::after {
-    background: linear-gradient(165deg, rgba(255, 255, 255, 0.075), transparent 38%);
+    color: var(--muted);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, #101215), #0b0c0e);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   }
   .sline {
     display: flex;
@@ -361,8 +376,7 @@
     font-family: var(--font-ui);
     font-size: 16px;
     letter-spacing: 0.02em;
-    color: color-mix(in srgb, var(--accent) 22%, #fff);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -374,7 +388,6 @@
     font-size: 14px;
     letter-spacing: 0.06em;
     color: var(--accent);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
   }
   .readout.ready {
     font-family: var(--font-display);
@@ -382,7 +395,6 @@
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--gold);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 70%, transparent);
     animation: blink 1.1s steps(2, jump-none) infinite;
   }
   .sdesc {
@@ -405,11 +417,9 @@
   }
   .meter i.on {
     background: var(--accent);
-    box-shadow: 0 0 5px color-mix(in srgb, var(--accent) 65%, transparent);
   }
   .deck.complete .meter i.on {
     background: var(--gold);
-    box-shadow: 0 0 5px color-mix(in srgb, var(--gold) 65%, transparent);
   }
   .snext {
     display: inline-flex;
@@ -422,11 +432,64 @@
     text-transform: uppercase;
     color: color-mix(in srgb, var(--accent) 30%, #6f7377);
   }
-  .screen.standby {
-    flex-direction: row;
+  .sfoot {
+    display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .sfoot .snext {
+    margin-left: auto;
+  }
+  .showme {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 11.5px;
+  }
+  .showme:hover {
+    border-color: var(--accent);
+  }
+  .screen.standby {
     gap: 8px;
     font-size: 12.5px;
+  }
+  .screen.standby:has(> :global(svg)) {
+    flex-direction: row;
+    align-items: center;
+  }
+  .sicon.dim-icon {
+    opacity: 0.55;
+    filter: grayscale(0.5);
+  }
+  .wtext {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+  .wtext b {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--text);
+  }
+  .wlabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
   }
 
   /* Reward keys: chunky caps that sit proud of the panel and press down when they can be claimed. */
@@ -612,6 +675,19 @@
   }
   .plaque.fresh .niche {
     animation: lamp-on 0.9s ease-out;
+  }
+  /* Many perks: a row of emblems, each with its perk on hover. */
+  .shelf.compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .shelf.compact .plaque {
+    padding: 3px;
+  }
+  .shelf.compact .niche {
+    width: 40px;
+    height: 40px;
   }
 
   @keyframes blink {

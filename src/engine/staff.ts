@@ -1,9 +1,10 @@
 import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
-import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, effectAmount, type StaffDef, type StaffStat } from '../data/staff';
+import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, effectAmount, type QolId, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
 import { sectionOpen } from './sections';
 import { hasTheOnlyCook } from './easterEggs';
 import type { GameState, Mods } from './types';
+import { emit } from './bus';
 
 /** Applies a staff/decor stat bonus of the given strength to the modifier set. */
 export function applyStat(m: Mods, stat: StaffStat, amount: number): void {
@@ -95,6 +96,30 @@ export function applyStaffAndDecor(m: Mods, s: GameState): void {
   }
 }
 
+/** Whether the org has the tool a staff role brings: someone in that role has been hired this run. */
+export function hasQol(s: GameState, id: QolId): boolean {
+  return STAFF.some((d) => d.qol?.id === id && (s.staff[d.id] ?? 0) > 0);
+}
+
+/** The staff role whose first hire brings a tool. */
+export function qolSource(id: QolId): StaffDef | undefined {
+  return STAFF.find((d) => d.qol?.id === id);
+}
+
+/** Bulk amounts the store and the Staff tab offer: 1 always, 10, 100 and Max once the staff who bring them are hired. */
+export function bulkAmounts(s: GameState): number[] {
+  const out = [1];
+  if (hasQol(s, 'buy10')) out.push(10);
+  if (hasQol(s, 'buy100')) out.push(100);
+  if (hasQol(s, 'buyMax')) out.push(-1);
+  return out;
+}
+
+/** The bulk amount to use: the saved choice if the org has it, otherwise one at a time. */
+export function bulkAmount(s: GameState, wanted: number = s.settings.buyAmount): number {
+  return bulkAmounts(s).includes(wanted) ? wanted : 1;
+}
+
 export function isStaffUnlocked(s: GameState, def: StaffDef): boolean {
   return (s.staff[def.id] ?? 0) > 0 || def.unlock(s);
 }
@@ -136,6 +161,21 @@ export function roomLevel(s: GameState): number {
     if (s.earnedRun >= room.threshold) level = i;
   });
   return level;
+}
+
+/**
+ * Announces a move into a bigger house, once per house per run. Orgs from before this rule start from
+ * the house they are in, so loading an old save never replays every move.
+ */
+export function checkHouseMove(s: GameState): void {
+  const level = roomLevel(s);
+  if (s.roomSeen === undefined || level < s.roomSeen) {
+    s.roomSeen = level;
+    return;
+  }
+  if (level <= s.roomSeen) return;
+  s.roomSeen = level;
+  emit({ type: 'house', level });
 }
 
 export function buyDecor(s: GameState, id: string): boolean {
