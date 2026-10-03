@@ -19,7 +19,8 @@
 
 ## Pending Changes
 
-### Fix the sound debounce that blocked the 0.2.0 deployment [Status: Pending]
+### Fix the sound debounce that blocked the 0.2.0 deployment [Status: Committed]
+*Commit*: `7f8a7bd` (Oct 3 2026)
 
 * **The Issue / Motivation**: PR #10 merged, but its GitHub Pages workflow failed in `tests/sound.test.ts`: the first quest jingle started zero audio nodes. `playSound` treated a sound with no playback history as though it had played at time zero, suppressing its first use during the debounce window. Fast CI workers exposed this while slower local runs passed.
 * **What Changed**:
