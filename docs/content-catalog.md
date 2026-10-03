@@ -10,7 +10,7 @@ Edit each list at its source so game text and values remain easy to audit.
 | Operations, upgrades, and gear | `src/data/operations.ts`, `src/data/upgrades.ts`, `src/data/gear.ts` | `src/engine/operations.ts`, `src/engine/upgrades.ts` |
 | Sponsors and goal values | `src/data/sponsors.ts` | `src/engine/sponsors.ts` |
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
-| Quests, the mechanics they teach, quest tools and tokens, operation-affinity values | `src/data/quests.ts` | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md` |
+| Quests, the mechanics they teach, quest tools and tokens, operation-affinity values | `src/data/quests.ts` | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md`; each quest's `art` names its emblem, drawn in `src/ui/questArt.ts` |
 | Legacy unlocks and automation | `src/data/legacy.ts`, `src/data/automation.ts` | `src/engine/automation.ts` |
 | Hype meter, drops, and buffs | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
 | Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |

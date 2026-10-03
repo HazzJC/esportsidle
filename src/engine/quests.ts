@@ -232,12 +232,12 @@ export function questPerkLabels(s: GameState): string[] {
 }
 
 /** Each perk and the quest that earned it, so the board can say where a perk came from. */
-export function questPerkSources(s: GameState): { label: string; quest: string; icon: string; claimedAt: number }[] {
-  const out: { label: string; quest: string; icon: string; claimedAt: number }[] = [];
+export function questPerkSources(s: GameState): { id: string; label: string; quest: string; icon: string; claimedAt: number }[] {
+  const out: { id: string; label: string; quest: string; icon: string; claimedAt: number }[] = [];
   for (const [id, choice] of Object.entries(s.quests.picks)) {
     const def = QUEST_MAP.get(id);
     const reward = def?.rewards[choice];
-    if (def && reward?.kind === 'perk') out.push({ label: reward.label, quest: def.title, icon: def.icon, claimedAt: s.quests.done[id] ?? 0 });
+    if (def && reward?.kind === 'perk') out.push({ id, label: reward.label, quest: def.title, icon: def.icon, claimedAt: s.quests.done[id] ?? 0 });
   }
   return out.sort((a, b) => a.claimedAt - b.claimedAt);
 }

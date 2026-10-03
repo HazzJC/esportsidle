@@ -19,8 +19,24 @@
 
 ## Pending Changes
 
-### Phase B of the implementation plan: strict offline, and a run that levels off once the ladder is climbed
+### HQ visual pass: the quest board and run perks become a skeuomorphic console
 *Status: Pending*
+
+* **The Issue / Motivation**: The HQ quest board was two flat cards side by side (the live quest, and a five-medallion "quest line" card that took as much room as the quest), with the run's perks as a loose wrap of pills underneath. The owner asked for the quests and perks to be narrower and more interesting to look at, like a physical display.
+* **What Changed** (UI and art: `src/ui/components/Quests.svelte`, new `src/ui/questArt.ts`, an `art` key on each quest in `src/data/quests.ts`; no balance or save change):
+  * The board is one brushed-metal console with corner screws and stamped lettering, at most 760px wide and centred, so it sits on wide screens like a piece of kit rather than stretching across the column.
+  * The quest line is a slot of 22 lamps, one per quest: gold when done, pulsing in the interface tone while live, dark still to come. Hovering a lamp names the quest, as the medallions did. A backlit LCD shows the count (08/22), and its tooltip carries the "follow it in order" hint that was a line of text.
+  * The live quest is on a recessed CRT with scanlines and a glare, glowing in the interface tone, with a 24-cell segmented meter in place of the thin bar. A finished quest fills the meter gold and blinks READY. The screen's footer names the next quest.
+  * Rewards are chunky hardware keys beside the screen (below it when the console is narrow). They sit unlit until the quest is done, then backlight gold and press down when clicked.
+  * Every quest has its own drawn emblem in the store's upgrade-art style (`QuestDef.art`, drawn in `ui/questArt.ts`): the Ranked Grinder worker for Grinder squad, a pro headset with an upgrade arrow for Gear up, patch notes, the Hype Drop badge, a tactics clipboard, two pennants for Branch out, a podium for Moving up, the gaming house, a merch bag, the league cup, a medal for the Invitational, a sold player card, the bracket swords, a skyline for Business empire, a bullseye for the sponsor goal, a star for Semi-pro and a crown for the big exit. Twelve of them are new drawings and the other ten reuse store and operation art; cash, the palette and the level chevrons are three more new drawings for reward keys. Later quests glow in rarer colours (uncommon → legendary), like trophies further up a shelf.
+  * The emblem replaces the flat line icon on the screen. The reward keys show drawn art too: notes and a coin for cash, the heart for fans, the cup for trophies, rank chevrons for levels, the crown for Legacy, a palette for cosmetics, a medal for titles, the tool's own picture for tools, the operation's worker for affinities, and the quest's own emblem for a perk, so the key matches the card the perk leaves.
+  * Run perks are ~~an annunciator panel: a grille of backlit amber tiles, one per perk~~ *(Changed 1 time since: a trophy shelf, before review)* a trophy shelf: a recessed tray of plaques, each with the quest's emblem lit in a niche in its colour, the perk in plain words and the quest that earned it underneath. The source quest is still on hover, and a perk claimed in the last few seconds flickers on. Phones show two plaques a row without the quest name.
+  * `questPerkSources` also returns the quest id. New `tests/questArt.test.ts`: every quest and reward has a picture, every quest's emblem is its own, and the markup is well formed and inert.
+  * The waiting state ("Next: X. It opens as your org grows.") shows on the screen in standby.
+  * Blinking and flicker stop under `prefers-reduced-motion`. At 1440px the board is about 275px tall with five perks and grows by one 50px row for every three more; at 390px it stacks screen, keys and perks.
+
+### Phase B of the implementation plan: strict offline, and a run that levels off once the ladder is climbed
+*Status: Committed* | `b9887c5` (Oct 3 2026)
 
 * **The Issue / Motivation**:
   * Offline was 100% efficient for up to 72 hours with the Legacy offline nodes. Once a run levels off, being away would be the best way to play. The owner chose strict offline: at most 40%, a short full-rate window, half rate to a hard 24 h cap.
@@ -56,7 +72,7 @@
   * 400 unit tests, the slow suite (18 pass, 4 expected failures) and `svelte-check` pass.
 
 ### Phase A of the implementation plan: measurement, quest data model, HQ clarity
-*Status: Pending*
+*Status: Committed* | `b9887c5` (Oct 3 2026)
 
 * **The Issue / Motivation**: `docs/implementation-plan.md` puts a measurement and groundwork phase before any further balance work. The price curve had no tests. Nothing measured whether a run is paced like Cookie Clicker (doubling time, the cost of the next purchase), and no simulated player stood for coming back rarely. The quest model could not express the run-1 tour (a mechanic per quest, tools, operation affinities, cosmetics). The HQ mixed units in one tile row, showed a raw 13-digit Legacy level, repeated dead text on every operation, gave icon-only tabs no name, and had three "what next" surfaces that could not be folded away.
 * **What Changed**:
@@ -143,7 +159,7 @@
   * **Still failing**: income still grows ×2e8 in the 3 h after the first Legacy point, and staying still beats selling (0.08×). Base operations income (Cookie Clicker's own building ladder) grows ×50–160 an hour until the last building is bought around hour 5–6.
 
 ### Design report: what to build after the first Legacy
-*Status: Pending* (first draft went in with `f328057`; later corrections are uncommitted)
+*Status: Committed* | `f328057` (Sep 30 2026), corrections `b9887c5` (Oct 3 2026)
 
 * **The Issue / Motivation**: Two AI-written idea lists and two Cookie Clicker deep dives proposed late-game features. Several of them fix problems the game already solves (multiplicative buff stacking, a rival org, Trophies as a non-cash currency), and none mention what `docs/economy.md` found: after the first Legacy point, staying in the run beats selling about ten times over, so nothing built for run 2 onwards would be seen.
 * **What Changed**:
@@ -420,7 +436,7 @@
     * The world-event decision card is a solid card at the bottom centre with an illustrated banner: the player's portrait, the rival's crest, or a drawn prop.
     * Hype Drops are bevelled hex badges with light rays.
     * Welcome Back shows the org's skyline at night.
-    * The HQ quest card shows the quest line as a road of medallions.
+    * ~~The HQ quest card shows the quest line as a road of medallions.~~ *(Changed 1 time since: a skeuomorphic quest console with a lamp rail, drawn quest emblems and a perk trophy shelf, pending)*
     * Trophies have lit and shaded metals on plinths, with a neon crystal for tier 12+, on wooden shelves.
     * Achievements are struck coins.
     * The Legacy tree has bevelled medallions, node names, cost pills and a night-sky backdrop, and opens centred on the root on phones.
