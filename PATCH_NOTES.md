@@ -20,7 +20,7 @@
 ## Pending Changes
 
 ### 0.2.0: a guided first run, staff tools, team rooms and match fixtures
-*Status: Pending*
+*Status: Committed* | `90b1586` (Oct 3 2026)
 
 * **The Issue / Motivation**: The owner played the first run and asked for it to guide the player more and to look and feel better. A new player hit the crowd going wild while saving for the first Streamer, before the quest that explains it; the tutorial and quests did not show where to click (nobody found that clicking a player opens their gear); tabs and buttons appeared before they were explained (the Transfer market button showed before the market opened, Buy/Sell/10/100/Max and Buy all were there from the first second); quests did not line up with the systems they teach (the sponsor quest could arrive long after Sponsors opened, Staff waited for a third team); the first sponsorship was a random offer with no explanation; and the team cards were a plain stage with no sense of the game being played. Smaller asks: swap the hype and upgrade quests, collapse run perks into icons and drop the CRT look, move "Next steps" to a staff role, fold the HQ income splits away, more house upgrades with a clear moment when the next house opens, players with their hands on the keys and their composure item on the desk, a misaligned Stats card.
 * **What Changed**:
