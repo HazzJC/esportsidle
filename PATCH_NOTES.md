@@ -19,6 +19,16 @@
 
 ## Pending Changes
 
+### README refresh and the v0.2.0 GitHub release [Status: Committed]
+*Commit*: `ce4694f` (Oct 3 2026)
+
+* **The Issue / Motivation**: The README still described 0.1.0: nothing about the guided first run, Staff tools, team rooms, match fixtures or the House, and its Legacy Tree count (37 nodes) was stale. The hero screenshot cut off the tab bar. 0.2.0 also had no GitHub release.
+* **What Changed**:
+  * `docs/screenshot.png` is a fresh capture of the Teams page (squad at their desks, victory card, full tab bar) from a throwaway headless Chrome profile, so no real save was involved.
+  * `README.md` gains a "A Guided First Run" section and bullets for team rooms and fixtures, lineup and bench management, Staff tools, the House, the starter sponsorship choice and invitationals. The Legacy Tree is ~~37~~ 45 nodes, matching `LEGACY_NODES`.
+  * The `v0.2.0` tag and GitHub release are created from `main` after this merges, with notes drawn from `CHANGELOG.md`.
+  * No game, economy or save changes.
+
 ### Fix the sound debounce that blocked the 0.2.0 deployment [Status: Committed]
 *Commit*: `7f8a7bd` (Oct 3 2026)
 
