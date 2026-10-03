@@ -19,7 +19,8 @@
 
 ## Pending Changes
 
-### README refresh and the v0.2.0 GitHub release [Status: Pending]
+### README refresh and the v0.2.0 GitHub release [Status: Committed]
+*Commit*: `ce4694f` (Oct 3 2026)
 
 * **The Issue / Motivation**: The README still described 0.1.0: nothing about the guided first run, Staff tools, team rooms, match fixtures or the House, and its Legacy Tree count (37 nodes) was stale. The hero screenshot cut off the tab bar. 0.2.0 also had no GitHub release.
 * **What Changed**:
