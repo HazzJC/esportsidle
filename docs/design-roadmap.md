@@ -66,7 +66,7 @@ From `docs/economy.md` (baseline 29 Sep 2026):
 
 ### 1.3 The Legacy tree is almost all percentages
 
-Of 54 tree entries in `src/data/legacy.ts`, the large majority are `+N% income`, start bonuses or automation unlocks. The qualitative ones are few: Franchise Player, Hall of Fame Coaches, Targeted Scouting, Trait Headhunting, Global Brand Portfolio and the five challenge runs. Every node is eventually bought (`treeComplete` exists), so the tree is a checklist, not a build. Dynasty ranks are four linear, uncapped boosts.
+Of the 45 nodes in `src/data/legacy.ts` (the README still says 37), most are `+N% income`, start bonuses or automation unlocks. The qualitative ones are few: Franchise Player, Hall of Fame Coaches, Targeted Scouting, Trait Headhunting, Global Brand Portfolio and the five challenge runs. Every node is eventually bought (`treeComplete` exists), so the tree is a checklist, not a build. Dynasty ranks are four linear, uncapped boosts.
 
 The design writing is consistent about this: *"An upgrade that just increases a number by 10% is not meaningful"*, and phase transitions are what keep people (see section 2). Cookie Clicker's own prestige level is just +1% each; its real pull is what the heavenly tree **unlocks** (permanent upgrade slots, dragon auras, offline gains, golden-cookie tuning).
 
@@ -89,7 +89,7 @@ The design writing is consistent about this: *"An upgrade that just increases a 
 - **"Idle" games that need a check-in every 5–15 minutes.** This is the attention tax. Cookie Clicker's Golden Cookies are the textbook case: optional in theory, mandatory in practice.
 - **Dead mid-game and late-game grinds.** Antimatter Dimensions' creator admits some late mechanics felt tedious until sped up. Cookie Clicker players say that after every ascension upgrade is bought, it is "rather slow".
 - **Opaque late game.** After a point AD "stops explaining itself with the confidence it showed in the first hour", and you end up on external guides or scripts. Cookie Clicker needs planners and auto-combo tools (FrozenCookies, seed planners) to play the top tier.
-- **Real-time locks that feel like a leash.** Sugar lumps ripen about once a day (20 h mature + 3 h ripe + 1 h to fall) and cannot be rushed. It gives long-term retention; it also makes progress feel gated behind the calendar, and leveling everything takes years.
+- **Real-time locks that feel like a leash.** Sugar lumps ripen about once a day (20 h mature + 3 h ripe + 1 h to fall) and cannot be rushed. It gives long-term retention; it also makes progress feel gated behind the calendar, and players describe maxing everything as taking years.
 
 ### 2.3 What Cookie Clicker does well, and why
 
@@ -131,7 +131,7 @@ This is not a feature, but it gates the roadmap. Your own `docs/economy.md` alre
 3. **Cap Dynasty Pedigree and Talent Agents**, and taper the matches' income-share term so matches don't hit 98%.
 4. **Give operations a late role**, which is also the honest version of the lists' "Grassroots Unshackling" (early operations scale off late tiers or fame).
 5. **Price gear from team income** so gear is a choice, not free-or-hopeless.
-6. **Fix the `sell_org` quest bug** (quest board wiped before `orgsSold` increments).
+6. ~~**Fix the `sell_org` quest bug**~~ Done in `f328057`. Also in flight as I write: `scripts/sim/targets.ts` has uncommitted "level off" targets (`MAX_GROWTH_AFTER_FIRST_LEGACY`, `MAX_SEMI_MATCH_SHARE`), so items 2 and 3 already have acceptance tests coming.
 
 Once 1 and 2 hold, the restart check in `scripts/sim/targets.ts` (sell ÷ stay ≥ 1.5×) becomes the acceptance test for the features below. Until then, treat each feature as unbalanced by definition.
 
@@ -184,9 +184,9 @@ Each entry: what it is, why the comparison game does it, the good, the friction,
 #### A2. Lineage: legends become schools, rookies get apprentices
 
 - **What.** When you retire a player to the Hall of Fame Coaches node, they found a **school** (for example "Hyper-Carry", "Macro Hivemind", "Scrim Grinders") defined by their top stats and traits. Future signings can be assigned as apprentices: they learn a trait, tilt stat growth, and inherit a signature perk. Over several sales you have 2nd and 3rd generation players, a tree of who trained whom, and a named philosophy you can see on the roster screen.
-- **Why others do it.** Realm Grinder's bloodlines and Kittens Game's kitten leaders give continuity across resets. Prestige games mostly reduce a run to a number; games that keep *a character* are the ones players talk about. No other idle game has a procedural, named cast to build on.
+- **Why others do it.** Idle prestige mostly reduces a run to a number, so carrying a *character* across a reset is rare (I did not find a good example of it in the genre, which is itself a signal). The closest comparison is the way roguelikes keep a hall of past runs. You already have the raw material: a procedural, named cast and a Hall of Fame.
 - **Good.** It is your best differentiator. It replaces the flat "+5% rating, +2% fans" with something the player sees. It gives the Legacy tree a human dimension. The `Legend` record already holds `look`, `rating`, `gameId` and `run`.
-- **Friction.** The hard part is *legibility*: a lineage UI can overwhelm. Risk of power creep, since each generation is better than the last. Test interactions with traits (`src/data/traits.ts`: 30+ traits) and save migration.
+- **Friction.** The hard part is *legibility*: a lineage UI can overwhelm. Risk of power creep, since each generation is better than the last. Test interactions with traits (`src/data/traits.ts`: about 30 traits) and save migration.
 - **How.**
   - Extend `Legend` with `school` (derived from top stats + traits), `apprentices: string[]` and `generation`. Add a migration in `save.ts`.
   - Add an `apprentice` assignment to a signed rookie: one trait inherited (weighted by the school), XP curve from the mentor's stats, bounded by a rating cap so power is **transferred, not compounded**.
@@ -198,7 +198,7 @@ Each entry: what it is, why the comparison game does it, the good, the friction,
 #### A3. Nemesis: a rival that persists and escalates
 
 - **What.** Promote the existing rival into a cross-run **Nemesis**. It survives the sale (name kept, head-to-head record kept, a short history); it hires away a star from your old roster; its strength scales with *your* best tier, not with the run; beating it is a named trophy; losing to it costs fans and sponsor appeal. After several sales it becomes the game's storyline.
-- **Why others do it.** Persistent antagonists are the heart of games like Shadow of Mordor's Nemesis system, which inspired this. Idle games rarely try it, and the ones that do (Egg Inc. "contracts") use it for events rather than narrative.
+- **Why others do it.** A persistent antagonist that remembers you is a proven hook outside the genre (the best-known example is Shadow of Mordor's Nemesis system). I found no idle game doing it, so this is unproven here; the risk is tone and rubber-banding, not technology.
 - **Good.** 60% built already (heat, streaks, grudge matches, `rivalHistory`). Gives each reset an emotional reason: "I'm selling to beat Apex Void." Cheap compared to its narrative payoff.
 - **Friction.** Rubber-banding risk: a rival that scales with you feels unfair; one that doesn't feels toothless. Tone: losses must sting but never soft-lock. Watch for double-dipping with grudge match prize multipliers (×1.5 prize, ×2 fans already).
 - **How.**
@@ -228,7 +228,7 @@ This combines the best of the pasted lists' "Championship All-In", "Shotcaller D
 This is the pasted lists' "Purists vs Content Empire", "Advisory Board", and "Stances" done once, in the place your game already keeps identity.
 
 - **What.** Replace part of the Legacy tree with **mutually exclusive branches** you commit to for a run (or a few runs): *Purist* (prize money, loyalty, low drama, coaching), *Content Empire* (merch and sponsors, viral drops, morale volatility), *Dealmaker* (market, transfers, sponsors), and so on. Each branch has three or four nodes that **change a rule**, not a number: "Sponsors of category X are refused, and drop drama is capped at level 1," "Every drama drop converts into a press event." You can switch branches only on a sale, so the choice is part of the sale.
-- **Why others do it.** Realm Grinder's factions and Cookie Clicker's Pantheon slots are the examples: a small number of meaningful, exclusive choices per run, with visible trade-offs. Antimatter Dimensions credits "variance between player experiences" for its appeal.
+- **Why others do it.** Cookie Clicker's Pantheon slots and Realm Grinder's factions (the latter from general familiarity, not a source I checked) offer a few exclusive choices with visible trade-offs. Antimatter Dimensions' creator credits "variance between player experiences" for why its Reality layer worked.
 - **Good.** It gives the Legacy currency a **destination** (a build) rather than a checklist. It makes different runs feel different, which is the thing post-legacy lacks. It fits your existing vocabulary (Mandates already offer trade-offs per run).
 - **Friction.** Design effort: each branch needs its own payoffs, UI and sim behaviour. Risk of a dominant branch (your sim will catch it). The pasted Culture idea assigns "×10 merch income", which is exactly the wrong size of reward; keep it in single-digit percentages or qualitative.
 - **How.**
@@ -254,8 +254,8 @@ This is the pasted lists' "Purists vs Content Empire", "Advisory Board", and "St
 
 | Feature | The idea | Cookie Clicker / genre parallel | Good / friction | Verdict |
 | --- | --- | --- | --- | --- |
-| **B1. Grand Slam** | Win Tier-1 titles in three genres in one cycle for a trophy and a **temporary** cross-team boost | Achievement-style capstones; Antimatter Dimensions' "challenge" cascades | Strong capstone; gives 12 parallel games a reason to interact. Needs a "cycle" definition and a late economy worth boosting. Keep it temporary, as in your own draft. | **Later**, after A1–A5 |
-| **B2. Ghost Roster scrims** | Past rosters kept as sim opponents; beat them for a "passing the torch" perk | Nothing in the genre; unique | Wonderful use of Hall of Fame data. Needs the match engine to accept an archived roster and a snapshot of team ratings. | **Later**, needs A2/A3 |
+| **B1. Grand Slam** | Win Tier-1 titles in three genres in one cycle for a trophy and a **temporary** cross-team boost | Achievement-style capstones | Strong capstone; gives 12 parallel games a reason to interact. Needs a "cycle" definition and a late economy worth boosting. Keep it temporary, as in your own draft. | **Later**, after A1–A5 |
+| **B2. Ghost Roster scrims** | Past rosters kept as sim opponents; beat them for a "passing the torch" perk | I found nothing like it in the genre | Wonderful use of Hall of Fame data. Needs the match engine to accept an archived roster and a snapshot of team ratings. | **Later**, needs A2/A3 |
 | **B3. Transfer windows / buyout offers** | Periodic offers to sell your star for cash or points | Stock Market as a timing decision; `poaching` already exists | Real dilemma, cheap to build as a world event with a choice. Loses value if cash is meaningless late. | **Later**, extend `worldEvents.ts` |
 | **B4. Press conferences** | Choose a stance after big events | Cookie Clicker news ticker is flavour only | Charming and cheap; reuse the choice-panel UI. Payoffs must be small. | **Later**, flavour |
 | **B5. Competitive Calendar** | Four seasonal metas that change what's best to buy | Cookie Clicker seasons (Christmas, Halloween) | Good idea: a run that changes mood. Only worth it once the run levels off (step 0) and the rules per season are readable. | **Later** |

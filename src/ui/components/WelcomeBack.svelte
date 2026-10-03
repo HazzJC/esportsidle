@@ -1,5 +1,6 @@
 <script lang="ts">
   import { OPERATIONS } from '../../data/operations';
+  import { OFFLINE_HARD_CAP_HOURS, OFFLINE_TAPER } from '../../engine/economy';
   import { fmt, fmtTime, money } from '../../engine/format';
   import { game } from '../game.svelte';
   import { opSpriteSvg } from '../opsArt';
@@ -17,7 +18,9 @@
       .slice(-5)
       .map((op) => opSpriteSvg(op.id, opColor(op.index))),
   );
-  const capped = $derived(!!report && report.countedSeconds < report.awaySeconds);
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const tapered = $derived(!!report && report.taperSeconds > 0);
+  const pastCap = $derived(!!report && report.awaySeconds > OFFLINE_HARD_CAP_HOURS * 3600);
 </script>
 
 {#if report}
@@ -47,8 +50,12 @@
       </div>
     </div>
     <p class="muted small">
-      {s.org.name} kept running at {Math.round(report.rate * 100)}% while you were gone{#if capped}, for the first {fmtTime(report.countedSeconds)} (the offline limit){/if}.
+      {s.org.name} kept running at <b>{pct(report.rate)}</b> of its income for the first {fmtTime(Math.min(report.awaySeconds, report.windowSeconds))}{#if tapered}, then at {pct(report.rate * OFFLINE_TAPER)}{#if pastCap}{' '}until {OFFLINE_HARD_CAP_HOURS} hours, and nothing after that{/if}{/if}.
+      Operations, teams and merch keep earning; crowds, Hype Drops, sponsor goals and Invitationals wait for you.
     </p>
+    {#if report.openEstimate > report.earned * 1.05}
+      <p class="muted small">With the game open, the same time would have made about {money(report.openEstimate)}.</p>
+    {/if}
     {#snippet footer()}
       <button class="btn primary" onclick={close}>Back to work</button>
     {/snippet}

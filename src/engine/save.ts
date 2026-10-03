@@ -76,7 +76,30 @@ const MIGRATIONS: Record<number, (raw: Json) => void> = {
       for (const e of p.hallOfFame) if (isPlainObject(e) && typeof e.legacyGained === 'number') e.legacyGained = Math.round(e.legacyGained / LEGACY_RESCALE_V7);
     }
   },
+  // v8 made offline strict (rate at most 40%, a 6-12 h full-rate window, half rate to 24 h). The three
+  // offline nodes do less than they did, so their owners get the points back and keep the nodes.
+  7: (raw) => {
+    const p = raw.prestige;
+    if (!isPlainObject(p) || !isPlainObject(p.nodes)) return;
+    let refund = 0;
+    for (const [id, cost] of Object.entries(OFFLINE_REFUND_V8)) if (p.nodes[id] !== undefined) refund += cost;
+    if (refund === 0) return;
+    p.points = (typeof p.points === 'number' ? p.points : 0) + refund;
+    const events = raw.events;
+    if (isPlainObject(events) && Array.isArray(events.log)) {
+      events.log.unshift({
+        time: typeof raw.time === 'number' ? raw.time : 0,
+        title: 'Legacy refreshed',
+        body: `Offline progress is now capped at 40% of income. Your offline nodes stay, and their ${refund} legacy points are back to spend.`,
+        icon: 'clock',
+        tone: 'gold',
+      });
+    }
+  },
 };
+
+/** What the offline nodes cost when v8 shrank them, refunded in full (frozen: later price changes don't apply). */
+export const OFFLINE_REFUND_V8: Record<string, number> = { offline_1: 4, offline_2: 40, offline_3: 400 };
 
 /** How much v7 shrank Legacy levels and points: the cube root of the divisor's millionfold rise. */
 export const LEGACY_RESCALE_V7 = 100;

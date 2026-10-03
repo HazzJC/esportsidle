@@ -5,7 +5,7 @@ import { CHALLENGES, DYNASTY, LEGACY_NODES } from '../src/data/legacy';
 import { OPERATIONS } from '../src/data/operations';
 import { STAFF } from '../src/data/staff';
 import { UPGRADES } from '../src/data/upgrades';
-import { computeMods, computeRates, emptyMods, applyEffect } from '../src/engine/economy';
+import { MAX_OFFLINE_RATE, MAX_OFFLINE_WINDOW_HOURS, computeMods, computeRates, emptyMods, applyEffect } from '../src/engine/economy';
 import { marketSize } from '../src/engine/market';
 import { LEGACY_DIVISOR, buyNode, sellOrg } from '../src/engine/prestige';
 import { maxSponsorTier } from '../src/engine/sponsors';
@@ -154,10 +154,10 @@ describe('effects reach the game, not just the modifier set', () => {
     expect(mods.sponsorSlots).toBe(2 + 1 + 1 + 1);
   });
 
-  it('reaches, but never exceeds, the offline caps the cards advertise', () => {
+  it('reaches, but never exceeds, the strict offline ceilings', () => {
     const mods = computeMods(everythingOwned());
-    expect(mods.offlineRate).toBeCloseTo(1, 9);
-    expect(mods.offlineCapHours).toBe(12 + 12 + 48);
+    expect(mods.offlineRate).toBeCloseTo(MAX_OFFLINE_RATE, 9);
+    expect(mods.offlineWindowHours).toBe(MAX_OFFLINE_WINDOW_HOURS);
   });
 
   it('can unlock every Superfan upgrade: enough non-shadow achievements exist', () => {

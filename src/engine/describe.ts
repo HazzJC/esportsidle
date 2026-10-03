@@ -28,6 +28,8 @@ export function describeEffect(e: Effect): string {
       }
       return `${opName(e.op)} gain +${pct(e.pct)} production per ${opName(e.source, false)}.`;
     }
+    case 'opFirstUnits':
+      return `Your first ${e.units} ${opName(e.op)} cost ${pct(1 - e.mult)} less.`;
     case 'grindDouble':
       return 'Ranked Grinders and clicking are twice as efficient.';
     case 'grindAdd':
@@ -57,9 +59,9 @@ export function describeEffect(e: Effect): string {
     case 'upgradeCostMult':
       return `Upgrades are ${pct(1 - e.mult)} cheaper.`;
     case 'offlineRate':
-      return `Earn +${pct(e.add)} more while offline.`;
-    case 'offlineCap':
-      return `Offline earnings accumulate for ${e.hours} more hours.`;
+      return `The offline rate rises by ${pct(e.add)} of your income.`;
+    case 'offlineWindow':
+      return `Offline earnings stay at the full offline rate for ${e.hours} more hours.`;
     case 'prizeMult':
       return `Match prize money ×${fmt(e.mult, 2)}.`;
     case 'benchSlots':

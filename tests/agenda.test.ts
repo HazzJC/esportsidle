@@ -39,7 +39,7 @@ describe('HQ agenda', () => {
   it('offers to found the next team as soon as it is affordable', () => {
     const s = foundedGame(0, 4);
     s.cash = getGame('rocket').unlockCost;
-    const growth = agenda(s).growth;
+    const growth = agenda(s).growth!;
     expect(growth.title).toContain('Rocket Soccar');
     expect(growth.action?.target).toEqual({ kind: 'unlockGame', gameId: 'rocket' });
   });
@@ -82,6 +82,31 @@ describe('HQ agenda', () => {
     const opp = agenda(s).opportunity!;
     expect(opp.title).toMatch(/Sell the org/);
     expect(opp.action?.target).toEqual({ kind: 'tab', tab: 'legacy' });
+    // A sale ready is urgent: the Next steps card opens itself for it.
+    expect(opp.urgent).toBe(true);
+  });
+
+  it('leaves out a goal or opportunity the active quest already asks for', () => {
+    const s = foundedGame(0, 4);
+    s.cash = getGame('rocket').unlockCost;
+    expect(agenda(s).growth?.title).toContain('Rocket Soccar');
+    // "Branch out" asks for a second team, so the agenda moves on to the next goal.
+    s.quests.active = [{ id: 'second_team', base: 0, ready: false }];
+    expect(agenda(s).growth?.title ?? '').not.toContain('Rocket Soccar');
+
+    const t = fullRocket();
+    t.earnedTotal = LEGACY_DIVISOR;
+    finishLadder(t);
+    t.quests.active = [{ id: 'sell_org', base: 0, ready: false }];
+    expect(agenda(t).opportunity?.title ?? '').not.toMatch(/Sell the org/);
+  });
+
+  it('marks a starter who cannot play, with nobody to cover, as urgent', () => {
+    const s = fullRocket();
+    s.players.r0.status = { kind: 'injured', until: 1e9, reason: 'Injured' };
+    const concern = agenda(s).concern!;
+    expect(concern.title).toMatch(/is out/);
+    expect(concern.urgent).toBe(true);
   });
 
   it('points out an affordable player who would lift a team', () => {

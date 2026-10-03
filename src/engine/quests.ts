@@ -1,4 +1,5 @@
-import { QUESTS, QUEST_MAP, type QuestDef, type QuestReward } from '../data/quests';
+import { OP_MAP } from '../data/operations';
+import { AFFINITY_DISCOUNT, AFFINITY_MULT, AFFINITY_UNITS, QUESTS, QUEST_MAP, QUEST_TOOLS, type QuestDef, type QuestReward, type QuestToolId } from '../data/quests';
 import { emit } from './bus';
 import { addTrophy, bestTrophyTier, trophyHomeGame } from './stories';
 import { fmt, fmtTime, money } from './format';
@@ -64,7 +65,21 @@ export interface RewardContext {
   /** Income per second without temporary buffs. */
   cps: number;
   fansPerSec: number;
+  /** The org, for rewards that depend on it (an operation affinity pays differently once one is owned). */
+  state?: GameState;
 }
+
+/** How an operation affinity would pay right now: a multiplier once the org owns one, else a discount. */
+export function affinityBranch(s: GameState | undefined, op: string): 'mult' | 'discount' {
+  return (s?.ops[op]?.owned ?? 0) > 0 ? 'mult' : 'discount';
+}
+
+/** The effect an operation affinity paid as `branch`. */
+export function affinityEffect(op: string, branch: 'mult' | 'discount'): Effect {
+  return branch === 'mult' ? { kind: 'opMult', op, mult: AFFINITY_MULT } : { kind: 'opFirstUnits', op, units: AFFINITY_UNITS, mult: AFFINITY_DISCOUNT };
+}
+
+const opPlural = (op: string) => OP_MAP.get(op)?.plural ?? op;
 
 const cashAmount = (r: Extract<QuestReward, { kind: 'cash' }>, ctx: RewardContext) => Math.max(r.min, ctx.cps * r.seconds);
 const fanAmount = (r: Extract<QuestReward, { kind: 'fans' }>, ctx: RewardContext) => Math.max(r.min, ctx.fansPerSec * r.seconds);
@@ -84,6 +99,18 @@ export function describeReward(r: QuestReward, ctx: RewardContext): string {
       return `${r.amount} legacy points`;
     case 'perk':
       return r.label;
+    case 'tool': {
+      const n = r.amount ?? 1;
+      return n > 1 ? `${QUEST_TOOLS[r.id].label} ×${n}` : QUEST_TOOLS[r.id].label;
+    }
+    case 'opAffinity':
+      return affinityBranch(ctx.state, r.op) === 'mult'
+        ? `${opPlural(r.op)} earn ×${AFFINITY_MULT}`
+        : `First ${AFFINITY_UNITS} ${opPlural(r.op)} ${Math.round((1 - AFFINITY_DISCOUNT) * 100)}% off`;
+    case 'cosmetic':
+      return r.label;
+    case 'title':
+      return `Title: “${r.label}”`;
   }
 }
 
@@ -104,10 +131,18 @@ export function rewardDetail(r: QuestReward, ctx: RewardContext): string {
       return 'Spend in the Legacy tree';
     case 'perk':
       return 'Lasts for the rest of this run';
+    case 'tool':
+      return QUEST_TOOLS[r.id].consumable ? 'Used up when you spend it' : 'Yours for the rest of this run';
+    case 'opAffinity':
+      return affinityBranch(ctx.state, r.op) === 'mult' ? 'The operation most like this, for the rest of this run' : 'Until you own a few: a head start on the operation most like this';
+    case 'cosmetic':
+      return 'A look for your org, kept after you sell';
+    case 'title':
+      return 'Shown on your org, kept after you sell';
   }
 }
 
-function applyReward(s: GameState, r: QuestReward, ctx: RewardContext, rng: Rng): void {
+function applyReward(s: GameState, r: QuestReward, ctx: RewardContext, rng: Rng, questId: string): void {
   switch (r.kind) {
     case 'cash':
       earnCash(s, cashAmount(r, ctx), 'quest');
@@ -130,7 +165,33 @@ function applyReward(s: GameState, r: QuestReward, ctx: RewardContext, rng: Rng)
     case 'perk':
       // Perks are read from the recorded pick in questPerkEffects, so nothing to do here.
       break;
+    case 'tool': {
+      const n = QUEST_TOOLS[r.id].consumable ? (s.quests.tools[r.id] ?? 0) + (r.amount ?? 1) : 1;
+      s.quests.tools[r.id] = n;
+      break;
+    }
+    case 'opAffinity':
+      // Settled once, when claimed, so the reward cannot change under the player afterwards.
+      s.quests.affinity[questId] = affinityBranch(s, r.op);
+      break;
+    case 'cosmetic':
+    case 'title':
+      s.quests.collection[`${r.kind}:${r.id}`] ??= s.time;
+      break;
   }
+}
+
+/** Whether the org holds a quest tool or at least one of a quest token. */
+export function hasTool(s: GameState, id: QuestToolId): boolean {
+  return (s.quests.tools[id] ?? 0) > 0;
+}
+
+/** Spends one of a quest token. Returns false when there is none (tools that are kept are never spent). */
+export function useToken(s: GameState, id: QuestToolId): boolean {
+  if (!QUEST_TOOLS[id].consumable || !hasTool(s, id)) return false;
+  s.quests.tools[id]--;
+  if (s.quests.tools[id] <= 0) delete s.quests.tools[id];
+  return true;
 }
 
 /** Pays one of a finished quest's rewards and brings in the next quest. */
@@ -140,7 +201,8 @@ export function claimQuest(s: GameState, id: string, choice: number, ctx: Reward
   if (index < 0 || !def || !questProgress(s, s.quests.active[index]).complete) return false;
   const reward = def.rewards[choice];
   if (!reward) return false;
-  applyReward(s, reward, ctx, rng);
+  applyReward(s, reward, { ...ctx, state: s }, rng, id);
+  for (const extra of def.bonus ?? []) applyReward(s, extra, { ...ctx, state: s }, rng, id);
   s.quests.active.splice(index, 1);
   s.quests.done[id] = s.time;
   s.quests.picks[id] = choice;
@@ -149,12 +211,17 @@ export function claimQuest(s: GameState, id: string, choice: number, ctx: Reward
   return true;
 }
 
-/** Effects from every perk the org has chosen this run. */
+/** Effects from every perk the org has chosen this run, and the operation affinities it was paid. */
 export function questPerkEffects(s: GameState): Effect[] {
   const out: Effect[] = [];
   for (const [id, choice] of Object.entries(s.quests.picks)) {
-    const reward = QUEST_MAP.get(id)?.rewards[choice];
+    const def = QUEST_MAP.get(id);
+    const reward = def?.rewards[choice];
     if (reward?.kind === 'perk') out.push(...reward.effects);
+    for (const r of [reward, ...(def?.bonus ?? [])]) {
+      const branch = s.quests.affinity[id];
+      if (r?.kind === 'opAffinity' && branch) out.push(affinityEffect(r.op, branch));
+    }
   }
   return out;
 }
@@ -195,7 +262,8 @@ export function completeQuestOnSale(s: GameState, choice: number, rng: Rng): boo
   const def = QUEST_MAP.get(SELL_QUEST_ID);
   if (!def || !saleCompletesQuest(s)) return false;
   const reward = def.rewards[choice] ?? def.rewards[0];
-  applyReward(s, reward, { cps: 0, fansPerSec: 0 }, rng);
+  applyReward(s, reward, { cps: 0, fansPerSec: 0, state: s }, rng, SELL_QUEST_ID);
+  for (const extra of def.bonus ?? []) applyReward(s, extra, { cps: 0, fansPerSec: 0, state: s }, rng, SELL_QUEST_ID);
   s.quests.done[SELL_QUEST_ID] = s.time;
   s.quests.picks[SELL_QUEST_ID] = def.rewards.indexOf(reward);
   s.quests.claimed++;

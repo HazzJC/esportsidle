@@ -10,6 +10,7 @@ Edit each list at its source so game text and values remain easy to audit.
 | Operations, upgrades, and gear | `src/data/operations.ts`, `src/data/upgrades.ts`, `src/data/gear.ts` | `src/engine/operations.ts`, `src/engine/upgrades.ts` |
 | Sponsors and goal values | `src/data/sponsors.ts` | `src/engine/sponsors.ts` |
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
+| Quests, the mechanics they teach, quest tools and tokens, operation-affinity values | `src/data/quests.ts` | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md` |
 | Legacy unlocks and automation | `src/data/legacy.ts`, `src/data/automation.ts` | `src/engine/automation.ts` |
 | Hype meter, drops, and buffs | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
 | Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |
@@ -21,9 +22,11 @@ Use the `when` condition on a ticker line to match the org's current scale. Time
 | What | Where |
 | --- | --- |
 | Balance targets (first Legacy time, income-share caps, restart pressure) | `scripts/sim/targets.ts` |
-| Simulated players (active, semi, casual, idle, optimal) | `scripts/sim/personas.ts` |
-| Parallel simulation matrix and report (`npm run sim`, `npm run sim:quick`) | `scripts/sim/matrix.ts`, `scripts/sim/report.ts` |
+| Simulated players (active, semi, casual, idle, optimal, hermit) | `scripts/sim/personas.ts` |
+| Parallel simulation matrix and report (`npm run sim`, `npm run sim:quick`, `--preset=tune` for pace work) | `scripts/sim/matrix.ts`, `scripts/sim/report.ts` |
 | Payback of every purchase at points in a real run | `scripts/sim/paybacks.ts` |
+| Price-curve checks A–F (doubling time, payback sawtooth, cost coupling, seconds to afford, Legacy term) | `scripts/sim/price-curve.ts` |
+| Offline against presence (hermit personas, days 3 and 7) | `npm run sim -- --preset=offline --days=7` |
 | Late-game checks on a veteran save (`npm run test:slow`) | `scripts/lategame-*.ts`, `tests/slow/` |
 | What the numbers currently say | `docs/economy.md` |
 

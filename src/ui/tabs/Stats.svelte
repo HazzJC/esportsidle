@@ -3,7 +3,7 @@
   import { OPERATIONS } from '../../data/operations';
   import { UPGRADES, UPGRADE_MAP } from '../../data/upgrades';
   import { describeEffect } from '../../engine/describe';
-  import { cabinetCount } from '../../engine/economy';
+  import { FAME_CAP_FANS, OFFLINE_HARD_CAP_HOURS, OFFLINE_TAPER, cabinetCount } from '../../engine/economy';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { totalOperationsOwned } from '../../engine/operations';
   import { INCOME_SOURCES, type IncomeSource } from '../../engine/types';
@@ -124,11 +124,11 @@
       rows: [
         ['Base production', `${money(r.baseCps, 1)}/s`],
         ['Upgrades', `×${fmt(m.globalMult, 2)}`],
-        ['Fame (fans)', `×${r.fameMult.toFixed(3)} (power ${m.fameExp.toFixed(3)})`],
+        ['Fame (fans)', `×${r.fameMult.toFixed(3)} (power ${m.fameExp.toFixed(3)}${s.fans >= FAME_CAP_FANS ? ', topped out' : ''})`],
         ['Superfans', `×${r.superfanMult.toFixed(3)}`],
         ['Trophy Cabinet', `${fmtPct(r.cabinet)} (${cabinetCount(s)} achievements)`],
         ['Active buffs', `×${fmt(r.buffIncomeMult, 2)}`],
-        ['Offline', `${fmtPct(m.offlineRate)} for up to ${m.offlineCapHours}h`],
+        ['Offline', `${fmtPct(m.offlineRate)} for ${m.offlineWindowHours}h, then ${fmtPct(m.offlineRate * OFFLINE_TAPER)} up to ${OFFLINE_HARD_CAP_HOURS}h`],
       ],
     },
   ]);

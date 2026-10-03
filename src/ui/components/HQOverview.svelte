@@ -35,6 +35,9 @@
     return parts.map((p) => ({ ...p, share: p.value / total }));
   });
 
+  /** What sponsors add, in the same unit as the other tiles: their share of the income above. */
+  const sponsorCps = $derived(m.sponsorIncomePct > 0 ? (r.totalCps * m.sponsorIncomePct) / (1 + m.sponsorIncomePct) : 0);
+
   const teams = $derived(Object.values(r.teams).filter((t) => t.active));
   const avgWin = $derived(teams.length ? teams.reduce((n, t) => n + t.winChance, 0) / teams.length : 0);
   const gamesOpen = $derived(GAMES.filter((g) => s.games[g.id]?.unlocked).length);
@@ -53,7 +56,7 @@
     <span class="logo"><OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={58} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
     <div class="who">
       <b class="name">{s.org.name}</b>
-      <span class="sub">{room.name} · Run {s.prestige.runs + 1}{#if s.prestige.level > 0} · Legacy {s.prestige.level}{/if}</span>
+      <span class="sub">{room.name} · Run {s.prestige.runs + 1}{#if s.prestige.level > 0}{' · Legacy ' + fmt(s.prestige.level)}{/if}</span>
     </div>
     <div class="income" use:tooltip={() => ({ title: 'Income per second', icon: 'trending-up', lines: [`Operations, matches and merch together.`, ...(m.sponsorIncomePct > 0 ? [{ text: `Sponsors add ${fmtPct(m.sponsorIncomePct, false, 1)} to all of it.`, tone: 'good' as const }] : [])] })}>
       <span class="big num">{money(r.totalCps, 1)}<small>/s</small></span>
@@ -111,8 +114,13 @@
       <span class="ticon"><Icon name="handshake" size={18} /></span>
       <span class="tbody">
         <span class="tlabel">Sponsors</span>
-        <b class="num">{m.sponsorIncomePct > 0 ? `+${fmtPct(m.sponsorIncomePct, false, 0)}` : '—'}</b>
-        <span class="tsub" class:warn={s.sponsors.active.length < m.sponsorSlots && sectionOpen(s, 'sponsors')}>{s.sponsors.active.length}/{m.sponsorSlots} slots signed</span>
+        {#if sponsorCps > 0}
+          <b class="num">+{money(sponsorCps, 1)}/s</b>
+          <span class="tsub" class:warn={s.sponsors.active.length < m.sponsorSlots && sectionOpen(s, 'sponsors')}>+{fmtPct(m.sponsorIncomePct, false, 0)} on all income · {s.sponsors.active.length}/{m.sponsorSlots} signed</span>
+        {:else}
+          <b class="dim">No deals yet</b>
+          <span class="tsub" class:warn={sectionOpen(s, 'sponsors')}>{s.sponsors.active.length}/{m.sponsorSlots} slots signed</span>
+        {/if}
       </span>
     </button>
   </div>

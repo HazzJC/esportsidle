@@ -55,7 +55,7 @@ export function paybacks(save: GameState): Payback[] {
   };
   for (const op of OPERATIONS) {
     const owned = s.ops[op.id].owned;
-    probe('operation', op.id, owned, unitPrice(op, owned, mods.opCostMult), (c, n) => (c.ops[op.id].owned += n));
+    probe('operation', op.id, owned, unitPrice(op, owned, mods.opCostMult, mods.opFirstUnits[op.id]), (c, n) => (c.ops[op.id].owned += n));
     const level = s.ops[op.id].level;
     probe('operation level', op.id, level, operationLevelCost(level), (c, n) => (c.ops[op.id].level += n));
   }

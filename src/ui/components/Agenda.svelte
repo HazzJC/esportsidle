@@ -1,10 +1,13 @@
 <script lang="ts">
   import { buildAgenda, type AgendaItem, type AgendaTarget } from '../../engine/agenda';
   import { game } from '../game.svelte';
+  import Collapsible from './Collapsible.svelte';
   import Icon from './Icon.svelte';
 
   const v = $derived(game.view);
   const agenda = $derived(buildAgenda(v.s, v.m, v.r));
+  const items = $derived([agenda.growth, agenda.concern, agenda.opportunity].filter((x) => x !== null));
+  const urgent = $derived(items.find((x) => x.urgent)?.title ?? null);
 
   function go(t: AgendaTarget): void {
     switch (t.kind) {
@@ -48,25 +51,16 @@
   </li>
 {/snippet}
 
-<section class="agenda" aria-label="Next steps">
-  <h3 class="section-title">Next steps</h3>
+<Collapsible id="next-steps" title="Next steps" summary={String(items.length)} {urgent}>
   <ul>
-    {@render row('growth', 'Next goal', agenda.growth, '')}
+    {@render row('growth', 'Next goal', agenda.growth, 'Follow the quest above.')}
     {@render row('concern', 'Teams', agenda.concern, 'Every team is in good shape.')}
     {@render row('opportunity', 'Opportunity', agenda.opportunity, 'Nothing pressing right now.')}
   </ul>
-</section>
+</Collapsible>
 
 <style>
   /* One panel, one row per thing to do: a coloured marker, what and why, and the button to act on it. */
-  .agenda {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .agenda .section-title {
-    margin: 0;
-  }
   ul {
     list-style: none;
     margin: 0;

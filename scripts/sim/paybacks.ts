@@ -28,7 +28,7 @@ import { UPGRADES } from '../../src/data/upgrades';
 import { computeMods, computeRates } from '../../src/engine/economy';
 import { MAX_MERCH_QUALITY, merchQualityCost } from '../../src/engine/merch';
 import { operationLevelCost, unitPrice } from '../../src/engine/operations';
-import { gearLeague, gearUpgradeCost, playerRating } from '../../src/engine/players';
+import { gearPrice, playerRating } from '../../src/engine/players';
 import { dynastyCost, dynastyRank } from '../../src/engine/prestige';
 import { decodeSave } from '../../src/engine/save';
 import { staffPrice } from '../../src/engine/staff';
@@ -152,7 +152,7 @@ function audit(label: string, save: GameState): Row[] {
 
   for (const op of OPERATIONS) {
     const st = s.ops[op.id];
-    const cost = unitPrice(op, st.owned, mods.opCostMult);
+    const cost = unitPrice(op, st.owned, mods.opCostMult, mods.opFirstUnits[op.id]);
     add('operation', op.id, op.name, soon(cost), 'cash', cost, (c) => c.ops[op.id].owned++);
     if (st.owned > 0) add('op level', op.id, `${op.name} level ${st.level + 1}`, operationLevelCost(st.level) <= s.trophies, 'trophies', operationLevelCost(st.level), (c) => c.ops[op.id].level++);
   }
@@ -175,7 +175,7 @@ function audit(label: string, save: GameState): Row[] {
     if (starters.length === 0) continue;
     const weakest = starters.reduce((a, b) => (playerRating(a, game, team.tier, null) <= playerRating(b, game, team.tier, null) ? a : b));
     for (const slot of GEAR_SLOTS) {
-      const cost = gearUpgradeCost(weakest, slot.id, mods, gearLeague(s, weakest));
+      const cost = gearPrice(s, weakest, slot.id, mods, computeRates(s, mods));
       if (!Number.isFinite(cost)) continue;
       add('gear', `${team.gameId}:${slot.id}`, `${game.name} ${slot.name} tier ${(weakest.gear[slot.id] ?? 0) + 1}`, soon(cost), 'cash', cost, (c) => c.players[weakest.id].gear[slot.id]++);
     }

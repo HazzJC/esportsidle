@@ -15,8 +15,18 @@ import type { Effect, GameState, Mods, Rates, TeamEval } from './types';
 
 export const BASE_FAME_EXP = 0.08;
 export const CABINET_PER_ACHIEVEMENT = 0.04;
+/**
+ * Offline is a floor, not a strategy (docs/implementation-plan.md, WS4): for the same wall-clock
+ * time, presence beats absence. The game earns at `offlineRate` for the full-rate window, at half
+ * that rate after it, and nothing past the hard cap.
+ */
 export const BASE_OFFLINE_RATE = 0.2;
-export const BASE_OFFLINE_CAP_HOURS = 12;
+export const MAX_OFFLINE_RATE = 0.4;
+export const BASE_OFFLINE_WINDOW_HOURS = 6;
+export const MAX_OFFLINE_WINDOW_HOURS = 12;
+/** Share of the offline rate earned past the full-rate window. */
+export const OFFLINE_TAPER = 0.5;
+export const OFFLINE_HARD_CAP_HOURS = 24;
 export const BASE_BENCH_SLOTS = 1;
 export const BASE_SPONSOR_SLOTS = 2;
 /**
@@ -33,6 +43,7 @@ export function emptyMods(): Mods {
   return {
     opMult: {},
     opPerOwned: [],
+    opFirstUnits: {},
     grindDoublings: 0,
     grindAdd: 0,
     grindAddMult: 1,
@@ -48,7 +59,7 @@ export function emptyMods(): Mods {
     opCostMult: 1,
     upgradeCostMult: 1,
     offlineRate: BASE_OFFLINE_RATE,
-    offlineCapHours: BASE_OFFLINE_CAP_HOURS,
+    offlineWindowHours: BASE_OFFLINE_WINDOW_HOURS,
     prizeMult: 1,
     benchSlots: BASE_BENCH_SLOTS,
     xpMult: 1,
@@ -99,6 +110,11 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'opPerOwned':
       m.opPerOwned.push({ op: e.op, source: e.source, pct: e.pct });
       break;
+    case 'opFirstUnits': {
+      const d = m.opFirstUnits[e.op];
+      m.opFirstUnits[e.op] = { units: Math.max(d?.units ?? 0, e.units), mult: (d?.mult ?? 1) * e.mult };
+      break;
+    }
     case 'grindDouble':
       m.grindDoublings += 1;
       break;
@@ -142,10 +158,10 @@ export function applyEffect(m: Mods, e: Effect): void {
       m.upgradeCostMult *= e.mult;
       break;
     case 'offlineRate':
-      m.offlineRate = Math.min(1, m.offlineRate + e.add);
+      m.offlineRate = Math.min(MAX_OFFLINE_RATE, m.offlineRate + e.add);
       break;
-    case 'offlineCap':
-      m.offlineCapHours += e.hours;
+    case 'offlineWindow':
+      m.offlineWindowHours = Math.min(MAX_OFFLINE_WINDOW_HOURS, m.offlineWindowHours + e.hours);
       break;
     case 'prizeMult':
       m.prizeMult *= e.mult;
@@ -289,9 +305,15 @@ export function cabinetCount(s: GameState): number {
  */
 export const FAME_KNEE_FANS = 1e8;
 export const FAME_KNEE_SLOPE = 0.5;
+/**
+ * Fans past this add nothing more to fame. It is reached around the end of the operations ladder;
+ * without it, fans kept growing tenfold every half hour after the ladder and fame kept multiplying
+ * income, so a finished run never levelled off (WS3). The fame upgrades still multiply the result.
+ */
+export const FAME_CAP_FANS = 3e9;
 
 export function fameMultiplier(fans: number, exponent: number): number {
-  const x = 1 + Math.max(0, fans) / 100;
+  const x = 1 + Math.min(FAME_CAP_FANS, Math.max(0, fans)) / 100;
   const knee = 1 + FAME_KNEE_FANS / 100;
   if (x <= knee) return Math.pow(x, exponent);
   return Math.pow(knee, exponent) * Math.pow(x / knee, exponent * FAME_KNEE_SLOPE);

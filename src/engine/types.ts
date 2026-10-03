@@ -42,6 +42,8 @@ export interface Buff {
 export type Effect =
   | { kind: 'opMult'; op: string; mult: number }
   | { kind: 'opPerOwned'; op: string; source: string; pct: number }
+  /** The first `units` of one operation cost `mult` of their price (a quest's operation affinity, before any are owned). */
+  | { kind: 'opFirstUnits'; op: string; units: number; mult: number }
   | { kind: 'grindDouble' }
   | { kind: 'grindAdd'; add: number }
   | { kind: 'grindAddMult'; mult: number }
@@ -58,7 +60,8 @@ export type Effect =
   | { kind: 'opCostMult'; mult: number }
   | { kind: 'upgradeCostMult'; mult: number }
   | { kind: 'offlineRate'; add: number }
-  | { kind: 'offlineCap'; hours: number }
+  /** Hours of the offline full-rate window (capped at MAX_OFFLINE_WINDOW_HOURS). */
+  | { kind: 'offlineWindow'; hours: number }
   | { kind: 'prizeMult'; mult: number }
   | { kind: 'benchSlots'; add: number }
   | { kind: 'xpMult'; mult: number }
@@ -86,9 +89,16 @@ export type Effect =
   | { kind: 'feeMult'; mult: number }
   | { kind: 'energyDrain'; mult: number };
 
+export interface OpDiscount {
+  units: number;
+  mult: number;
+}
+
 export interface Mods {
   opMult: Record<string, number>;
   opPerOwned: { op: string; source: string; pct: number }[];
+  /** Operation id -> the first units that are cheaper, and by how much. */
+  opFirstUnits: Record<string, OpDiscount>;
   grindDoublings: number;
   grindAdd: number;
   grindAddMult: number;
@@ -105,7 +115,8 @@ export interface Mods {
   opCostMult: number;
   upgradeCostMult: number;
   offlineRate: number;
-  offlineCapHours: number;
+  /** Hours away that earn the full offline rate; after them, half of it, up to OFFLINE_HARD_CAP_HOURS. */
+  offlineWindowHours: number;
   prizeMult: number;
   benchSlots: number;
   xpMult: number;
@@ -690,12 +701,19 @@ export interface ActiveQuest {
 
 export interface QuestState {
   active: ActiveQuest[];
-  /** Quest id -> simulated time it was claimed. Kept across sales. */
+  /** Quest id -> simulated time it was claimed this run. */
   done: Record<string, number>;
-  /** Quest id -> index of the reward taken, so permanent perks keep applying. */
+  /** Quest id -> index of the reward taken, so the run's perks keep applying. */
   picks: Record<string, number>;
+  /** Quest id -> how its operation affinity was paid: a multiplier (owned) or a discount (not yet). */
+  affinity: Record<string, 'mult' | 'discount'>;
+  /** Quest tool or token id -> how many the org holds this run (data/quests.ts QUEST_TOOLS). */
+  tools: Record<string, number>;
+  /** `cosmetic:<id>` or `title:<id>` -> simulated time earned. Kept across sales. */
+  collection: Record<string, number>;
   /** Quest id -> simulated time it was set aside. It returns once the rest of the queue is used up. */
   skipped: Record<string, number>;
+  /** Quests claimed across every run. */
   claimed: number;
 }
 

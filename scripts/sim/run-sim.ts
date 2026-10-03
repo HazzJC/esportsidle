@@ -32,10 +32,10 @@ import { setSeasonPlan, unlockGame } from '../../src/engine/teams';
 import { playInvitation } from '../../src/engine/tournament';
 import { INCOME_SOURCES, type GameState, type IncomeSource, type Mods, type Rates } from '../../src/engine/types';
 import { resolveChoice } from '../../src/engine/worldEvents';
-import { buyHuman, buyOptimal, spendTrophies, totalCps, type Candidate, type CandidateOptions } from './buyers';
+import { buyHuman, buyOptimal, candidates, spendTrophies, totalCps, type Candidate, type CandidateOptions } from './buyers';
 import { persona as personaById } from './personas';
 import { SimRandom } from './random';
-import type { Attention, Milestone, Persona, Purchase, PurchaseKind, Sample, SaleRecord, SimOptions, SimRecord, SponsorPayout } from './types';
+import type { Absence, Attention, Milestone, Persona, Purchase, PurchaseKind, Sample, SaleRecord, SimOptions, SimRecord, SponsorPayout } from './types';
 
 /** Challenges change the rules of a run, so the simulator leaves them alone. */
 const SKIP_NODES = new Set(['challenges', 'solo', 'potato', 'nostaff', 'nodrops', 'drama']);
@@ -73,6 +73,8 @@ export function runSim(opts: SimOptions): SimRecord {
   let runStart = 0;
   let attention: Attention = 'active';
   let closed = false;
+  let closedAt = { at: 0, cps: 0 };
+  const absences: Absence[] = [];
 
   // ---------------------------------------------------------------------------
   // Purchases
@@ -324,6 +326,8 @@ export function runSim(opts: SimOptions): SimRecord {
     if (!canSell(s)) return;
     const forced = opts.sellNow === true && sales.length === 0 && pending >= 1;
     if (!(forced || pending >= Math.max(1, s.prestige.level) || (runWall >= maxRunSeconds && pending >= 1))) return;
+    // Milestones are checked once a minute; record this run's before it ends, or a quick sale skips them.
+    checkMilestones();
     const nodeValues = valueNodes();
     const mandate = opts.mandate === undefined ? (mandateOffers(s)[0]?.id ?? null) : opts.mandate;
     sellOrg(s, { charter: opts.charter ?? 'operator', mandate });
@@ -384,7 +388,9 @@ export function runSim(opts: SimOptions): SimRecord {
       runWall: wall - runStart,
       attention,
       earnedRun: s.earnedRun,
+      earnedTotal: s.earnedTotal,
       totalCps: r.totalCps,
+      steadyCps: steadyCps(),
       opsCps: r.cpsNoBuffs,
       matchCps: r.matchCps,
       merchCps: r.merchCps,
@@ -408,12 +414,37 @@ export function runSim(opts: SimOptions): SimRecord {
       sponsors: s.sponsors.active.length,
       staff: Object.values(s.staff).reduce((a, b) => a + b, 0),
       players: Object.keys(s.players).length,
+      ...storeReadings(r.totalCps),
     });
+    opts.onSample?.(s, samples[samples.length - 1]);
     spent = {};
     uplift = { crowd: 0, frenzy: 0, other: 0 };
     lastCrowds = s.stats.crowdsTotal;
     lastChains = chains;
     lastDrops = { seen: dropsSeen, caught: dropsCaught };
+  }
+
+  /** Income per second without temporary buffs (crowds, frenzies, merch spikes): the steady pace. */
+  function steadyCps(): number {
+    const buffs = s.buffs;
+    s.buffs = [];
+    const v = computeRates(s).totalCps;
+    s.buffs = buffs;
+    return v;
+  }
+
+  /** What the best-payback purchase of each kind would cost in seconds of income (check D), and its payback (check E). */
+  function storeReadings(income: number): Pick<Sample, 'afford' | 'payback'> {
+    if (!(income > 0)) return { afford: {}, payback: {} };
+    const base = totalCps(s);
+    const afford: Sample['afford'] = {};
+    const payback: Sample['payback'] = {};
+    for (const c of candidates(s, base, { ...buyOpts, everything: true })) {
+      if (!(c.gain > 0) || !Number.isFinite(c.cost) || c.cost / c.gain >= (payback[c.kind] ?? Infinity)) continue;
+      payback[c.kind] = c.cost / c.gain;
+      afford[c.kind] = c.cost / income;
+    }
+    return { afford, payback };
   }
 
   /** What temporary buffs added to this second's income, split by buff family in log proportion. */
@@ -468,11 +499,15 @@ export function runSim(opts: SimOptions): SimRecord {
       if (!closed) {
         closed = true;
         s.lastSaved = wall * 1000;
+        const r = computeRates(s);
+        const inc = r.buffIncomeMult || 1;
+        closedAt = { at: wall, cps: r.cpsNoBuffs + (r.matchCps + r.merchCps) / inc };
       }
     } else {
       if (closed) {
         closed = false;
-        applyOfflineProgress(s, wall * 1000);
+        const report = applyOfflineProgress(s, wall * 1000);
+        if (report) absences.push({ run, at: closedAt.at, away: report.awaySeconds, counted: report.countedSeconds, rate: report.rate, earned: report.earned, cpsAtClose: closedAt.cps });
       }
       const n = clicksThisSecond();
       if (n > 0) click(n);
@@ -517,6 +552,7 @@ export function runSim(opts: SimOptions): SimRecord {
     sales,
     milestones,
     sponsorPayouts,
+    absences,
     snapshots,
     final: {
       run,

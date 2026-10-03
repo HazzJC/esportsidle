@@ -16,13 +16,13 @@ import {
   SKIN_TONES,
 } from '../data/cosmetics';
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
-import { GEAR_COST_GROWTH, GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
+import { GEAR_COST_GROWTH, GEAR_INCOME_FLOOR_SECONDS, GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_PREFIXES, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
 import { playerEasterEgg } from './easterEggs';
-import type { Appearance, GameState, Mods, Player, PlayerStats, Rarity, StatKey } from './types';
+import type { Appearance, GameState, Mods, Player, PlayerStats, Rarity, Rates, StatKey } from './types';
 
 export const ALL_STATS: StatKey[] = ['mechanics', 'gameSense', 'teamwork', 'composure', 'charisma', 'stamina'];
 
@@ -455,19 +455,33 @@ export function gearLeague(s: GameState, p: Player): number {
   return s.teams[p.gameId]?.bestTier ?? 0;
 }
 
-/** Price of the next tier of one gear slot. `league` is gearLeague(s, p). */
-export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, league: number): number {
+/** The team's match income per second without temporary buffs: what gear's price floor is measured in. */
+export function teamIncome(rates: Pick<Rates, 'teams' | 'buffIncomeMult'>, gameId: string): number {
+  return (rates.teams[gameId]?.cps ?? 0) / (rates.buffIncomeMult || 1);
+}
+
+/**
+ * Price of the next tier of one gear slot. `league` is gearLeague(s, p); `income` is teamIncome() for
+ * the player's game, and the price is never below GEAR_INCOME_FLOOR_SECONDS of it.
+ */
+export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, league: number, income = 0): number {
   const def = GEAR_SLOTS.find((g) => g.id === slot)!;
   const tier = p.gear[slot] ?? 0;
   if (tier >= GEAR_MAX_TIER) return Infinity;
-  return Math.ceil(def.baseCost * Math.pow(GEAR_COST_GROWTH, tier) * getGame(p.gameId).costScale * Math.pow(GEAR_LEAGUE_GROWTH, league) * mods.gearCostMult);
+  const byLeague = def.baseCost * Math.pow(GEAR_COST_GROWTH, tier) * getGame(p.gameId).costScale * Math.pow(GEAR_LEAGUE_GROWTH, league);
+  return Math.ceil(Math.max(byLeague, GEAR_INCOME_FLOOR_SECONDS * income) * mods.gearCostMult);
 }
 
-export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>): boolean {
+/** gearUpgradeCost for a player of this org, priced for its league and its team's income. */
+export function gearPrice(s: GameState, p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, rates: Pick<Rates, 'teams' | 'buffIncomeMult'>): number {
+  return gearUpgradeCost(p, slot, mods, gearLeague(s, p), teamIncome(rates, p.gameId));
+}
+
+export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, rates: Pick<Rates, 'teams' | 'buffIncomeMult'>): boolean {
   const p = s.players[playerId];
   // Potato League challenge: no gear upgrades.
   if (!p || s.prestige.challenge === 'potato') return false;
-  const cost = gearUpgradeCost(p, slot, mods, gearLeague(s, p));
+  const cost = gearPrice(s, p, slot, mods, rates);
   if (!Number.isFinite(cost) || s.cash < cost) return false;
   s.cash -= cost;
   p.gear[slot]++;

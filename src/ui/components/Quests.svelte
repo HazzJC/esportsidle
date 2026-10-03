@@ -8,7 +8,7 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
-  const ctx = $derived({ cps: v.r.cpsNoBuffs, fansPerSec: v.r.fansPerSec });
+  const ctx = $derived({ cps: v.r.cpsNoBuffs, fansPerSec: v.r.fansPerSec, state: s });
   const doneCount = $derived(QUESTS.filter((q) => s.quests.done[q.id] !== undefined).length);
   const perks = $derived(questPerkSources(s));
   const upNext = $derived(nextQuest(s));
@@ -31,6 +31,10 @@
     levels: 'dumbbell',
     legacy: 'crown',
     perk: 'sparkles',
+    tool: 'hammer',
+    opAffinity: 'building',
+    cosmetic: 'palette',
+    title: 'award',
   };
 </script>
 

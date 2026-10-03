@@ -3,7 +3,7 @@ import { subscribe, type GameEvent } from '../engine/bus';
 import { applyChain, clickLogo, type ClickResult } from '../engine/clicker';
 import { computeMods, computeRates } from '../engine/economy';
 import { fmt, fmtTime, money, setNumberFormat, type NumberFormat } from '../engine/format';
-import { advance, applyOfflineProgress, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
+import { advance, applyOfflineProgress, offlineCredit, tick, TICK_SECONDS, type OfflineReport, type TickOptions } from '../engine/game';
 import { pickNews } from '../engine/news';
 import type { GearSlot } from '../data/gear';
 import { getGame } from '../data/games';
@@ -349,8 +349,7 @@ class GameStore {
     advance(this.state, online, false);
     const rest = seconds - online;
     if (rest > 0 && this.state.settings.offlineProgress) {
-      const cap = computeMods(this.state).offlineCapHours * 3600;
-      advance(this.state, Math.min(rest, cap), true);
+      advance(this.state, offlineCredit(rest, computeMods(this.state)).counted, true);
     }
   }
 
@@ -506,7 +505,8 @@ class GameStore {
     const def = OPERATIONS.find((op) => op.id === id);
     if (def) {
       const want = amount < 0 ? 1 : Math.max(1, Math.floor(amount));
-      const price = bulkPrice(def, this.state.ops[id].owned, want, computeMods(this.state).opCostMult);
+      const mods = computeMods(this.state);
+      const price = bulkPrice(def, this.state.ops[id].owned, want, mods.opCostMult, mods.opFirstUnits[id]);
       this.sfx('error');
       this.toast(
         {
@@ -688,7 +688,8 @@ class GameStore {
   }
 
   buyGear(playerId: string, slot: GearSlot): boolean {
-    const ok = buyGear(this.state, playerId, slot, computeMods(this.state));
+    const mods = computeMods(this.state);
+    const ok = buyGear(this.state, playerId, slot, mods, computeRates(this.state, mods));
     if (ok) {
       this.sfx('buy');
       this.refresh();

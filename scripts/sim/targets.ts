@@ -27,11 +27,15 @@ export const ACTIVE_SHARE_BANDS: Record<'merch' | 'match', [number, number]> = {
 export const ACTIVE_VS_IDLE_SPEEDUP = 1.5;
 
 /**
- * Selling and replaying should clearly beat staying put. From an hour after the first Legacy point,
- * three more hours after selling must end with at least this much more Legacy (level + pending) than
- * three more hours in the same run.
+ * A second run should feel measurably faster back to where the first one was, and reach higher.
+ * The org is sold an hour after its first Legacy point (when run 1 has played `T` and earns `I` a
+ * second). Run 2 must earn `I` within RESTART_CATCH_UP × T, and by T it must earn RESTART_CEILING × I.
+ * (Replaced "three hours after selling beat three hours of staying by 1.5×", which only enormous
+ * Legacy multipliers could pass once a run levels off. Most of the gain is meant to come from what
+ * Legacy unlocks, not from raw income: docs/legacy-v2.md.)
  */
-export const SELL_OVER_STAY = 1.5;
+export const RESTART_CATCH_UP = 0.75;
+export const RESTART_CEILING = 2;
 
 /**
  * A run should level off: from the first Legacy point, three more hours may grow income by at most
@@ -42,3 +46,42 @@ export const GROWTH_WINDOW_SECONDS = 3 * 3600;
 
 /** Matches may be a big earner in a long semi-active run, but not most of it. */
 export const MAX_SEMI_MATCH_SHARE = 0.6;
+
+/**
+ * Offline is a floor, not a strategy: for the same wall-clock time, presence beats absence.
+ * A hermit (opens the game every 24 h for five minutes) takes at least this many times as long as
+ * the active player to its first Legacy point, and no less time than the casual player.
+ */
+export const HERMIT_VS_ACTIVE = 2;
+/** Days at which lifetime earnings must be ordered by presence (personas.ts OFFLINE_ORDER). */
+export const PROGRESS_ORDER_DAYS = [3, 7];
+/** An hour away pays at most this share of what the same org earns in an hour with the tab open. */
+export const MAX_OFFLINE_OVER_OPEN = 0.5;
+
+/**
+ * Cookie-Clicker-like pacing (WS3 check A): once the operations ladder is climbed (the first Legacy
+ * point comes with the last operation), an active run's income doubles ever more slowly.
+ * [hours after the first Legacy point, fewest minutes to double from there]. Measured from the first
+ * point rather than at fixed hours, because hour 3 is mid-climb for a 3-4 h first sale.
+ */
+export const DOUBLING_MINUTES: [number, number][] = [
+  [1, 20],
+  [3, 60],
+];
+
+/**
+ * Purchases stay a real decision (WS3 check D): the seconds of income the next purchase of each kind
+ * costs (the one with the best payback) may not fall below this share of its value at
+ * `AFFORD_FROM_HOUR` by the end of the active run (flat or rising, with room for noise).
+ */
+export const AFFORD_FROM_HOUR = 2;
+export const MIN_AFFORD_TREND = 0.5;
+/** Gear is left out of D: a tier is a small step for one player, cheap by design; check E covers it. */
+export const AFFORD_KINDS = ['op', 'upgrade', 'staff', 'merch'] as const;
+
+/**
+ * Nothing becomes free (WS3 check E): the best payback on offer of each kind, in the last hour of an
+ * active run, is no shorter than this share of what it was at AFFORD_FROM_HOUR.
+ */
+export const MIN_PAYBACK_TREND = 0.5;
+export const PAYBACK_KINDS = ['op', 'upgrade', 'staff', 'gear', 'merch'] as const;

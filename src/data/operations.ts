@@ -13,6 +13,15 @@ export interface OperationDef {
   tierNames: string[];
   /** Names for ownership achievements at 1, 50, 100, 200, 300, 400, 500. */
   achNames: string[];
+  /**
+   * Price growth per unit owned, when it isn't Cookie Clicker's ×1.15 (PRICE_GROWTH). The top four
+   * operations get steeper: a run that has climbed the whole ladder keeps growing by buying more of
+   * them, and at ×1.15 each one was cheap next to the income the ladder brings, so a run never
+   * levelled off (docs/economy.md, WS3).
+   */
+  priceGrowth?: number;
+  /** Multiplies the price of this operation's ×2 tier upgrades (the top four: a hundredfold). */
+  tierCostScale?: number;
 }
 
 type RawOp = Omit<OperationDef, 'index'>;
@@ -312,6 +321,8 @@ const RAW: RawOp[] = [
     icon: 'brain',
     baseCost: 170_000_000_000_000,
     baseCps: 430_000_000,
+    priceGrowth: 1.2,
+    tierCostScale: 100,
     fansPerSec: 80000,
     desc: 'Licenses thought-speed input tech to every team on the planet.',
     tierNames: [
@@ -337,6 +348,8 @@ const RAW: RawOp[] = [
     icon: 'dna',
     baseCost: 2_100_000_000_000_000,
     baseCps: 2_900_000_000,
+    priceGrowth: 1.25,
+    tierCostScale: 100,
     fansPerSec: 400000,
     desc: 'Why scout talent when you can grow it in a vat?',
     tierNames: [
@@ -362,6 +375,8 @@ const RAW: RawOp[] = [
     icon: 'server',
     baseCost: 26_000_000_000_000_000,
     baseCps: 21_000_000_000,
+    priceGrowth: 1.4,
+    tierCostScale: 100,
     fansPerSec: 2_000_000,
     desc: 'Runs billions of simulated tournaments per second and sells the highlights.',
     tierNames: [
@@ -387,6 +402,8 @@ const RAW: RawOp[] = [
     icon: 'orbit',
     baseCost: 310_000_000_000_000_000,
     baseCps: 150_000_000_000,
+    priceGrowth: 1.6,
+    tierCostScale: 100,
     fansPerSec: 10_000_000,
     desc: 'Every version of every team, across every reality, one bracket.',
     tierNames: [

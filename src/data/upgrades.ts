@@ -108,7 +108,7 @@ for (const op of OPERATIONS) {
       icon: op.icon,
       art: op.id,
       tier: i,
-      cost: op.baseCost * TIER_COST_MULT[i],
+      cost: op.baseCost * TIER_COST_MULT[i] * (op.tierCostScale ?? 1),
       effects: [{ kind: 'opMult', op: op.id, mult: 2 }],
       requirement: `Own ${TIER_NEED[i]} ${TIER_NEED[i] === 1 ? op.name : op.plural}`,
       unlock: (s) => owned(s, op.id) >= TIER_NEED[i],
@@ -351,10 +351,12 @@ const FAME_LINE: [string, number, number, number, string][] = [
   ['Stan Accounts', 5e6, 2e13, 1.2, 'They know your players’ birthdays better than their mums.'],
   ['Superfan Tattoos', 5e7, 2e15, 1.25, 'Permanent loyalty. Semi-permanent regret.'],
   ['Fan-Owned Shares', 5e8, 2e17, 1.25, 'Every fan is now technically your boss.'],
-  ['Cult Following', 5e9, 2e19, 1.3, 'Robes are optional. Jerseys are not.'],
-  ['Global Fandom', 5e10, 2e21, 1.3, 'Every country has a {org} fan club.'],
-  ['Interplanetary Fandom', 5e11, 2e23, 1.4, 'Mars colony chants in low gravity.'],
-  ['Fandom Singularity', 5e12, 2e25, 1.5, 'Fans have become a single, loving hive mind.'],
+  // Fame stops growing with fans at FAME_CAP_FANS (around the end of the ladder), so the last four are
+  // modest: they were ×1.3-1.5 each, free next to late income, and kept a finished run compounding.
+  ['Cult Following', 5e9, 2e19, 1.1, 'Robes are optional. Jerseys are not.'],
+  ['Global Fandom', 5e10, 2e21, 1.1, 'Every country has a {org} fan club.'],
+  ['Interplanetary Fandom', 5e11, 2e23, 1.1, 'Mars colony chants in low gravity.'],
+  ['Fandom Singularity', 5e12, 2e25, 1.1, 'Fans have become a single, loving hive mind.'],
 ];
 
 FAME_LINE.forEach(([name, fans, cost, add_, flavor], i) => {
@@ -382,16 +384,22 @@ const cabinetAchievements = (s: GameState): number =>
     return def !== undefined && !def.shadow;
   }).length;
 
+/**
+ * The superfan line is the cabinet's (Cookie Clicker's milk and kittens). The first three arrive during
+ * the climb and do the heavy lifting; from the fourth on they arrive once the ladder is climbed, so
+ * they are small. Each used to be ×2 or more for a price late income made free, and they kept a
+ * finished run compounding (docs/economy.md, WS3).
+ */
 const SUPERFANS: [string, number, number, number, string][] = [
   ['Superfan Volunteers', 13, 9e6, 0.1, 'They hand out flyers. Nobody asked them to.'],
-  ['Superfan Street Team', 25, 9e9, 0.125, 'Wheat-pasting your logo on every surface.'],
-  ['Superfan Moderators', 50, 9e13, 0.15, 'Unpaid. Unstoppable. Slightly power-mad.'],
-  ['Superfan Artists', 75, 9e16, 0.175, 'Your logo, reimagined in 400 styles.'],
-  ['Superfan Analysts', 100, 9e19, 0.2, 'Spreadsheets of every match you’ve ever played.'],
-  ['Superfan Cosplayers', 125, 9e22, 0.2, 'Foam armour so detailed it has patch notes.'],
-  ['Superfan Influencers', 150, 9e25, 0.2, 'Every post: #ad (not actually sponsored).'],
-  ['Superfan Council', 175, 9e28, 0.2, 'A democratically elected body of screamers.'],
-  ['Superfan Pantheon', 200, 9e31, 0.2, 'Ascended beyond mere fandom.'],
+  ['Superfan Street Team', 25, 9e8, 0.125, 'Wheat-pasting your logo on every surface.'],
+  ['Superfan Moderators', 50, 9e12, 0.1, 'Unpaid. Unstoppable. Slightly power-mad.'],
+  ['Superfan Artists', 75, 9e16, 0.025, 'Your logo, reimagined in 400 styles.'],
+  ['Superfan Analysts', 100, 9e19, 0.025, 'Spreadsheets of every match you’ve ever played.'],
+  ['Superfan Cosplayers', 125, 9e22, 0.025, 'Foam armour so detailed it has patch notes.'],
+  ['Superfan Influencers', 150, 9e25, 0.025, 'Every post: #ad (not actually sponsored).'],
+  ['Superfan Council', 175, 9e28, 0.025, 'A democratically elected body of screamers.'],
+  ['Superfan Pantheon', 200, 9e31, 0.025, 'Ascended beyond mere fandom.'],
 ];
 
 SUPERFANS.forEach(([name, need, cost, factor, flavor], i) => {
