@@ -6,6 +6,7 @@ import { fmt, fmtTime, money } from './format';
 import { grantXp, xpToNext } from './players';
 import type { Rng } from './rng';
 import { limitReward } from './rewards';
+import { SECTIONS, updateSections } from './sections';
 import { tutorialActive } from './tutorial';
 import type { ActiveQuest, Effect, GameState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
@@ -28,26 +29,80 @@ export function questProgress(s: GameState, q: ActiveQuest): QuestProgress {
 }
 
 /**
+ * The first run follows the quest line strictly: a quest that is not available yet holds the line
+ * until it is, because quests open the systems they teach. After the first sale every system is
+ * already open, and a quest that cannot be offered yet is passed over until it can.
+ */
+export function strictQuestLine(s: GameState): boolean {
+  return s.prestige.runs === 0 && s.stats.orgsSold === 0;
+}
+
+const isAvailable = (s: GameState, def: QuestDef) => !def.available || def.available(s);
+
+/**
  * Puts the next quest in the line on the board. Quests are followed in order and cannot be set
- * aside; a quest whose system has not opened yet (sponsors, merch, a rival) waits, and the line
- * carries on with the next one until it does. Quests wait for the tutorial.
+ * aside. In the first run a quest whose requirement is not met yet (fans for the Studio, a second
+ * team for the House) waits, and so does everything after it; quests that wait on chance are passed
+ * over and come back. Later runs pass over any quest that cannot be offered yet. Quests wait for the
+ * tutorial.
  */
 export function fillQuests(s: GameState): void {
   if (tutorialActive(s)) return;
   const q = s.quests;
   // Quests set aside under the old "Later" button simply rejoin the line in order.
   if (Object.keys(q.skipped).length > 0) q.skipped = {};
+  const strict = strictQuestLine(s);
   for (const def of QUESTS) {
     if (q.active.length >= QUEST_SLOTS) return;
-    const open = q.done[def.id] === undefined && !q.active.some((a) => a.id === def.id) && (!def.available || def.available(s));
-    if (open) q.active.push({ id: def.id, base: def.metric(s), ready: false });
+    if (q.done[def.id] !== undefined || q.active.some((a) => a.id === def.id)) continue;
+    if (isAvailable(s, def)) {
+      q.active.push({ id: def.id, base: def.metric(s), ready: false });
+      onQuestOffered(s, def.id);
+    } else if (strict && !def.skipWhileLocked) {
+      return;
+    }
   }
 }
 
-/** The quest after the current one, for an "Up next" preview. */
+/** The Hype Drop quest promises a drop is on its way, so the next one is brought forward. */
+export const DROP_QUEST_ID = 'drop_1';
+export const DROP_QUEST_WAIT = 12;
+
+function onQuestOffered(s: GameState, id: string): void {
+  if (id === DROP_QUEST_ID && s.drops.nextAt > s.time + DROP_QUEST_WAIT) s.drops.nextAt = s.time + DROP_QUEST_WAIT;
+}
+
+/** While the Hype Drop quest is live, a missed drop is followed by another one soon rather than minutes later. */
+export function dropQuestLive(s: GameState): boolean {
+  return s.quests.active.some((q) => q.id === DROP_QUEST_ID && !q.ready);
+}
+
+/** The quest after the current one, for an "Up next" preview: the next in the line that is not done. */
 export function nextQuest(s: GameState): (typeof QUESTS)[number] | undefined {
   const current = new Set(s.quests.active.map((a) => a.id));
-  return QUESTS.find((d) => s.quests.done[d.id] === undefined && !current.has(d.id));
+  return QUESTS.find((d) => s.quests.done[d.id] === undefined && !current.has(d.id) && !(d.skipWhileLocked && !isAvailable(s, d)));
+}
+
+export interface QuestWait {
+  quest: QuestDef;
+  text: string;
+  value?: number;
+  target?: number;
+}
+
+/**
+ * What the line is waiting for when the board is empty: the next quest and the requirement that
+ * holds it (the section it opens, or its own `waiting`). Undefined when nothing is waiting.
+ */
+export function questLineWait(s: GameState): QuestWait | undefined {
+  if (s.quests.active.length > 0) return undefined;
+  const def = nextQuest(s);
+  if (!def) return undefined;
+  const section = SECTIONS.find((d) => d.quest === def.id);
+  const own = def.waiting?.(s);
+  if (own) return { quest: def, ...own };
+  if (section?.requirement) return { quest: def, text: section.requirement(s), ...section.progress?.(s) };
+  return { quest: def, text: 'It opens as your org grows.' };
 }
 
 /** Fills slots and announces quests that have just been finished. */
@@ -213,6 +268,8 @@ export function claimQuest(s: GameState, id: string, choice: number, ctx: Reward
   s.quests.picks[id] = choice;
   s.quests.claimed++;
   fillQuests(s);
+  // A quest that opens a section opens it at once, rather than on the next unlock check.
+  updateSections(s);
   return true;
 }
 

@@ -19,7 +19,7 @@ import { finishLadder, foundedGame } from './fixtures';
  * Mechanics the first-run quest line does not teach yet. The tour rewrite (WS6.2) adds a quest for
  * each; remove a mechanic from this list when its quest lands.
  */
-const TOUR_GAPS: Mechanic[] = ['scouting', 'lineup', 'merchPricing', 'events', 'trophies', 'automation'];
+const TOUR_GAPS: Mechanic[] = ['lineup', 'merchPricing', 'events', 'trophies', 'automation'];
 
 const ctx = (s: GameState) => ({ cps: computeRates(s).cpsNoBuffs, fansPerSec: 1 });
 

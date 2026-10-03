@@ -1,7 +1,9 @@
 <script lang="ts">
   import { STAFF, STAT_DESCRIPTIONS, effectAmount, type StaffDef } from '../../data/staff';
   import { fmt, money } from '../../engine/format';
-  import { isStaffUnlocked, maxStaffAffordable, staffPower, staffPrice, totalStaff } from '../../engine/staff';
+  import { bulkAmount, bulkAmounts, hasQol, isStaffUnlocked, maxStaffAffordable, staffPower, staffPrice, totalStaff } from '../../engine/staff';
+  import Agenda from '../components/Agenda.svelte';
+  import { hinted } from '../hints';
   import FrontOffice from '../components/FrontOffice.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
@@ -33,7 +35,16 @@
   ];
 
   const v = $derived(game.view);
-  const amount = $derived(v.s.settings.buyAmount);
+  const amounts = $derived(bulkAmounts(v.s));
+  const amount = $derived(bulkAmount(v.s));
+  const coach = STAFF.find((d) => d.qol?.id === 'advisor');
+  const staffHint = $derived(hinted(v.s, 'staff'));
+  /** The staff role that brings each bulk amount, for the locked buttons' tooltips. */
+  const AMOUNT_SOURCE: Record<number, StaffDef | undefined> = {
+    10: STAFF.find((d) => d.qol?.id === 'buy10'),
+    100: STAFF.find((d) => d.qol?.id === 'buy100'),
+    [-1]: STAFF.find((d) => d.qol?.id === 'buyMax'),
+  };
   const nextLocked = $derived(STAFF.find((d) => !isStaffUnlocked(v.s, d)));
 
   function info(def: StaffDef): { n: number; price: number; ok: boolean } {
@@ -67,6 +78,13 @@
       lines.push({ text: `With ${fmt(owned)}:`, tone: 'good' });
       for (const l of effectLines(def, owned)) lines.push({ text: `  ${l}`, tone: 'good' });
     }
+    if (def.qol) {
+      lines.push(
+        owned > 0
+          ? { text: `Tool: ${def.qol.name}. ${def.qol.desc}`, tone: 'gold' }
+          : { text: `First hire brings a tool: ${def.qol.name}. ${def.qol.desc}`, tone: 'gold' },
+      );
+    }
     lines.push({ text: `With ${fmt(owned + step)}:`, tone: 'cyan' });
     for (const l of effectLines(def, owned + step)) lines.push({ text: `  ${l}`, tone: 'cyan' });
     // Some roles level off toward a limit. Say how close the team is, so a slowing return is never a surprise.
@@ -93,11 +111,29 @@
     </div>
   </header>
 
+  {#if hasQol(v.s, 'advisor')}
+    <Agenda />
+  {:else if coach && isStaffUnlocked(v.s, coach)}
+    <div class="plan-teaser">
+      <Icon name="list-checks" size={18} />
+      <span><b>Hire a Coach for a game plan.</b> <span class="muted">Your first Coach keeps a list of next steps here: the next goal, any team in trouble and the best opportunity.</span></span>
+    </div>
+  {/if}
+
   <div class="list-head">
     <h3 class="section-title">Hire</h3>
     <div class="seg" aria-label="How many to hire at once">
       {#each AMOUNTS as a (a.value)}
-        <button class:active={amount === a.value} onclick={() => game.setSetting('buyAmount', a.value)}>{a.label}</button>
+        {#if amounts.includes(a.value)}
+          <button class:active={amount === a.value} onclick={() => game.setSetting('buyAmount', a.value)}>{a.label}</button>
+        {:else}
+          {@const src = AMOUNT_SOURCE[a.value]}
+          <button
+            class="locked"
+            aria-disabled="true"
+            use:tooltip={() => ({ title: src?.qol?.name ?? 'Locked', icon: 'lock', lines: [src?.qol?.desc ?? '', { text: `Comes with your first ${src?.name ?? 'hire'}.`, tone: 'cyan' as const }] })}
+          ><Icon name="lock" size={10} /> {a.label}</button>
+        {/if}
       {/each}
     </div>
   </div>
@@ -109,6 +145,7 @@
         {@const owned = v.s.staff[def.id] ?? 0}
         <button
           class="row"
+          class:tut-target={staffHint && def.id === 'coach' && owned === 0}
           class:no={!i.ok}
           class:elite={owned >= 200}
           style="--q:{countQuality(owned)}"
@@ -120,7 +157,12 @@
             <span class="role"><Icon name={def.icon} size={12} /></span>
           </span>
           <span class="main">
-            <span class="name">{def.name}</span>
+            <span class="name">
+              {def.name}
+              {#if def.qol}
+                <span class="tool" class:have={owned > 0}><Icon name={owned > 0 ? def.qol.icon : 'lock'} size={10} /> {def.qol.name}</span>
+              {/if}
+            </span>
             <span class="effects">{owned > 0 ? effectLines(def, owned).join(' · ') : def.desc}</span>
           </span>
           <span class="price num">
@@ -183,6 +225,49 @@
   }
   .seg button.active {
     background: color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--text);
+  }
+  .seg button.locked {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--dim);
+    opacity: 0.6;
+    cursor: help;
+  }
+  /* The tool a role's first hire brings: dim and locked until then, gold once it is yours. */
+  .tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    vertical-align: 2px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    color: var(--dim);
+    border: 1px dashed var(--line-2);
+  }
+  .tool.have {
+    color: var(--gold);
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    background: color-mix(in srgb, var(--gold) 9%, transparent);
+  }
+  .plan-teaser {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--line-2));
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .plan-teaser b {
     color: var(--text);
   }
   .list {

@@ -147,8 +147,8 @@ describe('effects reach the game, not just the modifier set', () => {
     expect(rosterCapacity(team, mods)).toBe(team.lineup.length + mods.benchSlots);
     // Base 6, Talent Database and Global Scouting Network (+2 each), Talent Pipeline (+2).
     expect(marketSize(mods)).toBe(6 + 2 + 2 + 2);
-    // Base 2, Sponsorship Manager, Brand Partnerships Team, Brand Heritage.
-    expect(mods.sponsorSlots).toBe(2 + 1 + 1 + 1);
+    // Base 1, Sponsorship Manager, Brand Partnerships Team, Brand Heritage.
+    expect(mods.sponsorSlots).toBe(1 + 1 + 1 + 1);
   });
 
   it('reaches full offline value with the Legacy nodes alone, and counts any bonus beyond that at a reduced share', () => {

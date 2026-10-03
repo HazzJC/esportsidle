@@ -6,6 +6,7 @@
   import { game } from '../game.svelte';
   import { TABS } from '../tabs';
   import { tooltip } from '../tooltip.svelte';
+  import { hinted } from '../hints';
   import Achievements from '../tabs/Achievements.svelte';
   import HQ from '../tabs/HQ.svelte';
   import Legacy from '../tabs/Legacy.svelte';
@@ -23,6 +24,13 @@
   const open = $derived(TABS.filter((t) => sectionOpen(s, t.id)));
   const locked = $derived(TABS.filter((t) => !sectionOpen(s, t.id)));
   const isNew = (id: string) => !!SECTION_MAP.get(id)?.unlock && !s.sectionsSeen[id];
+
+  /** The tab the live quest needs pulses until the player is on it. */
+  function tabHinted(id: string): boolean {
+    if (game.tab === id) return false;
+    if (id === 'teams') return hinted(s, 'player') || hinted(s, 'plan') || hinted(s, 'found') || game.hintFlash === 'teams';
+    return (['market', 'staff', 'house', 'studio', 'sponsors'] as const).some((h) => h === id && hinted(s, h));
+  }
 
   /** A finished quest or an open draft waits in HQ. */
   const hqWaiting = $derived(s.quests.active.some((q) => q.ready) || !!s.draft);
@@ -63,7 +71,7 @@
   <nav class="tabs" aria-label="Sections" bind:this={strip}>
     {#each open as t (t.id)}
       <!-- Below 1280px only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
-      <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
+      <button class="tab" class:active={game.tab === t.id} class:tut-target={tabHinted(t.id)} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
         <Icon name={t.icon} size={16} />
         <span>{t.label}</span>
         {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}

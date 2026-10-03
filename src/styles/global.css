@@ -233,19 +233,53 @@ textarea {
   background: linear-gradient(90deg, var(--accent), var(--gold));
 }
 
-/* Whatever the tutorial wants next gets a soft, slow glow: noticeable, never shouting. */
+/*
+ * Whatever the tutorial or the live quest wants next gets a ring in the interface tone with a ripple
+ * running out from it: easy to find at a glance, without covering what it highlights.
+ */
 .tut-target {
-  animation: tut-glow 2.4s ease-in-out infinite;
+  animation: tut-pulse 1.8s ease-out infinite;
 }
-@keyframes tut-glow {
+@keyframes tut-pulse {
+  0% {
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 0 0 12px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+/* "Show me": one big beat on top of the usual pulse. */
+.tut-target.tut-flash {
+  animation: tut-flash 0.65s ease-out 2;
+}
+@keyframes tut-flash {
+  0% {
+    box-shadow:
+      0 0 0 3px var(--accent),
+      0 0 0 3px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 3px var(--accent),
+      0 0 0 26px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+/* For drawings with no box of their own (a player at their desk): the glow follows the outline. */
+.tut-target.tut-soft {
+  animation: tut-outline 1.6s ease-in-out infinite;
+}
+@keyframes tut-outline {
   0%,
   100% {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+    filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 0 transparent);
   }
   50% {
-    box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent),
-      0 0 16px 2px color-mix(in srgb, var(--accent) 20%, transparent);
+    filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 70%, transparent));
   }
 }
 

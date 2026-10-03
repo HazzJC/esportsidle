@@ -16,6 +16,7 @@
   import { rarityName, roomColor } from '../theme';
   import { tooltip } from '../tooltip.svelte';
   import { trophyTip } from '../trophyTip';
+  import { hinted } from '../hints';
 
   const MAX_STATIONS = 10;
   /** Trophies drawn on the house shelf, newest first. */
@@ -29,6 +30,8 @@
   const next = $derived(ROOMS[level + 1]);
   const unlocked = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked && v.s.teams[g.id]));
   const has = (id: string) => !!v.s.decor[id];
+  /** "Make it home" points at the cheapest piece that fits. */
+  const decorHint = $derived(hinted(v.s, 'house') ? DECOR.filter((d) => !v.s.decor[d.id] && level >= d.room).sort((a, b) => a.cost - b.cost)[0]?.id : undefined);
 
   interface Seat {
     player: Player;
@@ -135,6 +138,12 @@
     beanbags: { x: 58, y: 340, s: 2.7, layer: 'front' },
     cat: { x: 626, y: 372, s: 1.9, layer: 'front' },
     massage: { x: 770, y: 356, s: 2.3, layer: 'front' },
+    soundproofing: { x: 724, y: 44, s: 1.6, layer: 'wall' },
+    monitorWall: { x: 410, y: 66, s: 1.5, layer: 'wall' },
+    ringLight: { x: 300, y: 196, s: 1.8, layer: 'back' },
+    proKitchen: { x: 548, y: 184, s: 2.2, layer: 'back' },
+    snackDrawer: { x: 196, y: 384, s: 1.6, layer: 'front' },
+    homeGym: { x: 872, y: 372, s: 1.9, layer: 'front' },
   };
   const PLANT_SPOTS = [
     { x: -14, y: 360 },
@@ -182,10 +191,10 @@
       <p class="muted small">{room.desc}</p>
     </div>
     {#if next}
-      <div class="next" use:tooltip={() => ({ title: `Next: ${next.name}`, icon: 'house', iconColor: roomColor(level + 1), lines: [next.desc, `Earn ${money(next.threshold)} this run to move in.`] })}>
-        <span class="muted small">Next: {next.name}</span>
-        <span class="bar" style="--bar:{roomColor(level + 1)}"><i style="width:{Math.min(100, (v.s.earnedRun / next.threshold) * 100)}%"></i></span>
-        <span class="num small">{fmtPct(Math.min(1, v.s.earnedRun / next.threshold))}</span>
+      <div class="next" style="--bar:{roomColor(level + 1)}" use:tooltip={() => ({ title: `Next: ${next.name}`, icon: 'house', iconColor: roomColor(level + 1), lines: [next.desc, `Earn ${money(next.threshold)} this run to move in.`, { text: `Moving redecorates every team's room, and ${DECOR.filter((d) => d.room === level + 1).length} more decor pieces fit there.`, tone: 'cyan' as const }] })}>
+        <span class="next-head"><Icon name="house" size={14} /> Next house: <b>{next.name}</b> <span class="rar">{rarityName(level + 1)}</span></span>
+        <span class="bar"><i style="width:{Math.min(100, (v.s.earnedRun / next.threshold) * 100)}%"></i></span>
+        <span class="num small muted">{money(v.s.earnedRun)} of {money(next.threshold)} earned this run · {fmtPct(Math.min(1, v.s.earnedRun / next.threshold))}</span>
       </div>
     {/if}
   </header>
@@ -470,6 +479,7 @@
               {@const poor = !owned && fits && v.s.cash < d.cost}
               <button
                 class="item"
+                class:tut-target={decorHint === d.id}
                 class:owned
                 class:locked={!fits}
                 class:poor
@@ -536,9 +546,29 @@
   }
   .next {
     display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 260px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--bar) 45%, var(--line));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--bar) 12%, transparent), transparent 80%);
+  }
+  .next-head {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    min-width: 220px;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--bar);
+  }
+  .next-head b {
+    color: var(--text);
+  }
+  .next-head .rar {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
   .next .bar {
     flex: 1;

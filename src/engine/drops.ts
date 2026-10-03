@@ -5,6 +5,7 @@ import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
 import { dropCapMinutes, dropMinutes, dropPayout, limitReward, runHours } from './rewards';
 import type { Rng } from './rng';
+import { dropQuestLive } from './quests';
 import { INVITATION_SECONDS, invitationOdds, invitationalName, offerInvitation, pickTournamentTeam } from './tournament';
 import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone } from './types';
 import { earnCash, gainFans } from './wallet';
@@ -343,6 +344,9 @@ export function scheduleNextDrop(s: GameState, ctx: DropContext): void {
   s.drops.nextAt = s.time + ctx.rng.range(DROP_INTERVAL[0], DROP_INTERVAL[1]) * ctx.mods.dropIntervalMult;
 }
 
+/** Seconds between drops while the Hype Drop quest is live and none is on screen. */
+export const DROP_QUEST_RETRY = 30;
+
 export function updateDrops(s: GameState, ctx: DropContext): void {
   if (s.drops.active.length > 0) {
     const live = s.drops.active.filter((d) => d.expiresAt > s.time);
@@ -356,6 +360,8 @@ export function updateDrops(s: GameState, ctx: DropContext): void {
     s.drops.nextAt = s.time + ctx.rng.range(FIRST_DROP[0], FIRST_DROP[1]);
     return;
   }
+  // The Hype Drop quest says one is on its way: a missed drop is followed by another soon.
+  if (s.drops.active.length === 0 && dropQuestLive(s)) s.drops.nextAt = Math.min(s.drops.nextAt, s.time + DROP_QUEST_RETRY);
   // No Hype challenge: drops never spawn.
   if (s.time >= s.drops.nextAt && s.drops.active.length === 0 && s.prestige.challenge !== 'nodrops') {
     spawnDrop(s, ctx);

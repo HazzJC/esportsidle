@@ -20,6 +20,14 @@ export const FIRST_PLAYER_PRICE = 25;
 
 const players = (s: GameState) => Object.keys(s.players).length;
 
+/**
+ * What the first win pays on top of its prize: enough that the Grinder and most of the Streamer are a
+ * few dozen clicks away, so a player who clicks only for what they need reaches the Streamer before
+ * the hype meter fills. The crowd going wild is the subject of a later quest; a player who keeps
+ * clicking hard still gets there early.
+ */
+export const FIRST_WIN_BONUS = 85;
+
 /** How long the tutorial's scripted injury lasts, so nobody is stuck if they miss the step. */
 export const TUTORIAL_INJURY_SECONDS = 60;
 
@@ -54,7 +62,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'match',
     title: 'Your first win',
-    body: 'This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Watch the bar fill and wait for your first win. Players, gear and seasons are the active side of your org.',
+    body: `This is your team. They play a match every 15 seconds on their own, sixteen to a season, and strong seasons earn promotion to richer leagues. Watch the bar fill and wait for your first win: it pays a $${FIRST_WIN_BONUS} bonus to get you started. Players, gear and seasons are the active side of your org.`,
     icon: 'swords',
     target: 'matches',
     progress: (s) => ({ value: Math.min(1, s.stats.matchesWon), target: 1 }),

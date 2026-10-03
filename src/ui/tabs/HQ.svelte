@@ -5,7 +5,6 @@
   import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
-  import Agenda from '../components/Agenda.svelte';
   import Collapsible from '../components/Collapsible.svelte';
   import HQOverview from '../components/HQOverview.svelte';
   import { GRIND_NEED, TIER_NEED } from '../../data/upgrades';
@@ -91,10 +90,6 @@
 <div class="hq">
   {#if s.tutorial.step === 'done' && owned.length > 0}<HQOverview />{/if}
   <Quests />
-  {#if s.tutorial.step === 'done'}
-    <Agenda />
-  {/if}
-
 
   {#if modifiers.length > 0 || s.events.log.length > 0 || v.m.dramaLevel > 0}
     <Collapsible id="org-activity" title="Org activity" summary={activitySummary} urgent={alert}>

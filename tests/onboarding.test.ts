@@ -16,12 +16,13 @@ import {
   QUEST_SLOTS,
   questPerkLabels,
   questPerkSources,
+  questLineWait,
   questProgress,
   updateQuests,
 } from '../src/engine/quests';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
-import { MARKET_UNLOCK_CASH, sectionOpen, updateSections } from '../src/engine/sections';
+import { MARKET_UNLOCK_CASH, STAFF_UNLOCK_SIGNINGS, STUDIO_UNLOCK_FANS, sectionOpen, updateSections } from '../src/engine/sections';
 import { hireStaff } from '../src/engine/staff';
 import { createNewGame } from '../src/engine/state';
 import { benchPlayer, playMatch } from '../src/engine/teams';
@@ -210,32 +211,64 @@ describe('tabs that open as the org grows', () => {
     for (const id of ['market', 'house', 'staff', 'sponsors', 'studio', 'legacy']) expect(sectionOpen(s, id), id).toBe(false);
   });
 
-  it('opens House with the second team, Staff with the third and Sponsors at 1,000 fans', () => {
+  it('opens each tab with its quest in the first run, in the order of the quest line', () => {
+    const s = createNewGame(0, 1);
+    s.cash = 100;
+    signDraftPick(s, s.draft![0].player.id, computeMods(s));
+    skipTutorial(s);
+    s.stats.playtimeTotal = 1e4;
+    s.cash = 1e9;
+    s.fansRun = 1e6;
+    updateQuests(s);
+    updateSections(s);
+    // Plenty of cash and fans, but the line is still on its first quest: nothing has opened early.
+    expect(s.quests.active.map((q) => q.id)).toEqual(['grinders_10']);
+    for (const id of ['market', 'staff', 'house', 'studio', 'sponsors']) expect(sectionOpen(s, id), id).toBe(false);
+    // Each quest that opens a tab opens it the moment it is offered.
+    const line = ['grinders_10', 'gear_1', 'crowd_1', 'upgrades_3'];
+    for (const id of line) s.quests.done[id] = 0;
+    s.quests.active = [];
+    updateQuests(s);
+    updateSections(s);
+    expect(s.quests.active.map((q) => q.id)).toEqual(['scout_1']);
+    expect(sectionOpen(s, 'market')).toBe(true);
+    expect(sectionOpen(s, 'staff')).toBe(false);
+  });
+
+  it('holds the first-run line on a quest whose requirement is not met, and says what it waits for', () => {
+    const s = foundedGame(0, 1);
+    s.sections = {};
+    for (const q of QUESTS) {
+      if (q.id === 'design_shirt') break;
+      s.quests.done[q.id] = 0;
+    }
+    s.fansRun = 100;
+    fillQuests(s);
+    expect(s.quests.active).toEqual([]);
+    const wait = questLineWait(s);
+    expect(wait?.quest.id).toBe('design_shirt');
+    expect(wait?.value).toBe(100);
+    expect(wait?.target).toBe(STUDIO_UNLOCK_FANS);
+    s.fansRun = STUDIO_UNLOCK_FANS;
+    updateQuests(s);
+    updateSections(s);
+    expect(s.quests.active.map((q) => q.id)).toEqual(['design_shirt']);
+    expect(sectionOpen(s, 'studio')).toBe(true);
+  });
+
+  it('opens tabs on their own requirement after the first sale', () => {
     const s = createNewGame(0, 1);
     skipTutorial(s);
+    s.prestige.runs = 1;
+    s.stats.orgsSold = 1;
     s.cash = 1e9;
     signDraftPick(s, s.draft![0].player.id, computeMods(s));
-    updateSections(s);
-    expect(sectionOpen(s, 'teams')).toBe(true);
-    expect(sectionOpen(s, 'market')).toBe(true);
-    expect(sectionOpen(s, 'house')).toBe(false);
-
     s.teams.rocket = { ...s.teams.smash, gameId: 'rocket' };
-    updateSections(s);
-    expect(sectionOpen(s, 'house')).toBe(true);
-    expect(sectionOpen(s, 'staff')).toBe(false);
-    s.stats.playersSigned = 5;
-    expect(hireStaff(s, 'coach', 1)).toBe(0);
-
-    s.teams.counter = { ...s.teams.smash, gameId: 'counter' };
-    updateSections(s);
-    expect(sectionOpen(s, 'staff')).toBe(true);
-    expect(hireStaff(s, 'coach', 1)).toBe(1);
-
-    expect(sectionOpen(s, 'sponsors')).toBe(false);
+    s.stats.playersSigned = STAFF_UNLOCK_SIGNINGS;
     s.fansRun = 1_000;
     updateSections(s);
-    expect(sectionOpen(s, 'sponsors')).toBe(true);
+    for (const id of ['market', 'house', 'staff', 'sponsors', 'studio']) expect(sectionOpen(s, id), id).toBe(true);
+    expect(hireStaff(s, 'coach', 1)).toBe(1);
   });
 
   it('stays open once opened, even after selling the org', () => {
@@ -330,7 +363,7 @@ describe('quests', () => {
   it('pays cash worth minutes of income, with a floor for small orgs', () => {
     const s = foundedGame(0, 1);
     s.quests.done = Object.fromEntries(QUESTS.filter((q) => q.id !== 'staff_1').map((q) => [q.id, 0]));
-    s.stats.playersSigned = 1;
+    s.stats.playersSigned = STAFF_UNLOCK_SIGNINGS;
     fillQuests(s);
     s.stats.staffHired++;
     const cash = s.cash;
@@ -449,10 +482,14 @@ describe('the market', () => {
     updateSections(s);
     expect(sectionOpen(s, 'market')).toBe(false); // still in the tutorial
     skipTutorial(s);
+    // The quest line reaches "Scout the market", which waits for the cash.
+    for (const id of ['grinders_10', 'gear_1', 'crowd_1', 'upgrades_3']) s.quests.done[id] = 0;
     s.cash = MARKET_UNLOCK_CASH - 1;
+    updateQuests(s);
     updateSections(s);
     expect(sectionOpen(s, 'market')).toBe(false);
     s.cash = MARKET_UNLOCK_CASH;
+    updateQuests(s);
     updateSections(s);
     expect(sectionOpen(s, 'market')).toBe(true);
     s.cash = 0;

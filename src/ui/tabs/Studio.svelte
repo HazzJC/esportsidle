@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { hinted } from '../hints';
+  import { hasQol } from '../../engine/staff';
   import { FINISH_ART_LEVELS, FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishName, finishSalesMult } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
@@ -27,6 +29,7 @@
 
   const v = $derived(game.view);
   const s = $derived(v.s);
+  const studioHint = $derived(hinted(s, 'studio'));
   /** Someone to model the kit: the founder if they are still around, otherwise any player. */
   const model = $derived(s.players.founder ?? Object.values(s.players)[0]);
   const customKits = $derived(Object.values(s.teams).filter((t) => t.kit).length);
@@ -116,7 +119,7 @@
     <div class="section-head">
       <h3 class="section-title">Your designs <span class="dim">{designs.length}/{MAX_DESIGNS}</span></h3>
       <div class="row">
-        <button class="btn small primary" disabled={full} onclick={() => (editing = { id: null })}><Icon name="pencil" size={13} /> New design</button>
+        <button class="btn small primary" class:tut-target={studioHint && designs.length === 0} disabled={full} onclick={() => (editing = { id: null })}><Icon name="pencil" size={13} /> New design</button>
         <button class="btn small" disabled={full} onclick={() => game.generateDesign()}><Icon name="wand-sparkles" size={13} /> Auto-generate</button>
         {#if merchOpen && trend}
           <button class="btn small gold" disabled={full} onclick={() => game.generateDesign(32, true)} use:tooltip={() => ({ title: `Design for ${trend.name}`, icon: trend.icon, lines: ['Generates a design briefed to match the current trend.', 'Put it on your lines while the trend lasts.'] })}><Icon name={trend.icon} size={13} /> Design for {trend.name}</button>
@@ -146,8 +149,8 @@
             {#if uses.length > 0}<div class="uses">{uses.join(' · ')}</div>{/if}
             <div class="dactions">
               <button class="btn small" class:primary={s.org.logo === d.id} onclick={() => game.setLogo(s.org.logo === d.id ? null : d.id)}>Logo</button>
-              <button class="btn small" class:primary={s.org.jersey === d.id} onclick={() => game.setJersey(s.org.jersey === d.id ? null : d.id)}>Jersey</button>
-              {#if merchOpen && Object.keys(s.merch.lines).length > 0}
+              <button class="btn small" class:primary={s.org.jersey === d.id} class:tut-target={studioHint && !s.org.jersey} onclick={() => game.setJersey(s.org.jersey === d.id ? null : d.id)}>Jersey</button>
+              {#if merchOpen && Object.keys(s.merch.lines).length > 1 && hasQol(s, 'allLines')}
                 <button class="btn small" onclick={() => game.setAllLinesDesign(d.id)} use:tooltip={() => ({ title: 'Use on all merch', icon: 'shirt', lines: ['Puts this design on every merch line.', 'A design a line sold recently comes back no fresher than it left.'] })}>All merch</button>
               {/if}
               {#if confirmDelete === d.id}

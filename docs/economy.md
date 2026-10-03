@@ -56,3 +56,16 @@ A scouting reroll costs 10 seconds of base income (never under $25), doubling wi
 - The first four click upgrades give flat cash per click (priced against the money around when they appear); the other eight give a small share of income per click.
 - Clicks during a crowd keep filling the meter, and the next crowd starts on the next click once this one ends.
 - A bubble chain's volume tops out at ×20, and every bubble past it still adds time.
+
+## The first run: tutorial, quest line and unlocks
+
+- **First win.** The tutorial's first win pays a one-off `FIRST_WIN_BONUS` ($85, `data/tutorial.ts`) on top of its prize, so a player who clicks only for what they need reaches the first Streamer with the hype meter about two-thirds full. The crowd going wild belongs to a later quest; clicking hard still gets there early.
+- **The quest line is the spine of the first run.** It is followed strictly in order (`strictQuestLine`, `fillQuests` in `engine/quests.ts`): a quest whose requirement is not met yet holds the line, and the HQ console says what it is waiting for, with a meter when there is a number (`questLineWait`). Quests that wait on chance (`skipWhileLocked`, the rival) are passed over and come back.
+- **Quests open the systems they teach.** The transfer market, Staff, the House, the Studio and Sponsors each name a quest (`SectionDef.quest` in `engine/sections.ts`). In the first run a tab opens when its quest is offered, and the quest is offered once the tab's own requirement is met ($500 in the bank, two players signed, a second team, 500 fans, 1,000 fans). After the first sale tabs open on their requirement alone; tabs that are open stay open.
+- **Staff bring tools.** The first hire of several staff roles brings a tool for the rest of the run (`StaffDef.qol`): the Coach's game plan of next steps (on the Staff page), buying and hiring 10 at a time (Chef), Buy all upgrades (Scout), Max (Analyst), selling operations (Talent Agent), 100 at a time (Social Media Manager), one design on every merch line (Merch Designer). Until then the store and the Staff tab buy one at a time. The engine's own buyers (automation, the simulator) are not limited.
+
+## Sponsors
+
+- An org starts with **one sponsor slot** (`BASE_SPONSOR_SLOTS`). The first sponsor quest's perk adds a second; Legacy adds more.
+- **The first deal ever** is a choice between three snack brands (`STARTER_DEALS` in `data/sponsors.ts`), each a tier 1 contract with its own perk and goal: Crunchy Chips (an easy wins goal, +morale), Doritoes (a fans goal, +fans) and Nacho Average Snacks (a Hype Drop goal that pays the largest share, +XP, the biggest income boost). Signing one sends the other two away and ordinary offers follow. A brand can carry its own perk in place of its category's (`BrandDef.perk`, `brandPerk`).
+- While a deal runs it adds its share to all income and gives its perk; a goal met before it ends pays its bonus there and then. When it ends, or is ended early, the boost and perk stop, an unmet goal pays nothing, and there is no other penalty.

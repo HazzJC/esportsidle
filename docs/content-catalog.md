@@ -8,9 +8,13 @@ Edit each list at its source so game text and values remain easy to audit.
 | Player first names, surnames, handles, nationalities, rival names | `src/data/names.ts` | `src/engine/players.ts` generates players |
 | World events, choice text, weights, durations | `src/engine/worldEvents.ts` | `src/engine/activity.ts` filters the activity log |
 | Operations, upgrades, and gear | `src/data/operations.ts`, `src/data/upgrades.ts`, `src/data/gear.ts` | `src/engine/operations.ts`, `src/engine/upgrades.ts` |
-| Sponsors and goal values | `src/data/sponsors.ts` | `src/engine/sponsors.ts` |
+| Sponsors and goal values, brand perks, the three starter snack deals | `src/data/sponsors.ts` (`STARTER_DEALS`, `BrandDef.perk`) | `src/engine/sponsors.ts` |
+| Staff roles and the tool each first hire brings (bulk buying, selling, Buy all, the Coach's game plan) | `src/data/staff.ts` (`qol`) | `src/engine/staff.ts` (`hasQol`, `bulkAmounts`) |
+| Houses (rooms) and decor | `src/data/decor.ts` | decor drawings in `src/ui/decorArt.ts`, house scene placements in `src/ui/tabs/House.svelte`, move-in card `MoveIn.svelte` |
+| Team rooms on the Teams tab: walls and floors per house, four parody props per game | `src/ui/roomArt.ts` | `src/ui/tabs/Teams.svelte` |
+| Tutorial steps and the first-win bonus | `src/data/tutorial.ts` | `src/engine/tutorial.ts`; highlights in `Coach.svelte` and `.tut-target` (`src/styles/global.css`) |
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
-| Quests, the mechanics they teach, quest tools and tokens, operation-affinity values | `src/data/quests.ts` | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md`; each quest's `art` names its emblem, drawn in `src/ui/questArt.ts` |
+| Quests, the mechanics they teach, the tab each one opens in the first run, what the line waits for, "Show me" hints, quest tools and tokens, operation-affinity values | `src/data/quests.ts` (tabs: `SectionDef.quest` in `src/engine/sections.ts`; hint pulses: `src/ui/hints.ts`) | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md`; each quest's `art` names its emblem, drawn in `src/ui/questArt.ts` |
 | Legacy unlocks and automation | `src/data/legacy.ts`, `src/data/automation.ts` | `src/engine/automation.ts` |
 | Hype meter, drops, and buffs (what a drop pays is scaled in `src/engine/rewards.ts`) | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
 | Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |

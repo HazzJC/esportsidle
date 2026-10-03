@@ -33,6 +33,14 @@
     // The arrow sits just above its target, so showing the arrow brings the target along with it.
     const el = document.querySelector('.tut-arrow') ?? document.querySelector('.tut-target');
     if (el && el.getClientRects().length > 0) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // A quick extra beat on the target, so "Show me" always visibly lands somewhere.
+    const lit = document.querySelector<HTMLElement>('.tut-target');
+    if (lit) {
+      lit.classList.remove('tut-flash');
+      void lit.offsetWidth;
+      lit.classList.add('tut-flash');
+      setTimeout(() => lit.classList.remove('tut-flash'), 1300);
+    }
   }
 
   // Each new step moves the player once; after that they are free to look around.
@@ -111,9 +119,12 @@
       {#if progress.target > 1}<span class="num count">{fmt(Math.min(progress.value, progress.target))}/{fmt(progress.target)}</span>{/if}
       {#if targetHidden}
         <button class="back" onclick={() => guide(step.target)}><Icon name="arrow-right" size={14} /> {BACK_LABEL[step.target]}</button>
-      {:else if shortOfCash}
-        <!-- On phones the logo is on another screen: an easy way back to click for more cash. -->
-        <button class="back phone-only" onclick={() => (game.mobileView = 'clicker')}><Icon name="mouse-pointer-click" size={14} /> Keep clicking</button>
+      {:else}
+        <button class="back" onclick={() => guide(step.target)}><Icon name="eye" size={14} /> Show me</button>
+        {#if shortOfCash}
+          <!-- On phones the logo is on another screen: an easy way back to click for more cash. -->
+          <button class="back phone-only" onclick={() => (game.mobileView = 'clicker')}><Icon name="mouse-pointer-click" size={14} /> Keep clicking</button>
+        {/if}
       {/if}
     </div>
   </aside>

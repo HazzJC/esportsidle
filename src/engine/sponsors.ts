@@ -7,7 +7,10 @@ import {
   GOAL_INFO,
   SPONSORS_UNLOCK_FANS,
   SPONSOR_TIERS,
+  STARTER_DEALS,
+  brandPerk,
   type SponsorGoalKind,
+  type StarterDeal,
 } from '../data/sponsors';
 import { hasSpecial } from './prestige';
 import type { StatAmount } from '../data/staff';
@@ -21,7 +24,6 @@ import { earnCash, gainTrophies } from './wallet';
 
 export const OFFER_COUNT = 3;
 export const OFFER_REFRESH_SECONDS = 300;
-export const BASE_SPONSOR_SLOTS = 2;
 /** Chance per minute that a crypto sponsor collapses. */
 export const CRYPTO_CRASH_PER_MINUTE = 0.02;
 const HISTORY_LENGTH = 20;
@@ -168,8 +170,30 @@ export function generateOffer(s: GameState, rng: Rng): SponsorOffer {
   };
 }
 
+/** One of the three snack deals an org chooses between for its very first sponsorship. */
+export function starterOffer(s: GameState, deal: StarterDeal, rng: Rng): SponsorOffer {
+  const t = SPONSOR_TIERS[0];
+  return {
+    id: s.nextId++,
+    brandId: deal.brandId,
+    tier: 0,
+    duration: deal.duration,
+    incomePct: t.incomePct * GOAL_EASE[deal.goal] * rng.range(0.95, 1.05),
+    perkScale: offerPerkScale(0, deal.goal),
+    goal: { kind: deal.goal, target: Math.max(deal.target, Math.ceil(goalPace(s, deal.goal) * MIN_GOAL_SECONDS)), rewardSeconds: t.goalSeconds },
+    starter: true,
+  };
+}
+
+/** Whether the org has yet to sign its first sponsor ever: its offers are the three starter deals. */
+export function firstSponsorship(s: GameState): boolean {
+  return s.stats.sponsorsSigned === 0;
+}
+
 export function refreshOffers(s: GameState, rng: Rng, count = OFFER_COUNT): void {
-  s.sponsors.offers = Array.from({ length: count }, () => generateOffer(s, rng)).sort((a, b) => a.tier - b.tier);
+  s.sponsors.offers = firstSponsorship(s)
+    ? STARTER_DEALS.map((d) => starterOffer(s, d, rng))
+    : Array.from({ length: count }, () => generateOffer(s, rng)).sort((a, b) => a.tier - b.tier);
   s.sponsors.nextRefresh = s.time + OFFER_REFRESH_SECONDS;
 }
 
@@ -198,6 +222,11 @@ export function signOffer(s: GameState, offerId: number, mods: Pick<Mods, 'spons
   };
   s.sponsors.active.push(contract);
   s.stats.sponsorsSigned++;
+  // The two starter deals not taken leave with the first signing; ordinary offers take their place.
+  if (offer.starter) {
+    s.sponsors.offers = s.sponsors.offers.filter((o) => !o.starter);
+    s.sponsors.nextRefresh = s.time;
+  }
   return { ok: true, contract };
 }
 
@@ -240,7 +269,7 @@ export function sponsorBonuses(s: GameState): SponsorBonuses {
     const brand = BRAND_MAP.get(c.brandId);
     if (!brand) continue;
     out.incomePct += c.incomePct;
-    const info = CATEGORY_INFO[brand.category];
+    const info = brandPerk(brand);
     const k = c.perkScale ?? 1;
     if (info.stats) out.stats.push(...info.stats.map((st) => ({ ...st, amount: st.amount * k })));
     if (info.effects) out.effects.push(...info.effects.map((e) => scaleSponsorEffect(e, k)));

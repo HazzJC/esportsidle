@@ -58,7 +58,7 @@
     return { rows: rows.sort((a, b) => b.value - a.value).map((x) => ({ ...x, share: total > 0 ? x.value / total : 0 })), total };
   });
 
-  const groups = $derived<{ title: string; icon: string; rows: [string, string][] }[]>([
+  const groups = $derived<{ title: string; icon: string; rows: [string, string][]; wide?: boolean }[]>([
     {
       title: 'Money',
       icon: 'coins',
@@ -122,14 +122,16 @@
     {
       title: 'Income multipliers',
       icon: 'sparkles',
+      // Its values are long ("20% for 6h · then fading"), so it takes the full row rather than squeezing into a column.
+      wide: true,
       rows: [
         ['Base production', `${money(r.baseCps, 1)}/s`],
         ['Upgrades', `×${fmt(m.globalMult, 2)}`],
-        ['Fame (fans)', `×${r.fameMult.toFixed(3)} (power ${m.fameExp.toFixed(3)} · ${fanStage(s.fans).stage.name})`],
+        ['Fame (fans)', `×${r.fameMult.toFixed(3)} · power ${m.fameExp.toFixed(3)} · ${fanStage(s.fans).stage.name}`],
         ['Superfans', `×${r.superfanMult.toFixed(3)}`],
-        ['Trophy Cabinet', `${fmtPct(r.cabinet)} (${cabinetCount(s)} achievements)`],
+        ['Trophy Cabinet', `${fmtPct(r.cabinet)} · ${cabinetCount(s)} achievements`],
         ['Active buffs', `×${fmt(r.buffIncomeMult, 2)}`],
-        ['Offline', `${fmtPct(m.offlineRate)} for ${m.offlineWindowHours}h, then fading (about half after ${OFFLINE_FADE_HOURS}h more)`],
+        ['Offline', `${fmtPct(m.offlineRate)} for ${m.offlineWindowHours}h · then fading, about half after ${OFFLINE_FADE_HOURS}h more`],
       ],
     },
   ]);
@@ -179,7 +181,7 @@
 
   <div class="groups">
     {#each groups as g (g.title)}
-      <section class="card">
+      <section class="card" class:wide={g.wide}>
         <h3 class="section-title"><Icon name={g.icon} size={14} /> {g.title}</h3>
         <dl>
           {#each g.rows as [label, value] (label)}
@@ -337,6 +339,12 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 8px;
   }
+  .groups > .card {
+    min-width: 0;
+  }
+  .groups > .card.wide {
+    grid-column: 1 / -1;
+  }
   dl {
     display: grid;
     grid-template-columns: max-content 1fr;
@@ -348,6 +356,7 @@
     color: var(--muted);
   }
   dd {
+    min-width: 0;
     margin: 0;
     font-weight: 600;
     text-align: right;

@@ -22,6 +22,7 @@
   const topOp = $derived([...OPERATIONS].reverse().find((op) => s.ops[op.id].owned > 0));
   const scene = $derived(topOp ? opSceneBackground(topOp.id, opColor(topOp.index)) : undefined);
   const room = $derived(ROOMS[roomLevel(s)]);
+  const nextRoom = $derived(ROOMS[roomLevel(s) + 1]);
   const buildings = $derived(OPERATIONS.reduce((n, op) => n + s.ops[op.id].owned, 0));
 
   // Where the money comes from right now. Sponsors multiply everything, so they are a badge, not a slice.
@@ -45,6 +46,28 @@
   const onTrend = $derived(merchLines.filter((l) => l.trending).length);
   const trend = $derived(TREND_MAP.get(s.merch.trend));
 
+  /**
+   * The split of income (the legend and the four tiles) stays folded away until the player clicks the
+   * income or the bar, so the banner takes little room. Remembered per browser.
+   */
+  const SPLITS_KEY = 'esportsidle.hqSplits';
+  let splits = $state(readSplits());
+  function readSplits(): boolean {
+    try {
+      return localStorage.getItem(SPLITS_KEY) === 'open';
+    } catch {
+      return false;
+    }
+  }
+  function toggleSplits(): void {
+    splits = !splits;
+    try {
+      localStorage.setItem(SPLITS_KEY, splits ? 'open' : 'closed');
+    } catch {
+      // Not remembered, that's all.
+    }
+  }
+
   function open(tab: 'teams' | 'studio' | 'sponsors'): void {
     game.tab = tab;
     game.mobileView = 'center';
@@ -56,30 +79,38 @@
     <span class="logo"><OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={58} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
     <div class="who">
       <b class="name">{s.org.name}</b>
-      <span class="sub">{room.name} · Run {s.prestige.runs + 1}{#if s.prestige.level > 0}{' · Legacy ' + fmt(s.prestige.level)}{/if}</span>
+      <span class="sub">{room.name}{#if nextRoom}<span class="dim">{' '}({fmtPct(Math.min(1, s.earnedRun / nextRoom.threshold), false, 0)} to the {nextRoom.name})</span>{/if} · Run {s.prestige.runs + 1}{#if s.prestige.level > 0}{' · Legacy ' + fmt(s.prestige.level)}{/if}</span>
     </div>
-    <div class="income" use:tooltip={() => ({ title: 'Income per second', icon: 'trending-up', lines: [`Operations, matches and merch together.`, ...(m.sponsorIncomePct > 0 ? [{ text: `Sponsors add ${fmtPct(m.sponsorIncomePct, false, 1)} to all of it.`, tone: 'good' as const }] : [])] })}>
-      <span class="big num">{money(r.totalCps, 1)}<small>/s</small></span>
+    <button
+      class="income"
+      aria-expanded={splits}
+      onclick={toggleSplits}
+      use:tooltip={() => ({ title: 'Income per second', icon: 'trending-up', lines: [`Operations, matches and merch together.`, ...(m.sponsorIncomePct > 0 ? [{ text: `Sponsors add ${fmtPct(m.sponsorIncomePct, false, 1)} to all of it.`, tone: 'good' as const }] : []), { text: splits ? 'Click to fold the breakdown away.' : 'Click for where it comes from.', tone: 'cyan' as const }] })}
+    >
+      <span class="big num">{money(r.totalCps, 1)}<small>/s</small> <span class="caret"><Icon name={splits ? 'chevron-up' : 'chevron-down'} size={14} /></span></span>
       <span class="chips">
         {#if r.buffIncomeMult > 1}<span class="chip buff"><Icon name="zap" size={11} /> ×{fmt(r.buffIncomeMult, 1)} boost</span>{/if}
         {#if m.sponsorIncomePct > 0}<span class="chip spons"><Icon name="handshake" size={11} /> +{fmtPct(m.sponsorIncomePct, false, 0)}</span>{/if}
       </span>
-    </div>
+    </button>
   </div>
 
   <div class="mix" aria-label="Where income comes from">
-    <div class="bar">
+    <button class="bar" aria-expanded={splits} aria-label={splits ? 'Hide where income comes from' : 'Show where income comes from'} onclick={toggleSplits}>
       {#each mix as p (p.id)}
         {#if p.share > 0.004}<i style="width:{p.share * 100}%; background:{p.color}" title="{p.label} {fmtPct(p.share)}"></i>{/if}
       {/each}
-    </div>
+    </button>
+    {#if splits}
     <div class="legend">
       {#each mix as p (p.id)}
         <span><i style="background:{p.color}"></i>{p.label} <b class="num">{fmtPct(p.share, false, 0)}</b></span>
       {/each}
     </div>
+    {/if}
   </div>
 
+  {#if splits}
   <div class="tiles">
     <button class="tile" style="--k:var(--accent)" onclick={() => (game.mobileView = 'store')}>
       <span class="ticon"><Icon name="landmark" size={18} /></span>
@@ -124,6 +155,7 @@
       </span>
     </button>
   </div>
+  {/if}
 </section>
 
 <style>
@@ -207,7 +239,23 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 3px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: inherit;
     text-align: right;
+    cursor: pointer;
+  }
+  .income:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .caret {
+    display: inline-grid;
+    vertical-align: middle;
+    color: var(--muted);
+    filter: none;
   }
   .big {
     font-family: var(--font-display);
@@ -245,10 +293,18 @@
   }
   .mix .bar {
     display: flex;
+    width: 100%;
     height: 8px;
+    padding: 0;
+    border: none;
     border-radius: 999px;
     overflow: hidden;
     background: var(--bg);
+    cursor: pointer;
+  }
+  .mix .bar:hover {
+    outline: 1px solid var(--line-2);
+    outline-offset: 2px;
   }
   .mix .bar i {
     display: block;

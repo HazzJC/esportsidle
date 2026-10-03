@@ -34,7 +34,8 @@ export const OFFLINE_WINDOW_OVERFLOW_SHARE = 0.5;
 /** How fast the offline rate fades after the full-rate window: counted time is W + H·ln(1 + extra/H). */
 export const OFFLINE_FADE_HOURS = 8;
 export const BASE_BENCH_SLOTS = 1;
-export const BASE_SPONSOR_SLOTS = 2;
+/** An org starts with one sponsor slot; the first sponsor quest adds a second, Legacy more. */
+export const BASE_SPONSOR_SLOTS = 1;
 /**
  * Fame is (1 + effective fans / 100)^fameExp. Raising the exponent compounds an already exponential
  * quantity twice over, so only the first four Fame upgrades raise it, and this ceiling is exactly the

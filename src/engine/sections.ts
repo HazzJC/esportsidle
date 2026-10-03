@@ -14,16 +14,29 @@ export const LEGACY_TAB_EARNED = 1e12;
 
 export interface SectionDef {
   id: string;
-  /** Opens the section. Sections without one are always open. Once open, a section stays open. */
+  /**
+   * What the org needs before the section can open. Sections without one are always open. Once open,
+   * a section stays open, across sales too.
+   */
   unlock?: (s: GameState) => boolean;
+  /**
+   * The quest that opens the section in the first run. The quest line is followed in order, and its
+   * quest is offered once `unlock` is met; offering it opens the section, so each system arrives with
+   * the quest that explains it. After the first sale the section opens on `unlock` alone.
+   */
+  quest?: string;
   /** How to open it, shown on the locked tab. */
   requirement?: (s: GameState) => string;
+  /** How far the org is towards `unlock`, for a progress bar while the quest line waits. */
+  progress?: (s: GameState) => { value: number; target: number };
   /** Popup when it opens. */
   announce?: string;
 }
 
 const teamCount = (s: GameState) => Object.keys(s.teams).length;
 const playerCount = (s: GameState) => Object.keys(s.players).length;
+/** Players signed opens the Staff tab: the founder and one signing from the market. */
+export const STAFF_UNLOCK_SIGNINGS = 2;
 
 /**
  * The centre tabs open one at a time as the org grows, so a new player meets each system when it
@@ -36,8 +49,10 @@ export const SECTIONS: SectionDef[] = [
   {
     id: 'market',
     unlock: (s) => playerCount(s) > 0 && !tutorialActive(s) && s.cash >= MARKET_UNLOCK_CASH,
+    quest: 'scout_1',
     requirement: (s) =>
       tutorialActive(s) ? 'Finish the tutorial' : `Have ${money(MARKET_UNLOCK_CASH)} in the bank (${money(Math.floor(s.cash))} now)`,
+    progress: (s) => ({ value: Math.min(MARKET_UNLOCK_CASH, Math.floor(s.cash)), target: MARKET_UNLOCK_CASH }),
     announce: 'The transfer market is open. Sign players to fill your teams and bench. Open it for a quick guide to reading a player.',
   },
   {
@@ -49,26 +64,34 @@ export const SECTIONS: SectionDef[] = [
   {
     id: 'studio',
     unlock: (s) => s.fansRun >= STUDIO_UNLOCK_FANS,
+    quest: 'design_shirt',
     requirement: (s) => `Reach ${fmt(STUDIO_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`,
+    progress: (s) => ({ value: Math.min(STUDIO_UNLOCK_FANS, s.fansRun), target: STUDIO_UNLOCK_FANS }),
     announce: 'Draw your own logo and jersey, and pick your team colours. Merch comes later.',
   },
   {
     id: 'house',
     unlock: (s) => teamCount(s) >= 2,
+    quest: 'decor_1',
     requirement: () => 'Found your second team',
+    progress: (s) => ({ value: Math.min(2, teamCount(s)), target: 2 }),
     announce: 'Your players need somewhere to live. Decor keeps them happy and healthy.',
   },
   {
     id: 'sponsors',
     unlock: (s) => sponsorsUnlocked(s),
+    quest: 'sponsor_1',
     requirement: (s) => `Reach ${fmt(SPONSORS_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`,
-    announce: 'Brands want in. Sponsors pay a share of your income for as long as the deal runs.',
+    progress: (s) => ({ value: Math.min(SPONSORS_UNLOCK_FANS, s.fansRun), target: SPONSORS_UNLOCK_FANS }),
+    announce: 'Brands want in. Three snack brands are calling first: compare what each one does, then sign one.',
   },
   {
     id: 'staff',
-    unlock: (s) => teamCount(s) >= 3,
-    requirement: () => 'Found your third team',
-    announce: 'Hire coaches, chefs, scouts and more. Staff help every team at once.',
+    unlock: (s) => s.stats.playersSigned >= STAFF_UNLOCK_SIGNINGS,
+    quest: 'staff_1',
+    requirement: (s) => `Sign ${STAFF_UNLOCK_SIGNINGS} players (${Math.min(STAFF_UNLOCK_SIGNINGS, s.stats.playersSigned)} so far)`,
+    progress: (s) => ({ value: Math.min(STAFF_UNLOCK_SIGNINGS, s.stats.playersSigned), target: STAFF_UNLOCK_SIGNINGS }),
+    announce: 'Hire coaches, chefs, scouts and more. Staff help every team at once, and each kind of staff brings a handy tool with their first hire.',
   },
   {
     id: 'legacy',
@@ -82,6 +105,28 @@ export const SECTIONS: SectionDef[] = [
 
 export const SECTION_MAP: Map<string, SectionDef> = new Map(SECTIONS.map((d) => [d.id, d]));
 
+/** Whether the org meets a section's own requirement, quest or not. Sections without one always do. */
+export function sectionReady(s: GameState, id: string): boolean {
+  const def = SECTION_MAP.get(id);
+  return !def?.unlock || def.unlock(s);
+}
+
+/** Whether the quest line has reached a quest: it is on the board or already claimed this run. */
+function questReached(s: GameState, questId: string): boolean {
+  return s.quests.done[questId] !== undefined || s.quests.active.some((q) => q.id === questId);
+}
+
+/**
+ * Whether a closed section should open now. In the first run a section with a quest waits for the
+ * quest line to reach it (the quest is offered only once the requirement is met, so reaching it is
+ * enough even if, say, the cash has been spent since). After a sale the requirement alone opens it.
+ */
+function shouldOpen(s: GameState, def: SectionDef): boolean {
+  if (!def.unlock) return true;
+  if (def.quest && s.prestige.runs === 0 && s.stats.orgsSold === 0) return questReached(s, def.quest);
+  return def.unlock(s);
+}
+
 export function sectionOpen(s: GameState, id: string): boolean {
   const def = SECTION_MAP.get(id);
   return !def?.unlock || s.sections[id] !== undefined;
@@ -91,7 +136,7 @@ export function sectionOpen(s: GameState, id: string): boolean {
 export function updateSections(s: GameState, announce = true): string[] {
   const opened: string[] = [];
   for (const def of SECTIONS) {
-    if (!def.unlock || s.sections[def.id] !== undefined || !def.unlock(s)) continue;
+    if (!def.unlock || s.sections[def.id] !== undefined || !shouldOpen(s, def)) continue;
     s.sections[def.id] = s.time;
     opened.push(def.id);
     if (announce && def.announce) emit({ type: 'section', id: def.id, text: def.announce });

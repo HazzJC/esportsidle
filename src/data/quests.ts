@@ -1,8 +1,9 @@
-import { isMerchUnlocked } from '../engine/merch';
+import { fmt, fmtTime } from '../engine/format';
+import { MERCH_UNLOCK_FANS, isMerchUnlocked } from '../engine/merch';
 import { canSell } from '../engine/prestige';
-import { sponsorsUnlocked } from '../engine/sponsors';
-import { sectionOpen } from '../engine/sections';
+import { sectionReady } from '../engine/sections';
 import { isStaffUnlocked } from '../engine/staff';
+import { CALM_START_SECONDS, calmStart } from '../engine/tutorial';
 import type { Effect, GameState } from '../engine/types';
 import { STAFF } from './staff';
 
@@ -96,6 +97,9 @@ export type QuestReward =
 
 export type QuestRewardKind = QuestReward['kind'];
 
+/** Where a quest's "Show me" leads: a tab, the store, a player's kit, the logo. */
+export type QuestHint = 'store' | 'upgrades' | 'logo' | 'player' | 'plan' | 'found' | 'teams' | 'market' | 'staff' | 'house' | 'studio' | 'sponsors';
+
 export interface QuestDef {
   id: string;
   title: string;
@@ -112,8 +116,18 @@ export interface QuestDef {
   metric: (s: GameState) => number;
   target: number;
   mode: 'delta' | 'absolute';
-  /** Offered only when this is true, so a quest is always something the player can act on. */
+  /**
+   * Offered only when this is true, so a quest is always something the player can act on. In the first
+   * run the line is followed strictly in order: a quest that is not available yet holds the line, and
+   * the board says what it is waiting for (`waiting`, or the requirement of the section it opens).
+   */
   available?: (s: GameState) => boolean;
+  /** What the line is waiting for while this quest is not available yet, with progress when it has a number. */
+  waiting?: (s: GameState) => { text: string; value?: number; target?: number };
+  /** A quest that waits on chance (a rival turning up) never holds the line: it is skipped and comes back. */
+  skipWhileLocked?: boolean;
+  /** What the board's "Show me" button points at, and what pulses while the quest is live. */
+  hint?: QuestHint;
   rewards: [QuestReward] | [QuestReward, QuestReward];
   /** Paid on top of the chosen reward, every time: an operation affinity, a cosmetic, a title. */
   bonus?: QuestReward[];
@@ -133,7 +147,9 @@ const maxLevel = (s: GameState) => Object.values(s.players).reduce((m, p) => Mat
 const totalOps = (s: GameState) => Object.values(s.ops).reduce((n, o) => n + o.owned, 0);
 
 /**
- * The milestones every org should hit, in roughly the order they become possible. One quest is on
+ * The milestones every org should hit, in the order the first run meets them. Several quests open the
+ * system they teach (engine/sections.ts `quest`): the market, Staff, the House, the Studio and Sponsors
+ * open as their quest is offered, so each one arrives with an explanation and something to do. One quest is on
  * the board at a time (`QUEST_SLOTS`); claiming it brings in the next available one. Selling the org
  * starts the line again, and the perks it paid go with the run.
  *
@@ -146,19 +162,20 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'grinders_10',
     title: 'Grinder squad',
-    desc: 'Own 10 Ranked Grinders.',
+    desc: 'Own 10 Ranked Grinders. Each one earns a little every second, even while the game is closed.',
     icon: 'gamepad-2',
     art: 'op:grinder',
     mechanic: 'operations',
     metric: (s) => s.ops.grinder?.owned ?? 0,
     target: 10,
     mode: 'absolute',
+    hint: 'store',
     rewards: [perk('Ranked Grinders earn twice as much', { kind: 'opMult', op: 'grinder', mult: 2 })],
   },
   {
     id: 'gear_1',
     title: 'Gear up',
-    desc: 'Buy a gear upgrade for a player. Click a player in the Teams tab to see their gear.',
+    desc: 'Buy a gear upgrade for a player: click your player in the Teams tab to open their kit, then upgrade any item.',
     icon: 'cpu',
     art: 'gear-up',
     mechanic: 'gear',
@@ -166,19 +183,8 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: hasPlayer,
+    hint: 'player',
     rewards: [levels(2)],
-  },
-  {
-    id: 'upgrades_3',
-    title: 'Read the patch notes',
-    desc: 'Buy 3 upgrades from the top of the store.',
-    icon: 'sparkles',
-    art: 'patch-notes',
-    mechanic: 'upgrades',
-    metric: (s) => s.stats.upgradesBoughtTotal,
-    target: 3,
-    mode: 'delta',
-    rewards: [perk('Clicks earn twice as much', { kind: 'clickMult', mult: 2 })],
   },
   {
     id: 'crowd_1',
@@ -190,31 +196,66 @@ export const QUESTS: QuestDef[] = [
     metric: (s) => s.stats.crowdsTotal,
     target: 1,
     mode: 'delta',
+    hint: 'logo',
     rewards: [perk('The crowd goes wild for 50% longer', { kind: 'hypeDuration', mult: 1.5 })],
+  },
+  {
+    id: 'upgrades_3',
+    title: 'Read the patch notes',
+    desc: 'Buy 3 upgrades from the top of the store. Upgrades are one-off purchases that multiply what you already own.',
+    icon: 'sparkles',
+    art: 'patch-notes',
+    mechanic: 'upgrades',
+    metric: (s) => s.stats.upgradesBoughtTotal,
+    target: 3,
+    mode: 'delta',
+    hint: 'upgrades',
+    rewards: [perk('Clicks earn twice as much', { kind: 'clickMult', mult: 2 })],
+  },
+  {
+    id: 'scout_1',
+    title: 'Scout the market',
+    desc: 'The transfer market is open. Sign a player there: a substitute rests on the bench and steps in when a starter is tired or hurt.',
+    icon: 'user-plus',
+    art: 'scout',
+    mechanic: 'scouting',
+    metric: (s) => s.stats.playersSigned,
+    target: 1,
+    mode: 'delta',
+    available: (s) => sectionReady(s, 'market'),
+    hint: 'market',
+    rewards: [perk('One more seat on every bench', { kind: 'benchSlots', add: 1 })],
   },
   {
     id: 'drop_1',
     title: 'Catch the drop',
-    desc: 'Click a Hype Drop, the glowing icon that sometimes floats across the screen.',
+    desc: 'Click a Hype Drop, the glowing icon that floats across the screen now and then. One is on its way.',
     icon: 'zap',
     art: 'upgrade:zap',
     mechanic: 'drops',
     metric: (s) => s.stats.dropsClicked,
     target: 1,
     mode: 'delta',
+    available: (s) => !calmStart(s),
+    waiting: (s) => ({
+      text: `Hype Drops start after ${fmtTime(CALM_START_SECONDS)} of play (${fmtTime(Math.min(CALM_START_SECONDS, s.stats.playtimeTotal))} so far)`,
+      value: Math.min(CALM_START_SECONDS, s.stats.playtimeTotal),
+      target: CALM_START_SECONDS,
+    }),
     rewards: [perk('Hype Drops appear 20% more often', { kind: 'dropInterval', mult: 0.8 })],
   },
   {
     id: 'staff_1',
     title: 'Hire help',
-    desc: 'Hire your first staff member from the Staff tab.',
+    desc: 'Staff are open. Hire a Coach: staff help every team at once, and each kind brings a handy tool with their first hire. Your Coach posts a game plan of next steps on the Staff page.',
     icon: 'briefcase',
     art: 'staff',
     mechanic: 'staff',
     metric: (s) => s.stats.staffHired,
     target: 1,
     mode: 'delta',
-    available: (s) => sectionOpen(s, 'staff') && STAFF.some((d) => isStaffUnlocked(s, d)),
+    available: (s) => sectionReady(s, 'staff') && STAFF.some((d) => isStaffUnlocked(s, d)),
+    hint: 'staff',
     rewards: [cash(8, 1_500)],
   },
   {
@@ -228,39 +269,56 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'absolute',
     available: hasPlayer,
+    hint: 'plan',
     rewards: [levels(2)],
   },
 
   // -- Growing: a choice between two things the player has met ------------------------------------
   {
-    id: 'design_shirt',
-    title: 'Design a shirt',
-    desc: 'Draw a design in the Studio and set it as your team jersey.',
-    icon: 'shirt',
-    art: 'upgrade:shirt',
-    mechanic: 'jersey',
-    metric: (s) => (s.org.jersey ? 1 : 0),
-    target: 1,
-    mode: 'absolute',
-    available: (s) => sectionOpen(s, 'studio'),
-    rewards: [cash(8, 3_000), perk('+10% fans from everything', { kind: 'fansMult', mult: 1.1 })],
-  },
-  {
     id: 'second_team',
     title: 'Branch out',
-    desc: 'Found a second team and sign a player for it.',
+    desc: 'Found a second team in the Teams tab and sign a player for it. Every game has its own league, prizes and fans.',
     icon: 'flag',
     art: 'pennant',
     mechanic: 'teams',
     metric: teamsWithPlayers,
     target: 2,
     mode: 'absolute',
+    hint: 'found',
     rewards: [cash(8, 10_000), perk('Match prize money +10%', { kind: 'prizeMult', mult: 1.1 })],
+  },
+  {
+    id: 'decor_1',
+    title: 'Make it home',
+    desc: 'Two teams need a home: the House is open. Buy a piece of decor. Decor helps every player, and a bigger house fits better pieces.',
+    icon: 'house',
+    art: 'house',
+    mechanic: 'decor',
+    metric: (s) => s.stats.decorBought,
+    target: 1,
+    mode: 'delta',
+    available: (s) => sectionReady(s, 'house'),
+    hint: 'house',
+    rewards: [cash(10, 25_000), fans(20, 2_000)],
+  },
+  {
+    id: 'design_shirt',
+    title: 'Design a shirt',
+    desc: 'The Studio is open. Draw a design and set it as your team jersey: your players wear it, and fans notice.',
+    icon: 'shirt',
+    art: 'upgrade:shirt',
+    mechanic: 'jersey',
+    metric: (s) => (s.org.jersey ? 1 : 0),
+    target: 1,
+    mode: 'absolute',
+    available: (s) => sectionReady(s, 'studio'),
+    hint: 'studio',
+    rewards: [cash(8, 3_000), perk('+10% fans from everything', { kind: 'fansMult', mult: 1.1 })],
   },
   {
     id: 'promotion_1',
     title: 'Moving up',
-    desc: 'Win promotion to a higher league: 12 wins in a 16-match season.',
+    desc: 'Win promotion to a higher league: a team moves up at the end of a season once its Elo reaches the next tier.',
     icon: 'trending-up',
     art: 'podium',
     mechanic: 'promotion',
@@ -268,38 +326,42 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: hasPlayer,
+    hint: 'teams',
     rewards: [cash(8, 10_000), perk('All team ratings +3%', { kind: 'teamRating', mult: 1.03 })],
   },
   {
     id: 'sponsor_1',
     title: 'Take the money',
-    desc: 'Sign a sponsorship deal from the Sponsors tab.',
+    desc: 'Sponsors are open. Three snack brands want your first deal, each with a different perk. Read what they do, then sign one.',
     icon: 'handshake',
     art: 'upgrade:handshake',
     mechanic: 'sponsors',
     metric: (s) => s.stats.sponsorsSigned,
     target: 1,
     mode: 'delta',
-    available: sponsorsUnlocked,
+    available: (s) => sectionReady(s, 'sponsors'),
+    hint: 'sponsors',
     rewards: [cash(10, 25_000), perk('One more sponsor slot', { kind: 'sponsorSlots', add: 1 })],
   },
   {
-    id: 'decor_1',
-    title: 'Make it home',
-    desc: 'Buy a piece of decor for the Gaming House.',
-    icon: 'house',
-    art: 'house',
-    mechanic: 'decor',
-    metric: (s) => s.stats.decorBought,
+    id: 'sponsor_goal',
+    title: 'Deliver for the sponsor',
+    desc: 'Complete a sponsor goal before the contract runs out. The bonus is paid the moment the goal is met.',
+    icon: 'target',
+    art: 'target',
+    mechanic: 'sponsorGoals',
+    metric: (s) => s.stats.sponsorGoals,
     target: 1,
     mode: 'delta',
-    available: (s) => sectionOpen(s, 'house'),
-    rewards: [cash(10, 25_000), fans(20, 2_000)],
+    available: (s) => s.sponsors.active.length > 0,
+    waiting: () => ({ text: 'Sign a sponsor in the Sponsors tab' }),
+    hint: 'sponsors',
+    rewards: [trophies(2), perk('Sponsor income +15%', { kind: 'sponsorIncome', mult: 1.15 })],
   },
   {
     id: 'merch_1',
     title: 'Merch drop',
-    desc: 'Launch a merch product in the Studio.',
+    desc: 'Merch is open in the Studio. Launch a product: it sells on its own, more when the design is on trend.',
     icon: 'shirt',
     art: 'merch-bag',
     mechanic: 'merchDesign',
@@ -307,7 +369,23 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'absolute',
     available: isMerchUnlocked,
+    waiting: (s) => ({ text: `Merch opens at ${fmt(MERCH_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`, value: Math.min(MERCH_UNLOCK_FANS, s.fansRun), target: MERCH_UNLOCK_FANS }),
+    hint: 'studio',
     rewards: [cash(10, 50_000), perk('Merch sells 20% more', { kind: 'merchMult', mult: 1.2 })],
+  },
+  {
+    id: 'level_10',
+    title: 'Homegrown',
+    desc: 'Train a player to level 10. Players learn from every match; the Development plan teaches faster.',
+    icon: 'dumbbell',
+    art: 'upgrade:dumbbell',
+    mechanic: 'training',
+    metric: maxLevel,
+    target: 10,
+    mode: 'absolute',
+    available: hasPlayer,
+    hint: 'teams',
+    rewards: [levels(3), perk('Players earn 15% more XP', { kind: 'xpMult', mult: 1.15 })],
   },
   {
     id: 'title_1',
@@ -320,20 +398,8 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: hasPlayer,
+    hint: 'teams',
     rewards: [trophies(3), cash(15, 100_000)],
-  },
-  {
-    id: 'level_10',
-    title: 'Homegrown',
-    desc: 'Train a player to level 10.',
-    icon: 'dumbbell',
-    art: 'upgrade:dumbbell',
-    mechanic: 'training',
-    metric: maxLevel,
-    target: 10,
-    mode: 'absolute',
-    available: hasPlayer,
-    rewards: [levels(3), perk('Players earn 15% more XP', { kind: 'xpMult', mult: 1.15 })],
   },
   {
     id: 'tourney_1',
@@ -349,19 +415,6 @@ export const QUESTS: QuestDef[] = [
     rewards: [trophies(3), perk('Tournament prizes ×1.5', { kind: 'tournamentReward', mult: 1.5 })],
   },
   {
-    id: 'sell_player',
-    title: 'Business is business',
-    desc: 'Sell a player to a rival org. Players you developed sell for more.',
-    icon: 'dollar-sign',
-    art: 'sold',
-    mechanic: 'playerSales',
-    metric: (s) => s.stats.playersSold,
-    target: 1,
-    mode: 'delta',
-    available: (s) => sellable(s) >= 2,
-    rewards: [cash(15, 100_000), perk('Signing fees 15% cheaper', { kind: 'feeMult', mult: 0.85 })],
-  },
-  {
     id: 'rival_1',
     title: 'Grudge match',
     desc: 'Beat your rival in a grudge match (any league match against your rival, worth double fans).',
@@ -372,7 +425,25 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => s.rival !== null,
+    // A rival turns up on its own schedule; the line carries on and comes back for this one.
+    skipWhileLocked: true,
+    hint: 'teams',
     rewards: [fans(30, 20_000), cash(15, 250_000)],
+  },
+  {
+    id: 'sell_player',
+    title: 'Business is business',
+    desc: 'Sell a player to a rival org. Players you developed sell for more.',
+    icon: 'dollar-sign',
+    art: 'sold',
+    mechanic: 'playerSales',
+    metric: (s) => s.stats.playersSold,
+    target: 1,
+    mode: 'delta',
+    available: (s) => sellable(s) >= 2,
+    waiting: (s) => ({ text: `Sign two players besides your founder (${Math.min(2, sellable(s))}/2)`, value: Math.min(2, sellable(s)), target: 2 }),
+    hint: 'teams',
+    rewards: [cash(15, 100_000), perk('Signing fees 15% cheaper', { kind: 'feeMult', mult: 0.85 })],
   },
   {
     id: 'ops_100',
@@ -384,20 +455,8 @@ export const QUESTS: QuestDef[] = [
     metric: totalOps,
     target: 100,
     mode: 'absolute',
+    hint: 'store',
     rewards: [cash(20, 500_000), perk('+5% income from everything', { kind: 'globalPct', pct: 0.05 })],
-  },
-  {
-    id: 'sponsor_goal',
-    title: 'Deliver for the sponsor',
-    desc: 'Complete a sponsor goal.',
-    icon: 'target',
-    art: 'target',
-    mechanic: 'sponsorGoals',
-    metric: (s) => s.stats.sponsorGoals,
-    target: 1,
-    mode: 'delta',
-    available: (s) => s.sponsors.active.length > 0,
-    rewards: [trophies(2), perk('Sponsor income +15%', { kind: 'sponsorIncome', mult: 1.15 })],
   },
   {
     id: 'tier_5',
@@ -410,6 +469,7 @@ export const QUESTS: QuestDef[] = [
     target: 4,
     mode: 'absolute',
     available: hasPlayer,
+    hint: 'teams',
     rewards: [trophies(5), cash(30, 5_000_000)],
   },
   {
@@ -423,6 +483,7 @@ export const QUESTS: QuestDef[] = [
     target: 1,
     mode: 'delta',
     available: (s) => s.stats.orgsSold > 0 || canSell(s),
+    waiting: () => ({ text: 'Grow the org until it is worth selling: the Legacy tab shows how close you are' }),
     rewards: [{ kind: 'legacy', amount: 3 }, trophies(10)],
   },
 ];

@@ -1,3 +1,4 @@
+import { tick as nextFrame } from 'svelte';
 import { ACHIEVEMENT_MAP } from '../data/achievements';
 import { subscribe, type GameEvent } from '../engine/bus';
 import { applyChain, clickLogo, type ClickResult } from '../engine/clicker';
@@ -32,7 +33,8 @@ import { UPGRADE_MAP } from '../data/upgrades';
 import { resolveChoice } from '../engine/worldEvents';
 import { DECOR_MAP } from '../data/decor';
 import { buyGear } from '../engine/players';
-import { buyDecor, hireStaff } from '../engine/staff';
+import { bulkAmount, buyDecor, hasQol, hireStaff } from '../engine/staff';
+import { STAFF_MAP } from '../data/staff';
 import { Rng } from '../engine/rng';
 import { assignSlot, benchPlayer, changeTier, setSeasonPlan, unlockGame } from '../engine/teams';
 import type { SeasonPlan } from '../data/seasonPlans';
@@ -48,8 +50,8 @@ import { customiseDraft, signDraftPick, type DraftCustomisation } from '../engin
 import { isEmblem, type Emblem } from '../data/emblems';
 import { randomLook } from '../engine/players';
 import { TAB_MAP } from './tabs';
-import { updateSections } from '../engine/sections';
-import { QUEST_MAP } from '../data/quests';
+import { sectionOpen, updateSections } from '../engine/sections';
+import { QUEST_MAP, type QuestHint } from '../data/quests';
 import { claimQuest, describeReward } from '../engine/quests';
 import { restDuringTutorial, skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
 import { playSound, type SoundId } from './sound';
@@ -161,6 +163,8 @@ class GameStore {
   lastSavedAt = $state(0);
   saveError = $state<string | null>(null);
   viewingGear = $state(false);
+  /** A house the org has just moved into (its ROOMS index), shown on a card until dismissed. */
+  houseMove = $state<number | null>(null);
 
   private storage = getStorage();
   private pendingToasts: ToastInput[] = [];
@@ -403,6 +407,11 @@ class GameStore {
         );
         break;
       }
+      case 'house':
+        if (tutorialActive(this.state)) break;
+        this.houseMove = e.level;
+        this.sfx('promote');
+        break;
       case 'section': {
         // The tutorial already walks the player to new tabs; the tab's NEW badge is enough.
         if (tutorialActive(this.state)) break;
@@ -496,6 +505,8 @@ class GameStore {
   }
 
   buyOperation(id: string, amount: number): number {
+    // Bulk amounts come with staff (see data/staff.ts `qol`); without them it is one at a time.
+    amount = bulkAmount(this.state, amount);
     const n = buyOperation(this.state, id, amount);
     if (n > 0) {
       this.sfx('buy');
@@ -525,7 +536,8 @@ class GameStore {
   }
 
   sellOperation(id: string, amount: number): number {
-    const refund = sellOperation(this.state, id, amount);
+    if (!hasQol(this.state, 'sell')) return 0;
+    const refund = sellOperation(this.state, id, bulkAmount(this.state, amount));
     if (refund > 0) this.refresh();
     return refund;
   }
@@ -550,6 +562,7 @@ class GameStore {
   }
 
   buyAllUpgrades(): number {
+    if (!hasQol(this.state, 'buyAll')) return 0;
     const n = buyAllUpgrades(this.state);
     if (n > 0) {
       refreshUpgradeUnlocks(this.state);
@@ -568,6 +581,28 @@ class GameStore {
   marketFilter = $state<string | null>(null);
   /** Set when the org first becomes sellable, so the Legacy tab can open the sale itself. */
   saleOffer = $state(0);
+
+  /** A quest target the player asked to see ("Show me"): it pulses for a few seconds. */
+  hintFlash = $state<QuestHint | null>(null);
+  private hintTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Takes the player to where a quest's next step happens and makes it pulse for a moment. */
+  async showQuestHint(hint: QuestHint): Promise<void> {
+    if (hint === 'store' || hint === 'upgrades') this.mobileView = 'store';
+    else if (hint === 'logo') {
+      this.mobileView = 'clicker';
+    } else {
+      const tab: TabId = hint === 'player' || hint === 'plan' || hint === 'found' ? 'teams' : hint;
+      if (sectionOpen(this.state, tab)) this.tab = tab;
+      this.mobileView = 'center';
+    }
+    this.hintFlash = hint;
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => (this.hintFlash = null), 5000);
+    await nextFrame();
+    const el = document.querySelector('.tut-arrow') ?? document.querySelector('.tut-target');
+    if (el && el.getClientRects().length > 0) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 
   /** A guide the player asked to see again after closing it. */
   guideOpen = $state<string | null>(null);
@@ -852,6 +887,7 @@ class GameStore {
 
   /** Puts one design on every merch line that's on sale. */
   setAllLinesDesign(designId: string): void {
+    if (!hasQol(this.state, 'allLines')) return;
     let changed = false;
     for (const productId of Object.keys(this.state.merch.lines)) changed = setLineDesign(this.state, productId, designId) || changed;
     if (changed) this.refresh();
@@ -918,10 +954,17 @@ class GameStore {
   }
 
   hireStaff(id: string, amount: number): number {
-    const n = hireStaff(this.state, id, amount, computeMods(this.state).staffCostMult);
+    const before = this.state.staff[id] ?? 0;
+    const n = hireStaff(this.state, id, bulkAmount(this.state, amount), computeMods(this.state).staffCostMult);
     if (n > 0) {
       this.sfx('buy');
       refreshUpgradeUnlocks(this.state);
+      // A role's first hire brings its tool: say what it is and where it lives.
+      const qol = STAFF_MAP.get(id)?.qol;
+      if (before === 0 && qol) {
+        this.toast({ title: `New tool: ${qol.name}`, body: qol.desc, icon: qol.icon, tone: 'gold' }, 7000);
+        this.sfx('promote');
+      }
       this.refresh();
     }
     return n;

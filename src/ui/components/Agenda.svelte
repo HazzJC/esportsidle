@@ -51,9 +51,10 @@
   </li>
 {/snippet}
 
-<Collapsible id="next-steps" title="Next steps" summary={String(items.length)} {urgent}>
+<!-- The coach's game plan: the first Coach hired posts it on the Staff page (data/staff.ts qol 'advisor'). -->
+<Collapsible id="next-steps" title="Coach's game plan" summary={String(items.length)} {urgent}>
   <ul>
-    {@render row('growth', 'Next goal', agenda.growth, 'Follow the quest above.')}
+    {@render row('growth', 'Next goal', agenda.growth, 'Follow the quest line in HQ.')}
     {@render row('concern', 'Teams', agenda.concern, 'Every team is in good shape.')}
     {@render row('opportunity', 'Opportunity', agenda.opportunity, 'Nothing pressing right now.')}
   </ul>

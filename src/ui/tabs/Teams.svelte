@@ -9,6 +9,9 @@
   import { BENCH_RECOVERY_MULT, HEALTH_ICON } from '../../engine/health';
   import { isAvailable, skillRating } from '../../engine/players';
   import { teamKit } from '../../engine/teams';
+  import { roomLevel } from '../../engine/staff';
+  import { roomFloor, roomPropSvg, roomWallBackground } from '../roomArt';
+  import { sectionOpen } from '../../engine/sections';
   import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
   import { seasonSummary } from '../../engine/stories';
   import type { Player } from '../../engine/types';
@@ -16,6 +19,7 @@
   import FirstPlayer from '../components/FirstPlayer.svelte';
   import Icon from '../components/Icon.svelte';
   import KitPicker from '../components/KitPicker.svelte';
+  import MatchBanner from '../components/MatchBanner.svelte';
   import Modal from '../components/Modal.svelte';
   import Rig from '../components/Rig.svelte';
   import Sparkline from '../components/Sparkline.svelte';
@@ -25,6 +29,7 @@
   import { previewAssign } from '../../engine/roster';
   import { tip, tooltip, type TipContent } from '../tooltip.svelte';
   import Guide from '../components/Guide.svelte';
+  import { hinted } from '../hints';
   import { teamsGuide } from '../guides';
   import { onDestroy, tick } from 'svelte';
 
@@ -257,7 +262,11 @@
 
   // ---------------------------------------------------------------------------------------------
 
+  /** The market opens with its quest; until then empty seats and the summary don't point at it. */
+  const marketOpen = $derived(sectionOpen(v.s, 'market'));
+
   function openMarket(gameId: string) {
+    if (!marketOpen) return;
     game.marketFilter = gameId;
     game.tab = 'market';
   }
@@ -420,8 +429,21 @@
     else collapsed.add(gameId);
   }
 
+  /** Every room follows the house: its walls and floor change as the org moves to a bigger place. */
+  const houseLevel = $derived(roomLevel(v.s));
+  const wallArt = $derived(roomWallBackground(houseLevel, v.s.org.primary));
+  const floorColours = $derived(roomFloor(houseLevel));
+
   const restStep = $derived(v.s.tutorial.step === 'rest');
   const restPlayer = $derived(restStep ? tutorialPlayer(v.s) : undefined);
+  /** "Gear up" points at the first team's first player: clicking them opens their kit. */
+  const gearHint = $derived(hinted(v.s, 'player'));
+  const gearPlayer = $derived.by(() => {
+    if (!gearHint) return undefined;
+    const first = ownedTeams[0];
+    const id = first ? v.s.teams[first.id].lineup.find((x) => x !== null) : undefined;
+    return id ? v.s.players[id] : undefined;
+  });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -438,9 +460,11 @@
       <span><b class="num">{fmtPct(avgCut)}</b> <span class="muted">average cut</span></span>
       {#if hurtCount > 0}<span class="hurt"><Icon name="bandage" size={13} /> <b class="num">{hurtCount}</b> <span class="muted">out</span></span>{/if}
       <span class="how dim">Click a player for gear and stats · drag to move</span>
-      <button class="btn small" onclick={() => ((game.marketFilter = null), (game.tab = 'market'))}>
-        <Icon name="user-plus" size={14} /> Transfer market
-      </button>
+      {#if marketOpen}
+        <button class="btn small" onclick={() => ((game.marketFilter = null), (game.tab = 'market'))}>
+          <Icon name="user-plus" size={14} /> Transfer market
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -467,7 +491,7 @@
       {@const kit = teamKit(v.s, g.id)}
       {@const seats = Math.max(v.m.benchSlots, team.bench.length)}
       {@const folded = collapsed.has(g.id)}
-      <article id="team-{g.id}" class="team" class:folded class:tut-target={v.s.tutorial.step === 'match' && g.index === 0} style="--gc:{g.color}">
+      <article id="team-{g.id}" class="team" class:folded class:tut-target={game.hintFlash === 'teams' && g.id === ownedTeams[0]?.id} style="--gc:{g.color}">
         <header>
           <span class="logo">{@html gameLogoSvg(g.id, g.color, g.name)}</span>
           <div class="titles">
@@ -526,13 +550,27 @@
           {/if}
         </div>
 
+        {#if v.s.tutorial.step === 'match' && g.index === 0}
+          <TutArrow label="Your first win is on its way" />
+        {/if}
+        <div class="fixture" class:tut-target={v.s.tutorial.step === 'match' && g.index === 0}>
+          <MatchBanner {team} interval={ev?.interval ?? 1} active={!!ev?.active} primary={kit.primary} secondary={kit.secondary} gameColor={g.color} />
+        </div>
         {#if !folded}
+        {#if gearPlayer && gearPlayer.gameId === g.id}
+          <TutArrow label="Click {gearPlayer.tag} to open their kit" />
+        {/if}
         <!-- The gaming floor: one computer per role, with the player sitting at it. -->
-        <div class="floor" style="--cols:{g.teamSize}">
+        <div class="floor" style="--cols:{g.teamSize}; --wall:{wallArt}; --floor-a:{floorColours.a}; --floor-b:{floorColours.b}; --seam:{floorColours.seam}">
           <div class="wall" aria-hidden="true">
             <span class="neon"></span>
           </div>
+          <!-- Props parodying the game, two on the wall; the floor two stand among the desks. Drawn from constants in roomArt.ts. -->
+          <span class="prop wall-l" aria-hidden="true">{@html roomPropSvg(g.id, 'wallL', g.color)}</span>
+          <span class="prop wall-r" aria-hidden="true">{@html roomPropSvg(g.id, 'wallR', g.color)}</span>
           <div class="bays">
+            <span class="prop floor-l" aria-hidden="true">{@html roomPropSvg(g.id, 'floorL', g.color)}</span>
+            <span class="prop floor-r" aria-hidden="true">{@html roomPropSvg(g.id, 'floorR', g.color)}</span>
             {#each team.lineup as id, slot (slot)}
               {@const p = id ? v.s.players[id] : undefined}
               {@const target = `slot:${g.id}:${slot}`}
@@ -548,7 +586,8 @@
                   <button
                     class="rig-btn"
                     class:lifted={drag?.playerId === p.id}
-                    class:tut-target={restStep && restPlayer?.id === p.id}
+                    class:tut-target={(restStep && restPlayer?.id === p.id) || gearPlayer?.id === p.id}
+                    class:tut-soft={(restStep && restPlayer?.id === p.id) || gearPlayer?.id === p.id}
                     onpointerdown={(e) => onPress(e, g.id, p.id, slot)}
                     onclick={() => open(p.id)}
                     oncontextmenu={(e) => e.preventDefault()}
@@ -567,12 +606,12 @@
                     <span class="energy" title="Energy {Math.round(p.energy)}"><i style="width:{p.energy}%"></i></span>
                   </div>
                 {:else}
-                  <button class="rig-btn empty" onclick={() => openMarket(g.id)} aria-label="Sign a {g.roles[slot]}">
+                  <button class="rig-btn empty" class:closed={!marketOpen} onclick={() => openMarket(g.id)} aria-label={marketOpen ? `Sign a ${g.roles[slot]}` : 'Empty seat'} use:tooltip={() => (marketOpen ? { title: 'Empty seat', lines: ['Sign a player in the transfer market.'] } : { title: 'Empty seat', icon: 'lock', lines: ['The transfer market opens with a quest in HQ.'] })}>
                     <Rig primary={kit.primary} secondary={kit.secondary} gameColor={g.color} />
                   </button>
                   <div class="plate empty">
                     <span class="dim">Empty seat</span>
-                    <span class="sign"><Icon name="user-plus" size={11} /> Sign</span>
+                    {#if marketOpen}<span class="sign"><Icon name="user-plus" size={11} /> Sign</span>{/if}
                   </div>
                 {/if}
                 {#if isOver(target) && drag?.from !== slot}
@@ -656,7 +695,7 @@
 
         <div class="match">
           {#if ev?.active}
-            <span class="bar"><i style="width:{Math.min(100, (team.progress / ev.interval) * 100)}%"></i></span>
+            <span class="muted small">{team.history.length > 0 ? 'Recent results' : 'No results yet'}</span>
           {:else}
             <span class="muted small">{teamHasPlayers(team) ? 'Nobody fit to play. Rest your players or sign a substitute.' : 'Sign a player to start competing.'}</span>
           {/if}
@@ -682,7 +721,7 @@
         {/if}
         <div class="plan-row">
           <button class="plan-label" onclick={help} use:tooltip={planHelp}>Season plan <Icon name="help" size={12} /></button>
-          <div class="plans" role="radiogroup" aria-label="{g.name} season plan">
+          <div class="plans" role="radiogroup" aria-label="{g.name} season plan" class:tut-target={hinted(v.s, 'plan') && g.id === ownedTeams[0]?.id}>
             {#each SEASON_PLAN_ORDER as id (id)}
               {@const def = SEASON_PLANS[id]}
               <button
@@ -777,7 +816,7 @@
         <p class="desc muted">{g.desc}</p>
         <div class="unlock">
           <span class="muted small">Roles: {g.roles.join(', ')} · base prize {money(g.basePrize)} per win</span>
-          <button class="btn gold" disabled={v.s.cash < g.unlockCost} onclick={() => game.unlockGame(g.id)}>
+          <button class="btn gold" class:tut-target={hinted(v.s, 'found')} disabled={v.s.cash < g.unlockCost} onclick={() => game.unlockGame(g.id)}>
             <Icon name="flag" size={14} /> Found team · {money(g.unlockCost)}
           </button>
         </div>
@@ -1114,11 +1153,53 @@
       linear-gradient(180deg, #17151f, #12111a);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04), inset 0 10px 24px rgba(0, 0, 0, 0.35);
   }
+  /* The house's wall, repeated across the room and darkened a little so the desks stay the subject. */
   .wall {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: repeating-linear-gradient(90deg, transparent 0 46px, rgba(255, 255, 255, 0.018) 46px 48px);
+    background:
+      linear-gradient(180deg, rgba(8, 8, 14, 0.18), rgba(8, 8, 14, 0.5) 240px),
+      var(--wall) center top / auto 240px repeat-x;
+  }
+  .prop {
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  }
+  .prop :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .prop.wall-l {
+    top: 26px;
+    left: 12px;
+  }
+  .prop.wall-r {
+    top: 26px;
+    right: 12px;
+  }
+  /* Floor props stand on the last row's floor, behind the desks. */
+  .prop.floor-l {
+    bottom: 4px;
+    left: 6px;
+    width: 62px;
+    height: 62px;
+  }
+  .prop.floor-r {
+    bottom: 4px;
+    right: 6px;
+    width: 62px;
+    height: 62px;
+  }
+  @container (max-width: 380px) {
+    .prop.floor-l,
+    .prop.floor-r {
+      display: none;
+    }
   }
   .neon {
     position: absolute;
@@ -1187,8 +1268,8 @@
     top: calc(28px + (100cqw - 8px) * 0.47);
     bottom: 0;
     background:
-      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.2) 0 2px, transparent 2px 64px),
-      linear-gradient(180deg, #2e2433, #1c1720);
+      repeating-linear-gradient(90deg, var(--seam) 0 2px, transparent 2px 64px),
+      linear-gradient(180deg, var(--floor-a), var(--floor-b));
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.05),
       inset 0 10px 14px rgba(0, 0, 0, 0.35);
@@ -1557,16 +1638,14 @@
   }
 
   /* ---- Below the floor ------------------------------------------------------------------ */
+  .fixture {
+    border-radius: 10px;
+  }
   .match {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-  }
-  .match .bar {
-    flex: 1;
-  }
-  .match .bar i {
-    background: linear-gradient(90deg, color-mix(in srgb, var(--gc) 60%, #fff), var(--gc));
   }
   .results {
     display: flex;
