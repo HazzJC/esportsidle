@@ -1,3 +1,5 @@
+> **ARCHIVED: outdated analysis from an earlier version of the game. Do not use it as guidance or update it. See `docs/archive/README.md`.**
+
 # Design roadmap: what to build after the first Legacy
 
 A critical review of the ideas on the table (the two AI-generated idea lists, the Cookie Clicker deep dives, and your own shortlist), checked against the actual code, your own balance numbers, and what players and designers say about idle games. It is written to be argued with. Every recommendation has a verdict, and several ideas are pushed back on.

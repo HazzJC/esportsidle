@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { TRAITS } from '../src/data/traits';
 import { GEAR_INCOME_FLOOR_SECONDS, GEAR_SLOTS } from '../src/data/gear';
 import { getGame } from '../src/data/games';
-import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, opponentRating, winChance } from '../src/data/leagues';
+import { SEASON_LENGTH, opponentRating, winChance } from '../src/data/leagues';
+import { addBuff } from '../src/engine/buffs';
+import { canPromote, promotionElo, relegationElo, tierElo } from '../src/engine/elo';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { advance } from '../src/engine/game';
 import { refreshMarket, sellPlayer, signListing } from '../src/engine/market';
-import { buyGear, generatePlayer, gearUpgradeCost, grantXp, skillRating, teamIncome } from '../src/engine/players';
+import { buyGear, gearPrice, generatePlayer, gearUpgradeCost, grantXp, skillRating, teamIncome } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { createBaseState } from '../src/engine/state';
 import { foundedGame } from './fixtures';
 import { assignSlot, changeTier, endSeason, evaluateTeam, unlockGame } from '../src/engine/teams';
-import type { TeamEval } from '../src/engine/types';
 
 describe('player generation', () => {
   it('is deterministic for a seed', () => {
@@ -62,7 +63,7 @@ describe('ratings and gear', () => {
     expect(skillRating(founder)).toBeGreaterThan(base * 1.2);
   });
 
-  it('never prices gear below half a minute of what the team earns', () => {
+  it('never prices gear below half a minute of what the team earns at base income', () => {
     const s = foundedGame(0, 11);
     const founder = s.players.founder;
     const mods = computeMods(s);
@@ -72,7 +73,26 @@ describe('ratings and gear', () => {
     // A team earning far more than its gear costs: the floor takes over.
     const income = byLeague * 1000;
     expect(gearUpgradeCost(founder, 'pc', mods, 0, income)).toBe(Math.ceil(GEAR_INCOME_FLOOR_SECONDS * income * mods.gearCostMult));
-    expect(teamIncome({ teams: { smash: { cps: 600 } as TeamEval }, buffIncomeMult: 3 }, 'smash')).toBe(200);
+  });
+
+  it('measures gear against base income, so hype, popularity and injuries never move the price', () => {
+    const s = foundedGame(0, 11);
+    s.ops.grinder.owned = 400;
+    s.priceIncome = computeRates(s).cpsNoBuffs;
+    const founder = s.players.founder;
+    const mods = computeMods(s);
+    const rates = computeRates(s, mods);
+    const base = teamIncome(s, 'smash', mods, rates);
+    expect(base).toBeGreaterThan(0);
+    const price = gearPrice(s, founder, 'pc', mods, rates);
+    // A hype streak, a popularity crash and an injured starter: the price stays put.
+    addBuff(s, { id: 'x', name: 'x', icon: 'x', tone: 'good', desc: '', duration: 60, effects: [{ kind: 'income', mult: 10 }] });
+    s.games.smash.popularity = 0.25;
+    founder.status = { kind: 'injured', until: s.time + 600, reason: 'test' };
+    const during = computeRates(s, computeMods(s));
+    expect(during.cps).toBeGreaterThan(rates.cps);
+    expect(teamIncome(s, 'smash', mods, during)).toBe(base);
+    expect(gearPrice(s, founder, 'pc', mods, during)).toBe(price);
   });
 
   it('win chance is even at equal ratings and rises with rating', () => {
@@ -107,19 +127,46 @@ describe('teams and matches', () => {
     expect(s.players.founder.energy).toBeGreaterThan(40);
   });
 
-  it('promotes after a strong season and relegates after a poor one', () => {
+  it('promotes once Elo has shown the team belongs a tier up, whatever its record, and relegates when Elo falls well behind', () => {
     const s = foundedGame(0, 5);
     const team = s.teams.smash;
     const ev = computeRates(s).teams.smash;
-    team.seasonWins = PROMOTE_WINS;
+    // A middling record but a high Elo: promoted. Elo, not wins, decides.
+    team.seasonWins = 8;
     team.seasonPlayed = SEASON_LENGTH;
-    endSeason(s, team, ev);
-    expect(team.tier).toBe(1);
-    team.seasonWins = RELEGATE_WINS;
+    team.elo = promotionElo(0) - 1;
     endSeason(s, team, ev);
     expect(team.tier).toBe(0);
+    team.seasonWins = 8;
+    team.elo = promotionElo(0);
+    endSeason(s, team, ev);
+    expect(team.tier).toBe(1);
+    // Far behind the new tier: back down.
+    team.elo = relegationElo(1) - 1;
+    endSeason(s, team, ev);
+    expect(team.tier).toBe(0);
+    // No relegation from the bottom tier, and no relegation while Elo holds up.
+    team.elo = 0;
+    endSeason(s, team, ev);
+    expect(team.tier).toBe(0);
+    team.tier = 1;
+    team.elo = tierElo(1);
+    endSeason(s, team, ev);
+    expect(team.tier).toBe(1);
+  });
+
+  it('only lets a team challenge up a new tier once its Elo qualifies', () => {
+    const s = foundedGame(0, 5);
+    const team = s.teams.smash;
+    team.elo = promotionElo(0) - 5;
+    expect(canPromote(team)).toBe(false);
+    expect(changeTier(s, 'smash', 1)).toBe(false);
+    team.elo = promotionElo(0);
     expect(changeTier(s, 'smash', 1)).toBe(true);
-    expect(changeTier(s, 'smash', 5)).toBe(false);
+    expect(changeTier(s, 'smash', 1)).toBe(false);
+    expect(changeTier(s, 'smash', -1)).toBe(true);
+    // Back up to a tier it has already reached is always allowed.
+    expect(changeTier(s, 'smash', 1)).toBe(true);
   });
 
   it('prize multipliers cover the income-linked share, which is nearly all of a prize', () => {

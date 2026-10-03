@@ -1,4 +1,5 @@
 import { ACHIEVEMENT_MAP } from '../data/achievements';
+import { FAN_STAGES, type FanStageDef } from '../data/fanStages';
 import { GAMES } from '../data/games';
 import { OPERATIONS } from '../data/operations';
 import { UPGRADE_MAP } from '../data/upgrades';
@@ -16,26 +17,29 @@ import type { Effect, GameState, Mods, Rates, TeamEval } from './types';
 export const BASE_FAME_EXP = 0.08;
 export const CABINET_PER_ACHIEVEMENT = 0.04;
 /**
- * Offline is a floor, not a strategy (docs/implementation-plan.md, WS4): for the same wall-clock
- * time, presence beats absence. The game earns at `offlineRate` for the full-rate window, at half
- * that rate after it, and nothing past the hard cap.
+ * Offline is a floor, not a strategy: for the same wall-clock time, presence beats absence. The game
+ * earns at `offlineRate` for the full-rate window, then at a fading rate that never reaches zero
+ * (`offlineCredit`), so a long absence always pays a little more than a short one.
  */
 export const BASE_OFFLINE_RATE = 0.2;
-export const MAX_OFFLINE_RATE = 0.4;
 export const BASE_OFFLINE_WINDOW_HOURS = 6;
-export const MAX_OFFLINE_WINDOW_HOURS = 12;
-/** Share of the offline rate earned past the full-rate window. */
-export const OFFLINE_TAPER = 0.5;
-export const OFFLINE_HARD_CAP_HOURS = 24;
+/**
+ * Where offline bonuses stop being worth their full value. Past these a bonus still counts, at a
+ * fraction, so an extra source (a VPN sponsor, a late Legacy node) is never wasted.
+ */
+export const OFFLINE_RATE_FULL_VALUE = 0.4;
+export const OFFLINE_WINDOW_FULL_VALUE_HOURS = 12;
+export const OFFLINE_RATE_OVERFLOW_SHARE = 0.25;
+export const OFFLINE_WINDOW_OVERFLOW_SHARE = 0.5;
+/** How fast the offline rate fades after the full-rate window: counted time is W + H·ln(1 + extra/H). */
+export const OFFLINE_FADE_HOURS = 8;
 export const BASE_BENCH_SLOTS = 1;
 export const BASE_SPONSOR_SLOTS = 2;
 /**
- * Fame is fans^fameExp, and fans grow without bound as teams climb the ladder. Raising the exponent
- * compounds an already exponential quantity twice over, so only the first four Fame upgrades raise
- * it, and this ceiling is exactly the base plus those four: it guards against a stray exponent
- * source but never swallows a purchase (tests/fame.test.ts checks both). Every later Fame upgrade,
- * and the legacy fame nodes, multiply the fame bonus instead (`fameBonus`), which grows like any
- * other upgrade line.
+ * Fame is (1 + effective fans / 100)^fameExp. Raising the exponent compounds an already exponential
+ * quantity twice over, so only the first four Fame upgrades raise it, and this ceiling is exactly the
+ * base plus those four: it guards against a stray exponent source but never swallows a purchase.
+ * Every later Fame upgrade, and the legacy fame nodes, multiply the fame bonus instead (`fameBonus`).
  */
 export const MAX_FAME_EXP = 0.13;
 
@@ -48,6 +52,7 @@ export function emptyMods(): Mods {
     grindAdd: 0,
     grindAddMult: 1,
     clickMult: 1,
+    clickAdd: 0,
     clickCpsPct: 0,
     globalMult: 1,
     fameExp: BASE_FAME_EXP,
@@ -127,6 +132,9 @@ export function applyEffect(m: Mods, e: Effect): void {
     case 'clickMult':
       m.clickMult *= e.mult;
       break;
+    case 'clickAdd':
+      m.clickAdd += e.add;
+      break;
     case 'clickCpsPct':
       m.clickCpsPct += e.pct;
       break;
@@ -158,10 +166,10 @@ export function applyEffect(m: Mods, e: Effect): void {
       m.upgradeCostMult *= e.mult;
       break;
     case 'offlineRate':
-      m.offlineRate = Math.min(MAX_OFFLINE_RATE, m.offlineRate + e.add);
+      m.offlineRate += e.add;
       break;
     case 'offlineWindow':
-      m.offlineWindowHours = Math.min(MAX_OFFLINE_WINDOW_HOURS, m.offlineWindowHours + e.hours);
+      m.offlineWindowHours += e.hours;
       break;
     case 'prizeMult':
       m.prizeMult *= e.mult;
@@ -244,6 +252,11 @@ export function applyEffect(m: Mods, e: Effect): void {
   }
 }
 
+/** A sum counts in full up to `limit` and at `share` of its value beyond it: a bonus past the knee is worth less, never nothing. */
+export function softLimit(total: number, limit: number, share: number): number {
+  return total <= limit ? total : limit + (total - limit) * share;
+}
+
 /** Upgrades first (they can boost staff), then staff and decor, event modifiers and finally sponsors. */
 export function computeMods(s: GameState): Mods {
   const m = emptyMods();
@@ -266,6 +279,8 @@ export function computeMods(s: GameState): Mods {
   m.sponsorIncomePct = sponsors.incomePct * m.sponsorIncomeMult;
   m.globalMult *= 1 + m.sponsorIncomePct;
   m.fameExp = Math.min(MAX_FAME_EXP, m.fameExp);
+  m.offlineRate = softLimit(m.offlineRate, OFFLINE_RATE_FULL_VALUE, OFFLINE_RATE_OVERFLOW_SHARE);
+  m.offlineWindowHours = softLimit(m.offlineWindowHours, OFFLINE_WINDOW_FULL_VALUE_HOURS, OFFLINE_WINDOW_OVERFLOW_SHARE);
   m.globalMult *= 1 + s.prestige.level * m.legacyLevelPct;
   return m;
 }
@@ -299,24 +314,59 @@ export function cabinetCount(s: GameState): number {
 }
 
 /**
- * Past this many fans, fame grows at FAME_KNEE_SLOPE of its usual rate. Early fame is unchanged;
- * late in a run fans keep growing with the league ladder, and without the knee fame turned that
- * into an ever-steeper income multiplier (×89 six hours into a run).
+ * What a fan is worth. The first fans are each worth a full fan; as an org grows the next fan adds
+ * less, because everyone who was ever going to know the team already does. Up to FAN_VALUE_KNEE_FANS
+ * every fan counts in full. Past it the value of one more fan falls as sqrt(knee / fans) down to
+ * FAN_VALUE_FLOOR, and stays there: an enormous fanbase still keeps paying, only slowly. Nothing ever
+ * stops adding (no hard ceiling), and nothing ever adds zero.
  */
-export const FAME_KNEE_FANS = 1e8;
-export const FAME_KNEE_SLOPE = 0.5;
-/**
- * Fans past this add nothing more to fame. It is reached around the end of the operations ladder;
- * without it, fans kept growing tenfold every half hour after the ladder and fame kept multiplying
- * income, so a finished run never levelled off (WS3). The fame upgrades still multiply the result.
- */
-export const FAME_CAP_FANS = 3e9;
+export const FAN_VALUE_KNEE_FANS = 1e8;
+export const FAN_VALUE_FLOOR = 0.01;
+/** Fans at which the value per fan reaches its floor: knee / floor². */
+export const FAN_VALUE_FLOOR_FANS = FAN_VALUE_KNEE_FANS / (FAN_VALUE_FLOOR * FAN_VALUE_FLOOR);
+
+/** The value of the next fan, from 1 down to FAN_VALUE_FLOOR. */
+export function fanValue(fans: number): number {
+  if (fans <= FAN_VALUE_KNEE_FANS) return 1;
+  return Math.max(FAN_VALUE_FLOOR, Math.sqrt(FAN_VALUE_KNEE_FANS / fans));
+}
+
+/** Fans counted by value: the integral of fanValue, so every fan adds something and later fans add less. */
+export function effectiveFans(fans: number): number {
+  const f = Math.max(0, fans);
+  if (f <= FAN_VALUE_KNEE_FANS) return f;
+  const k = FAN_VALUE_KNEE_FANS;
+  const sloped = k + 2 * k * (Math.sqrt(Math.min(f, FAN_VALUE_FLOOR_FANS) / k) - 1);
+  return f <= FAN_VALUE_FLOOR_FANS ? sloped : sloped + FAN_VALUE_FLOOR * (f - FAN_VALUE_FLOOR_FANS);
+}
+
+export interface FanStageInfo {
+  index: number;
+  stage: FanStageDef;
+  next: FanStageDef | null;
+  /** What one more fan is worth right now, 1 to FAN_VALUE_FLOOR. */
+  value: number;
+  /** How far through this stage the org is, 0 to 1, by fans on a log scale. */
+  progress: number;
+}
+
+/** Where the org sits on the road from the lobby to the team everyone knows. */
+export function fanStage(fans: number): FanStageInfo {
+  let index = 0;
+  for (let i = 0; i < FAN_STAGES.length; i++) if (fans >= FAN_STAGES[i].from) index = i;
+  const stage = FAN_STAGES[index];
+  const next = FAN_STAGES[index + 1] ?? null;
+  let progress = 1;
+  if (next) {
+    const lo = Math.log10(Math.max(1, stage.from));
+    const hi = Math.log10(next.from);
+    progress = Math.max(0, Math.min(1, (Math.log10(Math.max(1, fans)) - lo) / (hi - lo)));
+  }
+  return { index, stage, next, value: fanValue(fans), progress };
+}
 
 export function fameMultiplier(fans: number, exponent: number): number {
-  const x = 1 + Math.min(FAME_CAP_FANS, Math.max(0, fans)) / 100;
-  const knee = 1 + FAME_KNEE_FANS / 100;
-  if (x <= knee) return Math.pow(x, exponent);
-  return Math.pow(knee, exponent) * Math.pow(x / knee, exponent * FAME_KNEE_SLOPE);
+  return Math.pow(1 + effectiveFans(fans) / 100, exponent);
 }
 
 export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
@@ -363,7 +413,7 @@ export function computeRates(s: GameState, mods: Mods = computeMods(s)): Rates {
   // The click multiplier covers the whole click. It used to scale only the flat base, which is a
   // rounding error next to the income share within the first hour, so Click upgrades did nothing.
   const clickBase = 1 * doubling + grindBonus;
-  const click = (clickBase + cps * mods.clickCpsPct) * mods.clickMult * buffs.click;
+  const click = (clickBase + mods.clickAdd + cps * mods.clickCpsPct) * mods.clickMult * buffs.click;
 
   const fansMult = mods.fansMult * buffs.fans;
   const teams: Record<string, TeamEval> = {};

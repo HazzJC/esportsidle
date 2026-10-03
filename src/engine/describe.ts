@@ -38,6 +38,8 @@ export function describeEffect(e: Effect): string {
       return `Multiplies the Thousand-Game Grind bonus by ${e.mult}.`;
     case 'clickMult':
       return `Clicking is ×${fmt(e.mult, 2)} as powerful.`;
+    case 'clickAdd':
+      return `Every click earns +${fmt(e.add, 1)} cash before multipliers.`;
     case 'clickCpsPct':
       return `Clicking gains +${pct(e.pct)} of your income per second.`;
     case 'globalPct':

@@ -38,6 +38,8 @@ export function crowdDuration(s: GameState, hypeDurationMult: number): number {
  * far a chain runs is a test of nerve. Missing one ends the chain and locks in what was earned.
  */
 export const CHAIN_MAX = 20;
+// The multiplier stops rising at CHAIN_MAX bubbles; the chain itself does not, and every bubble past it
+// still adds CHAIN_SECONDS_PER_BUBBLE seconds of crowd.
 /** Seconds of crowd per bubble popped. */
 export const CHAIN_SECONDS_PER_BUBBLE = 10;
 export const CHAIN_FIRST_SIZE = 104;
@@ -56,14 +58,13 @@ export function chainBubble(n: number): { size: number; life: number } {
   };
 }
 
-/** What a chain of `popped` bubbles is worth: the income multiplier and how long it lasts. */
+/** What a chain of `popped` bubbles is worth: the income multiplier (topping out at CHAIN_MAX) and how long it lasts (growing with every bubble). */
 export function chainReward(s: GameState, popped: number, hypeDurationMult: number): { mult: number; duration: number } {
   const base = crowdDuration(s, hypeDurationMult);
   if (popped < 1) return { mult: CROWD_MULT, duration: base };
-  const chained = Math.min(CHAIN_MAX, popped);
   return {
-    mult: Math.max(CROWD_MULT, chained),
-    duration: Math.max(base, chained * CHAIN_SECONDS_PER_BUBBLE * hypeDurationMult * hypeEndurance(s)),
+    mult: Math.max(CROWD_MULT, Math.min(CHAIN_MAX, popped)),
+    duration: Math.max(base, popped * CHAIN_SECONDS_PER_BUBBLE * hypeDurationMult * hypeEndurance(s)),
   };
 }
 
@@ -109,7 +110,11 @@ export function clickLogo(s: GameState, ctx?: { mods: Mods; rates: Rates }): Cli
   s.lastClickTime = s.time;
 
   let crowd = false;
-  if (!hasBuff(s, CROWD_BUFF_ID)) {
+  if (hasBuff(s, CROWD_BUFF_ID)) {
+    // Clicks during a crowd still count: the meter fills and waits, so the next crowd starts the
+    // moment this one is over.
+    s.hype = Math.min(HYPE_MAX, s.hype + HYPE_PER_CLICK * mods.hypeGainMult);
+  } else {
     s.hype += HYPE_PER_CLICK * mods.hypeGainMult;
     if (s.hype >= HYPE_MAX) {
       s.hype = 0;

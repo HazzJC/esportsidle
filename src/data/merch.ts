@@ -102,12 +102,22 @@ export const FINISH_NAMES = [
 
 /** Sales added per finish level: a Q4 line sells 1.6 times what bulk stock does, a Q10 line 2.5 times. */
 export const FINISH_SALES_PER_LEVEL = 0.15;
+/** The finishes that have their own name and picture. Past them a line can go on: each Masterwork level is smaller. */
+export const FINISH_ART_LEVELS = 10;
+export const MASTERWORK_SALES_PER_LEVEL = 0.05;
+
+/** The finish's name, with Masterwork levels counted past the last named one. */
+export function finishName(quality: number): string {
+  const q = Math.max(0, Math.floor(quality));
+  return q <= FINISH_ART_LEVELS ? FINISH_NAMES[q] : `Masterwork +${q - FINISH_ART_LEVELS}`;
+}
 
 /** Rarity band 0-5 for a finish level, on the same colour ladder as gear and upgrades. */
 export function finishBand(quality: number): number {
-  return Math.max(0, Math.min(5, Math.floor(quality / 2)));
+  return Math.max(0, Math.min(5, Math.floor(Math.min(quality, FINISH_ART_LEVELS) / 2)));
 }
 
 export function finishSalesMult(quality: number): number {
-  return 1 + Math.max(0, quality) * FINISH_SALES_PER_LEVEL;
+  const q = Math.max(0, quality);
+  return 1 + Math.min(q, FINISH_ART_LEVELS) * FINISH_SALES_PER_LEVEL + Math.max(0, q - FINISH_ART_LEVELS) * MASTERWORK_SALES_PER_LEVEL;
 }

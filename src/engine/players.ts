@@ -17,7 +17,8 @@ import {
 } from '../data/cosmetics';
 import { CORE_STATS, GENRE_WEIGHTS, getGame, type GameDef } from '../data/games';
 import { GEAR_COST_GROWTH, GEAR_INCOME_FLOOR_SECONDS, GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, emptyGear, type GearSlot } from '../data/gear';
-import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
+import { FAN_BASE, FAN_GROWTH, LOSS_PRIZE_RATIO, TEAM_SHARE_EXPONENT, prizeSeconds } from '../data/leagues';
+import { baseIncome } from './baseIncome';
 import { FIRST_NAMES, LAST_NAMES, NATIONS, PARODY_TAGS, SCENE_TAGS, TAG_PREFIXES, TAG_SUFFIXES, TAG_WORDS } from '../data/names';
 import { TRAITS, TRAIT_MAP, type TraitDef } from '../data/traits';
 import { Rng } from './rng';
@@ -455,9 +456,22 @@ export function gearLeague(s: GameState, p: Player): number {
   return s.teams[p.gameId]?.bestTier ?? 0;
 }
 
-/** The team's match income per second without temporary buffs: what gear's price floor is measured in. */
-export function teamIncome(rates: Pick<Rates, 'teams' | 'buffIncomeMult'>, gameId: string): number {
-  return (rates.teams[gameId]?.cps ?? 0) / (rates.buffIncomeMult || 1);
+/** A team that wins a little more than it loses: the match income gear's price floor is measured against. */
+const FLOOR_WIN_CHANCE = 0.55;
+
+/**
+ * What a team's matches would earn per second at its tier if it were doing well, from base income
+ * alone: no buffs, and none of the things that swing from minute to minute (a game's popularity, the
+ * win chance, an injured starter). Gear's price floor is measured in this, so the price of a gear
+ * upgrade only moves when the org really gets richer or the team really climbs.
+ */
+export function teamIncome(s: GameState, gameId: string, mods: Pick<Mods, 'prizeMult' | 'matchSpeed'>, rates: Pick<Rates, 'cpsNoBuffs'>): number {
+  const team = s.teams[gameId];
+  if (!team) return 0;
+  const shared = Math.pow(Math.max(1, Object.keys(s.teams).length), 1 - TEAM_SHARE_EXPONENT);
+  const perWin = (baseIncome(s, rates) * prizeSeconds(team.tier) * mods.prizeMult) / shared;
+  const expected = FLOOR_WIN_CHANCE + (1 - FLOOR_WIN_CHANCE) * LOSS_PRIZE_RATIO;
+  return (perWin * expected * mods.matchSpeed) / getGame(gameId).matchSeconds;
 }
 
 /**
@@ -473,11 +487,11 @@ export function gearUpgradeCost(p: Player, slot: GearSlot, mods: Pick<Mods, 'gea
 }
 
 /** gearUpgradeCost for a player of this org, priced for its league and its team's income. */
-export function gearPrice(s: GameState, p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, rates: Pick<Rates, 'teams' | 'buffIncomeMult'>): number {
-  return gearUpgradeCost(p, slot, mods, gearLeague(s, p), teamIncome(rates, p.gameId));
+export function gearPrice(s: GameState, p: Player, slot: GearSlot, mods: Pick<Mods, 'gearCostMult' | 'prizeMult' | 'matchSpeed'>, rates: Pick<Rates, 'cpsNoBuffs'>): number {
+  return gearUpgradeCost(p, slot, mods, gearLeague(s, p), teamIncome(s, p.gameId, mods, rates));
 }
 
-export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult'>, rates: Pick<Rates, 'teams' | 'buffIncomeMult'>): boolean {
+export function buyGear(s: GameState, playerId: string, slot: GearSlot, mods: Pick<Mods, 'gearCostMult' | 'prizeMult' | 'matchSpeed'>, rates: Pick<Rates, 'cpsNoBuffs'>): boolean {
   const p = s.players[playerId];
   // Potato League challenge: no gear upgrades.
   if (!p || s.prestige.challenge === 'potato') return false;

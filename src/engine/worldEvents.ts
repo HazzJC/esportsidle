@@ -2,6 +2,8 @@ import { GAMES, GENRE_LABEL, type GameDef } from '../data/games';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { RIVAL_ORGS } from '../data/names';
 import { addBuff } from './buffs';
+import { baseIncome } from './baseIncome';
+import { limitReward } from './rewards';
 import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
 import { inflict } from './health';
@@ -20,17 +22,27 @@ import { earnCash, gainFans } from './wallet';
 export const EVENT_INTERVAL: [number, number] = [90, 240];
 export const FIRST_EVENT: [number, number] = [60, 120];
 /** The share of current cash committed to each retention offer. Career value adds up to five points. */
-export const COUNTER_BIDS: { label: string; share: number; morale: number }[] = [
-  { label: 'Match their offer', share: 0.05, morale: 12 },
-  { label: 'Beat their offer', share: 0.12, morale: 25 },
-  { label: 'Blow them out of the water', share: 0.2, morale: 45 },
+export const COUNTER_BIDS: { label: string; share: number; morale: number; minutes: number; ceiling: number }[] = [
+  { label: 'Match their offer', share: 0.05, morale: 12, minutes: 2, ceiling: 0.5 },
+  { label: 'Beat their offer', share: 0.12, morale: 25, minutes: 5, ceiling: 0.9 },
+  { label: 'Blow them out of the water', share: 0.2, morale: 45, minutes: 10, ceiling: 1.4 },
 ];
 
-export function retentionBids(s: GameState, p: Player): number[] {
+/**
+ * What it costs to keep a player a rival is poaching. A decision this rare is priced as a share of the
+ * bank, but kept fair at both ends: never less than a few minutes of base income (an empty bank is not
+ * a free ride), and never more than a fraction of what the rival is offering (a full vault does not
+ * pay for a rookie like a superstar).
+ */
+export function retentionBids(s: GameState, p: Player, baseIncomePerSecond = 0, rivalOffer = Infinity): number[] {
   const rank = Math.min(1, Math.max(0, (p.level - 1) / 40));
   const loyalty = Math.min(1, (p.seasons ?? 0) / 8);
   const career = rank * 0.6 + loyalty * 0.4;
-  return COUNTER_BIDS.map((b) => Math.ceil(Math.max(1, s.cash * (b.share + career * 0.05))));
+  return COUNTER_BIDS.map((b) => {
+    const byBank = s.cash * (b.share + career * 0.05);
+    const byIncome = b.minutes * 60 * baseIncomePerSecond * (1 + career);
+    return Math.ceil(Math.max(1, Math.min(Math.max(byBank, byIncome), rivalOffer * b.ceiling)));
+  });
 }
 
 export const CHOICE_LIFETIME = 120;
@@ -256,7 +268,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
       const worth = transferValue(p, ctx.rates.teams[p.gameId]?.cps ?? 0, getGame(p.gameId).teamSize);
       const value = Math.ceil(Math.max(worth * 2.5, p.fee * 3, s.cash * (0.08 + Math.min(0.08, p.level / 500)), ctx.rates.cpsNoBuffs * 300, 100));
       // The current cash balance fixes all three offers before the player decides.
-      const costs = retentionBids(s, p);
+      const costs = retentionBids(s, p, baseIncome(s, ctx.rates), value);
       const bids = COUNTER_BIDS.map((b, i) => ({ ...b, cost: costs[i] }));
       offerChoice(s, {
         eventId: 'poaching',
@@ -402,7 +414,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     category: 'org',
     weight: (s, ctx) => (canOfferChoice(s) && ctx.rates.cpsNoBuffs >= 100 ? 1.5 : 0),
     fire: (s, ctx) => {
-      const amount = Math.ceil(ctx.rates.cpsNoBuffs * 600);
+      const amount = Math.ceil(limitReward(s, ctx.mods, ctx.rates.cpsNoBuffs * 600));
       offerChoice(s, {
         eventId: 'investor',
         title: `An investor wants a piece of ${s.org.name}`,
@@ -434,7 +446,7 @@ export const WORLD_EVENTS: WorldEventDef[] = [
     category: 'org',
     weight: (s, ctx) => (canOfferChoice(s) && ctx.rates.cpsNoBuffs >= 10 ? 2 : 0),
     fire: (s, ctx) => {
-      const cost = Math.ceil(Math.max(100, ctx.rates.cpsNoBuffs * 120));
+      const cost = Math.ceil(Math.max(100, baseIncome(s, ctx.rates) * 120));
       offerChoice(s, {
         eventId: 'charity',
         title: 'Charity stream opportunity',

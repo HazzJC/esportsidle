@@ -3,6 +3,7 @@ import { OPERATIONS } from '../data/operations';
 import { addBuff } from './buffs';
 import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
+import { dropCapMinutes, dropMinutes, dropPayout, limitReward, runHours } from './rewards';
 import type { Rng } from './rng';
 import { INVITATION_SECONDS, invitationOdds, invitationalName, offerInvitation, pickTournamentTeam } from './tournament';
 import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone } from './types';
@@ -16,6 +17,15 @@ export const DROP_INTERVAL: [number, number] = [180, 600];
 export const FIRST_DROP: [number, number] = [45, 120];
 /** Share of drops that are Drama Drops at each drama level. */
 export const DRAMA_SHARE = [0, 0.33, 0.66, 1];
+/** The share of the bank a Prize Pool or a Leak can pay, if that beats their minutes of income. */
+export const PRIZE_CASH_SHARE = 0.02;
+export const LEAK_CASH_SHARE = 0.03;
+/** A leak pays more than a showmatch, and a backlash costs a fraction of what a drop pays: drama is the gamble. */
+export const LEAK_MINUTES_FACTOR = 1.5;
+export const BACKLASH_MINUTES_FACTOR = 0.5;
+/** Fan Donations (unlocked by the Cult Following fame upgrade): worth more than a showmatch, and more with each later fame upgrade. */
+export const DONATION_MINUTES_FACTOR = 1.5;
+export const DONATION_CASH_SHARE = 0.025;
 
 export interface DropContext {
   rng: Rng;
@@ -54,16 +64,26 @@ function hypeTrainBase(ctx: DropContext): number {
   return Math.max(7, ctx.rates.cpsNoBuffs * 6);
 }
 
+/** Each carriage is worth seven times the last, until it reaches what a drop can pay this far into the run. */
+export const TRAIN_CAP_FACTOR = 1.5;
+export const TRAIN_CASH_SHARE = 0.05;
+
+function hypeTrainLimit(s: GameState, ctx: DropContext): number {
+  const cps = ctx.rates.cpsNoBuffs;
+  const byIncome = TRAIN_CAP_FACTOR * dropCapMinutes(runHours(s)) * 60 * cps;
+  const byBank = Math.min(s.cash * TRAIN_CASH_SHARE, 2 * dropCapMinutes(runHours(s)) * 60 * cps);
+  return Math.max(byIncome, byBank, 7);
+}
+
 export function hypeTrainPayout(s: GameState, ctx: DropContext, step: number): number {
-  const cap = Math.min(s.cash * 0.5, ctx.rates.cpsNoBuffs * 21_600) + 7;
-  return Math.min(hypeTrainBase(ctx) * Math.pow(7, step - 1), cap);
+  return limitReward(s, ctx.mods, Math.min(hypeTrainBase(ctx) * Math.pow(7, step - 1), hypeTrainLimit(s, ctx)));
 }
 
 function continueHypeTrain(s: GameState, ctx: DropContext, step: number): DropResult {
   const payout = hypeTrainPayout(s, ctx, step);
   earnCash(s, payout, 'drop');
   s.stats.hypeTrainBest = Math.max(s.stats.hypeTrainBest, step);
-  const capped = payout < hypeTrainBase(ctx) * Math.pow(7, step - 1);
+  const capped = payout < hypeTrainBase(ctx) * Math.pow(7, step - 1) * 0.999;
   const goesOn = !capped && ctx.rng.chance(Math.max(0.2, 0.95 - step * 0.05));
   if (goesOn) spawnDrop(s, ctx, step + 1);
   return {
@@ -82,7 +102,7 @@ const OUTCOMES: Outcome[] = [
     weight: () => 45,
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 77);
-      addBuff(s, { id: 'frenzy', name: 'LAN Frenzy', icon: 'zap', tone: 'good', desc: 'Income ×7', duration: d, effects: [{ kind: 'income', mult: 7 }] });
+      addBuff(s, { id: 'frenzy', name: 'LAN Frenzy', icon: 'zap', tone: 'good', desc: 'Income ×7', duration: d, effects: [{ kind: 'income', mult: 7 }], extend: 'half' });
       return { outcome: 'frenzy', title: 'LAN Frenzy!', body: `Income ×7 for ${fmtTime(d)}.`, icon: 'zap', tone: 'gold' };
     },
   },
@@ -91,9 +111,21 @@ const OUTCOMES: Outcome[] = [
     kind: 'hype',
     weight: () => 40,
     apply: (s, ctx) => {
-      const amount = Math.min(s.cash * 0.15, ctx.rates.cpsNoBuffs * 900) + 13;
+      const amount = limitReward(s, ctx.mods, dropPayout(s, dropMinutes(s, ctx.rng), ctx.rates.cpsNoBuffs, PRIZE_CASH_SHARE));
       earnCash(s, amount, 'drop');
       return { outcome: 'prize', title: 'Prize Pool!', body: `+${money(amount)} from a surprise showmatch.`, icon: 'dollar-sign', tone: 'gold' };
+    },
+  },
+  {
+    id: 'donations',
+    kind: 'hype',
+    weight: (s) => (s.upgrades.fame_8 !== undefined ? 12 : 0),
+    apply: (s, ctx) => {
+      const later = ['fame_9', 'fame_10', 'fame_11'].filter((id) => s.upgrades[id] !== undefined).length;
+      const factor = DONATION_MINUTES_FACTOR + 0.25 * later;
+      const amount = limitReward(s, ctx.mods, dropPayout(s, dropMinutes(s, ctx.rng) * factor, ctx.rates.cpsNoBuffs, DONATION_CASH_SHARE));
+      earnCash(s, amount, 'drop');
+      return { outcome: 'donations', title: 'Fan Donations!', body: `Fans chip in ${money(amount)} to say thank you.`, icon: 'heart', tone: 'gold' };
     },
   },
   {
@@ -102,7 +134,7 @@ const OUTCOMES: Outcome[] = [
     weight: (s) => (s.earnedRun >= 1e6 ? 7 : 0),
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 13);
-      addBuff(s, { id: 'clutch', name: 'Clutch Mode', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×777', duration: d, effects: [{ kind: 'click', mult: 777 }] });
+      addBuff(s, { id: 'clutch', name: 'Clutch Mode', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×777', duration: d, effects: [{ kind: 'click', mult: 777 }], extend: 'half' });
       return { outcome: 'clutch', title: 'Clutch Mode!', body: `Clicks are worth ×777 for ${fmtTime(d)}. Click!`, icon: 'mouse-pointer-click', tone: 'gold' };
     },
   },
@@ -112,7 +144,7 @@ const OUTCOMES: Outcome[] = [
     weight: (s) => (s.earnedRun >= 1e9 ? 1 : 0),
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 8);
-      addBuff(s, { id: 'legendary_clutch', name: 'Legendary Clutch', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×7777', duration: d, effects: [{ kind: 'click', mult: 7777 }] });
+      addBuff(s, { id: 'legendary_clutch', name: 'Legendary Clutch', icon: 'mouse-pointer-click', tone: 'good', desc: 'Clicks ×7777', duration: d, effects: [{ kind: 'click', mult: 7777 }], extend: 'half' });
       return { outcome: 'legendary_clutch', title: 'Legendary Clutch!', body: `Clicks are worth ×7777 for ${fmtTime(d)}.`, icon: 'mouse-pointer-click', tone: 'gold' };
     },
   },
@@ -131,7 +163,7 @@ const OUTCOMES: Outcome[] = [
     weight: (s) => Object.values(s.merch.lines).some((line) => line.designId) ? 12 : 0,
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 90);
-      addBuff(s, { id: 'merch_surge', name: 'Merch Spotlight', icon: 'shirt', tone: 'good', desc: `Merch sales ×${MERCH_SPOTLIGHT_MULT}`, duration: d, effects: [{ kind: 'merch', mult: MERCH_SPOTLIGHT_MULT }] });
+      addBuff(s, { id: 'merch_surge', name: 'Merch Spotlight', icon: 'shirt', tone: 'good', desc: `Merch sales ×${MERCH_SPOTLIGHT_MULT}`, duration: d, effects: [{ kind: 'merch', mult: MERCH_SPOTLIGHT_MULT }], extend: 'half' });
       return { outcome: 'merch_surge', title: 'Merch Spotlight!', body: `Merch sales ×${MERCH_SPOTLIGHT_MULT} for ${fmtTime(d)}.`, icon: 'shirt', tone: 'gold' };
     },
   },
@@ -153,7 +185,7 @@ const OUTCOMES: Outcome[] = [
       const fans = Math.max(s.fans * 0.1, ctx.rates.fansPerSec * 600) + 50;
       gainFans(s, fans);
       const d = buffSeconds(ctx, 60);
-      addBuff(s, { id: 'viral', name: 'Viral Clip', icon: 'video', tone: 'good', desc: 'Fan gain ×5', duration: d, effects: [{ kind: 'fans', mult: 5 }] });
+      addBuff(s, { id: 'viral', name: 'Viral Clip', icon: 'video', tone: 'good', desc: 'Fan gain ×5', duration: d, effects: [{ kind: 'fans', mult: 5 }], extend: 'half' });
       return { outcome: 'viral', title: 'Viral Clip!', body: `+${fmt(fans)} fans and fan gain ×5 for ${fmtTime(d)}.`, icon: 'video', tone: 'gold' };
     },
   },
@@ -175,6 +207,7 @@ const OUTCOMES: Outcome[] = [
         desc: `${op.plural} ×${fmt(mult, 1)}`,
         duration: d,
         effects: [{ kind: 'op', op: op.id, mult }],
+        extend: 'half',
       });
       return { outcome: 'rush', title: `${op.name} Rush!`, body: `${op.plural} produce ×${fmt(mult, 1)} for ${fmtTime(d)}.`, icon: op.icon, tone: 'gold' };
     },
@@ -233,7 +266,7 @@ const OUTCOMES: Outcome[] = [
     weight: () => 20,
     apply: (s, ctx) => {
       const d = buffSeconds(ctx, 60);
-      addBuff(s, { id: 'ragebait', name: 'Controversy Frenzy', icon: 'flame', tone: 'good', desc: 'Income ×15', duration: d, effects: [{ kind: 'income', mult: 15 }] });
+      addBuff(s, { id: 'ragebait', name: 'Controversy Frenzy', icon: 'flame', tone: 'good', desc: 'Income ×15', duration: d, effects: [{ kind: 'income', mult: 15 }], extend: 'half' });
       const fans = s.fans * 0.25 + 100;
       gainFans(s, fans);
       return { outcome: 'ragebait', title: 'Controversy Frenzy!', body: `Everyone is talking about you. Income ×15 for ${fmtTime(d)} and +${fmt(fans)} fans.`, icon: 'flame', tone: 'gold' };
@@ -244,7 +277,7 @@ const OUTCOMES: Outcome[] = [
     kind: 'drama',
     weight: () => 25,
     apply: (s, ctx) => {
-      const amount = Math.min(s.cash * 0.25, ctx.rates.cpsNoBuffs * 1800) + 13;
+      const amount = limitReward(s, ctx.mods, dropPayout(s, dropMinutes(s, ctx.rng) * LEAK_MINUTES_FACTOR, ctx.rates.cpsNoBuffs, LEAK_CASH_SHARE));
       earnCash(s, amount, 'drop');
       return { outcome: 'leak', title: 'Leaked DMs Payday', body: `The drama documentary rights sold for ${money(amount)}.`, icon: 'dollar-sign', tone: 'gold' };
     },
@@ -254,7 +287,7 @@ const OUTCOMES: Outcome[] = [
     kind: 'drama',
     weight: () => 10,
     apply: (s, ctx) => {
-      const loss = Math.min(s.cash * 0.05, ctx.rates.cpsNoBuffs * 300);
+      const loss = Math.min(s.cash * 0.05, dropMinutes(s, ctx.rng) * 60 * ctx.rates.cpsNoBuffs * BACKLASH_MINUTES_FACTOR);
       s.cash -= loss;
       return { outcome: 'backlash', title: 'Backlash!', body: `Refunds, apologies and a lawyer. You lose ${money(loss)}.`, icon: 'skull', tone: 'bad' };
     },
@@ -332,8 +365,9 @@ export function updateDrops(s: GameState, ctx: DropContext): void {
 
 export const PR_CLEANUP_SECONDS = 1800;
 
-export function prCleanupCost(cpsNoBuffs: number): number {
-  return Math.ceil(Math.max(1000, cpsNoBuffs * 600));
+/** What burying a scandal costs: ten minutes of base income (see baseIncome.ts), never less than $1,000. */
+export function prCleanupCost(baseIncomePerSecond: number): number {
+  return Math.ceil(Math.max(1000, baseIncomePerSecond * 600));
 }
 
 /** How long the fallout lasts when an org rides out a scandal instead of paying to bury it. */
@@ -386,8 +420,8 @@ export function returnScandalFans(s: GameState): number {
 }
 
 /** Pays a PR team to suppress Drama Drops for a while and clears any on screen. */
-export function calmDrama(s: GameState, cpsNoBuffs: number): boolean {
-  const cost = prCleanupCost(cpsNoBuffs);
+export function calmDrama(s: GameState, baseIncomePerSecond: number): boolean {
+  const cost = prCleanupCost(baseIncomePerSecond);
   if (s.cash < cost) return false;
   s.cash -= cost;
   s.events.calmUntil = s.time + PR_CLEANUP_SECONDS;

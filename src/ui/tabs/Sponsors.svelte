@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
+  import { BASE_SPONSOR_TIERS, BRAND_MAP, CATEGORY_INFO, SPONSORS_UNLOCK_FANS, SPONSOR_TIERS } from '../../data/sponsors';
+  import { LEGACY_NODE_MAP } from '../../data/legacy';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { GOAL_EARNINGS_SHARE, MIN_GOAL_SECONDS, goalLabel, goalShareRate, goalProgress, goalReward, goalRewardPotential, maxSponsorTier, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
   import { brandLogoSvg } from '../brandArt';
@@ -29,6 +30,9 @@
   /** Tiers share the rarity ladder: two tiers to a band, so tier 10 is mythic red. */
   const tierColor = (tier: number) => rarityColor(Math.floor(tier / 2));
   const topTier = $derived(maxSponsorTier(s) + 1);
+  /** The bigger brands that are waiting behind the Global Brand Portfolio Legacy node. */
+  const waitingTiers = $derived(SPONSOR_TIERS.slice(topTier));
+  const portfolioCost = LEGACY_NODE_MAP.get('sponsor_tiers')?.cost ?? 0;
 </script>
 
 <div class="sponsors">
@@ -187,6 +191,24 @@
       {/if}
     </section>
 
+    {#if waitingTiers.length > 0}
+      <section class="teaser">
+        <h3 class="section-title"><Icon name="globe" size={14} /> Bigger brands are watching</h3>
+        <p class="muted small">
+          Tiers {BASE_SPONSOR_TIERS + 1} to {SPONSOR_TIERS.length} call once you own the <b>Global Brand Portfolio</b> Legacy node ({portfolioCost} legacy points). They pay far stronger perks, up to
+          <b>×{SPONSOR_TIERS[SPONSOR_TIERS.length - 1].perkScale}</b> the strength of tier 1, and ask for far bigger orgs.
+        </p>
+        <ul class="waiting">
+          {#each waitingTiers as t, i (i)}
+            <li>
+              <b class="tier" style="--t:{tierColor(topTier + i)}">Tier {topTier + i + 1}</b>
+              <span class="dim small">{fmt(t.fans)} fans · a team in league tier {t.teamTier + 1} · perks ×{t.perkScale}</span>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if s.sponsors.history.length > 0}
       <section>
         <h3 class="section-title">Past sponsors</h3>
@@ -278,6 +300,24 @@
   .small {
     font-size: 12px;
     margin: 0;
+  }
+  .teaser {
+    border: 1px dashed var(--line-2);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .waiting {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .waiting li {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
   }
   .locked {
     display: flex;

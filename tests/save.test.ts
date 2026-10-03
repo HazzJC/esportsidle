@@ -116,8 +116,9 @@ describe('progress over time', () => {
     const t = foundedGame(0, 1);
     t.lastSaved = 0;
     const capped = applyOfflineProgress(t, 48 * 3600 * 1000);
-    // A 6-hour full-rate window, then half rate to the 24-hour cap (tests/offline.test.ts has the rest).
-    expect(capped!.countedSeconds).toBe(6 * 3600 + 9 * 3600);
+    // A 6-hour full-rate window, then a fading rate that never stops (tests/offline.test.ts has the rest).
+    expect(capped!.countedSeconds).toBeGreaterThan(6 * 3600 + 9 * 3600);
+    expect(capped!.countedSeconds).toBeLessThan(48 * 3600 * 0.6);
   });
 
   it('ignores short absences', () => {

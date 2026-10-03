@@ -3,7 +3,6 @@ import { LEGACY_NODES } from '../src/data/legacy';
 import { UPGRADES } from '../src/data/upgrades';
 import {
   BASE_FAME_EXP,
-  BASE_OFFLINE_RATE,
   cabinetIncomeMult,
   cabinetMarginalGain,
   computeMods,
@@ -41,13 +40,7 @@ describe('fame', () => {
   });
 });
 
-describe('capped bonuses', () => {
-  it('keeps offline efficiency sources within 100%, so none of them is wasted', () => {
-    const fromLegacy = LEGACY_NODES.flatMap((n) => n.effects ?? []).reduce((n, e) => n + addOf(e, 'offlineRate'), 0);
-    const fromUpgrades = UPGRADES.flatMap((u) => u.effects).reduce((n, e) => n + addOf(e, 'offlineRate'), 0);
-    expect(BASE_OFFLINE_RATE + fromLegacy + fromUpgrades).toBeLessThanOrEqual(1 + 1e-9);
-  });
-
+describe('upgrades', () => {
   it('never sells an upgrade that does nothing: each one, bought in cost order, changes the modifiers', () => {
     const s = foundedGame(0, 4);
     const dead: string[] = [];

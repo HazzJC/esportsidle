@@ -1,6 +1,6 @@
 # The first-run quest tour: design for review (WS6)
 
-The build sheet behind WS6 in `docs/implementation-plan.md`. The plan's table says *what* each stop teaches and pays; this says *how*: the metric each quest reads, the engine hook each new reward needs, and the order. **Phase A built the data model** (WS6.1: `mechanic` tags, reward kinds `tool` / `opAffinity` / `cosmetic` / `title`, `QUEST_TOOLS`, the first-units discount effect, `hasTool` / `useToken`, tests). **Nothing below is live yet:** the live line is still today's 22 quests, and the rewrite (WS6.2) waits for the WS3 numbers.
+The build sheet behind WS6 in `docs/archive/implementation-plan.md` (archived: the plan's balance targets no longer apply; only this tour's content is still relevant). The plan's table says *what* each stop teaches and pays; this says *how*: the metric each quest reads, the engine hook each new reward needs, and the order. **Phase A built the data model** (WS6.1: `mechanic` tags, reward kinds `tool` / `opAffinity` / `cosmetic` / `title`, `QUEST_TOOLS`, the first-units discount effect, `hasTool` / `useToken`, tests). **Nothing below is live yet:** the live line is still today's 22 quests, and the rewrite (WS6.2) waits for the WS3 numbers.
 
 ## 1. The recipe
 

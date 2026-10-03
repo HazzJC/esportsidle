@@ -2,6 +2,7 @@ import { getGame } from '../data/games';
 import { FAN_BASE, FAN_GROWTH, PRIZE_GROWTH, prizeSeconds, winChance } from '../data/leagues';
 import { RIVAL_ORGS } from '../data/names';
 import { addBuff } from './buffs';
+import { baseIncome } from './baseIncome';
 import { applyMorale } from './players';
 import type { Rng } from './rng';
 import { scoreline } from './teams';
@@ -20,14 +21,14 @@ export const ROUND_FIELD = [0.45, 0.55, 0.65];
 export const ROUND_PRIZE_WINS = [2, 4, 10];
 /** How long an invitation waits for an answer before the team goes with no extra preparation. */
 export const INVITATION_SECONDS = 120;
-/** The least a paid preparation can cost, in seconds of income, so an empty bank is not a free boost. */
-export const STAKE_MIN_SECONDS = 600;
 
 export interface InvitationStake {
   id: string;
   name: string;
   desc: string;
-  /** Share of cash spent. */
+  /** Seconds of base income it costs (see baseIncome.ts): a fixed benefit has a fixed price, however full the bank. */
+  seconds: number;
+  /** Share of the bank it costs if that is more: only the all-in gamble is priced as a share of what you hold. */
   share: number;
   /** Extra team rating for the event. */
   boost: number;
@@ -35,10 +36,10 @@ export interface InvitationStake {
 
 /** Ways to spend cash on a better shot at the trophy. The money is gone whatever the result. */
 export const INVITATION_STAKES: InvitationStake[] = [
-  { id: 'none', name: 'Just show up', desc: 'Play as you are.', share: 0, boost: 0 },
-  { id: 'scrims', name: 'Paid scrims', desc: 'A week of practice against good teams.', share: 0.1, boost: 0.15 },
-  { id: 'bootcamp', name: 'Bootcamp abroad', desc: 'Flights, a gaming house and a chef.', share: 0.25, boost: 0.35 },
-  { id: 'allin', name: 'All in', desc: 'Analysts, sports science, the lot.', share: 0.5, boost: 0.6 },
+  { id: 'none', name: 'Just show up', desc: 'Play as you are.', seconds: 0, share: 0, boost: 0 },
+  { id: 'scrims', name: 'Paid scrims', desc: 'A week of practice against good teams.', seconds: 60, share: 0, boost: 0.15 },
+  { id: 'bootcamp', name: 'Bootcamp abroad', desc: 'Flights, a gaming house and a chef.', seconds: 150, share: 0, boost: 0.35 },
+  { id: 'allin', name: 'All in', desc: 'Analysts, sports science, the lot. Costs half of what you hold, if that is more.', seconds: 300, share: 0.5, boost: 0.6 },
 ];
 
 /**
@@ -113,8 +114,8 @@ export function invitationOdds(s: GameState, rates: Rates, mods: Mods, boost = 0
 
 /** What preparing for the Invitational costs right now. */
 export function stakeCost(s: GameState, rates: Rates, stake: InvitationStake): number {
-  if (stake.share <= 0) return 0;
-  return Math.ceil(Math.max(stake.share * s.cash, stake.share * rates.cpsNoBuffs * STAKE_MIN_SECONDS));
+  if (stake.seconds <= 0 && stake.share <= 0) return 0;
+  return Math.ceil(Math.max(stake.seconds * baseIncome(s, rates), stake.share * s.cash));
 }
 
 /** Prize money for one "unit" of an Invitational at the given tier. */
@@ -127,7 +128,9 @@ function prizeUnit(s: GameState, ev: TeamEval, tier: number, ctx: TournamentCont
     ctx.mods.prizeMult *
     (ctx.mods.gamePrizeMult[game.id] ?? 1) *
     (1 - ev.cut) *
-    ctx.mods.tournamentRewardMult
+    ctx.mods.tournamentRewardMult *
+    // Everyone already knows who wins a foregone conclusion: the purse follows how much of a contest the team's league is.
+    ev.stakes
   );
 }
 

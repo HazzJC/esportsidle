@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { CHAIN_MAX, CHAIN_SECONDS_PER_BUBBLE, chainBubble } from '../../engine/clicker';
+  import { CHAIN_SECONDS_PER_BUBBLE, chainBubble } from '../../engine/clicker';
   import { subscribe } from '../../engine/bus';
   import { game } from '../game.svelte';
   import Icon from './Icon.svelte';
@@ -54,10 +54,7 @@
     if (!bubble) return;
     popped = bubble.n;
     game.popHypeBubble(popped);
-    if (popped >= CHAIN_MAX) {
-      end();
-      return;
-    }
+    // The crowd's volume tops out at CHAIN_MAX bubbles, but a chain that keeps going keeps adding time.
     next(popped + 1);
   }
 

@@ -12,10 +12,10 @@ export const GEAR_COST_GROWTH = 11;
  */
 export const GEAR_LEAGUE_GROWTH = 2;
 /**
- * A gear upgrade never costs less than this many seconds of the team's match income (without
- * temporary buffs). Gear pays a share of match income, which grows with the whole org, while league
- * prices stop rising once the ladder is climbed, so late in a run a rookie's first tiers were free
- * (WS3 check E: nothing becomes free). Early in a run the league price is almost always higher.
+ * A gear upgrade never costs less than this many seconds of the team's base match income (no buffs,
+ * no popularity swings; see teamIncome). Gear pays a share of match income, which grows with the whole
+ * org, while league prices stop rising once the ladder is climbed, so without a floor a rookie's first
+ * tiers would be free late in a run. Early in a run the league price is almost always higher.
  */
 export const GEAR_INCOME_FLOOR_SECONDS = 30;
 

@@ -2,11 +2,12 @@ import type { TeamState } from './types';
 
 /**
  * Competitive balance. A team that parks in a league it has outgrown should do worse than one that
- * pushes up and wins some of the time. Two levers make that true:
+ * pushes up and wins a bit more than it loses. Two levers make that true:
  *
- * - Stakes: crowds and sponsors pay for contests, not foregone conclusions, so prize money and fans
- *   shrink once the win chance passes STAKES_START. Expected income per match peaks around that
- *   point, and the next tier's bigger purse does the rest.
+ * - Engagement: crowds and sponsors pay for contests, not foregone conclusions, and players learn
+ *   most from opponents who test them. A smooth curve peaks at ENGAGEMENT_PEAK (winning a little more
+ *   than half) and falls away either side, toward ENGAGEMENT_FLOOR and never to zero. It scales prize
+ *   money, fans, XP, Invitational prizes and how fast players tire.
  * - Mood: players react to their recent run of results (form). Close competition fires them up and
  *   endless defeats frustrate them. Endless stomps only bore them when the org is holding them back
  *   with auto-promote switched off; a dominant team that is still climbing is just on a roll.
@@ -24,10 +25,13 @@ export const ENGAGED_MAX = 0.75;
 /** A change of tier pulls form this far back towards even, since the opposition is new. */
 export const TIER_CHANGE_RESET = 0.5;
 
-/** Win chance above which crowds start to lose interest. Matches the bar for challenging up a tier. */
-export const STAKES_START = 0.75;
-/** Share of prize money and fans lost at a certain win. */
-export const STAKES_DROP = 0.5;
+/** The win chance where matches are the most worth watching and playing: a little more wins than losses. */
+export const ENGAGEMENT_PEAK = 0.55;
+/** The least engagement is ever worth, at a certain win or a hopeless match. */
+export const ENGAGEMENT_FLOOR = 0.3;
+/** How quickly engagement falls off below and above the peak (a larger width is a gentler fall). */
+export const ENGAGEMENT_WIDTH_BELOW = 0.38;
+export const ENGAGEMENT_WIDTH_ABOVE = 0.26;
 
 export type TeamMood = 'engaged' | 'settled' | 'rolling' | 'bored' | 'frustrated';
 
@@ -113,8 +117,10 @@ export function resetFormForTier(team: Pick<TeamState, 'form'>): void {
   team.form = 0.5 + (team.form - 0.5) * TIER_CHANGE_RESET;
 }
 
-/** Prize and fan multiplier for a match with this win chance. */
-export function stakesMult(winChance: number): number {
-  const over = Math.max(0, Math.min(1, (winChance - STAKES_START) / (1 - STAKES_START)));
-  return 1 - STAKES_DROP * over;
+/** Prize, fan and XP multiplier for a match with this win chance: 1 at the peak, never below the floor. */
+export function engagementMult(winChance: number): number {
+  const p = Math.max(0, Math.min(1, winChance));
+  const width = p < ENGAGEMENT_PEAK ? ENGAGEMENT_WIDTH_BELOW : ENGAGEMENT_WIDTH_ABOVE;
+  const z = (p - ENGAGEMENT_PEAK) / width;
+  return ENGAGEMENT_FLOOR + (1 - ENGAGEMENT_FLOOR) * Math.exp(-z * z);
 }

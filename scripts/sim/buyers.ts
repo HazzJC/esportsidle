@@ -16,7 +16,7 @@ import { GEAR_SLOTS } from '../../src/data/gear';
 import { OPERATIONS } from '../../src/data/operations';
 import { STAFF } from '../../src/data/staff';
 import { computeMods, computeRates } from '../../src/engine/economy';
-import { MAX_MERCH_QUALITY, merchQualityCost, upgradeMerchQuality } from '../../src/engine/merch';
+import { merchQualityCost, upgradeMerchQuality } from '../../src/engine/merch';
 import { buyOperation, isOperationRevealed, levelUpOperation, operationLevelCost, unitPrice } from '../../src/engine/operations';
 import { buyGear, gearPrice, playerRating } from '../../src/engine/players';
 import { buyDecor, hireStaff, isStaffUnlocked, roomLevel, staffPrice } from '../../src/engine/staff';
@@ -127,7 +127,7 @@ export function candidates(s: GameState, base: number, opts: CandidateOptions): 
   }
   if (opts.merch && !skip.has('merch')) {
     for (const [productId, line] of Object.entries(s.merch.lines)) {
-      if (!line.designId || (line.quality ?? 0) >= MAX_MERCH_QUALITY) continue;
+      if (!line.designId) continue;
       const cost = merchQualityCost(s, productId);
       if (!soon(cost)) continue;
       const gain = measure(

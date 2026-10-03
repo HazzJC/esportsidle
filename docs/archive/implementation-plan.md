@@ -1,3 +1,5 @@
+> **ARCHIVED: outdated analysis from an earlier version of the game. Do not use it as guidance or update it. See `docs/archive/README.md`.**
+
 # Implementation plan: next phase
 
 Follows `docs/design-roadmap.md` (the why), `docs/ascension-review.md` (Cookie Clicker's progression, stage by stage) and `docs/economy.md` (the numbers). This document is the how and the order.

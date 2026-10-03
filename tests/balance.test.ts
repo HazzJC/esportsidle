@@ -5,13 +5,13 @@ import { computeMods, computeRates } from '../src/engine/economy';
 import {
   BORED_FORM,
   FRUSTRATED_FORM,
+  ENGAGEMENT_FLOOR,
+  ENGAGEMENT_PEAK,
   MOODS,
-  STAKES_DROP,
-  STAKES_START,
+  engagementMult,
   moodFor,
   recordForm,
   resetFormForTier,
-  stakesMult,
   teamMood,
 } from '../src/engine/mood';
 import { buyDynasty, dynastyCost, dynastyRank, legacyBonuses, treeComplete } from '../src/engine/prestige';
@@ -19,12 +19,20 @@ import { Rng } from '../src/engine/rng';
 import { foundedGame } from './fixtures';
 import { changeTier, playMatch } from '../src/engine/teams';
 
-describe('stakes', () => {
-  it('pays in full for a contest and less for a foregone conclusion', () => {
-    expect(stakesMult(0.5)).toBe(1);
-    expect(stakesMult(STAKES_START)).toBe(1);
-    expect(stakesMult(1)).toBeCloseTo(1 - STAKES_DROP);
-    expect(stakesMult(0.9)).toBeLessThan(stakesMult(0.8));
+describe('engagement', () => {
+  it('peaks at a little more wins than losses and falls away either side, never to zero', () => {
+    expect(engagementMult(ENGAGEMENT_PEAK)).toBeCloseTo(1, 9);
+    for (const p of [0, 0.1, 0.3, 0.45, 0.65, 0.8, 0.95, 1]) {
+      expect(engagementMult(p), `${p}`).toBeLessThan(1);
+      expect(engagementMult(p), `${p}`).toBeGreaterThan(ENGAGEMENT_FLOOR);
+    }
+    // Foregone conclusions pay less the more foregone they are; so do hopeless ones.
+    expect(engagementMult(0.9)).toBeLessThan(engagementMult(0.8));
+    expect(engagementMult(0.8)).toBeLessThan(engagementMult(0.65));
+    expect(engagementMult(0.2)).toBeLessThan(engagementMult(0.4));
+    // Winning slightly more than half is the best place to be: better than an even match.
+    expect(engagementMult(0.55)).toBeGreaterThan(engagementMult(0.5));
+    expect(engagementMult(0.55)).toBeGreaterThan(engagementMult(0.65));
   });
 
   it('makes pushing up a tier pay more than stomping the tier below', () => {
@@ -33,7 +41,7 @@ describe('stakes', () => {
     // PRIZE_GROWTH times smaller.
     const perMatch = (ratio: number, purse: number) => {
       const w = winChance(ratio, 1);
-      return w * stakesMult(w) * purse;
+      return w * engagementMult(w) * purse;
     };
     for (const ratio of [0.8, 1, 1.5, 2, 3]) {
       const up = perMatch(ratio, PRIZE_GROWTH);
@@ -42,7 +50,7 @@ describe('stakes', () => {
     }
   });
 
-  it('shrinks prize money and fans in a lopsided league', () => {
+  it('shrinks prize money, fans and XP in a lopsided league, and tires players sooner', () => {
     const s = foundedGame(0, 6);
     const even = computeRates(s).teams.smash;
     // Crush the league: an enormous rating makes every match a certainty.
@@ -50,8 +58,21 @@ describe('stakes', () => {
     s.players.founder.stats.gameSense = 400;
     const crushing = computeRates(s).teams.smash;
     expect(crushing.winChance).toBeGreaterThan(0.95);
-    expect(crushing.stakes).toBeLessThan(0.6);
+    expect(crushing.stakes).toBeLessThan(0.45);
     expect(even.stakes).toBeGreaterThan(crushing.stakes);
+    const xpOf = (ev: typeof even) => {
+      const s2 = foundedGame(0, 6);
+      s2.teams.smash.form = 0.5;
+      const p = s2.players.founder;
+      const before = p.xp + p.level * 1e6;
+      const energy = p.energy;
+      playMatch(s2, s2.teams.smash, ev, computeMods(s2), new Rng({ rng: 5 }));
+      return { xp: p.xp + p.level * 1e6 - before, drain: energy - p.energy };
+    };
+    const hard = xpOf(even);
+    const easy = xpOf(crushing);
+    expect(easy.xp).toBeLessThan(hard.xp);
+    expect(easy.drain).toBeGreaterThan(hard.drain);
   });
 });
 

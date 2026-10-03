@@ -69,6 +69,16 @@
     }
     lines.push({ text: `With ${fmt(owned + step)}:`, tone: 'cyan' });
     for (const l of effectLines(def, owned + step)) lines.push({ text: `  ${l}`, tone: 'cyan' });
+    // Some roles level off toward a limit. Say how close the team is, so a slowing return is never a surprise.
+    const power = staffPower(owned, v.m.staffMult[def.id] ?? 1, def.softCapFrom, def.softExponent);
+    for (const e of def.effects) {
+      if (e.max === undefined || owned <= 0) continue;
+      const now = effectAmount(e, power);
+      lines.push({ text: `Levelling off: ${Math.round((now / e.max) * 100)}% of the most this can give (${STAT_DESCRIPTIONS[e.stat](e.max)}). It keeps climbing, more slowly.`, tone: 'muted' });
+    }
+    if (def.softCapFrom !== undefined && owned >= def.softCapFrom) {
+      lines.push({ text: `Past ${def.softCapFrom} hires each new one helps much less, but never nothing.`, tone: 'muted' });
+    }
     return { title: def.name, subtitle: `Employed: ${fmt(owned)}`, icon: def.icon, iconColor: countQuality(owned), lines, flavor: def.flavor };
   }
 </script>
@@ -78,7 +88,7 @@
     <div>
       <h2 class="section-title">Staff <span class="dim">{fmt(totalStaff(v.s))} employed</span></h2>
       <p class="muted small">
-        Staff work for every team at once. Each extra hire helps a little less than the last, but the bonus never stops growing.
+        Staff work for every team at once. Each extra hire helps a little less than the last. Some roles level off toward a limit, and their tooltip shows how close you are; none ever stops helping.
       </p>
     </div>
   </header>

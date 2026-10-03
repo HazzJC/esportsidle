@@ -12,7 +12,7 @@ import { addToTeam, createTeam, ensureTeam } from './teams';
 import { INCOME_SOURCES, type IncomeSource } from './types';
 import type { AutomationSettings, GameProgress, GameState, OperationState, Player, Settings, Stats } from './types';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 export const GAME_VERSION = '0.7.0';
 
 /** Every routine starts switched off; the player opts in once it unlocks. */
@@ -207,6 +207,7 @@ export function createBaseState(now: number = Date.now(), seed: number = randomS
     guides: {},
     nextId: 1,
     popularityClock: 0,
+    priceIncome: 0,
     stats: createStats(),
     settings: createSettings(),
   };

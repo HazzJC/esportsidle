@@ -1,3 +1,5 @@
+> **ARCHIVED: outdated analysis from an earlier version of the game. Do not use it as guidance or update it. See `docs/archive/README.md`.**
+
 # Legacy v2: design for review (WS2.1)
 
 The detailed design behind WS2 in `docs/implementation-plan.md`, following `docs/ascension-review.md`. **Nothing here is built yet.** It is written for review: the stage table, the Path rules, the Heirloom list and the migration rules. Costs are **ratios** (a ladder), not final numbers; they are calibrated with the simulator once WS3 passes (a run has to level off before a cost ladder means anything).

@@ -1,12 +1,14 @@
 <script lang="ts">
   import { GAMES, GENRE_LABEL, type GameDef } from '../../data/games';
   import { SEASON_PLANS, SEASON_PLAN_ORDER, type SeasonPlan } from '../../data/seasonPlans';
-  import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, TITLE_WINS, prizeSeconds, tierName } from '../../data/leagues';
+  import { SEASON_LENGTH, TITLE_WINS, prizeSeconds, tierName } from '../../data/leagues';
+  import { canPromote, promotionElo, relegationElo, teamElo, tierElo } from '../../engine/elo';
+  import { ENGAGEMENT_PEAK } from '../../engine/mood';
   import { tutorialPlayer } from '../../data/tutorial';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { BENCH_RECOVERY_MULT, HEALTH_ICON } from '../../engine/health';
   import { isAvailable, skillRating } from '../../engine/players';
-  import { CHALLENGE_WIN_CHANCE, teamKit } from '../../engine/teams';
+  import { teamKit } from '../../engine/teams';
   import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
   import { seasonSummary } from '../../engine/stories';
   import type { Player } from '../../engine/types';
@@ -306,7 +308,27 @@
       lines: [
         `Your team rating: ${fmt(ev?.rating ?? 0)} vs opponents ${fmt(ev?.opponent ?? 0)}.`,
         `Prize: ${money(g.basePrize)} × tier bonus + ${fmt(prizeSeconds(team.tier), 1)}s of operations income per win.`,
-        { text: `${PROMOTE_WINS}+ wins promote · ${TITLE_WINS}+ wins take the league title and a trophy · ${RELEGATE_WINS} or fewer relegate.`, tone: 'muted' },
+        { text: `Elo ${Math.round(teamElo(team))}: promoted at ${Math.round(promotionElo(team.tier))}${team.tier > 0 ? `, relegated below ${Math.round(relegationElo(team.tier))}` : ''}. ${TITLE_WINS}+ wins in a season take the league title and a trophy.`, tone: 'muted' },
+      ],
+    };
+  }
+
+  function eloTip(g: GameDef): TipContent {
+    const team = game.view.s.teams[g.id];
+    const elo = teamElo(team);
+    const need = promotionElo(team.tier);
+    const ready = canPromote(team);
+    return {
+      title: `Team Elo ${Math.round(elo)}`,
+      subtitle: `${tierName(team.tier)} is ${Math.round(tierElo(team.tier))}`,
+      icon: 'trending-up',
+      iconColor: ready ? 'var(--green)' : undefined,
+      lines: [
+        'What this team has shown it can do, which moves after every match. Beating teams you were expected to beat barely moves it; beating better ones moves it a lot. It settles at the level the lineup really plays at.',
+        ready
+          ? { text: `Ready for ${tierName(team.tier + 1)}. A season end moves the team up${team.autoPromote ? '' : ' once auto-promote is on, or challenge now'}.`, tone: 'good' as const }
+          : { text: `${Math.round(need - elo)} more Elo to be promoted to ${tierName(team.tier + 1)} (at ${Math.round(need)}).`, tone: 'muted' as const },
+        { text: `The best matches are close ones: prize money, fans and XP peak when the team wins about ${Math.round(ENGAGEMENT_PEAK * 100)}% of the time.`, tone: 'muted' as const },
       ],
     };
   }
@@ -326,7 +348,15 @@
         m.summary,
         { text: `Starters: XP ${times(m.xp)} · morale ${signed(m.moraleWin)} per win, ${signed(m.moraleLoss)} per loss`, tone: m.tone === 'bad' ? 'bad' : m.tone === 'good' ? 'good' : 'muted' },
         ...(ev && ev.stakes < 0.995
-          ? [{ text: `Crowds ×${ev.stakes.toFixed(2)}: at ${Math.round(ev.winChance * 100)}% to win, matches are a foregone conclusion, so prize money and fans shrink.`, tone: 'bad' as const }]
+          ? [
+              {
+                text:
+                  ev.winChance > ENGAGEMENT_PEAK
+                    ? `Crowds ×${ev.stakes.toFixed(2)}: at ${Math.round(ev.winChance * 100)}% to win, matches are close to a foregone conclusion, so prize money, fans and XP shrink and players tire sooner. Climbing a tier fixes it.`
+                    : `Crowds ×${ev.stakes.toFixed(2)}: at ${Math.round(ev.winChance * 100)}% to win, the team is out of its depth, so prize money, fans and XP shrink.`,
+                tone: 'bad' as const,
+              },
+            ]
           : []),
         { text: `Form follows roughly the last season. Players are fired up when they win ${Math.round(ENGAGED_MIN * 100)}–${Math.round(ENGAGED_MAX * 100)}% of matches and bored from ${Math.round(BORED_FORM * 100)}%.`, tone: 'muted' },
       ],
@@ -489,6 +519,9 @@
                 {#if ev.stakes < 0.995}<span class="crowd bad num" use:tooltip={() => moodTip(g)}>×{ev.stakes.toFixed(2)}</span>{/if}
               </span>
               <span><b class="num accent-text">{money(ev.cps, 1)}</b> /s</span>
+              <span use:tooltip={() => eloTip(g)}>
+                <b class="num" class:good={canPromote(team)}>{Math.round(teamElo(team))}</b> Elo
+              </span>
             </div>
           {/if}
         </div>
@@ -678,7 +711,7 @@
               lines: [
                 'Move down a tier right now: easier opponents, smaller prizes.',
                 { text: 'The season starts again from zero.', tone: 'muted' },
-                { text: 'Winning too easily bores players and crowds, so staying low costs money in the long run.', tone: 'muted' },
+                { text: 'Winning too easily bores players and crowds, so staying low costs money in the long run. The best matches are close ones.', tone: 'muted' },
               ],
             })}
           >
@@ -686,14 +719,14 @@
           </button>
           <button
             class="btn small"
-            disabled={!(team.tier < team.bestTier || (ev?.winChance ?? 0) >= CHALLENGE_WIN_CHANCE)}
+            disabled={!(team.tier < team.bestTier || canPromote(team))}
             onclick={() => game.changeTier(g.id, 1)}
             use:tooltip={() => ({
               title: 'Challenge up',
               icon: 'arrow-up',
               lines: [
                 'Move up a tier right now: bigger prizes, tougher opponents.',
-                { text: `Available when you are winning at least ${Math.round(CHALLENGE_WIN_CHANCE * 100)}% of matches, or to return to a tier you already reached.`, tone: 'muted' },
+                { text: `Available once the team's Elo reaches ${Math.round(promotionElo(team.tier))} (it is ${Math.round(teamElo(team))}), or to return to a tier you already reached.`, tone: 'muted' },
                 { text: 'The season starts again from zero.', tone: 'muted' },
               ],
             })}
@@ -706,7 +739,7 @@
               title: 'Auto-promote',
               icon: 'trending-up',
               lines: [
-                `On: a season with ${PROMOTE_WINS}+ wins moves the team up a tier.`,
+                `On: at the end of a season the team moves up a tier once its Elo reaches ${Math.round(promotionElo(team.tier))}.`,
                 'Off: the team stays in its tier until you challenge. League titles and relegation still happen.',
               ],
             })}

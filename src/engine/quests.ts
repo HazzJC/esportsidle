@@ -5,6 +5,7 @@ import { addTrophy, bestTrophyTier, trophyHomeGame } from './stories';
 import { fmt, fmtTime, money } from './format';
 import { grantXp, xpToNext } from './players';
 import type { Rng } from './rng';
+import { limitReward } from './rewards';
 import { tutorialActive } from './tutorial';
 import type { ActiveQuest, Effect, GameState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
@@ -57,7 +58,7 @@ export function updateQuests(s: GameState): void {
     q.ready = true;
     const def = QUEST_MAP.get(q.id);
     const body = def && def.rewards.length > 1 ? 'Choose your reward in HQ.' : 'Claim your reward in HQ.';
-    emit({ type: 'toast', title: `Quest complete: ${def?.title ?? 'Quest'}`, body, icon: def?.icon ?? 'flag', tone: 'gold' });
+    emit({ type: 'toast', title: `Quest complete: ${def?.title ?? 'Quest'}`, body, icon: def?.icon ?? 'flag', tone: 'gold', sound: 'quest' });
   }
 }
 
@@ -81,7 +82,11 @@ export function affinityEffect(op: string, branch: 'mult' | 'discount'): Effect 
 
 const opPlural = (op: string) => OP_MAP.get(op)?.plural ?? op;
 
-const cashAmount = (r: Extract<QuestReward, { kind: 'cash' }>, ctx: RewardContext) => Math.max(r.min, ctx.cps * r.seconds);
+/** A quest's cash: minutes of base income, and while the org is still meeting the game never more than one new building's price. */
+const cashAmount = (r: Extract<QuestReward, { kind: 'cash' }>, ctx: RewardContext) => {
+  const amount = Math.max(r.min, ctx.cps * r.seconds);
+  return ctx.state ? limitReward(ctx.state, {}, amount) : amount;
+};
 const fanAmount = (r: Extract<QuestReward, { kind: 'fans' }>, ctx: RewardContext) => Math.max(r.min, ctx.fansPerSec * r.seconds);
 
 /** The reward's headline, at today's rates: "$12.4 K", "Clicks earn twice as much". */

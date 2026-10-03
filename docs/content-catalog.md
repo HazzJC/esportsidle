@@ -12,23 +12,30 @@ Edit each list at its source so game text and values remain easy to audit.
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
 | Quests, the mechanics they teach, quest tools and tokens, operation-affinity values | `src/data/quests.ts` | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md`; each quest's `art` names its emblem, drawn in `src/ui/questArt.ts` |
 | Legacy unlocks and automation | `src/data/legacy.ts`, `src/data/automation.ts` | `src/engine/automation.ts` |
-| Hype meter, drops, and buffs | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
+| Hype meter, drops, and buffs (what a drop pays is scaled in `src/engine/rewards.ts`) | `src/engine/clicker.ts`, `src/engine/drops.ts`, `src/engine/buffs.ts` | `src/ui/layout/ClickerPanel.svelte` presents them |
 | Invitationals: rounds, field strength, preparation stakes, names by tier | `src/engine/tournament.ts` | `src/engine/drops.ts` sends the invite, `src/ui/components/TournamentModal.svelte` shows it |
 
 Use the `when` condition on a ticker line to match the org's current scale. Timed world events should set the activity log's `endsAt` to the actual effect expiry, so the Active view clears when the effect does.
 
-## Balance tooling
+## Economy rules
 
 | What | Where |
 | --- | --- |
-| Balance targets (first Legacy time, income-share caps, restart pressure) | `scripts/sim/targets.ts` |
+| How the economy works now (no targets) | `docs/economy.md` |
+| Fan stages: names, thresholds and blurbs for the road from the lobby to the team everyone knows | `src/data/fanStages.ts`; the value of a fan and the fame curve are in `src/engine/economy.ts` |
+| Drop and lump-sum reward scale (minutes of income by time into a run), the early-game guard | `src/engine/rewards.ts` |
+| Base income (the smoothed, buff-free income every income-linked price reads) | `src/engine/baseIncome.ts` |
+| Team Elo, promotion and relegation | `src/engine/elo.ts`, constants in `src/data/leagues.ts`; engagement curve in `src/engine/mood.ts` |
+| Market reroll price and its reset window | `src/engine/market.ts` |
+
+## Simulation
+
+| What | Where |
+| --- | --- |
 | Simulated players (active, semi, casual, idle, optimal, hermit) | `scripts/sim/personas.ts` |
-| Parallel simulation matrix and report (`npm run sim`, `npm run sim:quick`, `--preset=tune` for pace work) | `scripts/sim/matrix.ts`, `scripts/sim/report.ts` |
-| Payback of every purchase at points in a real run | `scripts/sim/paybacks.ts` |
-| Price-curve checks A–F (doubling time, payback sawtooth, cost coupling, seconds to afford, Legacy term) | `scripts/sim/price-curve.ts` |
-| Offline against presence (hermit personas, days 3 and 7) | `npm run sim -- --preset=offline --days=7` |
-| Late-game checks on a veteran save (`npm run test:slow`) | `scripts/lategame-*.ts`, `tests/slow/` |
-| What the numbers currently say | `docs/economy.md` |
+| Run one persona and write its record (nothing to pass or fail) | `npm run sim -- --persona=active --hours=4`, `scripts/sim/cli.ts` |
+
+The old balance targets, matrix report and late-game audit were retired; their analysis is archived in `docs/archive/` and is not guidance.
 
 ## Competition glossary
 

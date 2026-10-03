@@ -14,6 +14,7 @@ import {
   spawnDrop,
   updateDrops,
 } from '../src/engine/drops';
+import { baseIncome } from '../src/engine/baseIncome';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { advance } from '../src/engine/game';
 import { refreshMarket, signListing } from '../src/engine/market';
@@ -157,8 +158,11 @@ describe('tournaments', () => {
     expect(playInvitation(s, ctxFor(s), 'allin')).toBeNull();
     expect(s.events.invitation).not.toBeNull();
     s.cash = 1e12;
+    const rates = computeRates(s);
     const result = playInvitation(s, ctxFor(s), 'bootcamp');
-    expect(result?.stake).toBeCloseTo(0.25e12, -3);
+    // Preparation with a fixed benefit has a fixed price in base income, however full the bank.
+    expect(result?.stake).toBe(Math.ceil(150 * baseIncome(s, rates)));
+    expect(result!.stake).toBeLessThan(1e12 * 0.01);
     expect(s.events.invitation).toBeNull();
   });
 });
@@ -314,5 +318,26 @@ describe('retention bids', () => {
     expect(veteran[0]).toBeGreaterThan(early[0]);
     expect(veteran[0]).toBeGreaterThanOrEqual(s.cash * 0.05);
     expect(veteran[2]).toBeLessThanOrEqual(s.cash * 0.25);
+  });
+
+  it('never prices retention below a few minutes of base income, so an empty bank is no free ride', () => {
+    const s = foundedGame(0, 6);
+    const p = s.players.founder;
+    s.cash = 0;
+    const bids = retentionBids(s, p, 100);
+    expect(bids[0]).toBeGreaterThanOrEqual(2 * 60 * 100);
+    expect(bids[2]).toBeGreaterThan(bids[1]);
+    expect(bids[1]).toBeGreaterThan(bids[0]);
+  });
+
+  it('never prices retention above a fraction of what the rival is offering, so a full vault is not drained for a rookie', () => {
+    const s = foundedGame(0, 6);
+    const p = s.players.founder;
+    s.cash = 1e15;
+    const offer = 1000;
+    const bids = retentionBids(s, p, 1e6, offer);
+    expect(bids[0]).toBeLessThanOrEqual(offer * 0.5 + 1);
+    expect(bids[1]).toBeLessThanOrEqual(offer * 0.9 + 1);
+    expect(bids[2]).toBeLessThanOrEqual(offer * 1.4 + 1);
   });
 });

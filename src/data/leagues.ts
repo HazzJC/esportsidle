@@ -72,9 +72,31 @@ export const LOSS_FAN_RATIO = 0.25;
 export const LOSS_PRIZE_RATIO = 0.1;
 
 export const SEASON_LENGTH = 16;
-export const PROMOTE_WINS = 12;
-export const RELEGATE_WINS = 3;
+/** Wins in a season that take the league title (a trophy and a bonus). Promotion goes by Elo instead. */
 export const TITLE_WINS = 15;
+
+/**
+ * Team Elo (engine/elo.ts). A tier doubles the opposition; the win curve is p / (1 - p) = (rating /
+ * opponent)^WIN_CURVE, so a doubling is worth 400 · WIN_CURVE · log10(2) = 301 Elo.
+ */
+export const ELO_BASE = 1000;
+export const ELO_PER_TIER = 400 * WIN_CURVE * Math.log10(OPPONENT_GROWTH);
+/**
+ * How far one match can move a team's Elo. Small enough that luck over a season (16 matches) moves it
+ * by under about 50 points, so one hot streak does not promote a team that is not ready, and a cold one
+ * does not drop it.
+ */
+export const ELO_K = 24;
+/**
+ * A team is promoted at this far below the next tier's Elo, where it would win about two in five
+ * there and about four in five where it is.
+ */
+export const PROMOTE_MARGIN = 70;
+/**
+ * A team this far below its own tier's Elo (winning about one in five) drops a tier. Well clear of the
+ * promotion line's side of the next tier, so a team promoted on a lucky run is not sent straight back.
+ */
+export const RELEGATE_MARGIN = 230;
 
 export function opponentRating(tier: number): number {
   return OPPONENT_BASE * Math.pow(OPPONENT_GROWTH, tier);
@@ -82,15 +104,17 @@ export function opponentRating(tier: number): number {
 
 /**
  * Seconds of operations income added to each win's prize. This keeps matches relevant at every
- * stage, but it is deliberately small and capped: if it grew with tier, match income would scale
- * with operations income across every team and run away.
+ * stage, but it is deliberately small: if it grew quickly with tier, match income would scale with
+ * operations income across every team and run away. It grows steadily to tier 10 and then ever more
+ * slowly, never stopping.
  */
 export const PRIZE_CPS_SECONDS = 0.8;
 /** n teams earn n^this times one team from the income-linked part of prizes (see teamShareDivisor). */
 export const TEAM_SHARE_EXPONENT = 0.65;
 
 export function prizeSeconds(tier: number): number {
-  return PRIZE_CPS_SECONDS + 0.05 * Math.min(tier, 10);
+  const t = Math.max(0, tier);
+  return PRIZE_CPS_SECONDS + 0.05 * (t <= 10 ? t : 10 + 4 * Math.log(1 + (t - 10) / 4));
 }
 
 export function winChance(teamRating: number, oppRating: number): number {

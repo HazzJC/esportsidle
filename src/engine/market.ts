@@ -160,15 +160,37 @@ export function updateMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuck
   if (s.time >= s.market.nextRefresh) refreshMarket(s, rng, mods);
 }
 
-export function rerollCost(cpsNoBuffs: number, rerolls: number): number {
-  return Math.ceil(Math.max(50, cpsNoBuffs * 60) * (1 + rerolls * 0.25));
+/** The first reroll of a burst costs this many seconds of base income, and each one after doubles it. */
+export const REROLL_BASE_SECONDS = 10;
+/** Quiet this long after the last reroll and the price goes back to the first one's. Every reroll restarts the wait. */
+export const REROLL_RESET_SECONDS = 300;
+/** A reroll is never free, however small the income. */
+export const REROLL_MIN_COST = 25;
+
+/** Rerolls that still count towards the price: all of the burst, or none once the wait has passed. */
+export function rerollsInWindow(s: Pick<GameState, 'time' | 'market'>): number {
+  const last = s.market.lastRerollAt;
+  return last === undefined || s.time - last >= REROLL_RESET_SECONDS ? 0 : s.market.rerolls;
 }
 
-export function rerollMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuck' | 'marketSize'>, cpsNoBuffs: number): boolean {
-  const cost = rerollCost(cpsNoBuffs, s.market.rerolls);
+/** Seconds until the price returns to its starting point (0 when it already has). */
+export function rerollResetsIn(s: Pick<GameState, 'time' | 'market'>): number {
+  const last = s.market.lastRerollAt;
+  return last === undefined || rerollsInWindow(s) === 0 ? 0 : Math.max(0, REROLL_RESET_SECONDS - (s.time - last));
+}
+
+/** `baseIncome` is the smoothed base income (see engine/baseIncome.ts), never the live income with buffs. */
+export function rerollCost(baseIncome: number, rerolls: number): number {
+  return Math.ceil(Math.max(REROLL_MIN_COST, baseIncome * REROLL_BASE_SECONDS) * Math.pow(2, rerolls));
+}
+
+export function rerollMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuck' | 'marketSize'>, baseIncome: number): boolean {
+  const inWindow = rerollsInWindow(s);
+  const cost = rerollCost(baseIncome, inWindow);
   if (s.cash < cost) return false;
   s.cash -= cost;
-  s.market.rerolls++;
+  s.market.rerolls = inWindow + 1;
+  s.market.lastRerollAt = s.time;
   refreshMarket(s, rng, mods);
   return true;
 }

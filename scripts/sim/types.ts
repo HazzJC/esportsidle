@@ -66,7 +66,7 @@ export interface SimOptions {
   mandate?: string | null;
   /** 'off' never claims quests; 'perk' prefers perk rewards over cash. */
   quests?: 'cash' | 'perk' | 'off';
-  /** Called after each sample with the live game, for in-process analysis (price-curve.ts). Must leave the state as it found it. */
+  /** Called after each sample with the live game, for in-process analysis. Must leave the state as it found it. */
   onSample?: (s: GameState, sample: Sample) => void;
 }
 
@@ -91,7 +91,7 @@ export interface Sample {
   /** All-time earnings, which is what Legacy is made of: comparable across personas that sell. */
   earnedTotal: number;
   totalCps: number;
-  /** Income per second with temporary buffs cleared: the economy's steady pace, for the pace targets. */
+  /** Income per second with temporary buffs cleared: the economy's steady pace. */
   steadyCps?: number;
   opsCps: number;
   matchCps: number;

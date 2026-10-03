@@ -1,9 +1,9 @@
 /**
- * Strict offline (docs/implementation-plan.md, WS4): offline is a floor, not a strategy. The full
- * offline rate for a window, half of it to a hard 24-hour cap, nothing after.
+ * Offline is a floor, not a strategy: the full rate for a window, then a fading rate that never
+ * quite stops, so a longer absence always pays a little more than a shorter one.
  */
 import { describe, expect, it } from 'vitest';
-import { BASE_OFFLINE_RATE, BASE_OFFLINE_WINDOW_HOURS, MAX_OFFLINE_RATE, MAX_OFFLINE_WINDOW_HOURS, computeMods, computeRates } from '../src/engine/economy';
+import { BASE_OFFLINE_RATE, BASE_OFFLINE_WINDOW_HOURS, OFFLINE_FADE_HOURS, computeMods, computeRates } from '../src/engine/economy';
 import { applyOfflineProgress, offlineCredit } from '../src/engine/game';
 import { foundedGame } from './fixtures';
 
@@ -12,19 +12,43 @@ const H = 3600;
 describe('offline credit', () => {
   const base = { offlineWindowHours: BASE_OFFLINE_WINDOW_HOURS };
 
-  it('counts the window in full, then half of the time to 24 hours, then nothing', () => {
+  it('counts the window in full, then a fading share of the time after it', () => {
     expect(offlineCredit(2 * H, base).counted).toBe(2 * H);
     expect(offlineCredit(6 * H, base).counted).toBe(6 * H);
-    expect(offlineCredit(12 * H, base)).toEqual({ window: 6 * H, full: 6 * H, taper: 3 * H, counted: 9 * H });
-    expect(offlineCredit(24 * H, base).counted).toBe(6 * H + 9 * H);
-    expect(offlineCredit(72 * H, base).counted).toBe(offlineCredit(24 * H, base).counted);
+    const twelve = offlineCredit(12 * H, base);
+    expect(twelve.window).toBe(6 * H);
+    expect(twelve.full).toBe(6 * H);
+    // The first extra hours are worth almost their full length.
+    expect(twelve.taper).toBeGreaterThan(4 * H);
+    expect(twelve.taper).toBeLessThan(6 * H);
+    expect(twelve.counted).toBe(twelve.full + twelve.taper);
   });
 
-  it('with the longest window, a day away still counts for less than a day', () => {
-    const c = offlineCredit(24 * H, { offlineWindowHours: MAX_OFFLINE_WINDOW_HOURS });
-    expect(c.counted).toBe(12 * H + 6 * H);
-    // At the highest rate, a day away is worth at most 30% of a day with the game open.
-    expect((c.counted * MAX_OFFLINE_RATE) / (24 * H)).toBeCloseTo(0.3, 9);
+  it('never stops paying: every extra hour away is worth something, each a little less', () => {
+    let previous = offlineCredit(0, base).counted;
+    let previousStep = Infinity;
+    for (const hours of [6, 12, 24, 48, 72, 168, 720]) {
+      const counted = offlineCredit(hours * H, base).counted;
+      expect(counted).toBeGreaterThan(previous);
+      previous = counted;
+    }
+    for (let h = 7; h < 200; h += 10) {
+      const step = offlineCredit((h + 1) * H, base).counted - offlineCredit(h * H, base).counted;
+      expect(step).toBeGreaterThan(0);
+      expect(step).toBeLessThanOrEqual(previousStep + 1e-9);
+      previousStep = step;
+    }
+  });
+
+  it('is continuous at the end of the window', () => {
+    const inside = offlineCredit(6 * H - 1, base).counted;
+    const after = offlineCredit(6 * H + 1, base).counted;
+    expect(after - inside).toBeLessThan(3);
+  });
+
+  it('fades by the stated time constant: FADE hours past the window count as FADE · ln 2', () => {
+    const c = offlineCredit(6 * H + OFFLINE_FADE_HOURS * H, base);
+    expect(c.taper).toBeCloseTo(OFFLINE_FADE_HOURS * H * Math.log(2), 6);
   });
 
   it('starts every org at the base rate and window', () => {
@@ -40,12 +64,12 @@ describe('offline credit', () => {
     const cps = computeRates(s).cpsNoBuffs;
     s.lastSaved = 0;
     const report = applyOfflineProgress(s, 12 * H * 1000)!;
-    expect(report.countedSeconds).toBe(9 * H);
+    expect(report.countedSeconds).toBeCloseTo(offlineCredit(12 * H, computeMods(s)).counted, 3);
     expect(report.fullSeconds).toBe(6 * H);
-    expect(report.taperSeconds).toBe(3 * H);
+    expect(report.taperSeconds).toBeGreaterThan(0);
     expect(report.rate).toBe(BASE_OFFLINE_RATE);
-    // Operations alone: income at the offline rate for nine credited hours (fans may lift it a little).
-    expect(report.earned).toBeGreaterThanOrEqual(cps * BASE_OFFLINE_RATE * 9 * H * 0.999);
-    expect(report.earned).toBeLessThan(report.openEstimate * 0.5);
+    // Operations alone: income at the offline rate over the credited time (fans may lift it a little).
+    expect(report.earned).toBeGreaterThanOrEqual(cps * BASE_OFFLINE_RATE * report.countedSeconds * 0.999);
+    expect(report.earned).toBeLessThan(report.openEstimate * 0.6);
   });
 });
