@@ -64,6 +64,7 @@ describe('newer reward kinds', () => {
     title: 'Test tour stop',
     desc: 'For tests only.',
     icon: 'flag',
+    art: 'pennant',
     mechanic: 'merchDesign',
     metric: () => 1,
     target: 1,
