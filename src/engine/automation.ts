@@ -4,13 +4,14 @@ import { getGame } from '../data/games';
 import { GEAR_SLOTS, type GearSlot } from '../data/gear';
 import { BRAND_MAP } from '../data/sponsors';
 import { OPERATIONS } from '../data/operations';
+import { computeRates } from './economy';
 import { buyOperation, unitPrice } from './operations';
 import { money } from './format';
 import { signListing } from './market';
-import { buyGear, gearLeague, gearUpgradeCost, isAvailable, playerRating, skillRating } from './players';
+import { buyGear, gearPrice, isAvailable, playerRating, skillRating } from './players';
 import { assignSlot } from './teams';
 import { offerRequirements, signOffer } from './sponsors';
-import type { GameState, Mods, Player } from './types';
+import type { GameState, Mods, Player, Rates } from './types';
 import { buyUpgrade, storeUpgrades, upgradePrice } from './upgrades';
 
 /** Seconds between front-office passes. */
@@ -45,13 +46,15 @@ export interface AutomationOptions {
   pauseMarket?: boolean;
   pauseGear?: boolean;
   pauseTeams?: boolean;
+  /** This tick's rates, if already worked out (gear is priced against team income). */
+  rates?: Rates;
 }
 
 export function runAutomation(s: GameState, mods: Mods, options?: AutomationOptions): void {
   if (automationActive(s, 'operations')) autoOperations(s, mods);
   if (automationActive(s, 'upgrades')) autoUpgrades(s, mods);
   if (!options?.pauseMarket && automationActive(s, 'roster')) autoRoster(s, mods);
-  if (!options?.pauseGear && automationActive(s, 'gear')) autoGear(s, mods);
+  if (!options?.pauseGear && automationActive(s, 'gear')) autoGear(s, mods, options?.rates);
   if (!options?.pauseTeams && automationActive(s, 'roles')) autoRoles(s);
   if (automationActive(s, 'sponsors')) autoSponsors(s, mods);
 }
@@ -61,7 +64,7 @@ export function autoOperations(s: GameState, mods: Mods): void {
   let bought = 0;
   for (const op of [...OPERATIONS].reverse().filter((op) => op.index >= 3)) {
     // One unit per building per pass keeps the manager moving down the list.
-    const price = unitPrice(op, s.ops[op.id].owned, mods.opCostMult);
+    const price = unitPrice(op, s.ops[op.id].owned, mods.opCostMult, mods.opFirstUnits[op.id]);
     if (price > budget || price > s.cash) continue;
     if (buyOperation(s, op.id, 1)) {
       budget -= price;
@@ -172,7 +175,7 @@ export function autoRoster(s: GameState, mods: Mods): void {
   }
 }
 
-function autoGear(s: GameState, mods: Mods): void {
+function autoGear(s: GameState, mods: Mods, rates: Rates = computeRates(s, mods)): void {
   let budget = s.cash * s.automation.gear.maxCostPct;
   let bought = 0;
   for (let i = 0; i < MAX_GEAR_PER_PASS; i++) {
@@ -182,12 +185,12 @@ function autoGear(s: GameState, mods: Mods): void {
         const p = id ? s.players[id] : undefined;
         if (!p) continue;
         for (const g of GEAR_SLOTS) {
-          const cost = gearUpgradeCost(p, g.id, mods, gearLeague(s, p));
+          const cost = gearPrice(s, p, g.id, mods, rates);
           if (Number.isFinite(cost) && (!best || cost < best.cost)) best = { p, slot: g.id, cost };
         }
       }
     }
-    if (!best || best.cost > budget || !buyGear(s, best.p.id, best.slot, mods)) break;
+    if (!best || best.cost > budget || !buyGear(s, best.p.id, best.slot, mods, rates)) break;
     budget -= best.cost;
     bought++;
   }

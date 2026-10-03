@@ -18,7 +18,7 @@ import { STAFF } from '../../src/data/staff';
 import { computeMods, computeRates } from '../../src/engine/economy';
 import { MAX_MERCH_QUALITY, merchQualityCost, upgradeMerchQuality } from '../../src/engine/merch';
 import { buyOperation, isOperationRevealed, levelUpOperation, operationLevelCost, unitPrice } from '../../src/engine/operations';
-import { buyGear, gearLeague, gearUpgradeCost, playerRating } from '../../src/engine/players';
+import { buyGear, gearPrice, playerRating } from '../../src/engine/players';
 import { buyDecor, hireStaff, isStaffUnlocked, roomLevel, staffPrice } from '../../src/engine/staff';
 import { sectionOpen } from '../../src/engine/sections';
 import { operationsOpen } from '../../src/engine/tutorial';
@@ -55,10 +55,13 @@ export interface CandidateOptions {
   teams: boolean;
   /** Categories to leave out this time. */
   skip?: Set<PurchaseKind>;
+  /** List everything, not just what is affordable within ten minutes of income (for measuring the store). */
+  everything?: boolean;
 }
 
 export function candidates(s: GameState, base: number, opts: CandidateOptions): Candidate[] {
   const mods = computeMods(s);
+  const rates = computeRates(s, mods);
   const out: Candidate[] = [];
   const measure = (apply: () => void, undo: () => void, sameMods: boolean): number => {
     apply();
@@ -68,13 +71,13 @@ export function candidates(s: GameState, base: number, opts: CandidateOptions): 
     undo();
     return v - base;
   };
-  const soon = (cost: number) => cost <= Math.max(s.cash * 10, base * 600);
+  const soon = (cost: number) => opts.everything === true || cost <= Math.max(s.cash * 10, base * 600);
   const skip = opts.skip ?? new Set<PurchaseKind>();
 
   for (const op of OPERATIONS) {
     if (!operationsOpen(s) || !isOperationRevealed(s, op)) continue;
     const st = s.ops[op.id];
-    const cost = unitPrice(op, st.owned, mods.opCostMult);
+    const cost = unitPrice(op, st.owned, mods.opCostMult, mods.opFirstUnits[op.id]);
     if (!soon(cost)) continue;
     out.push({ kind: 'op', id: op.id, cost, gain: measure(() => st.owned++, () => st.owned--, true), buy: () => buyOperation(s, op.id, 1) > 0 });
   }
@@ -96,7 +99,7 @@ export function candidates(s: GameState, base: number, opts: CandidateOptions): 
       if (starters.length === 0) continue;
       const weakest = starters.reduce((a, b) => (playerRating(a, game, team.tier, null) <= playerRating(b, game, team.tier, null) ? a : b));
       for (const slot of GEAR_SLOTS) {
-        const cost = gearUpgradeCost(weakest, slot.id, mods, gearLeague(s, weakest));
+        const cost = gearPrice(s, weakest, slot.id, mods, rates);
         if (!Number.isFinite(cost) || !soon(cost)) continue;
         const gain = measure(
           () => weakest.gear[slot.id]++,
@@ -104,7 +107,7 @@ export function candidates(s: GameState, base: number, opts: CandidateOptions): 
           true,
         );
         if (gain <= 0) continue;
-        out.push({ kind: 'gear', id: slot.id, cost, gain, buy: () => buyGear(s, weakest.id, slot.id, mods) });
+        out.push({ kind: 'gear', id: slot.id, cost, gain, buy: () => buyGear(s, weakest.id, slot.id, mods, rates) });
       }
     }
   }

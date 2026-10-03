@@ -7,9 +7,72 @@ import type { Effect, GameState } from '../engine/types';
 import { STAFF } from './staff';
 
 /**
+ * Every mechanic a player can be taught. The first run's quest line is a tour: each quest makes the
+ * player use one of these once (docs/implementation-plan.md, WS6), and a test checks that every one
+ * is taught by some quest.
+ */
+export const MECHANICS = [
+  'operations',
+  'upgrades',
+  'clicking',
+  'drops',
+  'gear',
+  'staff',
+  'scouting',
+  'lineup',
+  'seasonPlan',
+  'training',
+  'merchDesign',
+  'merchPricing',
+  'jersey',
+  'decor',
+  'sponsors',
+  'sponsorGoals',
+  'events',
+  'teams',
+  'promotion',
+  'leagueTitle',
+  'invitationals',
+  'rival',
+  'playerSales',
+  'trophies',
+  'automation',
+  'empire',
+  'sale',
+] as const;
+export type Mechanic = (typeof MECHANICS)[number];
+
+/**
+ * Tools and tokens a quest can hand out: named things that do one job in the system the quest
+ * taught. A tool is kept for the run; a token is used up (the count goes down when it is spent).
+ * The systems that read them look them up by id with `hasTool` and `useToken` (engine/quests.ts).
+ */
+export const QUEST_TOOLS = {
+  /** See the next merch trend one rotation ahead. */
+  trend_tip: { label: 'Trend tip', icon: 'shirt', consumable: false },
+  /** One rarer prospect on the Market shortlist. */
+  scout_choice: { label: "Scout's choice", icon: 'search', consumable: true },
+  /** A guaranteed sponsor offer one tier up. */
+  sponsor_meeting: { label: 'Sponsor meeting', icon: 'handshake', consumable: true },
+  /** Blocks one scandal. */
+  pr_shield: { label: 'PR shield', icon: 'shield', consumable: true },
+  /** One guaranteed Invitational invite. */
+  wildcard_invite: { label: 'Wildcard invite', icon: 'medal', consumable: true },
+  /** See the rival's roster strength. */
+  rival_file: { label: 'Rival file', icon: 'swords', consumable: false },
+} as const;
+export type QuestToolId = keyof typeof QUEST_TOOLS;
+
+/** An operation affinity doubles the operation if the org owns one, or else discounts its first units. */
+export const AFFINITY_MULT = 2;
+export const AFFINITY_UNITS = 10;
+export const AFFINITY_DISCOUNT = 0.75;
+
+/**
  * What a finished quest pays. Early quests pay one clear reward, so nobody has to choose between
  * things they have not seen yet; later quests offer a choice between two that the player will have
- * met by then.
+ * met by then. Choices should be of different kinds (a tool, a perk, a cosmetic), never two
+ * quantities of the same thing.
  */
 export type QuestReward =
   /** Cash worth this many seconds of current income, and never less than `min`. */
@@ -20,14 +83,26 @@ export type QuestReward =
   /** Every player on the roster gains this many levels. */
   | { kind: 'levels'; amount: number }
   | { kind: 'legacy'; amount: number }
-  /** A permanent bonus, kept for the life of the org, even after selling it. */
-  | { kind: 'perk'; label: string; effects: Effect[] };
+  /** A bonus that lasts for the rest of the run; selling the org resets the quest line and its perks. */
+  | { kind: 'perk'; label: string; effects: Effect[] }
+  /** A named tool (kept for the run) or token (used up), in the system the quest taught. */
+  | { kind: 'tool'; id: QuestToolId; amount?: number }
+  /** The operation most like the quest's mechanic: ×AFFINITY_MULT if owned, else its first units cheaper. */
+  | { kind: 'opAffinity'; op: string }
+  /** A cosmetic unlock (jersey pattern, emblem mark, palette, decor piece), kept across sales. */
+  | { kind: 'cosmetic'; id: string; label: string }
+  /** A title for the org, kept across sales. */
+  | { kind: 'title'; id: string; label: string };
+
+export type QuestRewardKind = QuestReward['kind'];
 
 export interface QuestDef {
   id: string;
   title: string;
   desc: string;
   icon: string;
+  /** The mechanic the quest makes the player use. */
+  mechanic: Mechanic;
   /**
    * The number the quest watches. Delta quests count from the moment the quest is offered (so an
    * all-time stat works); absolute quests read the value as it stands.
@@ -38,6 +113,8 @@ export interface QuestDef {
   /** Offered only when this is true, so a quest is always something the player can act on. */
   available?: (s: GameState) => boolean;
   rewards: [QuestReward] | [QuestReward, QuestReward];
+  /** Paid on top of the chosen reward, every time: an operation affinity, a cosmetic, a title. */
+  bonus?: QuestReward[];
 }
 
 const cash = (minutes: number, min: number): QuestReward => ({ kind: 'cash', seconds: minutes * 60, min });
@@ -54,9 +131,9 @@ const maxLevel = (s: GameState) => Object.values(s.players).reduce((m, p) => Mat
 const totalOps = (s: GameState) => Object.values(s.ops).reduce((n, o) => n + o.owned, 0);
 
 /**
- * The milestones every org should hit, in roughly the order they become possible. Two are on the
- * board at a time; finishing one brings in the next available quest. Progress is kept for the life
- * of the org, across sales.
+ * The milestones every org should hit, in roughly the order they become possible. One quest is on
+ * the board at a time (`QUEST_SLOTS`); claiming it brings in the next available one. Selling the org
+ * starts the line again, and the perks it paid go with the run.
  *
  * Reward sizing: cash is minutes of income at the moment of claiming, with a floor so early claims
  * still buy something real (a few more operations, a gear tier, a hire). Perks are permanent but
@@ -69,6 +146,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Grinder squad',
     desc: 'Own 10 Ranked Grinders.',
     icon: 'gamepad-2',
+    mechanic: 'operations',
     metric: (s) => s.ops.grinder?.owned ?? 0,
     target: 10,
     mode: 'absolute',
@@ -79,6 +157,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Gear up',
     desc: 'Buy a gear upgrade for a player. Click a player in the Teams tab to see their gear.',
     icon: 'cpu',
+    mechanic: 'gear',
     metric: (s) => s.stats.gearBought,
     target: 1,
     mode: 'delta',
@@ -90,6 +169,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Read the patch notes',
     desc: 'Buy 3 upgrades from the top of the store.',
     icon: 'sparkles',
+    mechanic: 'upgrades',
     metric: (s) => s.stats.upgradesBoughtTotal,
     target: 3,
     mode: 'delta',
@@ -100,6 +180,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Hype streak',
     desc: 'Fill the hype meter until the crowd goes wild. While this quest is live the crowd warms up by itself to 80%, so a few clicks finish it.',
     icon: 'megaphone',
+    mechanic: 'clicking',
     metric: (s) => s.stats.crowdsTotal,
     target: 1,
     mode: 'delta',
@@ -110,6 +191,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Catch the drop',
     desc: 'Click a Hype Drop, the glowing icon that sometimes floats across the screen.',
     icon: 'zap',
+    mechanic: 'drops',
     metric: (s) => s.stats.dropsClicked,
     target: 1,
     mode: 'delta',
@@ -120,6 +202,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Hire help',
     desc: 'Hire your first staff member from the Staff tab.',
     icon: 'briefcase',
+    mechanic: 'staff',
     metric: (s) => s.stats.staffHired,
     target: 1,
     mode: 'delta',
@@ -131,6 +214,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Have a plan',
     desc: 'Set a team to the Development or Push for Promotion season plan in the Teams tab.',
     icon: 'clipboard-list',
+    mechanic: 'seasonPlan',
     metric: (s) => (Object.values(s.teams).some((t) => t.plan !== 'balanced' || (t.nextPlan && t.nextPlan !== 'balanced')) ? 1 : 0),
     target: 1,
     mode: 'absolute',
@@ -144,6 +228,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Design a shirt',
     desc: 'Draw a design in the Studio and set it as your team jersey.',
     icon: 'shirt',
+    mechanic: 'jersey',
     metric: (s) => (s.org.jersey ? 1 : 0),
     target: 1,
     mode: 'absolute',
@@ -155,6 +240,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Branch out',
     desc: 'Found a second team and sign a player for it.',
     icon: 'flag',
+    mechanic: 'teams',
     metric: teamsWithPlayers,
     target: 2,
     mode: 'absolute',
@@ -165,6 +251,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Moving up',
     desc: 'Win promotion to a higher league: 12 wins in a 16-match season.',
     icon: 'trending-up',
+    mechanic: 'promotion',
     metric: (s) => s.stats.promotions,
     target: 1,
     mode: 'delta',
@@ -176,6 +263,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Take the money',
     desc: 'Sign a sponsorship deal from the Sponsors tab.',
     icon: 'handshake',
+    mechanic: 'sponsors',
     metric: (s) => s.stats.sponsorsSigned,
     target: 1,
     mode: 'delta',
@@ -187,6 +275,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Make it home',
     desc: 'Buy a piece of decor for the Gaming House.',
     icon: 'house',
+    mechanic: 'decor',
     metric: (s) => s.stats.decorBought,
     target: 1,
     mode: 'delta',
@@ -198,6 +287,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Merch drop',
     desc: 'Launch a merch product in the Studio.',
     icon: 'shirt',
+    mechanic: 'merchDesign',
     metric: (s) => Object.keys(s.merch.lines).length,
     target: 1,
     mode: 'absolute',
@@ -209,6 +299,7 @@ export const QUESTS: QuestDef[] = [
     title: 'League champions',
     desc: 'Win a league title: 15 wins in a 16-match season.',
     icon: 'trophy',
+    mechanic: 'leagueTitle',
     metric: (s) => s.stats.seasonTitles,
     target: 1,
     mode: 'delta',
@@ -220,6 +311,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Homegrown',
     desc: 'Train a player to level 10.',
     icon: 'dumbbell',
+    mechanic: 'training',
     metric: maxLevel,
     target: 10,
     mode: 'absolute',
@@ -231,6 +323,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Invitational winners',
     desc: 'Win an Invitational. Invites arrive as Hype Drops.',
     icon: 'medal',
+    mechanic: 'invitationals',
     metric: (s) => s.stats.tournamentsWon,
     target: 1,
     mode: 'delta',
@@ -242,6 +335,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Business is business',
     desc: 'Sell a player to a rival org. Players you developed sell for more.',
     icon: 'dollar-sign',
+    mechanic: 'playerSales',
     metric: (s) => s.stats.playersSold,
     target: 1,
     mode: 'delta',
@@ -253,6 +347,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Grudge match',
     desc: 'Beat your rival in a grudge match (any league match against your rival, worth double fans).',
     icon: 'swords',
+    mechanic: 'rival',
     metric: (s) => s.stats.derbyWins,
     target: 1,
     mode: 'delta',
@@ -264,6 +359,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Business empire',
     desc: 'Own 100 operations in total.',
     icon: 'building',
+    mechanic: 'empire',
     metric: totalOps,
     target: 100,
     mode: 'absolute',
@@ -274,6 +370,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Deliver for the sponsor',
     desc: 'Complete a sponsor goal.',
     icon: 'target',
+    mechanic: 'sponsorGoals',
     metric: (s) => s.stats.sponsorGoals,
     target: 1,
     mode: 'delta',
@@ -285,6 +382,7 @@ export const QUESTS: QuestDef[] = [
     title: 'Semi-pro',
     desc: 'Reach the Semi-Pro Circuit with any team.',
     icon: 'trophy',
+    mechanic: 'promotion',
     metric: bestTier,
     target: 4,
     mode: 'absolute',
@@ -296,6 +394,7 @@ export const QUESTS: QuestDef[] = [
     title: 'The big exit',
     desc: 'Sell the org for legacy in the Legacy tab.',
     icon: 'crown',
+    mechanic: 'sale',
     metric: (s) => s.stats.orgsSold,
     target: 1,
     mode: 'delta',

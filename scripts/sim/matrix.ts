@@ -5,9 +5,11 @@
  *   npm run sim:quick                 active, semi and idle, two seeds, 3 hours: a couple of minutes
  *   npm run sim                       the full balance matrix (see PRESETS)
  *   npm run sim -- --preset=full --jobs=8 --out=output/sim/before
+ *   npm run sim -- --preset=tune               active x3 seeds and the restart check, for balance passes
+ *   npm run sim -- --preset=offline --days=7   everyone for a week, selling as they go (slow; WS4)
  *
- * The full preset also plays each `active` seed on from an hour after its first Legacy point, once
- * staying in the run and once selling, to measure whether restarting pays (the restart check).
+ * The full and tune presets also sell each `active` seed an hour after its first Legacy point and play
+ * run 2, to measure how much faster and further a second run goes (the restart check).
  */
 import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -34,9 +36,12 @@ const OUT = String(args.out ?? `output/sim/${PRESET}`);
 const JOBS = Math.max(1, Number(args.jobs ?? availableParallelism() - 2));
 
 /** Hours per persona, long enough to reach the first Legacy point with room to spare. */
-const FULL_HOURS: Record<string, number> = { active: 8, optimal: 4, semi: 16, idle: 16, casual: 96 };
-/** The restart check plays this long after the snapshot, staying or selling. */
-const RESTART_HOURS = 3;
+const FULL_HOURS: Record<string, number> = { active: 9, optimal: 4, semi: 16, idle: 16, casual: 96, hermit: 336 };
+/** The offline preset plays everyone this many days, selling as they go, to compare presence with absence. */
+const OFFLINE_DAYS = Number(args.days ?? 3);
+const OFFLINE_PERSONAS = ['active', 'semi', 'idle', 'casual', 'hermit', 'hermit-12', 'hermit-72'];
+/** The restart check sells at the snapshot and plays run 2 this long: past the time run 1 had played. */
+const RESTART_HOURS = 6;
 /** The restart check starts this long after the first Legacy point. */
 const RESTART_AFTER = 3600;
 
@@ -56,6 +61,10 @@ const PRESETS: Record<string, () => Job[]> = {
     ),
     ...['no-drops', 'no-merch', 'no-teams', 'no-clicks'].map((v) => job('active', 1, FULL_HOURS.active, [`--variant=${v}`], `.${v}`)),
   ],
+  // For tuning the active player's pace: three seeds and the restart check, a few minutes.
+  tune: () => [1, 2, 3].map((seed) => job('active', seed, FULL_HOURS.active, [`--snapfirst=${RESTART_AFTER}`])),
+  // Slow: an always-open persona takes about 8 minutes a simulated day. Run it in the background.
+  offline: () => OFFLINE_PERSONAS.flatMap((p) => [1, 2].map((seed) => job(p, seed, OFFLINE_DAYS * 24, ['--runs=999']))),
 };
 
 function run(j: Job, git: string): Promise<boolean> {
@@ -84,7 +93,7 @@ async function runAll(jobs: Job[], git: string): Promise<number> {
   return failed;
 }
 
-/** Stay-or-sell jobs, from each active seed's save an hour after its first Legacy point. */
+/** Sell-and-replay jobs, from each active seed's save an hour after its first Legacy point. */
 function restartJobs(firstPass: Job[]): Job[] {
   const out: Job[] = [];
   for (const j of firstPass) {
@@ -94,7 +103,6 @@ function restartJobs(firstPass: Job[]): Job[] {
     if (!snap) continue;
     const save = `${OUT}/${j.name}.restart-save.txt`;
     writeFileSync(save, snap.save);
-    out.push(job('active', record.seed, RESTART_HOURS, [`--from=${save}`, '--runs=1'], '.stay'));
     out.push(job('active', record.seed, RESTART_HOURS, [`--from=${save}`, '--runs=2', '--sellnow', '--maxrun=999999'], '.sell'));
   }
   return out;
@@ -115,7 +123,7 @@ async function main(): Promise<void> {
   const jobs = make();
   console.log(`${jobs.length} simulations on ${Math.min(JOBS, jobs.length)} workers -> ${OUT} (engine ${git})`);
   let failed = await runAll(jobs, git);
-  const restart = PRESET === 'full' ? restartJobs(jobs) : [];
+  const restart = PRESET === 'full' || PRESET === 'tune' ? restartJobs(jobs) : [];
   if (restart.length > 0) {
     console.log(`restart check: ${restart.length} simulations`);
     failed += await runAll(restart, git);

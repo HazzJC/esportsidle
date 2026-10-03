@@ -1,4 +1,5 @@
 import { GAMES, getGame } from '../data/games';
+import { QUEST_MAP, type Mechanic } from '../data/quests';
 import { RELEGATE_WINS, SEASON_LENGTH, tierName } from '../data/leagues';
 import { SPONSORS_UNLOCK_FANS } from '../data/sponsors';
 import { fmt, fmtTime, money } from './format';
@@ -24,11 +25,18 @@ export interface AgendaItem {
   /** 0-1 progress toward a goal, when there is one. */
   progress?: number;
   action?: { label: string; target: AgendaTarget };
+  /** The mechanic this is about, so the agenda can leave out what the active quest already says. */
+  mechanic?: Mechanic;
+  /** Needs the player now (a starter who cannot play, a sale ready): the HQ card opens itself for it. */
+  urgent?: boolean;
 }
 
-/** One growth objective, one team concern and one opportunity. Concern and opportunity can be empty. */
+/**
+ * One growth objective, one team concern and one opportunity. Any of them can be empty: the goal is
+ * left out when the only one left is what the active quest already asks for.
+ */
 export interface Agenda {
-  growth: AgendaItem;
+  growth: AgendaItem | null;
   concern: AgendaItem | null;
   opportunity: AgendaItem | null;
 }
@@ -41,64 +49,72 @@ const SUITABLE_WIN_GAIN = 0.03;
 const eta = (missing: number, perSec: number) => (perSec > 0 ? `about ${fmtTime(missing / perSec)} at current income` : 'no income yet');
 
 export function buildAgenda(s: GameState, mods: Mods, rates: Rates): Agenda {
-  return { growth: growthObjective(s, rates), concern: teamConcern(s, rates), opportunity: opportunity(s, mods, rates) };
+  // The quest card sits right above, so "Next goal" and "Opportunity" skip whatever it already says.
+  const quest = new Set(s.quests.active.map((q) => QUEST_MAP.get(q.id)?.mechanic));
+  const first = (items: Iterable<AgendaItem>): AgendaItem | null => {
+    for (const x of items) if (!x.mechanic || !quest.has(x.mechanic)) return x;
+    return null;
+  };
+  return { growth: first(growthObjectives(s, rates)), concern: teamConcern(s, rates), opportunity: first(opportunities(s, mods, rates)) };
 }
 
 // ---------------------------------------------------------------------------
 // Growth: the most relevant thing to work toward right now
 // ---------------------------------------------------------------------------
-function growthObjective(s: GameState, rates: Rates): AgendaItem {
+/** Goals worth working toward, most relevant first. The agenda shows the first the quest is not already about. */
+function growthObjectives(s: GameState, rates: Rates): AgendaItem[] {
+  const out: AgendaItem[] = [];
   const income = rates.totalCps;
   const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
   const nextGameReachable = next && (s.cash >= next.unlockCost || (next.unlockCost - s.cash) / Math.max(1e-9, income) <= REACHABLE_SECONDS);
+  const saveFor = (g: NonNullable<typeof next>): AgendaItem => ({
+    icon: g.icon,
+    title: `Save for ${g.name}`,
+    detail: `${money(s.cash)} of ${money(g.unlockCost)} · ${eta(g.unlockCost - s.cash, income)}.`,
+    progress: s.cash / g.unlockCost,
+    mechanic: 'teams',
+  });
 
   if (next && nextGameReachable) {
     if (s.cash >= next.unlockCost) {
-      return {
+      out.push({
         icon: next.icon,
         title: `Found a ${next.name} team`,
         detail: `You can afford it now (${money(next.unlockCost)}). A new team means new prize money and fans.`,
         progress: 1,
         action: { label: 'Found team', target: { kind: 'unlockGame', gameId: next.id } },
-      };
-    }
-    return {
-      icon: next.icon,
-      title: `Save for ${next.name}`,
-      detail: `${money(s.cash)} of ${money(next.unlockCost)} · ${eta(next.unlockCost - s.cash, income)}.`,
-      progress: s.cash / next.unlockCost,
-    };
+        mechanic: 'teams',
+      });
+    } else out.push(saveFor(next));
   }
   if (!sponsorsUnlocked(s)) {
-    return {
+    out.push({
       icon: 'handshake',
       title: `Reach ${fmt(SPONSORS_UNLOCK_FANS)} fans`,
       detail: `Brands start calling at ${fmt(SPONSORS_UNLOCK_FANS)} fans. Winning matches and streamers bring them in.`,
       progress: s.fansRun / SPONSORS_UNLOCK_FANS,
-    };
-  }
-  if (!isMerchUnlocked(s)) {
-    return {
+      mechanic: 'sponsors',
+    });
+  } else if (!isMerchUnlocked(s)) {
+    out.push({
       icon: 'shirt',
       title: `Reach ${fmt(MERCH_UNLOCK_FANS)} fans for merch`,
       detail: 'Merch turns your fans into a second income stream, with your own designs on it.',
       progress: s.fansRun / MERCH_UNLOCK_FANS,
-    };
+      mechanic: 'merchDesign',
+    });
   }
-  if (next) {
-    return {
-      icon: next.icon,
-      title: `Save for ${next.name}`,
-      detail: `${money(s.cash)} of ${money(next.unlockCost)} · ${eta(next.unlockCost - s.cash, income)}.`,
-      progress: s.cash / next.unlockCost,
-    };
+  if (next && !nextGameReachable) out.push(saveFor(next));
+  if (!next) {
+    out.push({
+      icon: 'crown',
+      title: 'Build a legacy',
+      detail: 'Every game has a team. Push them up the ladder and earn toward selling the org.',
+      action: { label: 'Legacy', target: { kind: 'tab', tab: 'legacy' } },
+      mechanic: 'sale',
+    });
   }
-  return {
-    icon: 'crown',
-    title: 'Build a legacy',
-    detail: 'Every game has a team. Push them up the ladder and earn toward selling the org.',
-    action: { label: 'Legacy', target: { kind: 'tab', tab: 'legacy' } },
-  };
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +132,7 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
         icon: 'user-plus',
         title: `${hit.g.name} has ${open === 1 ? 'an empty slot' : `${open} empty slots`}`,
         detail: 'Stand-ins fill in at a rating of 5, so every match there is close to a lost cause.',
+        mechanic: 'scouting',
         action: { label: 'Find a player', target: { kind: 'tab', tab: 'market', gameId: hit.g.id } },
       };
     },
@@ -132,6 +149,8 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
             title: `${p.tag} is out`,
             detail: `${p.status.reason || 'Unavailable'}. ${g.name} has nobody fit on the bench to cover.`,
             action: { label: 'View player', target: { kind: 'player', id: p.id } },
+            mechanic: 'lineup',
+            urgent: true,
           };
         }
       }
@@ -150,6 +169,7 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
           title: `${p.tag} is playing ${g.roles[slot]} off-role`,
           detail: `They are a ${g.roles[p.role]}, and off-role players perform at 85%.`,
           action: { label: 'Fix lineup', target: { kind: 'player', id: p.id } },
+          mechanic: 'lineup',
         };
       }
       return null;
@@ -221,40 +241,45 @@ function teamConcern(s: GameState, rates: Rates): AgendaItem | null {
 // ---------------------------------------------------------------------------
 // Opportunity: something worth acting on right now
 // ---------------------------------------------------------------------------
-function opportunity(s: GameState, mods: Mods, rates: Rates): AgendaItem | null {
+/** Things worth acting on right now, most valuable first, worked out only as far as they are needed. */
+function* opportunities(s: GameState, mods: Mods, rates: Rates): Generator<AgendaItem> {
   const pending = pendingLegacy(s);
   if (canSell(s) && pending >= Math.max(1, s.prestige.level)) {
-    return {
+    yield {
       icon: 'crown',
       title: `Sell the org for +${fmt(pending)} legacy`,
       detail: s.prestige.runs === 0 ? 'Your first sale also brings a free Legacy node, bonus points and a Founding Charter.' : 'That at least doubles your legacy. Later runs start faster.',
       action: { label: 'Legacy', target: { kind: 'tab', tab: 'legacy' } },
+      mechanic: 'sale',
+      urgent: true,
     };
   }
 
   // The affordable market player who would lift a team the most.
   const best = bestSigning(s, mods);
-  if (best) return best.item;
+  if (best) yield best.item;
 
   if (sponsorsUnlocked(s) && s.sponsors.active.length < mods.sponsorSlots) {
     const offer = s.sponsors.offers.find((o) => offerRequirements(s, o).ok);
     if (offer) {
-      return {
+      yield {
         icon: 'handshake',
         title: 'A sponsor slot is free',
         detail: `${s.sponsors.offers.length} offer${s.sponsors.offers.length === 1 ? ' is' : 's are'} waiting. Every sponsor adds income.`,
         action: { label: 'Sponsors', target: { kind: 'tab', tab: 'sponsors' } },
+        mechanic: 'sponsors',
       };
     }
   }
 
   const affordable = storeUpgrades(s).filter((u) => u.currency === 'cash' && canAffordUpgrade(s, u, mods)).length;
   if (affordable >= 3) {
-    return {
+    yield {
       icon: 'sparkles',
       title: `${affordable} upgrades are affordable`,
       detail: 'Upgrades are usually the best value in the store.',
       action: { label: 'Store', target: { kind: 'store' } },
+      mechanic: 'upgrades',
     };
   }
 
@@ -263,14 +288,15 @@ function opportunity(s: GameState, mods: Mods, rates: Rates): AgendaItem | null 
     const team = s.teams[g.id];
     const ev = rates.teams[g.id];
     if (!team || !ev?.active || ev.winChance < 0.85 || team.plan === 'development' || team.nextPlan === 'development') continue;
-    return {
+    yield {
       icon: 'graduation-cap',
       title: `${g.name} is winning easily`,
       detail: `${Math.round(ev.winChance * 100)}% to win. A Development season would grow your players while the results hold up.`,
       action: { label: 'Teams', target: { kind: 'tab', tab: 'teams' } },
+      mechanic: 'seasonPlan',
     };
+    return;
   }
-  return null;
 }
 
 /**
@@ -303,6 +329,7 @@ function bestSigning(s: GameState, mods: Mods): { item: AgendaItem; gain: number
         title: `A suitable ${role ?? 'player'} is available`,
         detail: `${l.player.tag} would take ${g.name} from ${Math.round(pv.before.win * 100)}% to ${Math.round(after.win * 100)}% to win, for ${money(l.price)}.`,
         action: { label: 'See market', target: { kind: 'tab', tab: 'market', gameId: g.id } },
+        mechanic: 'scouting',
       },
     };
   }

@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { TRAITS } from '../src/data/traits';
-import { GEAR_SLOTS } from '../src/data/gear';
+import { GEAR_INCOME_FLOOR_SECONDS, GEAR_SLOTS } from '../src/data/gear';
 import { getGame } from '../src/data/games';
 import { PROMOTE_WINS, RELEGATE_WINS, SEASON_LENGTH, opponentRating, winChance } from '../src/data/leagues';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { advance } from '../src/engine/game';
 import { refreshMarket, sellPlayer, signListing } from '../src/engine/market';
-import { buyGear, generatePlayer, gearUpgradeCost, grantXp, skillRating } from '../src/engine/players';
+import { buyGear, generatePlayer, gearUpgradeCost, grantXp, skillRating, teamIncome } from '../src/engine/players';
 import { Rng } from '../src/engine/rng';
 import { decodeSave, encodeSave } from '../src/engine/save';
 import { createBaseState } from '../src/engine/state';
 import { foundedGame } from './fixtures';
 import { assignSlot, changeTier, endSeason, evaluateTeam, unlockGame } from '../src/engine/teams';
+import type { TeamEval } from '../src/engine/types';
 
 describe('player generation', () => {
   it('is deterministic for a seed', () => {
@@ -55,10 +56,23 @@ describe('ratings and gear', () => {
     s.cash = 1e9;
     for (const slot of GEAR_SLOTS) {
       const c1 = gearUpgradeCost(founder, slot.id, mods, 0);
-      expect(buyGear(s, 'founder', slot.id, mods)).toBe(true);
+      expect(buyGear(s, 'founder', slot.id, mods, computeRates(s, mods))).toBe(true);
       expect(gearUpgradeCost(founder, slot.id, mods, 0)).toBeGreaterThan(c1);
     }
     expect(skillRating(founder)).toBeGreaterThan(base * 1.2);
+  });
+
+  it('never prices gear below half a minute of what the team earns', () => {
+    const s = foundedGame(0, 11);
+    const founder = s.players.founder;
+    const mods = computeMods(s);
+    const byLeague = gearUpgradeCost(founder, 'pc', mods, 0);
+    // A poor team: the league price stands.
+    expect(gearUpgradeCost(founder, 'pc', mods, 0, 1)).toBe(byLeague);
+    // A team earning far more than its gear costs: the floor takes over.
+    const income = byLeague * 1000;
+    expect(gearUpgradeCost(founder, 'pc', mods, 0, income)).toBe(Math.ceil(GEAR_INCOME_FLOOR_SECONDS * income * mods.gearCostMult));
+    expect(teamIncome({ teams: { smash: { cps: 600 } as TeamEval }, buffIncomeMult: 3 }, 'smash')).toBe(200);
   });
 
   it('win chance is even at equal ratings and rises with rating', () => {

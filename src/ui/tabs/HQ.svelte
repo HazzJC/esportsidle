@@ -5,6 +5,7 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
   import Agenda from '../components/Agenda.svelte';
+  import Collapsible from '../components/Collapsible.svelte';
   import HQOverview from '../components/HQOverview.svelte';
   import { GRIND_NEED, TIER_NEED } from '../../data/upgrades';
   import Quests from '../components/Quests.svelte';
@@ -17,6 +18,8 @@
 
   /** Sprites drawn per operation before the rest collapse into a count. */
   const MAX_UNITS = 32;
+  /** Lanes earning less than this share of operations income are muted, so the ones that matter stand out. */
+  const QUIET_SHARE = 0.005;
   /** Units per row: two rows, back and front, fill the strip left to right. */
   const PER_ROW = 16;
 
@@ -66,6 +69,9 @@
     Object.fromEntries(owned.map((op) => [op.id, { scene: opSceneBackground(op.id, opColor(op.index)), sprite: opSpriteSvg(op.id, opColor(op.index)) }])),
   );
   const modifiers = $derived(s.events.modifiers.filter((m) => m.endsAt > s.time));
+  /** The newest setback still running (a scandal, a slump): it opens the Org activity card by itself. */
+  const alert = $derived(modifiers.filter((m) => m.tone === 'bad').sort((a, b) => b.startedAt - a.startedAt)[0]?.id ?? null);
+  const activitySummary = $derived(modifiers.length > 0 ? `${modifiers.length} active` : 'quiet');
   let activityMode = $state<'active' | 'all'>('active');
   const activityLog = $derived(activityEntries(s.events.log, s.time, activityMode).slice(0, 8));
   const showLevels = $derived(s.stats.trophiesTotal > 0);
@@ -90,14 +96,14 @@
 
 
   {#if modifiers.length > 0 || s.events.log.length > 0 || v.m.dramaLevel > 0}
-    <section class="activity">
-      <div class="activity-heading">
-        <h3 class="section-title">Org activity</h3>
+    <Collapsible id="org-activity" title="Org activity" summary={activitySummary} urgent={alert}>
+      {#snippet actions()}
         <div class="activity-toggle" role="group" aria-label="Org activity view">
           <button class:chosen={activityMode === 'active'} aria-pressed={activityMode === 'active'} onclick={() => activityMode = 'active'}>Active</button>
           <button class:chosen={activityMode === 'all'} aria-pressed={activityMode === 'all'} onclick={() => activityMode = 'all'}>All</button>
         </div>
-      </div>
+      {/snippet}
+      <div class="activity">
 
       {#if v.m.dramaLevel > 0}
         <div class="drama" class:calm>
@@ -172,7 +178,8 @@
       {:else if activityMode === 'active' && modifiers.length === 0}
         <p class="activity-empty muted">Nothing active right now. Switch to All for past events.</p>
       {/if}
-    </section>
+      </div>
+    </Collapsible>
   {/if}
 
   {#if owned.length === 0}
@@ -203,6 +210,7 @@
 
           <div
             class="lane"
+            class:quiet={share < QUIET_SHARE}
             style="--c:{opColor(op.index)}"
             use:tooltip={() => ({
               title: op.plural,
@@ -220,7 +228,7 @@
               <span class="lane-title">
                 <span class="lane-name">{op.plural} <span class="lane-count num">×{fmt(st.owned)}</span></span>
                 <span class="lane-meta">
-                  {#if need}<span class="next">Next ×2 upgrade at <b class="num">{need}</b></span>{:else}<span class="next">Every ×2 upgrade unlocked</span>{/if}
+                  {#if need}<span class="next">Next ×2 upgrade at <b class="num">{need}</b></span>{/if}
                   {#if st.level > 0}<span class="lv num">Lv {st.level} · +{st.level}%</span>{/if}
                 </span>
               </span>
@@ -299,17 +307,9 @@
     flex-direction: column;
     gap: 8px;
   }
-  .activity .section-title {
-    margin: 0;
-  }
-  .activity-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
   .activity-toggle {
     display: flex;
+    margin-left: auto;
     padding: 2px;
     border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
     border-radius: 8px;
@@ -466,6 +466,14 @@
     background:
       repeating-linear-gradient(90deg, color-mix(in srgb, var(--c) 5%, transparent) 0 1px, transparent 1px 28px),
       linear-gradient(90deg, color-mix(in srgb, var(--c) 13%, transparent), color-mix(in srgb, var(--c) 3%, transparent));
+  }
+  /* A lane that earns almost nothing steps back, so the ones that matter stand out. */
+  .lane.quiet {
+    opacity: 0.6;
+  }
+  .lane.quiet:hover,
+  .lane.quiet:focus-within {
+    opacity: 1;
   }
   .ops-head {
     display: flex;

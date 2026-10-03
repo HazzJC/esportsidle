@@ -244,3 +244,35 @@ describe('v6 -> v7 Legacy rescale', () => {
     expect(decodeSave(v6Save(0, 0)).prestige.level).toBe(0);
   });
 });
+
+describe('v7 -> v8 strict offline refund', () => {
+  const v7Save = (nodes: string[], points: number) => {
+    const s = foundedGame(0, 3);
+    s.prestige.level = 50;
+    s.prestige.runs = 4;
+    s.prestige.points = points;
+    for (const id of ['legacy', ...nodes]) s.prestige.nodes[id] = 1;
+    const raw = JSON.parse(JSON.stringify(s));
+    raw.version = 7;
+    return `ESI7.${LZString.compressToBase64(JSON.stringify(raw))}`;
+  };
+
+  it('returns what the offline nodes cost, keeps the nodes, and says so in the activity log', () => {
+    const s = decodeSave(v7Save(['offline_1', 'offline_2', 'offline_3'], 10));
+    expect(s.prestige.points).toBe(10 + 4 + 40 + 400);
+    expect(Object.keys(s.prestige.nodes)).toEqual(expect.arrayContaining(['offline_1', 'offline_2', 'offline_3']));
+    expect(s.events.log[0].title).toBe('Legacy refreshed');
+    expect(s.events.log[0].body).toContain('444');
+  });
+
+  it('leaves an org without offline nodes alone', () => {
+    const s = decodeSave(v7Save([], 10));
+    expect(s.prestige.points).toBe(10);
+    expect(s.events.log.some((e) => e.title === 'Legacy refreshed')).toBe(false);
+  });
+
+  it('refunds only once', () => {
+    const s = decodeSave(v7Save(['offline_1'], 0));
+    expect(decodeSave(encodeSave(s)).prestige.points).toBe(4);
+  });
+});

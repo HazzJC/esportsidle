@@ -400,7 +400,7 @@ export function sellOrg(s: GameState, options: SellOptions = {}): HallOfFameEntr
   s.players = {};
   s.market = { listings: [], nextRefresh: 0, rerolls: 0, pinned: [] };
   // Quests and their perks belong to a run: the new org works through the line again.
-  s.quests = { active: [], done: {}, picks: {}, skipped: {}, claimed: s.quests.claimed };
+  s.quests = { active: [], done: {}, picks: {}, affinity: {}, tools: {}, skipped: {}, claimed: s.quests.claimed, collection: s.quests.collection };
   s.staff = createStaff();
   if (!keepDecor) s.decor = {};
   s.drops = { nextAt: 0, active: [] };

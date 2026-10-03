@@ -70,7 +70,7 @@
     if (step.id === 'draft') return (s.draft?.[0]?.price ?? 0) > s.cash;
     if (step.id === 'grinder' || step.id === 'streamer') {
       const op = OPERATIONS.find((o) => o.id === step.id)!;
-      return unitPrice(op, s.ops[op.id].owned, game.view.m.opCostMult) > s.cash;
+      return unitPrice(op, s.ops[op.id].owned, game.view.m.opCostMult, game.view.m.opFirstUnits[op.id]) > s.cash;
     }
     return false;
   });

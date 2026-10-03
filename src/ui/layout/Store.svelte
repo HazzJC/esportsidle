@@ -112,16 +112,17 @@
   function rowInfo(op: OperationDef): { n: number; price: number; ok: boolean } {
     const st = s.ops[op.id];
     const costMult = v.m.opCostMult;
+    const discount = v.m.opFirstUnits[op.id];
     if (mode === 'sell') {
       const n = amount < 0 ? st.owned : Math.min(amount, st.owned);
-      return { n, price: sellRefund(op, st.owned, n, costMult), ok: n > 0 };
+      return { n, price: sellRefund(op, st.owned, n, costMult, discount), ok: n > 0 };
     }
     if (amount < 0) {
-      const max = maxAffordable(op, st.owned, s.cash, costMult);
+      const max = maxAffordable(op, st.owned, s.cash, costMult, discount);
       const n = Math.max(1, max);
-      return { n, price: bulkPrice(op, st.owned, n, costMult), ok: max > 0 };
+      return { n, price: bulkPrice(op, st.owned, n, costMult, discount), ok: max > 0 };
     }
-    const price = bulkPrice(op, st.owned, amount, costMult);
+    const price = bulkPrice(op, st.owned, amount, costMult, discount);
     return { n: amount, price, ok: s.cash >= price };
   }
 

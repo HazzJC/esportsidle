@@ -7,19 +7,31 @@
  *   npx tsx scripts/sim/report.ts output/sim/after --compare=output/sim/before
  */
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { MAX_OFFLINE_RATE } from '../../src/engine/economy';
 import { INCOME_SOURCES, type IncomeSource } from '../../src/engine/types';
 import {
   ACTIVE_SHARE_BANDS,
   ACTIVE_VS_IDLE_SPEEDUP,
+  AFFORD_FROM_HOUR,
+  AFFORD_KINDS,
   CROWDS_PER_ACTIVE_HOUR,
+  DOUBLING_MINUTES,
   FIRST_LEGACY_ACTIVE,
   GROWTH_WINDOW_SECONDS,
+  HERMIT_VS_ACTIVE,
   MAX_GROWTH_AFTER_FIRST_LEGACY,
+  MAX_OFFLINE_OVER_OPEN,
   MAX_SEMI_MATCH_SHARE,
   MAX_SOURCE_SHARE,
-  SELL_OVER_STAY,
+  MIN_AFFORD_TREND,
+  MIN_PAYBACK_TREND,
+  PAYBACK_KINDS,
+  PROGRESS_ORDER_DAYS,
+  RESTART_CATCH_UP,
+  RESTART_CEILING,
   WINDOW_GRACE_SECONDS,
 } from './targets';
+import { OFFLINE_ORDER } from './personas';
 import type { Sample, SimRecord } from './types';
 
 declare const process: { argv: string[] };
@@ -150,11 +162,7 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
     }
   }
   if (active.length) {
-    // Income over the half hour ending at `t`, from the books rather than a single rate reading.
-    const incomeAt = (r: SimRecord, t: number) => {
-      const xs = r.samples.filter((x) => x.run === 1 && x.runWall > t - 1800 && x.runWall <= t + 1e-9).map((x) => windowShare(x).total / 600);
-      return xs.length ? mean(xs) : NaN;
-    };
+    const incomeAt = (r: SimRecord, t: number) => incomeIn(r, 1, t);
     const growth = active.map((r) => {
       const fl = firstLegacy(r);
       if (!Number.isFinite(fl) || fl + GROWTH_WINDOW_SECONDS > r.hours * HOUR) return NaN;
@@ -167,6 +175,70 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
       result: measured.length ? `median ×${sci(m)} (${growth.map((g) => (Number.isFinite(g) ? `×${sci(g)}` : 'n/a')).join(', ')})` : 'runs too short to measure',
       pass: measured.length ? m <= MAX_GROWTH_AFTER_FIRST_LEGACY : null,
     });
+    // Check A: minutes for income to double, from some hours after the first Legacy point. A run that
+    // ends first gives a lower bound.
+    for (const [hour, minutes] of DOUBLING_MINUTES) {
+      const found = active.map((r) => {
+        const t = firstLegacy(r) + hour * HOUR;
+        if (!Number.isFinite(t)) return { m: NaN, bound: false };
+        const from = incomeAt(r, t);
+        const later = r.samples.filter((x) => x.run === 1 && x.runWall > t);
+        if (!(from > 0) || later.length === 0) return { m: NaN, bound: false };
+        const i = later.findIndex((x) => incomeAt(r, x.runWall) >= 2 * from);
+        // Never doubled before the record ends: a lower bound, which only settles the target if it is past it.
+        if (i < 0) {
+          const m = (later[later.length - 1].runWall - t) / 60;
+          return m >= minutes ? { m, bound: true } : { m: NaN, bound: false };
+        }
+        // Interpolated on a log scale between the samples either side of the crossing.
+        const t0 = i === 0 ? t : later[i - 1].runWall;
+        const a = i === 0 ? from : incomeAt(r, t0);
+        const b = incomeAt(r, later[i].runWall);
+        const f = b > a ? Math.log((2 * from) / a) / Math.log(b / a) : 1;
+        return { m: (t0 + f * (later[i].runWall - t0) - t) / 60, bound: false };
+      });
+      const ok = found.filter((f) => Number.isFinite(f.m));
+      const m = median(ok.map((f) => f.m));
+      rows.push({
+        target: `Income takes at least ${minutes} min to double ${hour} h after the first Legacy point (active; Cookie-Clicker-like pacing)`,
+        result: ok.length ? `median ${m.toFixed(0)} min (${found.map((f) => (Number.isFinite(f.m) ? `${f.bound ? '>' : ''}${f.m.toFixed(0)}` : 'n/a')).join(', ')})` : 'runs too short to measure',
+        pass: ok.length ? m >= minutes : null,
+      });
+    }
+    // Check D: seconds of income the next purchase of each kind costs, early versus late.
+    const affordIn = (r: SimRecord, kind: (typeof AFFORD_KINDS)[number], from: number, to: number) =>
+      median(r.samples.filter((x) => x.run === 1 && x.runWall > from && x.runWall <= to + 1e-9).map((x) => x.afford?.[kind] ?? NaN).filter(Number.isFinite));
+    const trends = AFFORD_KINDS.map((kind) => {
+      const ratios = active.map((r) => {
+        const end = Math.max(...r.samples.filter((x) => x.run === 1).map((x) => x.runWall));
+        return affordIn(r, kind, end - HOUR, end) / affordIn(r, kind, AFFORD_FROM_HOUR * HOUR, (AFFORD_FROM_HOUR + 1) * HOUR);
+      });
+      return { kind, ratio: median(ratios.filter(Number.isFinite)) };
+    }).filter((x) => Number.isFinite(x.ratio));
+    if (trends.length) {
+      rows.push({
+        target: `The next purchase of each kind (best payback) costs no less than ${pct(MIN_AFFORD_TREND)} as many seconds of income in the last hour of an active run as at hour ${AFFORD_FROM_HOUR}`,
+        result: trends.map((x) => `${x.kind} ×${sci(x.ratio)}`).join(', '),
+        pass: trends.every((x) => x.ratio >= MIN_AFFORD_TREND),
+      });
+    }
+    // Check E: the best payback on offer of each kind, early versus late. Nothing should become free.
+    const paybackIn = (r: SimRecord, kind: (typeof PAYBACK_KINDS)[number], from: number, to: number) =>
+      median(r.samples.filter((x) => x.run === 1 && x.runWall > from && x.runWall <= to + 1e-9).map((x) => x.payback?.[kind] ?? NaN).filter(Number.isFinite));
+    const paybacks = PAYBACK_KINDS.map((kind) => {
+      const ratios = active.map((r) => {
+        const end = Math.max(...r.samples.filter((x) => x.run === 1).map((x) => x.runWall));
+        return paybackIn(r, kind, end - HOUR, end) / paybackIn(r, kind, AFFORD_FROM_HOUR * HOUR, (AFFORD_FROM_HOUR + 1) * HOUR);
+      });
+      return { kind, ratio: median(ratios.filter(Number.isFinite)) };
+    }).filter((x) => Number.isFinite(x.ratio));
+    if (paybacks.length) {
+      rows.push({
+        target: `Nothing becomes free: the best payback of each kind in the last hour of an active run is at least ${pct(MIN_PAYBACK_TREND)} of what it was at hour ${AFFORD_FROM_HOUR}`,
+        result: paybacks.map((x) => `${x.kind} ×${sci(x.ratio)}`).join(', '),
+        pass: paybacks.every((x) => x.ratio >= MIN_PAYBACK_TREND),
+      });
+    }
   }
   const semi = fresh(rs, 'semi');
   if (semi.length) {
@@ -182,6 +254,8 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
     });
   }
 
+  rows.push(...offlineTargets(rs));
+
   const baseline = rs.filter((r) => r.variant === 'baseline' && !r.persona.startsWith('audit'));
   let worstRun = { share: 0, what: '' };
   let windowsOver = 0;
@@ -189,9 +263,11 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
   const overBy = new Map<string, number>();
   for (const r of baseline) {
     const sh = shares(r);
-    for (const g of GROUPS) if (sh[g.id] > worstRun.share) worstRun = { share: sh[g.id], what: `${g.label}, ${r.persona} seed ${r.seed}` };
+    // A hermit's run is almost all offline operations income by construction, so it is not a mix of play.
+    if (!r.persona.startsWith('hermit')) for (const g of GROUPS) if (sh[g.id] > worstRun.share) worstRun = { share: sh[g.id], what: `${g.label}, ${r.persona} seed ${r.seed}` };
     for (const smp of r.samples) {
-      if (smp.run !== 1 || smp.runWall < WINDOW_GRACE_SECONDS) continue;
+      // A hermit's windows are the offline lump it comes back to, not a mix of play.
+      if (smp.run !== 1 || smp.runWall < WINDOW_GRACE_SECONDS || r.persona.startsWith('hermit')) continue;
       const w = windowShare(smp);
       if (w.total <= 0) continue;
       windows++;
@@ -209,28 +285,125 @@ function checkTargets(rs: SimRecord[]): TargetRow[] {
     pass: windowsOver === 0,
   });
 
-  const stay = rs.filter((r) => r.persona === 'active' && isRestart(r, 'stay'));
-  const sell = rs.filter((r) => r.persona === 'active' && isRestart(r, 'sell'));
-  if (stay.length && sell.length) {
-    const legacy = (r: SimRecord) => r.final.legacyLevel + r.final.pending;
-    const ratios = sell.map((x) => {
-      const y = stay.find((z) => z.seed === x.seed);
-      return y ? legacy(x) / Math.max(1, legacy(y)) : NaN;
-    });
-    const m = median(ratios.filter(Number.isFinite));
+  rows.push(...restartTargets(rs));
+  return rows;
+}
+
+/**
+ * Steady income per second around `t` seconds into `run`: the mean of the buff-free rate in the samples
+ * within ten minutes either side, so a crowd, frenzy or merch spike doesn't read as growth. Records
+ * from before `steadyCps` fall back to the books over the half hour ending `t`.
+ */
+function incomeIn(r: SimRecord, run: number, t: number): number {
+  const ofRun = r.samples.filter((x) => x.run === run);
+  if (ofRun.some((x) => x.steadyCps !== undefined)) {
+    const xs = ofRun.filter((x) => Math.abs(x.runWall - t) <= 600 + 1e-9).map((x) => x.steadyCps ?? NaN).filter(Number.isFinite);
+    return xs.length ? mean(xs) : NaN;
+  }
+  const xs = ofRun.filter((x) => x.runWall > t - 1800 && x.runWall <= t + 1e-9).map((x) => windowShare(x).total / 600);
+  return xs.length ? mean(xs) : NaN;
+}
+
+/**
+ * The restart check: each active seed is sold an hour after its first Legacy point (matrix.ts). Run 1
+ * had played T and earned I a second by then. How soon does run 2 earn I, and what does it earn at T?
+ */
+function restartTargets(rs: SimRecord[]): TargetRow[] {
+  const rows: TargetRow[] = [];
+  const results = rs
+    .filter((r) => r.persona === 'active' && isRestart(r, 'sell'))
+    .map((sold) => {
+      const first = fresh(rs, 'active').find((r) => r.seed === sold.seed);
+      const snap = first?.snapshots.find((x) => x.label.startsWith('first legacy'));
+      if (!first || !snap) return null;
+      const T = snap.runWall;
+      const I = incomeIn(first, 1, T);
+      const run2 = sold.samples.filter((x) => x.run === 2);
+      const end = run2.length ? run2[run2.length - 1].runWall : 0;
+      const hit = run2.find((x) => incomeIn(sold, 2, x.runWall) >= I);
+      return { seed: sold.seed, T, catchUp: hit ? hit.runWall / T : NaN, bound: hit ? 0 : end / T, ceiling: end >= T ? incomeIn(sold, 2, T) / I : NaN };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  if (results.length === 0) return rows;
+  const catchUps = results.map((x) => (Number.isFinite(x.catchUp) ? x.catchUp : Infinity));
+  const mc = median(catchUps);
+  rows.push({
+    target: `After selling an hour past the first Legacy point, run 2 earns run 1's income at the sale within ${pct(RESTART_CATCH_UP)} of run 1's time`,
+    result: `median ${Number.isFinite(mc) ? pct(mc) : 'never'} (${results.map((x) => (Number.isFinite(x.catchUp) ? pct(x.catchUp) : `>${pct(x.bound)}`)).join(', ')}; run 1 sold at ${results.map((x) => hms(x.T)).join(', ')})`,
+    pass: mc <= RESTART_CATCH_UP,
+  });
+  const ceilings = results.map((x) => x.ceiling).filter(Number.isFinite);
+  const mx = median(ceilings);
+  rows.push({
+    target: `At the same point of the run, run 2 earns at least ${RESTART_CEILING}x what run 1 did`,
+    result: ceilings.length ? `median ×${sci(mx)} (${results.map((x) => (Number.isFinite(x.ceiling) ? `×${sci(x.ceiling)}` : 'n/a')).join(', ')})` : 'run 2 too short to measure',
+    pass: ceilings.length ? mx >= RESTART_CEILING : null,
+  });
+  return rows;
+}
+
+/** All-time earnings at `day` days of wall-clock, or NaN when the record is shorter than that. */
+function earnedAtDay(r: SimRecord, day: number): number {
+  const t = day * 24 * HOUR;
+  if (r.hours * HOUR < t) return NaN;
+  const smp = r.samples.filter((x) => x.wall <= t + 1e-9).pop();
+  return smp?.earnedTotal ?? NaN;
+}
+
+/** Offline is a floor, not a strategy (WS4): the hermit trails everyone, and an hour away pays under half an open hour. */
+function offlineTargets(rs: SimRecord[]): TargetRow[] {
+  const rows: TargetRow[] = [];
+  const active = fresh(rs, 'active');
+  const hermit = fresh(rs, 'hermit');
+  const casual = fresh(rs, 'casual');
+  if (hermit.length && active.length) {
+    const h = median(hermit.map(firstLegacy));
+    const a = median(active.map(firstLegacy));
+    const c = casual.length ? median(casual.map(firstLegacy)) : NaN;
+    const ratio = h / a;
     rows.push({
-      target: `Selling an hour after the first Legacy point ends 3 h later with ${SELL_OVER_STAY}x the Legacy of staying`,
-      result: `median ${m.toFixed(2)}x (${ratios.map((x) => x.toFixed(2)).join(', ')})`,
-      pass: m >= SELL_OVER_STAY,
+      target: `A hermit (opens every 24 h for 5 min) reaches the first Legacy point no sooner than ${HERMIT_VS_ACTIVE}x the active player's time, and no sooner than the casual player`,
+      result: Number.isFinite(h) ? `hermit ${hms(h)} = ${ratio.toFixed(1)}x active (${hms(a)}); casual ${hms(c)}` : `hermit never got there in ${hermit[0].hours / 24} days; active ${hms(a)}, casual ${hms(c)}`,
+      pass: !Number.isFinite(h) || (ratio >= HERMIT_VS_ACTIVE && (!Number.isFinite(c) || h >= c)),
+    });
+  }
+  for (const day of PROGRESS_ORDER_DAYS) {
+    const present = OFFLINE_ORDER.map((p) => ({ p, v: median(fresh(rs, p).map((r) => earnedAtDay(r, day)).filter(Number.isFinite)) })).filter((x) => Number.isFinite(x.v));
+    if (present.length < 2) continue;
+    const ordered = present.every((x, i) => i === 0 || x.v < present[i - 1].v);
+    rows.push({
+      target: `Lifetime earnings at day ${day} ordered by presence: ${OFFLINE_ORDER.join(' > ')}`,
+      result: `${present.map((x) => `${x.p} ${sci(x.v)}`).join(', ')}${present.length < OFFLINE_ORDER.length ? ` (${OFFLINE_ORDER.length - present.length} personas not run that long)` : ''}`,
+      pass: ordered,
+    });
+  }
+  const away = rs.filter((r) => r.variant === 'baseline' && (r.absences?.length ?? 0) > 0);
+  if (away.length) {
+    const byPersona = new Map<string, { earned: number; open: number; maxRate: number; n: number }>();
+    for (const r of away) {
+      const acc = byPersona.get(r.persona) ?? { earned: 0, open: 0, maxRate: 0, n: 0 };
+      for (const a of r.absences ?? []) {
+        acc.earned += a.earned;
+        acc.open += a.cpsAtClose * a.away;
+        acc.maxRate = Math.max(acc.maxRate, a.rate);
+        acc.n++;
+      }
+      byPersona.set(r.persona, acc);
+    }
+    const ratios = [...byPersona].map(([p, a]) => ({ p, ratio: a.open > 0 ? a.earned / a.open : 0, maxRate: a.maxRate, n: a.n }));
+    const worst = Math.max(...ratios.map((x) => x.ratio));
+    rows.push({
+      target: `An hour away pays at most ${pct(MAX_OFFLINE_OVER_OPEN)} of an hour with the tab open (offline earned ÷ income at closing × time away), and the offline rate never tops ${pct(MAX_OFFLINE_RATE)}`,
+      result: ratios.map((x) => `${x.p} ${pct(x.ratio)} over ${x.n} absences, top rate ${pct(x.maxRate)}`).join('; '),
+      pass: worst <= MAX_OFFLINE_OVER_OPEN && ratios.every((x) => x.maxRate <= MAX_OFFLINE_RATE + 1e-9),
     });
   }
   return rows;
 }
 
-/** The restart check's records are named by matrix.ts; their first sample already has Legacy behind it. */
-function isRestart(r: SimRecord, kind: 'stay' | 'sell'): boolean {
-  if (!r.fromSave) return false;
-  return kind === 'sell' ? r.sales.length > 0 : r.sales.length === 0;
+/** The restart check's records start from a save (matrix.ts) and sell it at once. */
+function isRestart(r: SimRecord, kind: 'sell'): boolean {
+  return kind === 'sell' && r.fromSave && r.sales.length > 0;
 }
 
 // ---------------------------------------------------------------------------

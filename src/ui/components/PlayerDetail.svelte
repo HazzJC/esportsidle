@@ -1,6 +1,6 @@
 <script lang="ts">
   import { GENRE_WEIGHTS, getGame } from '../../data/games';
-  import { GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
+  import { GEAR_INCOME_FLOOR_SECONDS, GEAR_LEAGUE_GROWTH, GEAR_MAX_TIER, GEAR_SLOTS, gearRarity } from '../../data/gear';
   import { tierName } from '../../data/leagues';
   import { NATIONS } from '../../data/names';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
@@ -12,7 +12,8 @@
     gearStatMult,
     gearLeague,
     gearTraitMult,
-    gearUpgradeCost,
+    gearPrice,
+    teamIncome,
     isAvailable,
     randomLook,
     transferValue,
@@ -257,13 +258,13 @@
         {:else if tab === 'gear'}
           {@const league = gearLeague(v.s, p)}
           {#if league > 0}
-            <div class="muted small gear-league">Priced for {tierName(league)}: gear costs ×{fmt(Math.pow(GEAR_LEAGUE_GROWTH, league))} at the best league this team has reached.</div>
+            <div class="muted small gear-league">Priced for {tierName(league)}: gear costs ×{fmt(Math.pow(GEAR_LEAGUE_GROWTH, league))} at the best league this team has reached, and never less than {GEAR_INCOME_FLOOR_SECONDS} seconds of what the team earns ({money(GEAR_INCOME_FLOOR_SECONDS * teamIncome(v.r, p.gameId))}).</div>
           {/if}
           <div class="gear">
             {#each GEAR_SLOTS as gs (gs.id)}
               {@const tier = p.gear[gs.id]}
               {@const maxed = tier >= GEAR_MAX_TIER}
-              {@const cost = gearUpgradeCost(p, gs.id, v.m, gearLeague(v.s, p))}
+              {@const cost = gearPrice(v.s, p, gs.id, v.m, v.r)}
               {@const tm = gearTraitMult(p, gs.id)}
               {@const rarity = gearRarity(tier)}
               <div class="gear-row" class:maxed style="--r:{rarity.color}">

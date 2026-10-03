@@ -19,8 +19,77 @@
 
 ## Pending Changes
 
-### Balance: the first Legacy point comes with the first Multiverse Championship
+### Phase B of the implementation plan: strict offline, and a run that levels off once the ladder is climbed
 *Status: Pending*
+
+* **The Issue / Motivation**:
+  * Offline was 100% efficient for up to 72 hours with the Legacy offline nodes. Once a run levels off, being away would be the best way to play. The owner chose strict offline: at most 40%, a short full-rate window, half rate to a hard 24 h cap.
+  * A run never levelled off. After the first Legacy point income still doubled every 5–12 minutes, purchases became nearly free (the next purchase of most kinds cost under a second of income), and staying beat selling 11 to 1. Fame, superfan, the late fame upgrades and the top operations' cheap tier doublings kept multiplying income without paying the ×1.15 price wall.
+  * With the owner, two targets were redefined. Pace is measured 1 h and 3 h after the first Legacy point (not at hours 3 and 6, which is mid-climb for a 3–4 h first sale). The restart check now asks that run 2 feels measurably faster back to where run 1 was and reaches higher, rather than out-earning three more hours of run 1; most of run 2's edge is meant to come from Legacy v2's mechanics, not raw income.
+* **What Changed**:
+  * **Strict offline (WS4.2)**:
+    * `economy.ts`: base rate 20%, ceiling 40% (`MAX_OFFLINE_RATE`); a 6 h full-rate window, at most 12 h (`offlineWindowHours`, was `offlineCapHours`); half rate after the window (`OFFLINE_TAPER`) to a hard 24 h cap (`OFFLINE_HARD_CAP_HOURS`). `offlineCredit()` in `game.ts` works out the credited time; the tab-throttling catch-up uses it too.
+    * Legacy nodes: Autopilot +10% and 3 h of window (was ~~+15% and 12 h~~), Remote Management +10% (was ~~+25%~~), Always Running 3 h of window (was ~~+40% and 48 h~~). VPN sponsors add 2 h of window per strength (was ~~6 h of cap~~). Effect `offlineCap` is now `offlineWindow`.
+    * **Save v8**: orgs that own any offline node get its points back in full (4 / 40 / 400) and keep the node, with a "Legacy refreshed" entry in the activity log.
+    * Welcome Back states the rate and the window ("kept running at 40% of its income for the first 12h, then at 20% until 24 hours, and nothing after that"), says what waits for the player, and gives a neutral estimate of what an open game would have made. Stats shows the full rule.
+    * Offline still pays operations, teams and merch only (no crowds, drops, sponsor goals or Invitationals); that was already true.
+  * **Levelling off (WS3.3)**:
+    * Fans past 3e9 add no more fame (`FAME_CAP_FANS`); the Fans tooltip and Stats say when fame has topped out. The last four fame upgrades are ×1.1 (were ×1.3–1.5).
+    * Superfan upgrades 4 to 9 have factor 0.025 (were 0.175–0.2); Street Team and Moderators cost 10× less and Moderators' factor is 0.1 (was 0.15), so the cabinet does its work during the climb.
+    * The top four operations grow faster per unit (`OperationDef.priceGrowth`: Neural Link Lab ×1.2, Clone Academy ×1.25, Simulation ×1.4, Multiverse Championship ×1.6; everything else stays Cookie Clicker's ×1.15) and their tier upgrades cost 100× (`tierCostScale`).
+    * Gear never costs less than 30 seconds of its team's match income (`GEAR_INCOME_FLOOR_SECONDS`, `gearPrice()`, `teamIncome()`); the player screen says so. `buyGear` takes the rates.
+  * **Simulator and targets**:
+    * Doubling targets are 1 h and 3 h after the first Legacy point (`DOUBLING_MINUTES`). The restart check sells an hour after the first point and plays run 2 for 6 h: run 2 must earn run 1's income within 75% of run 1's time (`RESTART_CATCH_UP`) and twice it by then (`RESTART_CEILING`). The stay job is gone.
+    * Pace targets read steady income (buff-free, recorded per sample as `steadyCps`) around a moment; booked income was swamped by ×200 half-hour buff stacks late in a run.
+    * Check E (nothing becomes free: best payback per kind, `MIN_PAYBACK_TREND`) is a target; gear moved from D to E.
+    * New `--preset=tune` (three active seeds and the restart check, about 3 minutes). Active runs are 9 h. The price-curve script takes `--runs` and prints a summary per reading. A persona that sold before the once-a-minute milestone check now records its first Legacy point.
+  * **Tests**: `tests/offline.test.ts` (the credit rule, the ceilings, a twelve-hour absence end to end), v7 → v8 refund migration tests, the gear floor, the per-operation price growth and tier scale in `tests/pricing.test.ts`, and the strict ceilings in `tests/effects.test.ts`.
+* **Result** (`npm run sim`, five seeds, `output/sim/phaseB-2`):
+  * First Legacy point 3h33 (3h13–3h58); the early game is unchanged (tutorial 2m, first sponsor 13m, merch 31m, $1e9 41m).
+  * Income doubles in 31 min 1 h after the first point and 75 min 3 h after (were 6 and 12 min at hours 3 and 6). Over the 3 h after the first point, income grows ×126 (was ×8.6e4; target ×100, a near miss that is mostly the step of buying the final building).
+  * Check D passes (operations ×274, upgrades ×50, staff ×104) and check E passes (gear ×0.70).
+  * Run 2 is back to run 1's income at the sale in 60% of the time and earns ×28 more by then.
+  * Offline: a hermit's first point is on day 13; an hour away pays 6–11% of an open hour. Over a week with sales (`--preset=offline --days=7`), lifetime earnings are ordered active > semi > idle > casual > hermit at days 3 and 7.
+  * Check F: the Legacy level term is 0.7% of the income multiplier at 12 h (40% in the reference save).
+  * **For reviewers, veterans lose income on loading**: the reference save earns 4.7e36 a second instead of 2.4e40 (superfan ×2.2e4 → ×58, fame ×633 → ×46), because the late superfan and fame upgrades it owns are now small. Legacy level and points are unchanged.
+  * Still failing, unchanged: 7.4% of 10-minute windows are over 90% operations for idle and semi players.
+  * 400 unit tests, the slow suite (18 pass, 4 expected failures) and `svelte-check` pass.
+
+### Phase A of the implementation plan: measurement, quest data model, HQ clarity
+*Status: Pending*
+
+* **The Issue / Motivation**: `docs/implementation-plan.md` puts a measurement and groundwork phase before any further balance work. The price curve had no tests. Nothing measured whether a run is paced like Cookie Clicker (doubling time, the cost of the next purchase), and no simulated player stood for coming back rarely. The quest model could not express the run-1 tour (a mechanic per quest, tools, operation affinities, cosmetics). The HQ mixed units in one tile row, showed a raw 13-digit Legacy level, repeated dead text on every operation, gave icon-only tabs no name, and had three "what next" surfaces that could not be folded away.
+* **What Changed**:
+  * **Price-curve tests** (`tests/pricing.test.ts`): the 16 operation prices and outputs, ~~×1.15 growth~~ *(Changed 1 time since: the top four grow ×1.2, ×1.25, ×1.4 and ×1.6 per unit and their tier upgrades cost 100×, in Phase B)*, the doubling-tier counts and prices, bulk prices, max-affordable and the 25% refund are frozen.
+    * Fix: with cash exactly equal to one unit's price, max-affordable could say 0 at large values (`geometricMax` now uses the price's own rounding).
+  * **Price-curve measurement** (`scripts/sim/price-curve.ts`): checks A–F every 30 minutes across sales, plus the reference save. A (doubling time) and D (the next purchase's cost in seconds of income) are new report targets (`DOUBLING_MINUTES`, `MIN_AFFORD_TREND` in `targets.ts`). Each sim sample records `afford` and `earnedTotal`.
+  * **Hermit personas** (`hermit`, `hermit-12`, `hermit-72` in `personas.ts`): open the game every 24/12/72 h for five minutes and spend everything.
+    * New targets: the hermit's first Legacy is at least 2× the active player's and no sooner than the casual player's; lifetime earnings at days 3 and 7 are ordered active > semi > idle > casual > hermit; an hour away pays at most half an open hour. Every absence is recorded in the sim record.
+    * `npm run sim -- --preset=offline --days=7` plays everyone for a week, selling as they go. The full matrix runs the hermit for 14 days; hermits are left out of the 10-minute mix check (their windows are offline lumps).
+  * **Quest data model** (`src/data/quests.ts`, `src/engine/quests.ts`):
+    * Every quest names the `mechanic` it teaches (`MECHANICS`).
+    * New reward kinds: `tool` (kept for the run) and tokens (used up; `QUEST_TOOLS`, `hasTool`, `useToken`), `opAffinity` (×2 on an owned operation, otherwise its first 10 units 25% off, settled at the claim), `cosmetic` and `title` (kept across sales in `quests.collection`). A quest can pay a `bonus` on top of the chosen reward.
+    * New effect `opFirstUnits` (`Mods.opFirstUnits`): the first units of one operation cost less. Every price, max-affordable and refund call passes it.
+    * No live quest pays the new kinds yet, so balance is unchanged. Comments that said quests and perks survive a sale are corrected: ~~"Progress is kept for the life of the org, across sales"~~, ~~"A permanent bonus, kept for the life of the org, even after selling it"~~ *(Changed 1 time since: quests and perks belong to the run, as the code and the sell screen already said)*.
+  * **HQ** (WS1.1, WS1.2):
+    * The overview shows the Legacy level formatted (5.53e10, not 55283434774), with the missing space before it restored.
+    * The Sponsors tile shows the $/s sponsors add, like the other three tiles, with the percentage and slots underneath.
+    * Operation lanes no longer repeat "Every ×2 upgrade unlocked"; lanes under 0.5% of operations income are muted until hovered.
+    * Every centre tab has an accessible name and a hover label (below 1280 px only the active tab shows its text).
+    * **Collapsible cards** (`Collapsible.svelte`, `src/ui/collapse.ts`): "Next steps" and "Org activity" fold away, remember their state in this browser, show a count when closed, and open themselves for a new urgent item (a starter who cannot play, a sale ready, a new setback). Closing the card again sticks until the next urgent item.
+    * "Next goal" and "Opportunity" skip anything the active quest already asks for (agenda items carry a `mechanic`).
+  * **Design for review** (docs only): `docs/legacy-v2.md` (stages, where today's 45 nodes go, four Paths with three rules each, Mastery, Heirlooms, the first-sale screen, migration rules) and `docs/quest-tour.md` (the 26 tour stops with metrics, engine hooks and affinities).
+  * `docs/economy.md` records the new checks' baseline; `docs/content-catalog.md` lists the new canonical homes.
+* **Result**: no balance change; a seeded `audit-compat` record is byte-identical to `1623db1` apart from the new fields. Baseline (`output/sim/phaseA`):
+  * Doubling time is 6 min from hour 3 and 12 min from hour 6 (targets 20 and 60 ~~at hours 3 and 6~~ *(Changed 1 time since: measured 1 h and 3 h after the first Legacy point, because hour 3 is mid-climb for a 3-4 h first sale; Phase B)*).
+  * Late in a run, the next purchase costs ×0.00–0.16 as many seconds of income as at hour 2 ~~(gear included)~~ *(Changed 1 time since: gear is checked by payback, check E, in Phase B)*.
+  * The offline targets pass with no Legacy offline nodes (a hermit's first point is on day 12; an hour away pays 5–10% of an open hour).
+  * Three days with sales (`--preset=offline --days=3`): earnings at day 3 are ordered active > semi > idle > casual > hermit, and an hour away pays at most 19% of an open hour.
+  * Fix to the simulator found by that preset: a persona that sold before the once-a-minute milestone check never recorded run 1's first Legacy point. Milestones are now checked just before every sale.
+  * 391 unit tests and `svelte-check` pass.
+
+### Balance: the first Legacy point comes with the first Multiverse Championship
+*Status: Committed* | `5f61dd2`, notes `b517044`, `1623db1` (Sep 30 2026)
 
 * **The Issue / Motivation**: The active player could sell at 1h22–1h31, midway up the operations ladder, for a handful of points. After that, three more hours in the run earned about ten times more Legacy than selling and replaying. The design goal is a first prestige 3–4 hours into an active run, once the whole ladder has been climbed. From there Legacy should tick up, rather than arrive as a large pile.
 * **What Changed**:
@@ -41,7 +110,7 @@
 * **For reviewers**: a first sale is now small (1–3 points plus the free root node and four founding points), so selling right away is worth little. Making early Legacy strong (a larger, tapering per-level bonus and starter kits) is the next phase.
 
 ### Balance: runs stop compounding without limit (plateau pass, phase 2 of the economy refinements)
-*Status: Pending*
+*Status: Committed* | `01e6749` (Sep 30 2026)
 
 * **The Issue / Motivation**: The balance simulator's baseline (`docs/economy.md`) found several things compounding without limit:
   * Matches reached 71% of a 12-hour semi-active run and 98% of the veteran save.
@@ -52,7 +121,7 @@
 * **What Changed**:
   * **Gear is priced by league** (`src/data/gear.ts`, `players.ts`): every league tier a team's best result reaches this run doubles gear prices (`GEAR_LEAGUE_GROWTH = 2`), in step with opponents. The player card says "Priced for {league}". Relegation doesn't make gear cheaper. Gear paybacks went from under 10 s to about an hour.
   * **Fans per league tier** grow ×1.5 per tier instead of ~~×1.9~~ (`FAN_GROWTH`, `src/data/leagues.ts`).
-  * **Fame knee**: above 100M fans, fame grows at half its usual exponent (`FAME_KNEE_FANS`, `FAME_KNEE_SLOPE` in `economy.ts`). Fame 6 hours into an active run: ×50 (was ×89).
+  * **Fame knee**: above 100M fans, fame grows at half its usual exponent (`FAME_KNEE_FANS`, `FAME_KNEE_SLOPE` in `economy.ts`). Fame 6 hours into an active run: ×50 (was ×89). *(Changed 1 time since: fans past 3e9 add no more fame, `FAME_CAP_FANS`, in Phase B)*
   * **Teams and merch lines share their income-linked earnings**: n teams earn n^0.65 times one team (`TEAM_SHARE_EXPONENT`), and n selling merch lines earn n^0.5 times one line (`MERCH_LINE_SHARE_EXPONENT`). Fielding every game or product no longer multiplies income by 12 or 10.
   * **Merch spikes**:
     * Mania is ×2.5 (was ~~×4~~).
@@ -85,9 +154,10 @@
     * a ranked verdict on each idea, with how it would be built in this codebase and what to push back on;
     * a phased sequence and the open decisions.
   * Step 0 of the roadmap is the economy floor already listed in `docs/economy.md`.
-  * New `docs/implementation-plan.md`, docs only: a phased plan for six workstreams (HQ UI/UX, Legacy tree, price-curve validation, offline never being the best way to play, features A1/A2/A3/A4/A6, and the quest system), with findings from the code and the running game, acceptance tests and open decisions.
+  * New `docs/implementation-plan.md`, docs only: a phased plan for six workstreams (HQ UI/UX, Legacy v2, price-curve validation, strict offline, features A1/A2/A3/A4/A6, and the quest system), with findings from the code and the running game, acceptance tests and open decisions. It records the owner's decisions: strict offline (rate ≤ 0.4, half rate to a 24 h cap), a separate run-2 quest line with a run-1 tour of every mechanic, collapsible "Next steps" and alerts with quests kept on their own, and exclusive, swappable Legacy Paths.
+  * New `docs/ascension-review.md`, docs only: a stage-by-stage review of Cookie Clicker's first run, early, mid and late ascensions, compared with Esports Idle, and the Legacy v2 design it leads to (a permanent staged tree, swappable Paths with mastery, and Heirloom slots modelled on permanent upgrade slots).
     * Finding recorded there: the 16 operation prices and base outputs are an exact copy of Cookie Clicker's (×1.15 growth, 25% refund), so the price curve is not what makes income outrun costs; uncoupled multipliers are.
-    * Finding recorded there: offline is 100% efficient for up to 72 hours at max Legacy nodes, which becomes more attractive once the economy levels off.
+    * Finding recorded there: offline is ~~100% efficient for up to 72 hours at max Legacy nodes~~ *(Changed 1 time since: at most 40% for a 6–12 h window, then half that to a 24 h cap, in Phase B)*, which becomes more attractive once the economy levels off.
 
 ### Fix: "The big exit" quest could never be completed, and the sell screen said quests were kept
 *Status: Committed* | `f328057` (Sep 30 2026)
@@ -139,14 +209,14 @@
   * **Matrix** (`matrix.ts`, `npm run sim` / `npm run sim:quick`): one child process per persona, seed and variant, run in parallel. The `full` preset:
     * 5 personas × 5 seeds;
     * `no-drops`, `no-merch`, `no-teams` and `no-clicks` variants;
-    * a restart check: from an hour after the first Legacy point, stay 3 h or sell and replay 3 h.
+    * a restart check: ~~from an hour after the first Legacy point, stay 3 h or sell and replay 3 h~~ *(Changed 1 time since: sell an hour after the first Legacy point and play run 2 for 6 h, Phase B)*.
   * **Report and targets**: `report.ts` writes `report.md` and a self-contained `report.html` of share-over-time charts. `targets.ts` holds the design targets as data; the report checks each one and marks it pass or fail:
     * first Legacy at 2h45–4h active;
     * a crowd every ~10 min;
     * no source over 90% of a run or of a 10-minute window after 30 min;
     * merch and matches each 10–40% / 10–50% of an active run;
     * active play at least 1.5× faster than idle;
-    * selling at least 1.5× better than staying.
+    * ~~selling at least 1.5× better than staying~~ *(Changed 1 time since: run 2 back to run 1's income within 75% of the time and ×2 above it by then, Phase B)*.
   * **Payback audit** (`paybacks.ts`): prices every operation, level, upgrade (visible or within a day of income), staff hire, gear slot, merch finish and line, decor item, Legacy node and Dynasty rank at five points of a real run. It flags purchases that change nothing, purchases paying back 10× faster or slower than their kind, and cards whose stated ×N differs from what they did.
   * **Faster engine**, identical results. These hot paths ran inside every income evaluation, so they speed up the game too:
     * `playerEasterEgg` caches per player;
@@ -223,7 +293,7 @@
     * Prize and click multipliers must move real payouts; the product of all prize sources stays under 15×.
     * Bench, market and sponsor slot totals, the offline efficiency and hours caps, and Superfan reachability (313 cabinet achievements against a top need of 200).
     * Legacy unlocks that change a run: IPO Money, Family Home, Merch Archive, Global Brand Portfolio, Operations Manager. The old teams test that pinned "prizes ignore the income share" now asserts the opposite.
-  * **Checked and found working** (no change): every other legacy node and store upgrade group. Bench, market, sponsor slots and offline efficiency sit exactly at their caps (offline efficiency is 100% only with all three offline nodes, which is intended). The staff-upgrade morale, Designer and Chef ceilings are asymptotes by design, and Limited Edition Drops only matters in the first hour after a design launches (novelty then bottoms out).
+  * **Checked and found working** (no change): every other legacy node and store upgrade group. Bench, market, sponsor slots and offline efficiency sit exactly at their caps (offline efficiency is ~~100%~~ *(Changed 1 time since: 40%, Phase B)* only with all three offline nodes, which is intended). The staff-upgrade morale, Designer and Chef ceilings are asymptotes by design, and Limited Edition Drops only matters in the first hour after a design launches (novelty then bottoms out).
   * **Not re-run**: the multi-hour progression sims. The 1-hour run had prize money ×2 at most, so the early game moves little; the late game is where the retuned line matters.
 
 ### Fix: eight Fame upgrades did nothing, and other swallowed bonuses
@@ -240,14 +310,14 @@
 * **What Changed**:
   * **Fame**:
     * Only the first four Fame upgrades raise the exponent, and `MAX_FAME_EXP` is 0.13, exactly the base plus those four, so the cap guards against a stray source without swallowing a purchase.
-    * Fan Conventions through Fandom Singularity now multiply the fame bonus (×1.2, 1.2, 1.25, 1.25, 1.3, 1.3, 1.4, 1.5; a new `fameBonus` effect). A multiplier doesn't compound with the fanbase the way an exponent does, so the late line can't run away. Together they are ×8 at the top of the line.
+    * Fan Conventions through Fandom Singularity now multiply the fame bonus (×1.2, 1.2, 1.25, 1.25, ~~1.3, 1.3, 1.4, 1.5~~ *(Changed 1 time since: the last four are ×1.1, in Phase B)*; a new `fameBonus` effect). A multiplier doesn't compound with the fanbase the way an exponent does, so the late line can't run away. Together they are ×8 at the top of the line.
     * The legacy nodes are now fame bonus ×1.25 (Legendary Fanbase, alongside fans ×1.5) and ×1.5 (Generational Fans).
     * Card text, the legacy descriptions, the Fans tooltip and the code comment now say what actually happens.
-  * **VPN sponsors** add offline hours (+6h per strength, uncapped) instead of offline efficiency. Sponsor perk scaling handles hour-based effects.
+  * **VPN sponsors** add offline hours ~~(+6h per strength, uncapped)~~ *(Changed 1 time since: +2 h at the full offline rate per strength, inside the 12 h window cap, in Phase B)* instead of offline efficiency. Sponsor perk scaling handles hour-based effects.
   * **Morale**: Chef morale levels off at +15 and Psychologist at +12, through the staff effect ceiling. With decor's +19 that covers the 95 cap even for Homesick players, and the cards show what lands. Their other effects are unchanged.
   * **Tests** (`tests/fame.test.ts`):
     * Buying each Fame upgrade and legacy fame node in order must raise the fame bonus.
-    * Every fame-exponent source together must fit under the cap, and every offline efficiency source within 100%.
+    * Every fame-exponent source together must fit under the cap, and every offline efficiency source within ~~100%~~ *(Changed 1 time since: the 40% ceiling, Phase B)*.
     * A general guard: every store upgrade, bought in cost order, must change the game's modifiers. That fails for any future cap that silently eats a purchase, and it would have failed for this one.
 
 ### HQ redesign, drawn upgrade icons and brighter operation scenes
@@ -262,12 +332,12 @@
   * **HQ overview** (`HQOverview.svelte`):
     * A banner painted with the org's best operation scene, with a slow light sweep. It shows the logo, room, run and legacy, a large income figure, and boost and sponsor chips.
     * An income-mix bar splits income into Operations, Matches and Merch.
-    * Four tiles jump to where each stream is managed: Operations (buildings, best building), Teams (team count, average win chance), Merch (lines on the current trend, flagged when some aren't) and Sponsors (boost, slots signed).
-  * **Next steps**: the goal, team and opportunity cards are one panel of rows, each with a coloured marker, the detail and an action button. On phones the button drops under the text.
+    * Four tiles jump to where each stream is managed: Operations (buildings, best building), Teams (team count, average win chance), Merch (lines on the current trend, flagged when some aren't) and Sponsors ~~(boost, slots signed)~~ *(Changed 1 time since: the $/s sponsors add, with the boost and slots underneath, so the row has one unit, in Phase A of the implementation plan)*.
+  * **Next steps**: the goal, team and opportunity cards are one panel of rows, each with a coloured marker, the detail and an action button. On phones the button drops under the text. *(Changed 1 time since: the panel collapses and opens itself for urgent items, and skips what the active quest says, in Phase A)*
   * **Operations**:
     * A header with the building count and operations income.
     * A **Scenes / List** toggle; List hides the scenes so every operation fits on one screen, and the choice is remembered in this browser.
-    * Each lane shows the building's own sprite, the count, income, a bar for its share of operations income, and when its next ×2 upgrade unlocks. The level-up button explains itself in a tooltip.
+    * Each lane shows the building's own sprite, the count, income, a bar for its share of operations income, and when its next ×2 upgrade unlocks ~~(or that every ×2 upgrade is unlocked)~~ *(Changed 1 time since: nothing is shown once all are unlocked, and lanes under 0.5% of operations income are muted, in Phase A)*. The level-up button explains itself in a tooltip.
     * Rival, recaps and trophies move below the operations.
   * **Upgrade art** (`upgradeArt.ts`): 23 new drawings in the operation-sprite style replace the plain icons on every store upgrade and in Stats. They cover the mouse, crowd, megaphone, snacks, heart, superfan star, trophy, dumbbell, stopwatch, scouting, CPU, briefcase, hype drop, bracket, flame, shield, sponsor contract, jersey and fancam. Staff upgrades share an ID-card drawing, with the role icon in the corner. Every upgrade now has a picture.
   * **Scenes**:

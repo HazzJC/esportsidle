@@ -1,4 +1,4 @@
-import type { IncomeSource } from '../../src/engine/types';
+import type { GameState, IncomeSource } from '../../src/engine/types';
 
 export type Attention = 'active' | 'idle' | 'closed';
 export type BuyerKind = 'optimal' | 'human';
@@ -66,6 +66,8 @@ export interface SimOptions {
   mandate?: string | null;
   /** 'off' never claims quests; 'perk' prefers perk rewards over cash. */
   quests?: 'cash' | 'perk' | 'off';
+  /** Called after each sample with the live game, for in-process analysis (price-curve.ts). Must leave the state as it found it. */
+  onSample?: (s: GameState, sample: Sample) => void;
 }
 
 export interface Purchase {
@@ -86,7 +88,11 @@ export interface Sample {
   runWall: number;
   attention: Attention;
   earnedRun: number;
+  /** All-time earnings, which is what Legacy is made of: comparable across personas that sell. */
+  earnedTotal: number;
   totalCps: number;
+  /** Income per second with temporary buffs cleared: the economy's steady pace, for the pace targets. */
+  steadyCps?: number;
   opsCps: number;
   matchCps: number;
   merchCps: number;
@@ -100,6 +106,10 @@ export interface Sample {
   spent: Partial<Record<PurchaseKind | 'other', number>>;
   /** Cash that moved outside the ledger and the player's own purchases (automation, sales, refunds, charter cash). */
   unledgered: number;
+  /** Seconds of income the best-payback purchase of each kind would cost (WS3 check D). */
+  afford?: Partial<Record<PurchaseKind, number>>;
+  /** The best payback (seconds) of each kind on offer: check E, nothing becomes free. */
+  payback?: Partial<Record<PurchaseKind, number>>;
   crowds: number;
   chains: number;
   drops: { seen: number; caught: number };
@@ -144,6 +154,20 @@ export interface SponsorPayout {
   seconds: number;
 }
 
+/** One stretch with the game closed, and what offline progress paid for it. */
+export interface Absence {
+  run: number;
+  /** Wall second the game was closed. */
+  at: number;
+  away: number;
+  /** Seconds offline progress counted, and at what rate. */
+  counted: number;
+  rate: number;
+  earned: number;
+  /** Income per second (no temporary buffs) as the game closed: what an open tab would have earned. */
+  cpsAtClose: number;
+}
+
 export interface SimRecord {
   persona: string;
   variant: Variant;
@@ -158,6 +182,8 @@ export interface SimRecord {
   sales: SaleRecord[];
   milestones: Milestone[];
   sponsorPayouts: SponsorPayout[];
+  /** Missing from records written before the hermit personas. */
+  absences?: Absence[];
   snapshots: { label: string; wall: number; runWall: number; save: string }[];
   final: { run: number; earnedTotal: number; earnedRun: number; legacyLevel: number; pending: number; questsClaimed: number; incomeRun: Record<IncomeSource, number> };
 }

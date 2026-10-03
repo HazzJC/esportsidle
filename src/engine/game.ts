@@ -8,7 +8,7 @@ import { decayHype } from './clicker';
 import { returnScandalFans, updateDrops } from './drops';
 import { updateInvitation } from './tournament';
 import { updateWorldEvents } from './worldEvents';
-import { computeMods, computeRates } from './economy';
+import { OFFLINE_HARD_CAP_HOURS, OFFLINE_TAPER, computeMods, computeRates } from './economy';
 import { updateMarket } from './market';
 import { updateMerch } from './merch';
 import { updateSponsors } from './sponsors';
@@ -64,7 +64,7 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
   if (!offline) {
     updateMarket(s, rng, mods);
     if (Math.floor(s.time / AUTOMATION_INTERVAL) !== Math.floor(prevTime / AUTOMATION_INTERVAL)) {
-      runAutomation(s, mods, { pauseMarket: options?.pauseMarket, pauseGear: options?.pauseGear, pauseTeams: options?.pauseTeams });
+      runAutomation(s, mods, { pauseMarket: options?.pauseMarket, pauseGear: options?.pauseGear, pauseTeams: options?.pauseTeams, rates });
     }
     const ctx = { rng, mods, rates };
     // A new org gets a calm start: no drops or world events while it finds its feet.
@@ -122,10 +122,30 @@ export function advance(s: GameState, seconds: number, offline = false): Advance
 
 export interface OfflineReport {
   awaySeconds: number;
+  /** Seconds of play credited: the full-rate window plus half of the time after it, up to the hard cap. */
   countedSeconds: number;
   rate: number;
+  /** The full-rate window, and how much of the time away fell inside it and in the half-rate stretch. */
+  windowSeconds: number;
+  fullSeconds: number;
+  taperSeconds: number;
   earned: number;
   fans: number;
+  /** About what the org would have made with the game open for the same time (no growth, no buffs). */
+  openEstimate: number;
+}
+
+/**
+ * How much of an absence offline progress credits (WS4): the full rate for the window, half of it
+ * from there to OFFLINE_HARD_CAP_HOURS, nothing after. Returned as seconds of play at the full
+ * offline rate, so the half-rate stretch counts half its length.
+ */
+export function offlineCredit(awaySeconds: number, mods: Pick<Mods, 'offlineWindowHours'>): { window: number; full: number; taper: number; counted: number } {
+  const away = Math.max(0, awaySeconds);
+  const window = mods.offlineWindowHours * 3600;
+  const full = Math.min(away, window);
+  const taper = Math.max(0, Math.min(away, OFFLINE_HARD_CAP_HOURS * 3600) - window) * OFFLINE_TAPER;
+  return { window, full, taper, counted: full + taper };
 }
 
 export const MIN_OFFLINE_SECONDS = 30;
@@ -135,9 +155,22 @@ export function applyOfflineProgress(s: GameState, nowMs: number = Date.now()): 
   const away = (nowMs - s.lastSaved) / 1000;
   if (!s.settings.offlineProgress || !(away >= MIN_OFFLINE_SECONDS)) return null;
   const mods = computeMods(s);
-  const counted = Math.min(away, mods.offlineCapHours * 3600);
+  const rates = computeRates(s, mods);
+  const inc = rates.buffIncomeMult || 1;
+  const openEstimate = (rates.cpsNoBuffs + (rates.matchCps + rates.merchCps) / inc) * away;
+  const credit = offlineCredit(away, mods);
   s.hype = 0;
-  const result = advance(s, counted, true);
+  const result = advance(s, credit.counted, true);
   s.lastSaved = nowMs;
-  return { awaySeconds: away, countedSeconds: counted, rate: mods.offlineRate, earned: result.earned, fans: result.fans };
+  return {
+    awaySeconds: away,
+    countedSeconds: credit.counted,
+    rate: mods.offlineRate,
+    windowSeconds: credit.window,
+    fullSeconds: credit.full,
+    taperSeconds: credit.taper,
+    earned: result.earned,
+    fans: result.fans,
+    openEstimate,
+  };
 }

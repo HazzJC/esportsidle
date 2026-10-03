@@ -223,7 +223,7 @@ describe('challenges', () => {
   it('Potato League blocks gear', () => {
     const s = challengeRun('potato');
     s.cash = 1e9;
-    expect(buyGear(s, 'founder', 'pc', computeMods(s))).toBe(false);
+    expect(buyGear(s, 'founder', 'pc', computeMods(s), computeRates(s))).toBe(false);
   });
 
   it('Solo Queue allows one player per team', () => {

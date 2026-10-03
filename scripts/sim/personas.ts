@@ -13,6 +13,9 @@
  *            player, catches only the drops that happen to be on screen when it looks.
  *   optimal  The ceiling: acts every 20 s, clicks five times a second without stopping, catches every
  *            drop the moment it appears, pops a full chain and buys by exact payback.
+ *   hermit   Opens the game once a day for five minutes, spends everything and closes it again.
+ *            `hermit-12` and `hermit-72` do the same every 12 and every 72 hours. The offline rules
+ *            are tuned against them: coming back rarely must never be the best way to play.
  *   audit-compat  The old scripts/audit.ts `active` bot, kept so the simulator can be checked against it.
  */
 import type { Attention, Persona } from './types';
@@ -31,6 +34,13 @@ function casualAttention(wall: number): Attention {
   const intoDay = (wall % 86_400) / 3600;
   for (const [start, minutes] of CASUAL_SESSIONS) if (intoDay >= start && intoDay < start + minutes / 60) return 'active';
   return 'closed';
+}
+
+/** Minutes a hermit spends in the game each time it opens it. */
+export const HERMIT_SESSION_MINUTES = 5;
+
+function hermitAttention(everyHours: number): (wall: number) => Attention {
+  return (wall) => (wall % (everyHours * 3600) < HERMIT_SESSION_MINUTES * 60 ? 'active' : 'closed');
 }
 
 const active: Persona = {
@@ -111,6 +121,9 @@ export const PERSONAS: Record<string, Persona> = {
     buysDecor: true,
   tutorialFocus: true,
   },
+  hermit: hermit(24),
+  'hermit-12': hermit(12),
+  'hermit-72': hermit(72),
   'audit-compat': {
     id: 'audit-compat',
     label: 'The old scripts/audit.ts active bot',
@@ -130,6 +143,24 @@ export const PERSONAS: Record<string, Persona> = {
   tutorialFocus: false,
   },
 };
+
+function hermit(everyHours: number): Persona {
+  return {
+    ...active,
+    id: everyHours === 24 ? 'hermit' : `hermit-${everyHours}`,
+    label: `Hermit: opens every ${everyHours} h for ${HERMIT_SESSION_MINUTES} min, spends everything, closes`,
+    attention: hermitAttention(everyHours),
+    clicks: { kind: 'crowd', every: [300, 600], cps: 6, maxBurst: 40 },
+    drops: { notice: 0.7, reaction: [2, 8] },
+    chainPops: 8,
+    maxBuys: 200,
+    chasesTrend: false,
+    automation: true,
+  };
+}
+
+/** The personas that play with the game closed some of the time, and those they must trail, most present first. */
+export const OFFLINE_ORDER = ['active', 'semi', 'idle', 'casual', 'hermit'];
 
 export const BALANCE_PERSONAS = ['active', 'semi', 'casual', 'idle', 'optimal'];
 

@@ -62,7 +62,8 @@
 <div class="center panel">
   <nav class="tabs" aria-label="Sections" bind:this={strip}>
     {#each open as t (t.id)}
-      <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id}>
+      <!-- Below 1280px only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
+      <button class="tab" class:active={game.tab === t.id} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
         <Icon name={t.icon} size={16} />
         <span>{t.label}</span>
         {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
