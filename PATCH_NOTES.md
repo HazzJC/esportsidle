@@ -19,7 +19,8 @@
 
 ## Pending Changes
 
-### Smoother introductions to new mechanics [Status: Pending]
+### Smoother introductions to new mechanics [Status: Committed]
+*Commit*: `5f22e92` (Oct 4 2026)
 
 * **The Issue / Motivation**: The owner asked how to make each new mechanic's introduction smoother, then asked for all of the suggestions.
   * **New tabs could arrive in a burst.** In a simulated first run the Market, Staff, House and Studio opened within four minutes of each other (28.3 to 32.3 min) and seven quests were claimed in five. The strict quest line holds on one quest while the requirements for the next few are met quietly; when it moves, they all release.
