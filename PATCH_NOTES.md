@@ -19,7 +19,8 @@
 
 ## Pending Changes
 
-### HQ and team room visual pass, game signs and screens [Status: Pending]
+### HQ and team room visual pass, game signs and screens [Status: Committed]
+*Commit*: `b1ebdd0` (Oct 4 2026)
 
 * **The Issue / Motivation**: The owner asked for a visual pass over the HQ and the team rooms added in 0.2.0, then for more game-specific items and branding in each room, at a higher quality. Screenshots at every house level showed:
   * In a five-player room (most games) the desks fill the width, so the two wall props sat behind the role plates (the sniper rifle under ENTRY, the A-site sign under IGL) and the two floor props were hidden behind the name plates. The poros, the bomb and the loot llama were almost never seen.
