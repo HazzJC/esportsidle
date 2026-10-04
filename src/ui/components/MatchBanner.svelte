@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { EMBLEM_SHAPES, type EmblemShape } from '../../data/emblems';
   import { FIRST_WIN_BONUS } from '../../data/tutorial';
   import { fmt, fmtTime, money } from '../../engine/format';
   import type { MatchRecord, TeamState } from '../../engine/types';
   import { game } from '../game.svelte';
+  import { orgLogoSvg } from '../orgArt';
   import OrgLogo from './OrgLogo.svelte';
 
   /**
@@ -22,22 +22,9 @@
 
   const s = $derived(game.view.s);
 
-  /** Colours an opponent's crest is painted in, picked from its name so a club always looks the same. */
-  const CREST_COLOURS = ['#ff4d6d', '#ff8a3d', '#ffc83d', '#9dff3b', '#3dff9a', '#22e4ff', '#3a6bff', '#8b5cff', '#ff2bd6', '#c9d3e6', '#e9ecff', '#d9a441'];
-  function hash(text: string): number {
-    let h = 2166136261;
-    for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
-    return h >>> 0;
-  }
-  function crest(name: string): { primary: string; secondary: string; shape: EmblemShape } {
-    const h = hash(name);
-    const a = h % CREST_COLOURS.length;
-    const b = (a + 3 + ((h >>> 8) % (CREST_COLOURS.length - 4))) % CREST_COLOURS.length;
-    return { primary: CREST_COLOURS[a], secondary: CREST_COLOURS[b], shape: EMBLEM_SHAPES[(h >>> 16) % EMBLEM_SHAPES.length].id };
-  }
-
   const opponent = $derived(team.nextOpponent ?? null);
-  const theirCrest = $derived(opponent ? crest(opponent.name) : null);
+  /** The opponent's parody crest. Drawn from constants in orgArt.ts. */
+  const theirCrest = $derived(opponent ? orgLogoSvg(opponent.name) : null);
   const pct = $derived(active ? Math.min(100, (team.progress / Math.max(0.001, interval)) * 100) : 0);
   const secondsLeft = $derived(active ? Math.max(0, interval - team.progress) : 0);
 
@@ -90,8 +77,8 @@
 
 <div class="versus" style="--gc:{gameColor}" class:idle={!active}>
   <div class="side us">
-    <span class="crest"><OrgLogo name={s.org.name} {primary} {secondary} size={42} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
-    <span class="nm">{s.org.name}</span>
+    <span class="crest"><OrgLogo name={s.org.name} {primary} {secondary} size={46} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
+    <span class="nm"><span class="nt">{s.org.name}</span></span>
   </div>
 
   <div class="mid">
@@ -103,10 +90,10 @@
   <div class="side them">
     {#if opponent && theirCrest}
       <span class="nm">
-        {opponent.name}
+        <span class="nt">{opponent.name}</span>
         {#if opponent.rival}<b class="grudge">Grudge match</b>{/if}
       </span>
-      <span class="crest"><OrgLogo name={opponent.name} primary={theirCrest.primary} secondary={theirCrest.secondary} size={42} shape={theirCrest.shape} /></span>
+      <span class="crest them-crest" role="img" aria-label="{opponent.name} logo">{@html theirCrest}</span>
     {:else}
       <span class="nm dim">Opponent to be drawn</span>
     {/if}
@@ -164,6 +151,14 @@
     display: grid;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
   }
+  .them-crest {
+    width: 46px;
+    height: 46px;
+  }
+  .them-crest :global(svg) {
+    width: 100%;
+    height: 100%;
+  }
   .us .crest {
     --lean: 3px;
     animation: lean-in 2.4s ease-in-out infinite;
@@ -181,15 +176,19 @@
     min-width: 0;
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .nt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .grudge {
     font-family: var(--font-display);
-    font-size: 9.5px;
+    font-size: 10.5px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--red);
@@ -380,7 +379,24 @@
       padding: 6px 8px;
     }
     .nm {
-      font-size: 12px;
+      font-size: 14px;
+    }
+    /* Names wrap onto more lines rather than vanishing behind the match bar. */
+    .nt {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .them-crest {
+      width: 38px;
+      height: 38px;
+    }
+    .us .crest :global(svg) {
+      width: 38px;
+      height: 38px;
     }
     .mid {
       width: 76px;

@@ -100,7 +100,7 @@
 
   <!-- Player -->
   <g transform="translate(-36 -124)">
-    <Avatar look={player.look} gear={player.gear} {primary} {secondary} size={72} mode="bust" tag={player.tag} />
+    <Avatar look={player.look} gear={player.gear} {primary} {secondary} size={72} mode="bust" tag={player.tag} arms={false} />
   </g>
 
   <!-- Desk -->

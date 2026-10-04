@@ -410,6 +410,9 @@
   /** Seconds until a player is back, counting the bench speed-up. */
   const backIn = (p: Player, benched: boolean) => Math.max(0, p.status.until - v.s.time) / (benched ? BENCH_RECOVERY_MULT : 1);
 
+  /** Role names longer than this wrap onto two lines on a narrow desk's plate. */
+  const LONG_ROLE = 10;
+
   const ownedTeams = $derived(GAMES.filter((g) => v.s.games[g.id]?.unlocked && v.s.teams[g.id]));
   const outIn = (gameId: string) =>
     [...v.s.teams[gameId].lineup, ...v.s.teams[gameId].bench].filter((id) => {
@@ -567,7 +570,7 @@
             <span class="neon"></span>
           </div>
           <!-- The game's sign over the room, lettered to suit it. Drawn from constants in roomArt.ts. -->
-          <span class="sign" aria-hidden="true">{@html roomSignSvg(g.id, g.color, g.name)}</span>
+          <span class="room-sign" aria-hidden="true">{@html roomSignSvg(g.id, g.color, g.name)}</span>
           <!-- Props parodying the game, two on the wall; the floor two stand among the desks. Drawn from constants in roomArt.ts. -->
           <span class="prop wall-l" aria-hidden="true">{@html roomPropSvg(g.id, 'wallL', g.color)}</span>
           <span class="prop wall-r" aria-hidden="true">{@html roomPropSvg(g.id, 'wallR', g.color)}</span>
@@ -584,7 +587,7 @@
                 class:over={isOver(target) && drag?.from !== slot}
                 data-drop={target}
               >
-                <span class="role-plate">{g.roles[slot]}</span>
+                <span class="role-plate" class:long={g.roles[slot].length > LONG_ROLE}>{g.roles[slot]}</span>
                 {#if p}
                   <button
                     class="rig-btn"
@@ -931,7 +934,7 @@
     color: var(--text);
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 12.5px;
+    font-size: 13.5px;
     cursor: pointer;
   }
   .jump-chip:hover {
@@ -949,7 +952,7 @@
     height: 100%;
   }
   .jwin {
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: var(--muted);
   }
   .jout {
@@ -960,7 +963,7 @@
     padding: 0 3px;
     border-radius: 999px;
     font-style: normal;
-    font-size: 10px;
+    font-size: 11px;
     color: #fff;
     background: var(--red);
   }
@@ -1023,7 +1026,7 @@
     line-height: 1.1;
   }
   .small {
-    font-size: 12px;
+    font-size: 13px;
   }
   .kit-btn {
     flex: none;
@@ -1110,7 +1113,7 @@
     flex-wrap: wrap;
     gap: 14px;
     margin-left: auto;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted);
   }
   .numbers b {
@@ -1126,7 +1129,7 @@
     border: 1px solid var(--line-2);
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted);
   }
   .mood.good {
@@ -1141,11 +1144,14 @@
   }
   .crowd {
     margin-left: 2px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   /* ---- The gaming floor ------------------------------------------------------------------- */
   .floor {
+    /* The role plate over each desk, and everything above the rig: the bay's padding, the plate, a gap. */
+    --plate: 26px;
+    --above: calc(var(--plate) + 8px);
     position: relative;
     container: room / inline-size;
     border-radius: 12px;
@@ -1194,13 +1200,13 @@
   /*
    * Floor props stand against the wall where the first row's floor begins, just outside the desks
    * (or at the room's edges when the desks fill it), so the desks pass in front of them. The floor
-   * line is the bays' top padding plus the same 28px and rig height the floor strip uses below.
+   * line is the bays' top padding plus the same space above the rig and rig height the floor strip uses.
    */
   .prop.floor-l,
   .prop.floor-r {
     width: 56px;
     height: 56px;
-    top: calc(var(--band) + 28px + (var(--bw) - 8px) * 0.47 - 47px);
+    top: calc(var(--band) + var(--above) + (var(--bw) - 8px) * 0.47 - 47px);
   }
   .prop.floor-l {
     left: max(2px, 50% - var(--row) * var(--bw) / 2 - 54px);
@@ -1215,7 +1221,7 @@
     }
   }
   /* The sign hangs centred at the top of the wall, over the neon, between the wall props. */
-  .sign {
+  .room-sign {
     position: absolute;
     top: 4px;
     left: 50%;
@@ -1225,7 +1231,7 @@
     pointer-events: none;
     filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
   }
-  .sign :global(svg) {
+  .room-sign :global(svg) {
     display: block;
     width: auto;
     max-width: 100%;
@@ -1271,7 +1277,7 @@
       left: 58px;
       right: 58px;
     }
-    .sign {
+    .room-sign {
       height: 34px;
       max-width: calc(100% - 112px);
     }
@@ -1305,7 +1311,7 @@
   /*
    * Each row of desks stands on its own strip of floor, starting at desk height and running the
    * full width of the room, so wrapped rows on a phone still sit on the floor rather than the wall.
-   * 28px is the padding, role plate and gap above the rig; the rig is 170/198 as tall as it is wide.
+   * --above is the padding, role plate and gap above the rig; the rig is 170/198 as tall as it is wide.
    * A skirting board runs along the top, and the floor darkens towards the back of the room.
    */
   .bay::before {
@@ -1314,7 +1320,7 @@
     z-index: -1;
     left: -100vw;
     right: -100vw;
-    top: calc(28px + (100cqw - 8px) * 0.47);
+    top: calc(var(--above) + (100cqw - 8px) * 0.47);
     bottom: 0;
     background:
       linear-gradient(var(--skirt), var(--skirt)) top / 100% 5px no-repeat,
@@ -1334,28 +1340,52 @@
     outline: 2px solid var(--gc);
     background-color: color-mix(in srgb, var(--gc) 14%, transparent);
   }
+  /* The role over each desk: a lit plate, big enough to read at a glance. */
   .role-plate {
     align-self: center;
-    height: 20px;
-    line-height: 14px;
+    height: var(--plate);
+    line-height: calc(var(--plate) - 2px);
     box-sizing: border-box;
     max-width: 100%;
-    padding: 2px 9px;
-    border-radius: 4px;
+    padding: 0 12px;
+    border-radius: 5px;
     font-family: var(--font-ui);
-    font-size: 10.5px;
+    font-size: 14px;
     font-weight: 800;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--gc);
-    background: linear-gradient(180deg, #24222c, #16151c);
-    border: 1px solid color-mix(in srgb, var(--gc) 45%, #000);
+    color: color-mix(in srgb, var(--gc) 55%, #fff);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--gc) 55%, transparent), 0 1px 0 rgba(0, 0, 0, 0.8);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--gc) 22%, #1e1c26), color-mix(in srgb, var(--gc) 8%, #121118));
+    border: 1px solid color-mix(in srgb, var(--gc) 70%, #000);
     box-shadow:
-      0 2px 0 rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 2px 0 rgba(0, 0, 0, 0.5),
+      0 0 10px color-mix(in srgb, var(--gc) 22%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--gc) 35%, transparent);
+  }
+  /* A narrow desk (six to a room, or a phone) keeps the plate on one line with a smaller face. */
+  @container (max-width: 140px) {
+    .role-plate {
+      padding: 0 7px;
+      font-size: 12.5px;
+      letter-spacing: 0.04em;
+    }
+    /* Long roles (Main Support) take two lines inside the same plate rather than being cut short. */
+    .role-plate.long {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      font-size: 11.5px;
+      line-height: 11px;
+      letter-spacing: 0.02em;
+      text-align: center;
+      white-space: normal;
+    }
   }
   .rig-btn {
     position: relative;
@@ -1402,7 +1432,7 @@
     gap: 3px;
     padding: 1px 6px;
     border-radius: 999px;
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 700;
     color: #fff;
     background: color-mix(in srgb, var(--red) 85%, #000);
@@ -1441,7 +1471,7 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--gc);
   }
@@ -1459,7 +1489,7 @@
   }
   .prtg {
     font-family: var(--font-display);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--gc);
   }
   .energy {
@@ -1525,7 +1555,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1605,14 +1635,14 @@
     max-width: 100%;
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .card-meta {
     max-width: 100%;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
@@ -1709,7 +1739,7 @@
     width: 18px;
     height: 18px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     background: color-mix(in srgb, var(--red) 20%, transparent);
     color: var(--red);

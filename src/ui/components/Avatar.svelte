@@ -18,6 +18,7 @@
     mode = 'full',
     number,
     tag,
+    arms = true,
   }: {
     look: Appearance;
     gear: Record<GearSlot, number>;
@@ -27,6 +28,8 @@
     mode?: 'full' | 'bust';
     number?: number;
     tag?: string;
+    /** Arms hanging at the sides. A player at a desk has their own, reaching for the keys and mouse. */
+    arms?: boolean;
   } = $props();
 
   const uid = $props.id();
@@ -160,13 +163,15 @@
   {/if}
 
   <!-- Arms -->
-  <rect x={22 - w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(8 {28 - w} 86)" />
-  <rect x={86 + w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(-8 {92 + w} 86)" />
-  <circle cx={23 - w} cy="121" r="5.5" fill={skin} />
-  <circle cx={97 + w} cy="121" r="5.5" fill={skin} />
-  {#if look.accessory === 2}
-    <rect x={18 - w} y="113" width="11" height="4" rx="1.5" fill={secondary} />
-    <rect x={91 + w} y="113" width="11" height="4" rx="1.5" fill={secondary} />
+  {#if arms}
+    <rect x={22 - w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(8 {28 - w} 86)" />
+    <rect x={86 + w} y="84" width="12" height="36" rx="6" fill={shade(primary, -0.12)} stroke={ink} stroke-width="1" transform="rotate(-8 {92 + w} 86)" />
+    <circle cx={23 - w} cy="121" r="5.5" fill={skin} />
+    <circle cx={97 + w} cy="121" r="5.5" fill={skin} />
+    {#if look.accessory === 2}
+      <rect x={18 - w} y="113" width="11" height="4" rx="1.5" fill={secondary} />
+      <rect x={91 + w} y="113" width="11" height="4" rx="1.5" fill={secondary} />
+    {/if}
   {/if}
 
   <!-- Torso / jersey -->
