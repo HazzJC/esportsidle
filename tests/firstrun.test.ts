@@ -20,7 +20,8 @@ import { bulkAmount, bulkAmounts, checkHouseMove, hasQol, roomLevel } from '../s
 import { createNewGame } from '../src/engine/state';
 import { createTeam, playMatch } from '../src/engine/teams';
 import { updateTutorial } from '../src/engine/tutorial';
-import { ROOM_PROP_GAMES, roomPropSvg, roomWallBackground } from '../src/ui/roomArt';
+import { GAME_SCREEN_IDS, gameScreenSvg } from '../src/ui/gameArt';
+import { ROOM_PROP_GAMES, ROOM_SIGN_GAMES, roomFloorBackground, roomPropSvg, roomSignSvg, roomWallBackground } from '../src/ui/roomArt';
 import { foundedGame } from './fixtures';
 
 describe('the first win', () => {
@@ -202,7 +203,7 @@ describe('fixtures', () => {
 });
 
 describe('team rooms', () => {
-  it('dress every game with four props and every house with a wall', () => {
+  it('dress every game with a sign, a screen and four props, and every house with a wall and a floor', () => {
     expect(new Set(ROOM_PROP_GAMES)).toEqual(new Set(GAMES.map((g) => g.id)));
     for (const g of GAMES) {
       for (const slot of ['wallL', 'wallR', 'floorL', 'floorR'] as const) {
@@ -211,6 +212,21 @@ describe('team rooms', () => {
         expect(svg).not.toMatch(/undefined|NaN|<script|\son[a-z]+=|javascript:/i);
       }
     }
-    for (let i = 0; i < 6; i++) expect(roomWallBackground(i, '#4fd1ff')).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(new Set(ROOM_SIGN_GAMES)).toEqual(new Set(GAMES.map((g) => g.id)));
+    expect(new Set(GAME_SCREEN_IDS)).toEqual(new Set(GAMES.map((g) => g.id)));
+    for (const g of GAMES) {
+      const sign = roomSignSvg(g.id, g.color, g.name);
+      expect(sign, g.id).toMatch(/^<svg viewBox="0 0 \d+ \d+"/);
+      expect(sign, g.id).toContain(g.id === 'hearthstoned' || g.id === 'lanes' ? g.name : g.name.toUpperCase());
+      expect(gameScreenSvg(g.id, g.color).length, g.id).toBeGreaterThan(80);
+      for (const art of [sign, gameScreenSvg(g.id, g.color)]) expect(art, g.id).not.toMatch(/undefined|NaN|<script|\son[a-z]+=|javascript:/i);
+    }
+    expect(roomSignSvg('lanes', '#8b5cff', 'Tom & <Jerry>')).toContain('Tom &amp; &lt;Jerry&gt;');
+    for (let i = 0; i < 6; i++) {
+      for (const art of [roomWallBackground(i, '#4fd1ff'), roomFloorBackground(i, '#4fd1ff')]) {
+        expect(art).toMatch(/^url\("data:image\/svg\+xml,/);
+        expect(decodeURIComponent(art)).not.toMatch(/undefined|NaN/);
+      }
+    }
   });
 });

@@ -7,8 +7,7 @@
   import { sectionOpen } from '../../engine/sections';
   import { roomLevel } from '../../engine/staff';
   import { game } from '../game.svelte';
-  import { opSceneBackground } from '../opsArt';
-  import { opColor } from '../theme';
+  import { roomFloor, roomFloorBackground, roomWallBackground } from '../roomArt';
   import { tooltip } from '../tooltip.svelte';
   import Icon from './Icon.svelte';
   import OrgLogo from './OrgLogo.svelte';
@@ -18,11 +17,14 @@
   const r = $derived(v.r);
   const m = $derived(v.m);
 
-  /** The org's biggest operation sets the scene behind the banner. */
   const topOp = $derived([...OPERATIONS].reverse().find((op) => s.ops[op.id].owned > 0));
-  const scene = $derived(topOp ? opSceneBackground(topOp.id, opColor(topOp.index)) : undefined);
-  const room = $derived(ROOMS[roomLevel(s)]);
-  const nextRoom = $derived(ROOMS[roomLevel(s) + 1]);
+  const level = $derived(roomLevel(s));
+  const room = $derived(ROOMS[level]);
+  const nextRoom = $derived(ROOMS[level + 1]);
+  /** The banner is the org's own house: the same wall and floor its team rooms have, in its colours. */
+  const wall = $derived(roomWallBackground(level, s.org.primary));
+  const floor = $derived(roomFloorBackground(level, s.org.primary));
+  const skirt = $derived(roomFloor(level).skirt);
   const buildings = $derived(OPERATIONS.reduce((n, op) => n + s.ops[op.id].owned, 0));
 
   // Where the money comes from right now. Sponsors multiply everything, so they are a badge, not a slice.
@@ -74,7 +76,7 @@
   }
 </script>
 
-<section class="overview" style="--scene:{scene ?? 'none'}">
+<section class="overview" style="--wall:{wall}; --floor:{floor}; --skirt:{skirt}">
   <div class="banner">
     <span class="logo"><OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={58} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
     <div class="who">
@@ -168,20 +170,37 @@
     border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
     background: var(--bg-2);
   }
-  /* The org's best operation scene, darkened on the left so the text stays readable. */
+  /*
+   * The org's house: its wall across the banner and a strip of its floor along the bottom, darkened
+   * on the left and right so the name and the income stay readable.
+   */
   .banner {
     position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 84px;
-    padding: 10px 14px;
+    min-height: 92px;
+    padding: 10px 14px 18px;
     border-radius: 10px;
     overflow: hidden;
     background:
-      linear-gradient(90deg, rgba(8, 8, 14, 0.82) 0%, rgba(8, 8, 14, 0.35) 50%, rgba(8, 8, 14, 0.55) 100%),
-      var(--scene) left bottom / auto 100% repeat-x,
+      linear-gradient(90deg, rgba(8, 8, 14, 0.85) 0%, rgba(8, 8, 14, 0.6) 40%, rgba(8, 8, 14, 0.15) 62%, rgba(8, 8, 14, 0.62) 100%),
+      linear-gradient(180deg, rgba(8, 8, 14, 0.15), rgba(8, 8, 14, 0.35)),
+      var(--wall) center -26px / auto 200px repeat-x,
       #111220;
+  }
+  .banner::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 14px;
+    background:
+      linear-gradient(var(--skirt), var(--skirt)) top / 100% 3px no-repeat,
+      linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15)),
+      var(--floor) left top / 256px 64px repeat;
+    pointer-events: none;
   }
   /* A slow sweep of light across the banner, like a stadium spotlight passing over. */
   .banner::after {
@@ -404,8 +423,13 @@
     .ticon {
       display: none;
     }
+    /* Stacked, the text covers the whole banner, so the house sits further back. */
     .banner {
       flex-wrap: wrap;
+      background:
+        linear-gradient(180deg, rgba(8, 8, 14, 0.72), rgba(8, 8, 14, 0.6)),
+        var(--wall) center -26px / auto 200px repeat-x,
+        #111220;
     }
     .income {
       width: 100%;

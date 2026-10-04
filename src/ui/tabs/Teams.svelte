@@ -10,7 +10,7 @@
   import { isAvailable, skillRating } from '../../engine/players';
   import { teamKit } from '../../engine/teams';
   import { roomLevel } from '../../engine/staff';
-  import { roomFloor, roomPropSvg, roomWallBackground } from '../roomArt';
+  import { roomFloor, roomFloorBackground, roomPropSvg, roomSignSvg, roomWallBackground } from '../roomArt';
   import { sectionOpen } from '../../engine/sections';
   import { BORED_FORM, ENGAGED_MAX, ENGAGED_MIN, MOODS, teamMood } from '../../engine/mood';
   import { seasonSummary } from '../../engine/stories';
@@ -433,6 +433,7 @@
   const houseLevel = $derived(roomLevel(v.s));
   const wallArt = $derived(roomWallBackground(houseLevel, v.s.org.primary));
   const floorColours = $derived(roomFloor(houseLevel));
+  const floorArt = $derived(roomFloorBackground(houseLevel, v.s.org.primary));
 
   const restStep = $derived(v.s.tutorial.step === 'rest');
   const restPlayer = $derived(restStep ? tutorialPlayer(v.s) : undefined);
@@ -561,10 +562,12 @@
           <TutArrow label="Click {gearPlayer.tag} to open their kit" />
         {/if}
         <!-- The gaming floor: one computer per role, with the player sitting at it. -->
-        <div class="floor" style="--cols:{g.teamSize}; --wall:{wallArt}; --floor-a:{floorColours.a}; --floor-b:{floorColours.b}; --seam:{floorColours.seam}">
+        <div class="floor" style="--cols:{g.teamSize}; --wall:{wallArt}; --floor-a:{floorColours.a}; --floor-b:{floorColours.b}; --skirt:{floorColours.skirt}; --floor-art:{floorArt}">
           <div class="wall" aria-hidden="true">
             <span class="neon"></span>
           </div>
+          <!-- The game's sign over the room, lettered to suit it. Drawn from constants in roomArt.ts. -->
+          <span class="sign" aria-hidden="true">{@html roomSignSvg(g.id, g.color, g.name)}</span>
           <!-- Props parodying the game, two on the wall; the floor two stand among the desks. Drawn from constants in roomArt.ts. -->
           <span class="prop wall-l" aria-hidden="true">{@html roomPropSvg(g.id, 'wallL', g.color)}</span>
           <span class="prop wall-r" aria-hidden="true">{@html roomPropSvg(g.id, 'wallR', g.color)}</span>
@@ -979,7 +982,7 @@
   }
   .team {
     scroll-margin-top: 44px;
-    container-type: inline-size;
+    container: team / inline-size;
     border-radius: 12px;
     border: 1px solid color-mix(in srgb, var(--gc) 35%, var(--line));
     background:
@@ -1144,6 +1147,7 @@
   /* ---- The gaming floor ------------------------------------------------------------------- */
   .floor {
     position: relative;
+    container: room / inline-size;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--gc) 30%, #000);
@@ -1153,19 +1157,23 @@
       linear-gradient(180deg, #17151f, #12111a);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04), inset 0 10px 24px rgba(0, 0, 0, 0.35);
   }
-  /* The house's wall, repeated across the room and darkened a little so the desks stay the subject. */
+  /*
+   * The house's wall, repeated across the room and darkened towards the floor so the desks stay the
+   * subject. The team colour washes down from the neon strip.
+   */
   .wall {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(180deg, rgba(8, 8, 14, 0.18), rgba(8, 8, 14, 0.5) 240px),
+      radial-gradient(ellipse 60% 120px at 50% 0%, color-mix(in srgb, var(--gc) 16%, transparent), transparent),
+      linear-gradient(180deg, rgba(8, 8, 14, 0.1), rgba(8, 8, 14, 0.42) 220px),
       var(--wall) center top / auto 240px repeat-x;
   }
   .prop {
     position: absolute;
-    width: 54px;
-    height: 54px;
+    width: 50px;
+    height: 50px;
     pointer-events: none;
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
   }
@@ -1174,38 +1182,60 @@
     width: 100%;
     height: 100%;
   }
+  /* Wall props hang in the strip of wall above the role plates, so a full room never covers them. */
   .prop.wall-l {
-    top: 26px;
-    left: 12px;
+    top: 6px;
+    left: 10px;
   }
   .prop.wall-r {
-    top: 26px;
-    right: 12px;
+    top: 6px;
+    right: 10px;
   }
-  /* Floor props stand on the last row's floor, behind the desks. */
+  /*
+   * Floor props stand against the wall where the first row's floor begins, just outside the desks
+   * (or at the room's edges when the desks fill it), so the desks pass in front of them. The floor
+   * line is the bays' top padding plus the same 28px and rig height the floor strip uses below.
+   */
+  .prop.floor-l,
+  .prop.floor-r {
+    width: 56px;
+    height: 56px;
+    top: calc(var(--band) + 28px + (var(--bw) - 8px) * 0.47 - 47px);
+  }
   .prop.floor-l {
-    bottom: 4px;
-    left: 6px;
-    width: 62px;
-    height: 62px;
+    left: max(2px, 50% - var(--row) * var(--bw) / 2 - 54px);
   }
   .prop.floor-r {
-    bottom: 4px;
-    right: 6px;
-    width: 62px;
-    height: 62px;
+    right: max(2px, 50% - var(--row) * var(--bw) / 2 - 54px);
   }
-  @container (max-width: 380px) {
+  @container team (max-width: 380px) {
     .prop.floor-l,
     .prop.floor-r {
       display: none;
     }
   }
+  /* The sign hangs centred at the top of the wall, over the neon, between the wall props. */
+  .sign {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    height: 40px;
+    max-width: calc(100% - 140px);
+    transform: translateX(-50%);
+    pointer-events: none;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+  }
+  .sign :global(svg) {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+  }
   .neon {
     position: absolute;
-    left: 6%;
-    right: 6%;
-    top: 12px;
+    left: 72px;
+    right: 72px;
+    top: 10px;
     height: 3px;
     border-radius: 3px;
     background: var(--gc);
@@ -1215,27 +1245,45 @@
     opacity: 0.8;
   }
   .bays {
+    /* Desks in the first row, each desk's width, and the strip of wall above them. */
+    --row: var(--cols);
+    --bw: min(196px, (100cqw - 12px) / var(--row));
+    --band: 50px;
     position: relative;
     isolation: isolate;
     display: grid;
-    grid-template-columns: repeat(var(--cols), minmax(0, 196px));
+    grid-template-columns: repeat(var(--row), minmax(0, 196px));
     justify-content: center;
-    padding: 22px 6px 0;
+    padding: var(--band) 6px 0;
   }
   /* Narrow rooms wrap to three desks a row, but a desk never grows past its normal size. */
-  @container (max-width: 560px) {
+  @container team (max-width: 560px) {
     .bays {
-      grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 196px));
+      --row: min(var(--cols), 3);
+      --band: 44px;
+    }
+    .prop.wall-l,
+    .prop.wall-r {
+      width: 42px;
+      height: 42px;
+    }
+    .neon {
+      left: 58px;
+      right: 58px;
+    }
+    .sign {
+      height: 34px;
+      max-width: calc(100% - 112px);
     }
   }
-  @container (max-width: 440px) {
+  @container team (max-width: 440px) {
     .pop :global(svg) {
       display: none;
     }
   }
-  @container (max-width: 250px) {
+  @container team (max-width: 250px) {
     .bays {
-      grid-template-columns: repeat(min(var(--cols), 2), minmax(0, 196px));
+      --row: min(var(--cols), 2);
     }
   }
   .bay {
@@ -1258,6 +1306,7 @@
    * Each row of desks stands on its own strip of floor, starting at desk height and running the
    * full width of the room, so wrapped rows on a phone still sit on the floor rather than the wall.
    * 28px is the padding, role plate and gap above the rig; the rig is 170/198 as tall as it is wide.
+   * A skirting board runs along the top, and the floor darkens towards the back of the room.
    */
   .bay::before {
     content: '';
@@ -1268,11 +1317,14 @@
     top: calc(28px + (100cqw - 8px) * 0.47);
     bottom: 0;
     background:
-      repeating-linear-gradient(90deg, var(--seam) 0 2px, transparent 2px 64px),
+      linear-gradient(var(--skirt), var(--skirt)) top / 100% 5px no-repeat,
+      linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.08) 45%, rgba(0, 0, 0, 0.2)),
+      var(--floor-art) left top / 256px 64px repeat,
       linear-gradient(180deg, var(--floor-a), var(--floor-b));
     box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.05),
-      inset 0 10px 14px rgba(0, 0, 0, 0.35);
+      inset 0 5px 0 rgba(0, 0, 0, 0.2),
+      inset 0 6px 0 rgba(255, 255, 255, 0.05),
+      inset 0 12px 14px rgba(0, 0, 0, 0.3);
     pointer-events: none;
   }
   .bay.droppable {
