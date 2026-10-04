@@ -19,7 +19,8 @@
 
 ## Pending Changes
 
-### Quest console and tracker, text clarity, rival crests and hands on the keys [Status: Pending]
+### Quest console and tracker, text clarity, rival crests and hands on the keys [Status: Committed]
+*Commit*: `5de97c3` (Oct 4 2026)
 
 * **The Issue / Motivation**: The owner asked for the quest board to fill its space, for bigger text where it was hard to read (team roles, org names on the fixture), for more interesting logos for the rival teams based on the real orgs they parody, and for the players' hands, which were hanging by their sides. A second request asked for the roles to be bigger still ("MAIN" was hard to read) and for better visuals on the quest tracker.
   * The quest line was 23 identical dots: it showed neither where the org was nor how far was left. The quest screen was flat grey with the quest's colour only on its icon, a yes-or-no quest showed an empty 24-cell meter that read as no progress, and a single reward stretched into a tall, mostly empty key.
