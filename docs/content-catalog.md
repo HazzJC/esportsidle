@@ -11,7 +11,8 @@ Edit each list at its source so game text and values remain easy to audit.
 | Sponsors and goal values, brand perks, the three starter snack deals | `src/data/sponsors.ts` (`STARTER_DEALS`, `BrandDef.perk`) | `src/engine/sponsors.ts` |
 | Staff roles and the tool each first hire brings (bulk buying, selling, Buy all, the Coach's game plan) | `src/data/staff.ts` (`qol`) | `src/engine/staff.ts` (`hasQol`, `bulkAmounts`) |
 | Houses (rooms) and decor | `src/data/decor.ts` | decor drawings in `src/ui/decorArt.ts`, house scene placements in `src/ui/tabs/House.svelte`, move-in card `MoveIn.svelte` |
-| Team rooms on the Teams tab: walls and floors per house, four parody props per game | `src/ui/roomArt.ts` | `src/ui/tabs/Teams.svelte` |
+| What each game shows on a player's monitors (Teams rooms and the House) | `src/ui/gameArt.ts` (`gameScreenSvg`, beside the game logos) | `src/ui/components/Station.svelte` |
+| Team rooms on the Teams tab: walls and floors per house, each game's sign and four parody props | `src/ui/roomArt.ts` | `src/ui/tabs/Teams.svelte`; the walls also paint the HQ banner (with a strip of floor, `HQOverview.svelte`) and the move-in card |
 | Tutorial steps and the first-win bonus | `src/data/tutorial.ts` | `src/engine/tutorial.ts`; highlights in `Coach.svelte` and `.tut-target` (`src/styles/global.css`) |
 | Merch products, designs, and trends | `src/data/merch.ts` | `src/engine/merch.ts` |
 | Quests, the mechanics they teach, the tab each one opens in the first run, what the line waits for, "Show me" hints, quest tools and tokens, operation-affinity values | `src/data/quests.ts` (tabs: `SectionDef.quest` in `src/engine/sections.ts`; hint pulses: `src/ui/hints.ts`) | `src/engine/quests.ts` pays rewards; `hasTool` / `useToken` for the systems that read tools; tour design in `docs/quest-tour.md`; each quest's `art` names its emblem, drawn in `src/ui/questArt.ts` |

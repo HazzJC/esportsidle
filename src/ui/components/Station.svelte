@@ -4,6 +4,7 @@
   import { SKIN_TONES } from '../../data/cosmetics';
   import { gearRarity, type GearSlot } from '../../data/gear';
   import { matchEasterEgg } from '../../engine/easterEggs';
+  import { gameScreenSvg } from '../gameArt';
   import { gearArtMarkup } from '../gearArt';
   import type { Player } from '../../engine/types';
   import { shade } from '../color';
@@ -42,6 +43,8 @@
   const skin = $derived(matchEasterEgg(player.tag) === 'varantha' ? '#4f558a' : (SKIN_TONES[player.look.skin] ?? SKIN_TONES[0]));
   // The lucky charm (the composure item) stands on the desk. Drawn from constants in gearArt.ts.
   const charmArt = $derived(gearArtMarkup('charm', gear.charm ?? 0));
+  // Their game on the screens. Drawn from constants in gameArt.ts.
+  const screenArt = $derived(gameScreenSvg(player.gameId, gameColor));
   const playing = $derived(status === 'playing');
   /** Each player types at their own tempo, so a full floor never moves in step. */
   const tempo = $derived.by(() => {
@@ -147,13 +150,18 @@
     {#if gear.monitor === 0}
       <rect x={cx - 20} y={baseY - 38} width="40" height="36" rx="4" fill="#c9c4b5" />
       <rect x={cx - 15} y={baseY - 33} width="30" height="24" rx="3" fill="#2b3a2f" />
+      {@render game(cx - 14, baseY - 32, 28, 22, 0.7)}
     {:else if gear.monitor <= 10}
       {@const w = gear.monitor <= 2 ? 40 : gear.monitor <= 6 ? 48 : 54}
       <rect x={cx - 2} y={baseY - 10} width="4" height="10" fill="#18181b" />
       <rect x={cx - 10} y={baseY - 2} width="20" height="3" rx="1" fill="#18181b" />
       <rect x={cx - w / 2} y={baseY - 42} width={w} height="32" rx="2" fill="#111113" />
       <rect x={cx - w / 2 + 2} y={baseY - 40} width={w - 4} height="28" rx="1" fill="url(#{uid}-screen)" class="screen" />
-      <path d="M{cx - w / 2 + 6} {baseY - 20} h {w / 3} M{cx - w / 2 + 6} {baseY - 16} h {w / 5}" stroke="#fff" stroke-width="1.2" opacity="0.5" />
+      {#if screenArt}
+        {@render game(cx - w / 2 + 2, baseY - 40, w - 4, 28, 0.92)}
+      {:else}
+        <path d="M{cx - w / 2 + 6} {baseY - 20} h {w / 3} M{cx - w / 2 + 6} {baseY - 16} h {w / 5}" stroke="#fff" stroke-width="1.2" opacity="0.5" />
+      {/if}
     {:else}
       <rect
         x={cx - 28}
@@ -167,6 +175,12 @@
         filter="url(#{uid}-glow)"
         class="screen"
       />
+      {@render game(cx - 26, baseY - 48, 52, 30, 0.6)}
+    {/if}
+  {/snippet}
+  {#snippet game(gx: number, gy: number, gw: number, gh: number, opacity: number)}
+    {#if screenArt}
+      <svg x={gx} y={gy} width={gw} height={gh} viewBox="0 0 48 30" preserveAspectRatio="xMidYMid slice" opacity={status === 'playing' ? opacity : opacity * 0.4}>{@html screenArt}</svg>
     {/if}
   {/snippet}
   {@render monitor(44)}
