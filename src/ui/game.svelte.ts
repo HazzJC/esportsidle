@@ -51,6 +51,7 @@ import { isEmblem, type Emblem } from '../data/emblems';
 import { randomLook } from '../engine/players';
 import { TAB_MAP } from './tabs';
 import { sectionOpen, updateSections } from '../engine/sections';
+import { introKey } from '../data/intros';
 import { QUEST_MAP, type QuestHint } from '../data/quests';
 import { claimQuest, describeReward } from '../engine/quests';
 import { restDuringTutorial, skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
@@ -615,6 +616,27 @@ class GameStore {
 
   showGuide(id: string): void {
     this.guideOpen = id;
+  }
+
+  /** A tab intro the player asked to see again after closing it. */
+  introOpen = $state<string | null>(null);
+
+  /** Brings back the current tab's intro card (the help button on the tab strip). */
+  showIntro(tab: string): void {
+    this.introOpen = tab;
+  }
+
+  dismissIntro(tab: string): void {
+    this.state.guides[introKey(tab)] = true;
+    if (this.introOpen === tab) this.introOpen = null;
+    this.refresh();
+  }
+
+  /** Pulses a quest hint's target for a few seconds without moving the page, as a new tab's intro opens. */
+  flashHint(hint: QuestHint): void {
+    this.hintFlash = hint;
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => (this.hintFlash = null), 5000);
   }
 
   /** Goes to a centre tab, on phones too. */

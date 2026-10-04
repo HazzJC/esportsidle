@@ -12,7 +12,8 @@ import { FIRST_WIN_BONUS } from '../src/data/tutorial';
 import { subscribe, type GameEvent } from '../src/engine/bus';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { signDraftPick } from '../src/engine/draft';
-import { DROP_QUEST_WAIT, fillQuests, questLineWait, strictQuestLine } from '../src/engine/quests';
+import { DROP_QUEST_WAIT, fillQuests, questLineWait, strictQuestLine, updateQuests } from '../src/engine/quests';
+import { SECTION_BREATHER, sectionOpen, updateSections } from '../src/engine/sections';
 import { Rng } from '../src/engine/rng';
 import { BASE_SPONSOR_SLOTS } from '../src/engine/economy';
 import { refreshOffers, signOffer, sponsorBonuses } from '../src/engine/sponsors';
@@ -102,6 +103,46 @@ describe('the first-run quest line', () => {
     fillQuests(s);
     expect(s.quests.active.map((q) => q.id)).toEqual(['drop_1']);
     expect(s.drops.nextAt).toBeLessThanOrEqual(s.time + DROP_QUEST_WAIT);
+  });
+
+  it('waits for the last new tab to be seen, then a breather, before opening the next one', () => {
+    const s = foundedGame(0, 1);
+    doneUpTo(s, 'staff_1');
+    s.stats.playersSigned = 5;
+    for (const id of Object.keys(s.sections)) s.sectionsSeen[id] = true;
+    delete s.sections.staff;
+    // The Market opened with its quest a moment ago, and nobody has looked at it yet.
+    s.time = 1_000;
+    s.sections.market = 990;
+    s.sectionsSeen.market = false;
+    fillQuests(s);
+    expect(s.quests.active).toEqual([]);
+    expect(questLineWait(s)?.pace).toEqual({ reason: 'visit', section: 'market' });
+    expect(questLineWait(s)?.text).toMatch(/Market/);
+    // Seen, but it only opened 10 seconds ago: a breather first, with progress for the console's meter.
+    s.sectionsSeen.market = true;
+    fillQuests(s);
+    expect(s.quests.active).toEqual([]);
+    const wait = questLineWait(s);
+    expect(wait?.pace?.reason).toBe('breather');
+    expect(wait?.value).toBe(10);
+    expect(wait?.target).toBe(SECTION_BREATHER);
+    // Once the breather has passed, Staff's quest comes in and opens its tab.
+    s.time = 990 + SECTION_BREATHER;
+    updateQuests(s);
+    updateSections(s);
+    expect(s.quests.active.map((q) => q.id)).toEqual(['staff_1']);
+    expect(sectionOpen(s, 'staff')).toBe(true);
+  });
+
+  it('never paces a quest whose tab is already open, as after skipping the tutorial', () => {
+    const s = foundedGame(0, 1);
+    doneUpTo(s, 'staff_1');
+    s.stats.playersSigned = 5;
+    s.time = 1_000;
+    s.sections.market = 990;
+    fillQuests(s);
+    expect(s.quests.active.map((q) => q.id)).toEqual(['staff_1']);
   });
 
   it('puts the hype quest before the upgrades quest', () => {

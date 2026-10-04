@@ -6,7 +6,7 @@ import { fmt, fmtTime, money } from './format';
 import { grantXp, xpToNext } from './players';
 import type { Rng } from './rng';
 import { limitReward } from './rewards';
-import { SECTIONS, updateSections } from './sections';
+import { SECTIONS, questSection, sectionOpen, sectionPace, type SectionPace, updateSections } from './sections';
 import { tutorialActive } from './tutorial';
 import type { ActiveQuest, Effect, GameState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
@@ -44,7 +44,8 @@ const isAvailable = (s: GameState, def: QuestDef) => !def.available || def.avail
  * aside. In the first run a quest whose requirement is not met yet (fans for the Studio, a second
  * team for the House) waits, and so does everything after it; quests that wait on chance are passed
  * over and come back. Later runs pass over any quest that cannot be offered yet. Quests wait for the
- * tutorial.
+ * tutorial. A quest that would open a new tab also waits until the player has looked at the last new
+ * tab and a short breather has passed since it opened (`sectionPace`).
  */
 export function fillQuests(s: GameState): void {
   if (tutorialActive(s)) return;
@@ -55,13 +56,19 @@ export function fillQuests(s: GameState): void {
   for (const def of QUESTS) {
     if (q.active.length >= QUEST_SLOTS) return;
     if (q.done[def.id] !== undefined || q.active.some((a) => a.id === def.id)) continue;
-    if (isAvailable(s, def)) {
+    if (isAvailable(s, def) && !pacedOut(s, def)) {
       q.active.push({ id: def.id, base: def.metric(s), ready: false });
       onQuestOffered(s, def.id);
     } else if (strict && !def.skipWhileLocked) {
       return;
     }
   }
+}
+
+/** Whether a quest that opens a tab has to wait for the player to catch up with the last new tab. */
+function pacedOut(s: GameState, def: QuestDef): boolean {
+  const section = questSection(def.id);
+  return !!section && !sectionOpen(s, section.id) && sectionPace(s) !== null;
 }
 
 /** The Hype Drop quest promises a drop is on its way, so the next one is brought forward. */
@@ -88,6 +95,8 @@ export interface QuestWait {
   text: string;
   value?: number;
   target?: number;
+  /** Set when the line is pacing itself: the tab to look at, or the breather before the next one opens. */
+  pace?: SectionPace;
 }
 
 /**
@@ -99,6 +108,12 @@ export function questLineWait(s: GameState): QuestWait | undefined {
   const def = nextQuest(s);
   if (!def) return undefined;
   const section = SECTIONS.find((d) => d.quest === def.id);
+  if (section && isAvailable(s, def) && pacedOut(s, def)) {
+    const pace = sectionPace(s)!;
+    const last = SECTIONS.find((d) => d.id === pace.section)?.name ?? pace.section;
+    if (pace.reason === 'visit') return { quest: def, text: `Take a look at the new ${last} tab first.`, pace };
+    return { quest: def, text: `The ${section.name ?? section.id} tab opens next. Until then, get to know the ${last} tab.`, value: s.time - pace.since, target: pace.until - pace.since, pace };
+  }
   const own = def.waiting?.(s);
   if (own) return { quest: def, ...own };
   if (section?.requirement) return { quest: def, text: section.requirement(s), ...section.progress?.(s) };

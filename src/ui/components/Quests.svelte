@@ -1,7 +1,10 @@
 <script lang="ts">
   import { QUESTS, QUEST_MAP, type QuestDef, type QuestReward } from '../../data/quests';
-  import { fmt } from '../../engine/format';
+  import { fmt, fmtTime } from '../../engine/format';
   import { describeReward, nextQuest, questLineWait, questPerkSources, questProgress, rewardDetail } from '../../engine/quests';
+  import { SECTIONS } from '../../engine/sections';
+  import { TAB_MAP } from '../tabs';
+  import type { TabId } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
   import { game } from '../game.svelte';
   import { questColor, questEmblemSvg, rewardArtSvg } from '../questArt';
@@ -40,6 +43,20 @@
       };
     });
   });
+  /**
+   * The newest tab a quest has opened that the player has not looked at yet. The console holds it up
+   * until it is opened: a toast is easy to miss, and the quest line waits for it.
+   */
+  const arrival = $derived.by(() => {
+    let newest: { id: string; at: number; text: string } | null = null;
+    for (const def of SECTIONS) {
+      const at = s.sections[def.id];
+      if (!def.quest || at === undefined || s.sectionsSeen[def.id]) continue;
+      if (!newest || at > newest.at) newest = { id: def.id, at, text: def.announce ?? '' };
+    }
+    const tab = newest ? TAB_MAP.get(newest.id) : undefined;
+    return newest && tab ? { ...newest, label: tab.label, icon: tab.icon } : null;
+  });
   /** Where a quest sits in the line, counting from one. */
   const questNumber = (id: string) => QUESTS.findIndex((q) => q.id === id) + 1;
 
@@ -76,6 +93,18 @@
         {/each}
       </ol>
     </header>
+
+    {#if arrival}
+      <div class="arrival">
+        <span class="aicon"><Icon name={arrival.icon} size={22} /></span>
+        <span class="atext">
+          <span class="alabel">New tab unlocked</span>
+          <b>{arrival.label}</b>
+          <span class="adesc">{arrival.text}</span>
+        </span>
+        <button class="btn primary" onclick={() => game.openTab(arrival.id as TabId)}>Open {arrival.label} <Icon name="arrow-right" size={14} /></button>
+      </div>
+    {/if}
 
     {#each s.quests.active as q (q.id)}
       {@const def = QUEST_MAP.get(q.id)}
@@ -143,6 +172,9 @@
               <span class="wtext">
                 <span class="wlabel"><Icon name="clock" size={11} /> Up next: {wait.quest.title}</span>
                 <b>{wait.text}</b>
+                {#if wait.pace?.reason === 'breather'}
+                  <span class="wcount num">In {fmtTime(Math.max(0, wait.pace.until - s.time))}</span>
+                {/if}
               </span>
             </div>
             {#if wait.target}
@@ -592,6 +624,74 @@
     color: var(--dim);
   }
 
+  /* A tab a quest has just opened: a lit panel with a button, until the player has been to look. */
+  .arrival {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 11px 14px;
+    border-radius: 11px;
+    border: 1px solid color-mix(in srgb, var(--gold) 55%, #000);
+    background:
+      radial-gradient(80% 140% at 0% 50%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 70%),
+      linear-gradient(180deg, #24211a, #15130f);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--gold) 30%, transparent),
+      0 0 18px color-mix(in srgb, var(--gold) 16%, transparent);
+    animation: arrive 0.5s ease-out;
+  }
+  .aicon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 16%, #0d0c09);
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  }
+  .atext {
+    flex: 1 1 240px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .alabel {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .atext b {
+    font-family: var(--font-ui);
+    font-size: 18px;
+    color: var(--text);
+  }
+  .adesc {
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .arrival .btn {
+    flex: none;
+  }
+  .wcount {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+
   /* Reward keys: chunky caps that sit proud of the panel and press down when they can be claimed. */
   .keys {
     display: flex;
@@ -891,6 +991,7 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .arrival,
     .seg.live,
     .status i,
     .readout.ready,

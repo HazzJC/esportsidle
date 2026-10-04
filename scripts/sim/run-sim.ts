@@ -527,6 +527,8 @@ export function runSim(opts: SimOptions): SimRecord {
     if (!closed) {
       if (attention === 'active') watchDrops();
       if (attention === 'active' && wall >= nextDecision) {
+        // The player looks over every open tab when deciding, which is what lets the quest line open the next one.
+        for (const id of Object.keys(s.sections)) s.sectionsSeen[id] = true;
         if (P.drops === 'at-decisions' && variant !== 'no-drops') catchAll();
         maybeSell();
         ruleBased();
@@ -534,6 +536,8 @@ export function runSim(opts: SimOptions): SimRecord {
         if (learning) nextDecision = wall + TUTORIAL_DECIDE_EVERY;
         else nextDecision = decideMin === decideMax ? (Math.floor(wall / decideMin) + 1) * decideMin : wall + Math.round(rand.range(decideMin, decideMax));
       }
+      // Record each tab as it opens ("tab market"), to see how the first run spaces new systems out.
+      for (const id of Object.keys(s.sections)) mark(`tab ${id}`);
       if (wall % 60 === 0) checkMilestones();
     }
     if (wall % sampleEvery === 0) sample();

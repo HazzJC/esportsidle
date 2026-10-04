@@ -1,3 +1,4 @@
+import { INTROS_KNOWN } from '../data/intros';
 import { DEFAULT_EMBLEM } from '../data/emblems';
 import { DEFAULT_KIT, DEFAULT_TONE } from '../data/palette';
 import { GAMES } from '../data/games';
@@ -248,5 +249,6 @@ export function addFounder(s: GameState, identity?: Partial<Player>): Player {
 export function createNewGame(now: number = Date.now(), seed: number = randomSeed()): GameState {
   const s = createBaseState(now, seed);
   setupNewRun(s);
+  s.guides[INTROS_KNOWN] = true;
   return s;
 }

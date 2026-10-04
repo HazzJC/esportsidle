@@ -14,6 +14,8 @@
   import { Rng } from '../../engine/rng';
   import { game } from '../game.svelte';
   import { orgLogoSvg } from '../orgArt';
+  import FirstTimeNote from './FirstTimeNote.svelte';
+  import { firstKey } from '../../data/intros';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
 
@@ -84,6 +86,8 @@
         <div class="muted small">{g?.name ?? 'Your team'} · {tierName(offer.base.tier)} prizes · starts in <b class="num">{fmtTime(Math.max(0, inv.expiresAt - v.s.time))}</b></div>
       </div>
     </div>
+
+    {#if !v.s.guides[firstKey('invitational')]}<div class="first-note"><FirstTimeNote id="invitational" /></div>{/if}
 
     <div class="odds" style="--oc:{chanceTone(odds.champion)}">
       <div class="odds-big num">{fmtPct(odds.champion, false, 0)}</div>
@@ -199,6 +203,9 @@
 {/if}
 
 <style>
+  .first-note {
+    margin: 10px 0;
+  }
   .head {
     display: flex;
     align-items: center;
