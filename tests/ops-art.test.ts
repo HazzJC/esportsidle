@@ -6,7 +6,7 @@ import { RIVAL_ORGS } from '../src/data/names';
 import { brandLogoSvg } from '../src/ui/brandArt';
 import { gameLogoSvg } from '../src/ui/gameArt';
 import { OP_ART_IDS, opSceneBackground, opSceneSvg, opSpriteSvg } from '../src/ui/opsArt';
-import { orgLogoSvg } from '../src/ui/orgArt';
+import { ORG_LOGO_NAMES, orgLogoSvg } from '../src/ui/orgArt';
 
 describe('operation art', () => {
   it('draws a building and a scene for every operation, with no broken numbers', () => {
@@ -37,5 +37,11 @@ describe('logo depth', () => {
     expect(ids.every(Boolean)).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
     for (const svg of logos) expect(svg).not.toMatch(/NaN|undefined/);
+  });
+});
+
+describe('rival crests', () => {
+  it('draws every rival org its own parody crest rather than a monogram', () => {
+    expect(RIVAL_ORGS.filter((n) => !ORG_LOGO_NAMES.includes(n))).toEqual([]);
   });
 });

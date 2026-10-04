@@ -11,7 +11,7 @@
   const SEGMENTS = 24;
   /** A perk claimed this recently (simulated seconds) flickers on as its niche lights. */
   const FRESH_SECONDS = 6;
-  /** Up to this many perks show as plaques with their words; past it the shelf folds into a row of emblems. */
+  /** Up to this many perks always show their words; past it a narrow shelf folds into a row of emblems. */
   const PLAQUE_LIMIT = 4;
 
   const v = $derived(game.view);
@@ -22,15 +22,26 @@
   const upNext = $derived(nextQuest(s));
   const wait = $derived(questLineWait(s));
   const compact = $derived(perks.length > PLAQUE_LIMIT);
-  /** One lamp per quest in the line: lit when done, pulsing while live, dark still to come. */
+  /**
+   * One segment per quest in the line, in the quest's colour: lit when done, filling with progress
+   * while live, dim still to come. The colours step through the line in four bands.
+   */
   const rail = $derived.by(() => {
-    const active = new Set(s.quests.active.map((q) => q.id));
-    return QUESTS.map((q, i) => ({
-      def: q,
-      n: i + 1,
-      state: s.quests.done[q.id] !== undefined ? 'done' : active.has(q.id) ? 'live' : 'ahead',
-    }));
+    const active = new Map(s.quests.active.map((q) => [q.id, q]));
+    return QUESTS.map((q, i) => {
+      const live = active.get(q.id);
+      const p = live ? questProgress(s, live) : null;
+      return {
+        def: q,
+        n: i + 1,
+        color: questColor(q.id),
+        fill: p ? (p.complete ? 1 : Math.min(1, p.value / Math.max(1, p.target))) : 0,
+        state: s.quests.done[q.id] !== undefined ? 'done' : live ? 'live' : 'ahead',
+      };
+    });
   });
+  /** Where a quest sits in the line, counting from one. */
+  const questNumber = (id: string) => QUESTS.findIndex((q) => q.id === id) + 1;
 
 </script>
 
@@ -57,7 +68,8 @@
       <ol class="rail" aria-label="The quest line">
         {#each rail as step (step.def.id)}
           <li
-            class="led {step.state}"
+            class="seg {step.state}"
+            style="--c:{step.color}; --fill:{step.fill}"
             aria-label="{step.n}. {step.def.title}: {step.state === 'done' ? 'done' : step.state === 'live' ? 'in progress' : 'still to come'}"
             use:tooltip={() => ({ title: `${step.n}. ${step.def.title}`, icon: step.def.icon, lines: [step.def.desc, step.state === 'done' ? { text: 'Done', tone: 'good' as const } : step.state === 'live' ? { text: 'In progress', tone: 'gold' as const } : { text: 'Still to come', tone: 'muted' as const }] })}
           ></li>
@@ -71,12 +83,15 @@
       {#if def}
         {@const choice = def.rewards.length > 1}
         {@const lit = Math.round(Math.min(1, p.value / p.target) * SEGMENTS)}
-        <div class="deck" class:complete={p.complete}>
+        <div class="deck" class:complete={p.complete} style="--qc:{questColor(def.id)}">
           <div class="bezel">
             <div class="screen">
               <div class="sline">
                 <span class="sicon" style="--c:{questColor(def.id)}">{@html questEmblemSvg(def)}</span>
-                <b class="stitle">{def.title}</b>
+                <span class="stitles">
+                  <span class="kicker">Quest {questNumber(def.id)} of {QUESTS.length}</span>
+                  <b class="stitle">{def.title}</b>
+                </span>
                 {#if p.complete}
                   <span class="readout ready">Ready</span>
                 {:else if p.target > 1}
@@ -84,9 +99,13 @@
                 {/if}
               </div>
               <p class="sdesc">{def.desc}</p>
-              <span class="meter" aria-hidden="true">
-                {#each { length: SEGMENTS } as _, i (i)}<i class:on={p.complete || i < lit}></i>{/each}
-              </span>
+              {#if p.target > 1}
+                <span class="meter" aria-hidden="true">
+                  {#each { length: SEGMENTS } as _, i (i)}<i class:on={p.complete || i < lit}></i>{/each}
+                </span>
+              {:else}
+                <span class="status" class:ready={p.complete}><i></i>{p.complete ? 'Done: claim your reward' : 'In progress'}</span>
+              {/if}
               <div class="sfoot">
                 {#if def.hint && !p.complete}
                   <button class="showme" onclick={() => game.showQuestHint(def.hint!)}><Icon name="eye" size={12} /> Show me</button>
@@ -96,9 +115,10 @@
             </div>
           </div>
 
-          <div class="keys">
+          <div class="keys" class:single={!choice}>
             <span class="engrave">{p.complete ? (choice ? 'Press one to claim' : 'Press to claim') : choice ? 'Reward · pick one' : 'Reward'}</span>
             {#each def.rewards as r, i (i)}
+              {#if i > 0}<span class="or" aria-hidden="true">or</span>{/if}
               {#if p.complete}
                 <button class="key ready" onclick={() => game.claimQuest(def.id, i)}>
                   {@render rewardBody(r, def)}
@@ -159,12 +179,10 @@
               })}
             >
               <span class="niche">{#if def}{@html questEmblemSvg(def)}{/if}</span>
-              {#if !compact}
-                <span class="ptext">
-                  <b>{perk.label}</b>
-                  <span class="from">{perk.quest}</span>
-                </span>
-              {/if}
+              <span class="ptext">
+                <b>{perk.label}</b>
+                <span class="from">{perk.quest}</span>
+              </span>
             </li>
           {/each}
         </ul>
@@ -186,8 +204,6 @@
     flex-direction: column;
     gap: 10px;
     width: 100%;
-    max-width: 760px;
-    margin-inline: auto;
     padding: 10px 16px 14px;
     border-radius: 14px;
     border: 1px solid #000;
@@ -245,7 +261,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 9.5px;
+    font-size: 10.5px;
     letter-spacing: 0.16em;
   }
 
@@ -282,43 +298,64 @@
     opacity: 0.5;
     margin: 0 1px;
   }
-  /* The quest line as a slot of lamps, one per quest. */
+  /*
+   * The quest line as a segmented gauge, one segment per quest in its colour: lit when done, the live
+   * one wider and filling with its progress, the rest dim. The colours step through the line in four
+   * bands, so the gauge also shows which stretch of the line the org is in.
+   */
   .rail {
+    flex: 1 1 280px;
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin: 0 0 0 auto;
-    padding: 4px 7px;
+    gap: 3px;
+    min-width: 0;
+    margin: 0;
+    padding: 5px 6px;
     list-style: none;
-    border-radius: 999px;
+    border-radius: 7px;
     background: var(--well);
     box-shadow:
       inset 0 1px 3px rgba(0, 0, 0, 0.9),
       0 1px 0 rgba(255, 255, 255, 0.07);
   }
-  .led {
-    flex: none;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+  .seg {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 4px;
+    height: 12px;
+    border-radius: 2px;
     cursor: help;
-    background: radial-gradient(circle at 35% 30%, #4b4d54, #1d1e22 70%);
-    box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--c) 13%, #141519);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.5);
   }
-  .led.done {
-    background: radial-gradient(circle at 35% 30%, #fff6d4, var(--gold) 45%, #8d600c);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--gold) 70%, transparent);
+  .seg.done {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 70%, #000));
+    box-shadow: 0 0 6px color-mix(in srgb, var(--c) 45%, transparent);
   }
-  .led.live {
-    background: radial-gradient(circle at 35% 30%, #fff, var(--accent) 45%, color-mix(in srgb, var(--accent) 45%, #000));
-    box-shadow: 0 0 8px var(--accent);
-    animation: blink 1.4s ease-in-out infinite;
+  .seg.live {
+    flex-grow: 2.5;
+    height: 16px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--c) 22%, #141519);
+    box-shadow:
+      0 0 0 1px var(--c),
+      0 0 10px color-mix(in srgb, var(--c) 70%, transparent);
+    animation: live-glow 1.6s ease-in-out infinite;
+  }
+  .seg.live::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--fill) * 100%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 55%, #fff), var(--c));
+    transition: width 0.4s ease;
   }
 
   /* Screen on the left, reward keys on the right; stacked when the console is narrow. */
   .deck {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(200px, 250px);
+    grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
     gap: 12px;
     align-items: stretch;
   }
@@ -344,15 +381,76 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     height: 100%;
-    padding: 9px 12px 10px;
+    padding: 11px 14px 11px 16px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #000;
     color: var(--muted);
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, #101215), #0b0c0e);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  /* The live quest's screen takes its colour: a stripe down the left and a glow from the corner. */
+  .deck .screen {
+    background:
+      radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--qc) 17%, transparent), transparent 62%),
+      linear-gradient(180deg, #111317, #0b0c0e);
+    box-shadow:
+      inset 4px 0 0 var(--qc),
+      inset 0 0 0 1px color-mix(in srgb, var(--qc) 24%, transparent);
+  }
+  .deck.complete .screen {
+    background:
+      radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--gold) 20%, transparent), transparent 62%),
+      linear-gradient(180deg, #14130f, #0c0b09);
+    box-shadow:
+      inset 4px 0 0 var(--gold),
+      inset 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent),
+      inset 0 0 22px color-mix(in srgb, var(--gold) 12%, transparent);
+  }
+  .stitles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .kicker {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--qc, var(--accent));
+  }
+  /* A yes-or-no quest has no meter: a lamp says whether it is done. */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: auto;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--qc) 45%, #8d9097);
+  }
+  .status i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--qc);
+    box-shadow: 0 0 8px var(--qc);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  .status.ready {
+    color: var(--gold);
+  }
+  .status.ready i {
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold);
   }
   .sline {
     display: flex;
@@ -363,8 +461,9 @@
   /* The quest's emblem on the screen, on a lit pad in its colour. */
   .sicon {
     flex: none;
-    width: 38px;
-    height: 38px;
+    width: 46px;
+    height: 46px;
+    box-shadow: 0 0 14px color-mix(in srgb, var(--c) 28%, transparent);
     padding: 2px;
     border-radius: 7px;
     border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
@@ -374,7 +473,7 @@
     flex: 1;
     min-width: 0;
     font-family: var(--font-ui);
-    font-size: 16px;
+    font-size: 17px;
     letter-spacing: 0.02em;
     color: var(--text);
     white-space: nowrap;
@@ -385,7 +484,7 @@
     flex: none;
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     letter-spacing: 0.06em;
     color: var(--accent);
   }
@@ -399,7 +498,7 @@
   }
   .sdesc {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 14px;
     line-height: 1.35;
   }
   /* A segmented meter, like a level display: cells light up as the quest fills. */
@@ -416,7 +515,8 @@
     background: color-mix(in srgb, var(--accent) 9%, #101214);
   }
   .meter i.on {
-    background: var(--accent);
+    background: var(--qc, var(--accent));
+    box-shadow: 0 0 4px color-mix(in srgb, var(--qc, var(--accent)) 55%, transparent);
   }
   .deck.complete .meter i.on {
     background: var(--gold);
@@ -502,6 +602,75 @@
   .keys .engrave {
     margin-bottom: -1px;
   }
+  /* Two rewards: an engraved "or" between the keys. */
+  .or {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -2px 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #8d9097;
+  }
+  .or::before,
+  .or::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+  }
+  /* One reward: a prize card filling the column, its art large and centred. */
+  .keys.single .key {
+    flex-direction: column;
+    justify-content: center;
+    gap: 9px;
+    padding: 14px 12px;
+    text-align: center;
+    background:
+      radial-gradient(70% 60% at 50% 30%, color-mix(in srgb, var(--qc) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, #33353b, #222328);
+  }
+  .keys.single .key.ready {
+    background:
+      radial-gradient(70% 60% at 50% 30%, color-mix(in srgb, var(--gold) 30%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--gold) 30%, #3a3426), color-mix(in srgb, var(--gold) 13%, #1e1a11));
+  }
+  .keys.single .kicon {
+    width: 58px;
+    height: 58px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .keys.single .ktext {
+    flex: none;
+    align-items: center;
+  }
+  .keys.single .ktext b {
+    font-size: 17px;
+  }
+  .keys.single .kdetail {
+    font-size: 12.5px;
+  }
+  /* Stacked under the screen, a single reward goes back to a row so it doesn't tower. */
+  @container (max-width: 540px) {
+    .keys.single .key {
+      flex-direction: row;
+      padding: 9px 12px;
+      text-align: left;
+    }
+    .keys.single .kicon {
+      width: 46px;
+      height: 46px;
+    }
+    .keys.single .ktext {
+      flex: 1;
+      align-items: flex-start;
+    }
+  }
   .key {
     display: flex;
     align-items: center;
@@ -566,11 +735,11 @@
   }
   .ktext b {
     font-family: var(--font-ui);
-    font-size: 13.5px;
+    font-size: 14.5px;
     line-height: 1.2;
   }
   .kdetail {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     color: var(--muted);
   }
@@ -600,7 +769,7 @@
   }
   .shelf {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 6px;
     margin: 0;
     padding: 6px;
@@ -658,14 +827,14 @@
   }
   .ptext b {
     font-family: var(--font-ui);
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.15;
     color: var(--text);
   }
   .from {
     font-family: var(--font-ui);
     font-weight: 700;
-    font-size: 10px;
+    font-size: 10.5px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--c) 55%, #8d9097);
@@ -676,23 +845,35 @@
   .plaque.fresh .niche {
     animation: lamp-on 0.9s ease-out;
   }
-  /* Many perks: a row of emblems, each with its perk on hover. */
-  .shelf.compact {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-  .shelf.compact .plaque {
-    padding: 3px;
-  }
-  .shelf.compact .niche {
-    width: 40px;
-    height: 40px;
+  /* Many perks on a narrow console: a row of emblems, each with its perk on hover. */
+  @container (max-width: 540px) {
+    .shelf.compact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .shelf.compact .plaque {
+      padding: 3px;
+    }
+    .shelf.compact .niche {
+      width: 40px;
+      height: 40px;
+    }
+    .shelf.compact .ptext {
+      display: none;
+    }
   }
 
   @keyframes blink {
     50% {
       opacity: 0.45;
+    }
+  }
+  @keyframes live-glow {
+    50% {
+      box-shadow:
+        0 0 0 1px var(--c),
+        0 0 3px color-mix(in srgb, var(--c) 40%, transparent);
     }
   }
   @keyframes lamp-on {
@@ -710,7 +891,8 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .led.live,
+    .seg.live,
+    .status i,
     .readout.ready,
     .plaque.fresh .niche {
       animation: none;

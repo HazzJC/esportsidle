@@ -5,7 +5,7 @@ Edit each list at its source so game text and values remain easy to audit.
 | Content | Canonical file | Related behavior |
 | --- | --- | --- |
 | Ticker headlines and appearance conditions | `src/data/news.ts` | `src/engine/news.ts` selects and fills placeholders |
-| Player first names, surnames, handles, nationalities, rival names | `src/data/names.ts` | `src/engine/players.ts` generates players |
+| Player first names, surnames, handles, nationalities, rival names | `src/data/names.ts` | `src/engine/players.ts` generates players; each rival's parody crest is drawn in `src/ui/orgArt.ts` (a test checks every rival has one) |
 | World events, choice text, weights, durations | `src/engine/worldEvents.ts` | `src/engine/activity.ts` filters the activity log |
 | Operations, upgrades, and gear | `src/data/operations.ts`, `src/data/upgrades.ts`, `src/data/gear.ts` | `src/engine/operations.ts`, `src/engine/upgrades.ts` |
 | Sponsors and goal values, brand perks, the three starter snack deals | `src/data/sponsors.ts` (`STARTER_DEALS`, `BrandDef.perk`) | `src/engine/sponsors.ts` |
