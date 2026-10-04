@@ -4,6 +4,8 @@
   import ChoicePanel from './ui/components/ChoicePanel.svelte';
   import Coach from './ui/components/Coach.svelte';
   import DropLayer from './ui/components/DropLayer.svelte';
+  import FirstTimeNote from './ui/components/FirstTimeNote.svelte';
+  import { firstKey } from './data/intros';
   import HypeChain from './ui/components/HypeChain.svelte';
   import MoveIn from './ui/components/MoveIn.svelte';
   import Onboarding from './ui/components/Onboarding.svelte';
@@ -27,6 +29,12 @@
   const s = $derived(game.view.s);
 
   $effect(() => applyTone(s.settings.uiAccent));
+  // The first Drama Drop brings a one-time explainer, which stays until it is read even if the drop fades.
+  let dramaSpotted = $state(false);
+  $effect(() => {
+    if (!dramaSpotted && s.drops.active.some((d) => d.kind === 'drama')) dramaSpotted = true;
+  });
+  const dramaIntro = $derived(dramaSpotted && !s.guides[firstKey('drama')]);
 
   $effect(() => {
     document.title = `${money(s.cash)} · Esports Idle`;
@@ -43,6 +51,7 @@
   </div>
   <MobileNav />
   <DropLayer />
+  {#if dramaIntro}<FirstTimeNote id="drama" floating />{/if}
   <HypeChain />
   <ChoicePanel />
   <TournamentModal />

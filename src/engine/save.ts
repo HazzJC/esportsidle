@@ -9,6 +9,7 @@ import { Rng } from './rng';
 import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state';
 import { createDraft } from './draft';
 import { isEmblem } from '../data/emblems';
+import { INTROS_KNOWN, firstKey, introKey } from '../data/intros';
 import { openAllSections, updateSections } from './sections';
 import { addToTeam, createTeam, teamPlayerIds } from './teams';
 import type { GameState } from './types';
@@ -203,6 +204,16 @@ export function repairState(s: GameState): void {
   if (Object.keys(s.players).length > 0) s.draft = null;
   if (!isEmblem(s.org.emblem)) s.org.emblem = { shape: 'shield', mark: 'initials' };
   updateSections(s, false);
+  // Orgs from before tab intro cards have already found their way round the tabs they have visited.
+  if (!s.guides[INTROS_KNOWN]) {
+    for (const id of Object.keys(s.sectionsSeen)) s.guides[introKey(id)] = true;
+    if (s.tutorial.step === 'done') s.guides[introKey('teams')] = true;
+    // Likewise the first-encounter notes, for things the org has already met.
+    if (s.stats.dramaClicked > 0) s.guides[firstKey('drama')] = true;
+    if (s.stats.choicesMade > 0) s.guides[firstKey('choice')] = true;
+    if (s.stats.tournamentsPlayed > 0) s.guides[firstKey('invitational')] = true;
+    s.guides[INTROS_KNOWN] = true;
+  }
   for (const [id, design] of Object.entries(s.designs)) {
     s.designs[id] = sanitizeDesign({ ...design, id });
   }

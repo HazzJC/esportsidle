@@ -51,6 +51,8 @@ Cash only where a catch-up helps, and never more than a couple of minutes of inc
 
 The table order is the line order. A stop whose system has not opened yet waits (today's `available` rule), so the line never blocks. Stops 1–4 are single-reward, as now; from stop 5 a stop may offer a choice, and a choice is always between **different kinds** (a tool or a perk, never cash or fans), which `tests/quests.test.ts` checks.
 
+A stop that opens a tab also waits until the last new tab has been visited and two minutes have passed since it opened (`sectionPace` in `engine/sections.ts`), so new systems arrive one at a time even when several requirements are met together.
+
 ## 3. What changes for the player
 
 - **Cash nearly disappears from quests.** Today, quest cash is 48% of all income at 30 minutes. After the rewrite, quests pay tools, perks and head starts, so the 10-minute-window target (quests ≤ 10% after 30 minutes) passes by construction.

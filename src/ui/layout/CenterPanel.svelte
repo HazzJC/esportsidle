@@ -2,6 +2,8 @@
   import { untrack } from 'svelte';
   import { SECTION_MAP, sectionOpen } from '../../engine/sections';
   import Icon from '../components/Icon.svelte';
+  import TabIntro from '../components/TabIntro.svelte';
+  import { TAB_INTRO_MAP, introKey } from '../../data/intros';
   import PlayerDetail from '../components/PlayerDetail.svelte';
   import { game } from '../game.svelte';
   import { TABS } from '../tabs';
@@ -24,6 +26,8 @@
   const open = $derived(TABS.filter((t) => sectionOpen(s, t.id)));
   const locked = $derived(TABS.filter((t) => !sectionOpen(s, t.id)));
   const isNew = (id: string) => !!SECTION_MAP.get(id)?.unlock && !s.sectionsSeen[id];
+  /** The help button brings back the tab's intro card once it has been put away. */
+  const canShowIntro = $derived(TAB_INTRO_MAP.has(game.tab) && !!s.guides[introKey(game.tab)] && game.introOpen !== game.tab);
 
   /** The tab the live quest needs pulses until the player is on it. */
   function tabHinted(id: string): boolean {
@@ -68,21 +72,28 @@
 </script>
 
 <div class="center panel">
-  <nav class="tabs" aria-label="Sections" bind:this={strip}>
-    {#each open as t (t.id)}
-      <!-- Below 1280px only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
-      <button class="tab" class:active={game.tab === t.id} class:tut-target={tabHinted(t.id)} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
-        <Icon name={t.icon} size={16} />
-        <span>{t.label}</span>
-        {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
-        {#if isNew(t.id) && game.tab !== t.id}<i class="new">New</i>{/if}
-      </button>
-    {/each}
-    {#if locked.length > 0}
-      <span class="locked" use:tooltip={lockedTip} aria-label="{locked.length} more tabs to unlock"><Icon name="lock" size={13} /> {locked.length}</span>
+  <!-- The tab strip scrolls sideways when it is too wide; the help button sits outside it, always in view. -->
+  <div class="tabbar">
+    <nav class="tabs" aria-label="Sections" bind:this={strip}>
+      {#each open as t (t.id)}
+        <!-- Below 1280px only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
+        <button class="tab" class:active={game.tab === t.id} class:tut-target={tabHinted(t.id)} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
+          <Icon name={t.icon} size={16} />
+          <span>{t.label}</span>
+          {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
+          {#if isNew(t.id) && game.tab !== t.id}<i class="new">New</i>{/if}
+        </button>
+      {/each}
+      {#if locked.length > 0}
+        <span class="locked" use:tooltip={lockedTip} aria-label="{locked.length} more tabs to unlock"><Icon name="lock" size={13} /> {locked.length}</span>
+      {/if}
+    </nav>
+    {#if canShowIntro}
+      <button class="help" onclick={() => game.showIntro(game.tab)} aria-label="About this tab" use:tooltip={() => ({ title: 'About this tab', icon: 'help', lines: ['What it is for and where to start.'] })}><Icon name="help" size={15} /></button>
     {/if}
-  </nav>
+  </div>
   <div class="body" bind:this={body}>
+    <TabIntro tab={game.tab} />
     {#if game.tab === 'hq'}
       <HQ />
     {:else if game.tab === 'house'}
@@ -130,13 +141,18 @@
     flex-direction: column;
     overflow: hidden;
   }
+  .tabbar {
+    display: flex;
+    flex: none;
+    border-bottom: 1px solid var(--line);
+  }
   .tabs {
     display: flex;
+    flex: 1;
+    min-width: 0;
     gap: 2px;
     padding: 6px 6px 0;
-    border-bottom: 1px solid var(--line);
     overflow-x: auto;
-    flex: none;
     scrollbar-width: none;
   }
   .tabs::-webkit-scrollbar {
@@ -191,6 +207,23 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     animation: new-pop 0.4s ease-out;
+  }
+  .help {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin: 0 8px;
+    align-self: center;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+  }
+  .help:hover {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
   }
   .locked {
     display: flex;

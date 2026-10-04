@@ -464,14 +464,17 @@
     <p class="muted small">Every room unlocks a rarer set of decor. Items keep their room's rarity colour, from Garage common to Orbital mythic.</p>
     {#each ROOMS as rm, ri (rm.name)}
       {@const items = DECOR.filter((d) => d.room === ri)}
+      <!-- The next house shows what it holds; houses further off fold to a line, so the shop stays about what can be bought. -->
+      {@const far = ri > level + 1}
       {#if items.length > 0}
-        <div class="room-group" class:closed={level < ri} style="--rc:{roomColor(ri)}">
+        <div class="room-group" class:closed={level < ri} class:far style="--rc:{roomColor(ri)}">
           <div class="room-label">
             <i></i>
             <span>{rm.name}</span>
             <span class="rar">{rarityName(ri)}</span>
-            {#if level < ri}<span class="dim small"><Icon name="lock" size={11} /> Earn {money(rm.threshold)} this run to move in</span>{/if}
+            {#if level < ri}<span class="dim small"><Icon name="lock" size={11} /> Earn {money(rm.threshold)} this run to move in{#if far}{' · ' + items.length} pieces{/if}</span>{/if}
           </div>
+          {#if !far}
           <div class="decor">
             {#each items as d (d.id)}
               {@const owned = has(d.id)}
@@ -497,6 +500,7 @@
               </button>
             {/each}
           </div>
+          {/if}
         </div>
       {/if}
     {/each}

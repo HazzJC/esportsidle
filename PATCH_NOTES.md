@@ -19,6 +19,37 @@
 
 ## Pending Changes
 
+### Smoother introductions to new mechanics [Status: Pending]
+
+* **The Issue / Motivation**: The owner asked how to make each new mechanic's introduction smoother, then asked for all of the suggestions.
+  * **New tabs could arrive in a burst.** In a simulated first run the Market, Staff, House and Studio opened within four minutes of each other (28.3 to 32.3 min) and seven quests were claimed in five. The strict quest line holds on one quest while the requirements for the next few are met quietly; when it moves, they all release.
+  * **Each tab was announced once, then dumped on the player.** A toast that vanishes after nine seconds, a "New" badge and a line in the quest. Then the whole tab at once: Market and Teams had paged guides (Teams five pages long), and Staff, House, Studio, Sponsors, Trophies and Legacy had one muted sentence.
+  * **Some mechanics turned up with no introduction.** The first Drama Drop is a gamble nobody explained. The first decision card falls back to an option when its timer runs out, without saying which. The first Invitational arrives mid-play.
+* **What Changed**:
+  * **Paced tab openings** (`engine/sections.ts` `sectionPace`, `SECTION_BREATHER`, `questSection`; `engine/quests.ts` `fillQuests`, `questLineWait`):
+    * In the first run, a quest that would open a new tab waits until every tab a quest has opened has been visited, and until 120 seconds have passed since the last one opened.
+    * It only applies while that quest's own tab is still closed, so orgs that skipped the tutorial, and every later run, are unaffected.
+    * While it waits, the console says why, with the tab named: "Take a look at the new Market tab first", or "The Staff tab opens next. Until then, get to know the Market tab", with a meter and a countdown. Sections now carry a `name` for these messages.
+    * In the simulated first run the tabs now open two minutes apart: Market 28.3, Staff 30.3, House 32.3, Studio 34.3 min.
+  * **A "New tab" card on the quest console** (`Quests.svelte`): when a quest opens a tab, a lit card names it, says what it is for and has an "Open …" button. It stays until the tab has been visited, unlike the toast.
+  * **Tab intro cards** (new `data/intros.ts` `TAB_INTROS`, new `TabIntro.svelte`, mounted once in `CenterPanel.svelte`):
+    * The first visit to Teams, Market, Staff, House, Studio, Sponsors, Trophies or Legacy shows a short card: what the tab is for, a gold "Start here" step (the live quest's own words when it is about this tab) with "Show me", and two or three terms.
+    * Opening a card makes its first step's target pulse for a few seconds, using the same highlights the quests use.
+    * "Got it" puts the card away, and a "?" button beside the tab strip brings it back. The button sits outside the scrolling strip so it is always in view.
+    * The Teams and Market paged guides no longer open by themselves; they open from the card's "The full guide" button (`Guide.svelte`). No cards show during the tutorial.
+  * **First-encounter notes** (`data/intros.ts` `EVENT_INTROS`, new `FirstTimeNote.svelte`):
+    * **The first Drama Drop** brings a floating note near the top of the screen. It explains that clicking one is a gamble, leaving one costs nothing, and HQ shows the drama level and how to calm it. The note stays until it is read, even if the drop fades.
+    * **The first decision card** carries a note on the two-minute timer and what happens when it runs out.
+    * **The first Invitational invite** explains the three rounds, preparing, and what happens if the invite is closed.
+  * **"If you wait" tag** (`ChoicePanel.svelte`): every decision card now marks the option its timer picks.
+  * **House shop** (`House.svelte`): decor for houses beyond the next one folds into its label row with a count of pieces. The next house still shows what it holds, so the shop stays about what can be bought.
+  * **Saves**: no version bump. Intro and first-encounter state lives in `GameState.guides` (`intro:<tab>`, `first:<event>`). A new org is flagged `intros` from the start. A save from before is flagged on load, with every tab it has visited marked as read and the Drama, decision and Invitational notes marked read if it has met them, so a long-running org is not shown everything again.
+  * **Simulator** (`scripts/sim/run-sim.ts`): the simulated player looks over every open tab when it makes decisions (so the line can move), and the record notes each tab as it opens (`tab market` milestones), to see how a run spaces new systems out. Nothing passes or fails on it.
+  * **Tests**:
+    * New `tests/intros.test.ts`: every later tab has a card, icons exist, a new org starts with none read, and the migration marks only what an older org has met.
+    * `tests/firstrun.test.ts`: the visit hold, the breather with its meter, and that a quest whose tab is already open is never held.
+    * `npm test`: 479 passing.
+
 ### Quest console and tracker, text clarity, rival crests and hands on the keys [Status: Committed]
 *Commit*: `5de97c3` (Oct 4 2026)
 
@@ -93,7 +124,7 @@
   * **The quest line runs the first run** (`data/quests.ts`, `engine/quests.ts`, `engine/sections.ts`):
     * New order: Grinder squad, Gear up, **Hype streak, then Read the patch notes** (swapped), **Scout the market** (new: sign a player from the market; perk: one more bench seat), Catch the drop, Hire help, Have a plan, Branch out, Make it home, Design a shirt, Moving up, Take the money, Deliver for the sponsor, Merch drop, Homegrown, League champions, Invitational winners, Grudge match, Business is business, Business empire, Semi-pro, The big exit. Descriptions now say what each system does.
     * In the first run the line is **strict**: a quest whose requirement is not met yet holds the line (`strictQuestLine`), and the console shows what it waits for with a meter ("Up next: Take the money. Reach 1,000 fans (613 so far)", `questLineWait`, `QuestDef.waiting`). The rival quest waits on chance, so it is passed over and comes back (`skipWhileLocked`). After the first sale, quests not yet available are passed over as before.
-    * **Quests open their tabs** (`SectionDef.quest`): the market (with Scout the market, at $500 in the bank), Staff (Hire help; its requirement is now ~~found a third team~~ two players signed, `STAFF_UNLOCK_SIGNINGS`), the House (Make it home, second team), the Studio (Design a shirt, 500 fans) and Sponsors (Take the money, 1,000 fans) open the moment their quest is offered. After a sale tabs open on their requirement; open tabs stay open.
+    * **Quests open their tabs** (`SectionDef.quest`): the market (with Scout the market, at $500 in the bank), Staff (Hire help; its requirement is now ~~found a third team~~ two players signed, `STAFF_UNLOCK_SIGNINGS`), the House (Make it home, second team), the Studio (Design a shirt, 500 fans) and Sponsors (Take the money, 1,000 fans) open the moment their quest is offered ~~(back to back, when a held line released several met requirements at once)~~ *(Changed 1 time since: a tab-opening quest now waits until the last new tab has been visited and two minutes have passed since it opened, in the smoother mechanic introductions)*. After a sale tabs open on their requirement; open tabs stay open.
     * Catch the drop is offered once the calm start is over, brings the next drop forward to 12 seconds, and while it is live a missed drop is followed by another within 30 seconds (`DROP_QUEST_*`).
     * New emblem for Scout the market (binoculars over a player card) in `ui/questArt.ts`.
   * **Guidance and highlights** (`ui/hints.ts`, `Coach.svelte`, `global.css`):
@@ -811,7 +842,7 @@
   * Early players frequently lost their first match and churned; the transfer market lacked clear explanations for player stat synergies.
 * **What Changed**:
   * Scripted the first match an org plays to be a guaranteed win.
-  * Added paged guidance dialogs explaining team management and scouting stats.
+  * Added paged guidance dialogs explaining team management and scouting stats ~~(shown automatically on the first visit)~~ *(Changed 1 time since: the first visit shows a short intro card, and the paged guide opens from its "The full guide" button, in the smoother mechanic introductions)*.
   * Composed *"Night Shift"*, an original procedural electronic music track with volume toggles.
   * Added 9 secret achievements with subtle clues.
 
