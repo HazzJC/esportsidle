@@ -1,4 +1,5 @@
 import { UPGRADES, UPGRADE_MAP, type UpgradeDef } from '../data/upgrades';
+import { awake } from './firstRun';
 import { computeMods } from './economy';
 import type { GameState, Mods } from './types';
 
@@ -27,7 +28,10 @@ export function refreshUpgradeUnlocks(s: GameState): UpgradeDef[] {
 export function storeUpgrades(s: GameState): UpgradeDef[] {
   const list: UpgradeDef[] = [];
   for (const def of UPGRADES) {
-    if (s.unlockedUpgrades[def.id] !== undefined && s.upgrades[def.id] === undefined) list.push(def);
+    if (s.unlockedUpgrades[def.id] === undefined || s.upgrades[def.id] !== undefined) continue;
+    // Trophy upgrades join the shelf once the Trophies tab has explained trophies.
+    if (def.currency === 'trophies' && !awake(s, 'trophySpending')) continue;
+    list.push(def);
   }
   return list.sort((a, b) => (a.currency === b.currency ? a.cost - b.cost : a.currency === 'cash' ? -1 : 1));
 }
@@ -40,6 +44,7 @@ export function canAffordUpgrade(s: GameState, def: UpgradeDef, mods: Mods): boo
 export function buyUpgrade(s: GameState, id: string): boolean {
   const def = UPGRADE_MAP.get(id);
   if (!def || s.upgrades[id] !== undefined || s.unlockedUpgrades[id] === undefined) return false;
+  if (def.currency === 'trophies' && !awake(s, 'trophySpending')) return false;
   const mods = computeMods(s);
   if (!canAffordUpgrade(s, def, mods)) return false;
   const price = upgradePrice(def, mods);

@@ -582,6 +582,8 @@ export interface MerchState {
   unlocked: Record<string, boolean>;
   lines: Record<string, MerchLine>;
   mania?: { trend: TrendId; productId: string; endsAt: number } | null;
+  /** The trend after this one, drawn a rotation early so the Trend tip can show it. */
+  nextTrend?: TrendId;
 }
 
 export interface SponsorOffer {
@@ -595,6 +597,8 @@ export interface SponsorOffer {
   goal: { kind: SponsorGoalKind; target: number; rewardSeconds: number };
   /** One of the three snack deals offered for the org's very first sponsorship. */
   starter?: boolean;
+  /** Brought by a Sponsor meeting (a quest token): from the highest tier the org qualifies for. */
+  meeting?: boolean;
 }
 
 /** A snapshot of how fast each sponsor goal is progressing, for pacing new offers. */
@@ -709,6 +713,10 @@ export interface ActiveQuest {
   base: number;
   /** Finished and announced, waiting for the player to pick a reward. */
   ready: boolean;
+  /** Simulated time it was offered, for the console's tip when a quest has been live a while. */
+  since?: number;
+  /** Already done this run before the line reached it (a `credit` quest), so it was ready on arrival. */
+  credited?: boolean;
 }
 
 export interface QuestState {
@@ -727,12 +735,19 @@ export interface QuestState {
   skipped: Record<string, number>;
   /** Quests claimed across every run. */
   claimed: number;
+  /**
+   * Perks earned from quests whose rewards have since changed or that have left the line, kept as they
+   * were paid so a save from an older quest line keeps its run's bonuses. Cleared by a sale.
+   */
+  carried?: Record<string, { label: string; effects: Effect[]; title: string; icon: string; claimedAt: number }>;
 }
 
 export interface TutorialState {
   step: TutorialStep;
   /** The first win's bonus has been paid (it is paid once, as the match step ends). */
   firstWinPaid?: boolean;
+  /** The player skipped the tutorial: the first run is not guided, and every system is awake. */
+  skipped?: boolean;
 }
 
 /** Popup categories the player can mute. Anything the player did themselves is always shown. */
@@ -811,6 +826,8 @@ export interface Stats {
   eventsSeen: number;
   choicesMade: number;
   opLevels: number;
+  /** Bench players the player moved onto a desk by hand (substitutions do not count). */
+  lineupMoves: number;
   hypeTrainBest: number;
   designsCreated: number;
   merchSold: number;

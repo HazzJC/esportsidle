@@ -3,6 +3,8 @@ import { RARITY_MAP, generatePlayer, makeTagUnique, transferValue } from './play
 import type { Rng } from './rng';
 import type { GameState, MarketListing, Mods, Player } from './types';
 import { addToTeam, ensureTeam, hasRosterSpace, removeFromTeams } from './teams';
+import { hasTool, useToken } from './quests';
+import { sectionOpen } from './sections';
 
 export const MARKET_BASE_SIZE = 6;
 export const MARKET_REFRESH_SECONDS = 180;
@@ -158,6 +160,25 @@ export function seedMarketForGame(s: GameState, rng: Rng, gameId: string, count:
 
 export function updateMarket(s: GameState, rng: Rng, mods: Pick<Mods, 'scoutLuck' | 'marketSize'>): void {
   if (s.time >= s.market.nextRefresh) refreshMarket(s, rng, mods);
+  if (hasTool(s, 'scout_choice') && sectionOpen(s, 'market')) placeScoutsChoice(s, rng, mods);
+}
+
+/**
+ * Spends a Scout's choice (a quest token): a star prospect for the flagship team joins the board,
+ * pinned so a refresh does not take them away before the player has seen them.
+ */
+export function placeScoutsChoice(s: GameState, rng: Rng, mods: ListingMods): boolean {
+  const team = Object.values(s.teams).find((t) => s.games[t.gameId]?.unlocked);
+  if (!team || !useToken(s, 'scout_choice')) return false;
+  const player = generatePlayer(rng, { id: `p${s.nextId++}`, gameId: team.gameId, time: s.time, rarity: 'star' });
+  player.tag = makeTagUnique(takenTags(s), player.tag);
+  const listing: MarketListing = { player, price: Math.ceil(signingFee(player) * (mods.feeMult ?? 1)), currency: 'cash' };
+  // The newest unpinned listing makes room, so the board stays the same size.
+  const free = s.market.listings.map((l, i) => (isPinned(s, l.player.id) ? -1 : i)).filter((i) => i >= 0);
+  if (free.length > 0 && s.market.listings.length >= MARKET_BASE_SIZE) s.market.listings.splice(free[free.length - 1], 1);
+  s.market.listings.unshift(listing);
+  togglePin(s, player.id);
+  return true;
 }
 
 /** The first reroll of a burst costs this many seconds of base income, and each one after doubles it. */

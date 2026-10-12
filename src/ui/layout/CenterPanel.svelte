@@ -32,7 +32,10 @@
   /** The tab the live quest needs pulses until the player is on it. */
   function tabHinted(id: string): boolean {
     if (game.tab === id) return false;
-    if (id === 'teams') return hinted(s, 'player') || hinted(s, 'plan') || hinted(s, 'found') || game.hintFlash === 'teams';
+    if (id === 'teams') return hinted(s, 'player') || hinted(s, 'plan') || hinted(s, 'found') || hinted(s, 'bench') || game.hintFlash === 'teams';
+    if (id === 'hq' && hinted(s, 'levels')) return true;
+    if (id === 'studio' && hinted(s, 'merch')) return true;
+    if (id === 'staff' && hinted(s, 'routines')) return true;
     return (['market', 'staff', 'house', 'studio', 'sponsors'] as const).some((h) => h === id && hinted(s, h));
   }
 

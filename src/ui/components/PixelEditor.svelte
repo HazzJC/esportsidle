@@ -11,9 +11,10 @@
   let {
     initial,
     trend,
+    showAppeal = true,
     onsave,
     oncancel,
-  }: { initial: Design | null; trend: TrendId; onsave: (draft: DesignDraft) => void; oncancel: () => void } = $props();
+  }: { initial: Design | null; trend: TrendId; showAppeal?: boolean; onsave: (draft: DesignDraft) => void; oncancel: () => void } = $props();
 
   const TOOLS: { id: Tool; label: string; icon: string; key: string }[] = [
     { id: 'pencil', label: 'Pencil', icon: 'pencil', key: 'b' },
@@ -478,6 +479,7 @@
       <input type="color" value={palette[color - 1] ?? '#ffffff'} oninput={(e) => (palette[color - 1] = e.currentTarget.value)} />
     </label>
 
+    {#if showAppeal}
     <div class="appeal">
       <div class="appeal-head">
         <span class="muted small">Merch appeal</span>
@@ -494,6 +496,7 @@
         <p class="hint small"><Icon name="info" size={12} /> {hint}</p>
       {/each}
     </div>
+    {/if}
 
     <div class="actions">
       <button class="btn" onclick={oncancel}>Cancel</button>

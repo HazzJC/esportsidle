@@ -13,6 +13,7 @@ import {
   type StarterDeal,
 } from '../data/sponsors';
 import { hasSpecial } from './prestige';
+import { useToken } from './quests';
 import type { StatAmount } from '../data/staff';
 import { addBuff } from './buffs';
 import { emit } from './bus';
@@ -146,14 +147,14 @@ export function offerPerkScale(tier: number, kind: SponsorGoalKind): number {
   return SPONSOR_TIERS[tier].perkScale * GOAL_EASE[kind];
 }
 
-export function generateOffer(s: GameState, rng: Rng): SponsorOffer {
+export function generateOffer(s: GameState, rng: Rng, forceTier?: number): SponsorOffer {
   let maxTier = 0;
   const top = maxSponsorTier(s);
   SPONSOR_TIERS.forEach((t, i) => {
     if (i <= top && s.fansRun >= t.fans / 20) maxTier = i;
   });
   const tiers = Array.from({ length: maxTier + 1 }, (_, i) => i);
-  const tier = rng.weighted(tiers, (i) => (i === maxTier ? 3 : 1 + i * 0.5)) ?? 0;
+  const tier = forceTier ?? rng.weighted(tiers, (i) => (i === maxTier ? 3 : 1 + i * 0.5)) ?? 0;
   const taken = new Set(s.sponsors.active.map((c) => BRAND_MAP.get(c.brandId)?.category));
   const brand = rng.weighted(BRANDS, (b) => (taken.has(b.category) ? 0.15 : 1)) ?? BRANDS[0];
   const kinds: SponsorGoalKind[] = ['wins', 'fans', 'titles', 'tournaments', 'drops'];
@@ -190,10 +191,23 @@ export function firstSponsorship(s: GameState): boolean {
   return s.stats.sponsorsSigned === 0;
 }
 
+/** The highest sponsor tier whose requirements the org meets now: where a Sponsor meeting is held. */
+export function meetingTier(s: GameState): number {
+  let best = 0;
+  for (let tier = 0; tier <= maxSponsorTier(s); tier++) {
+    if (s.fansRun >= SPONSOR_TIERS[tier].fans && bestTeamTier(s) >= SPONSOR_TIERS[tier].teamTier) best = tier;
+  }
+  return best;
+}
+
 export function refreshOffers(s: GameState, rng: Rng, count = OFFER_COUNT): void {
   s.sponsors.offers = firstSponsorship(s)
     ? STARTER_DEALS.map((d) => starterOffer(s, d, rng))
     : Array.from({ length: count }, () => generateOffer(s, rng)).sort((a, b) => a.tier - b.tier);
+  // A Sponsor meeting (a quest token) brings a brand from the highest tier the org qualifies for.
+  if (!firstSponsorship(s) && s.sponsors.offers.length > 0 && useToken(s, 'sponsor_meeting')) {
+    s.sponsors.offers[s.sponsors.offers.length - 1] = { ...generateOffer(s, rng, meetingTier(s)), meeting: true };
+  }
   s.sponsors.nextRefresh = s.time + OFFER_REFRESH_SECONDS;
 }
 

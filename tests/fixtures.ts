@@ -18,6 +18,13 @@ export function foundedGame(now = 0, seed?: number): GameState {
   return s;
 }
 
+/** A founded org on a guided first run: the tutorial finished rather than skipped, so systems wake with their quests. */
+export function guidedGame(now = 0, seed?: number): GameState {
+  const s = foundedGame(now, seed);
+  s.tutorial.skipped = false;
+  return s;
+}
+
 /** Marks the operations ladder climbed once (a first Multiverse Championship), which opens the first sale. */
 export function finishLadder(s: GameState): void {
   const st = s.ops[FINAL_OPERATION.id];

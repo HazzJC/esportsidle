@@ -242,7 +242,7 @@ describe('sponsors', () => {
     const c = offerFor(s, 'razr');
     expect(signOffer(s, c.id, mods)).toEqual({ ok: false, reason: 'All sponsor slots are full.' });
     s.quests.done.sponsor_1 = 0;
-    s.quests.picks.sponsor_1 = 1;
+    s.quests.picks.sponsor_1 = 0;
     expect(signOffer(s, c.id, computeMods(s)).ok).toBe(true);
     const d = offerFor(s, 'nikey');
     expect(signOffer(s, d.id, computeMods(s)).ok).toBe(false);

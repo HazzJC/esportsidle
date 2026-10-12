@@ -8,6 +8,7 @@
   import { fmtTime } from '../../engine/format';
   import { RARITY_MAP } from '../../engine/players';
   import { game } from '../game.svelte';
+  import { hinted } from '../hints';
   import Icon from './Icon.svelte';
 
   /** Cash-share presets per routine: small enough to be safe, large enough to matter. */
@@ -53,7 +54,7 @@
   }
 </script>
 
-<section class="front-office">
+<section class="front-office" class:tut-target={hinted(game.view.s, 'routines')}>
   <header>
     <h3 class="section-title">Front office</h3>
     <p class="muted small">

@@ -1,4 +1,5 @@
 import { INTROS_KNOWN } from '../data/intros';
+import { QUEST_LINE_KNOWN } from './firstRun';
 import { DEFAULT_EMBLEM } from '../data/emblems';
 import { DEFAULT_KIT, DEFAULT_TONE } from '../data/palette';
 import { GAMES } from '../data/games';
@@ -103,6 +104,7 @@ export function createStats(): Stats {
     eventsSeen: 0,
     choicesMade: 0,
     opLevels: 0,
+    lineupMoves: 0,
     hypeTrainBest: 0,
     designsCreated: 0,
     merchSold: 0,
@@ -250,5 +252,6 @@ export function createNewGame(now: number = Date.now(), seed: number = randomSee
   const s = createBaseState(now, seed);
   setupNewRun(s);
   s.guides[INTROS_KNOWN] = true;
+  s.guides[QUEST_LINE_KNOWN] = true;
   return s;
 }

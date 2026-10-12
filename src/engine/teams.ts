@@ -1,4 +1,6 @@
 import { GAMES, getGame, type Genre } from '../data/games';
+import { awake } from './firstRun';
+import { hasTool } from './quests';
 import { RIVAL_ORGS } from '../data/names';
 import {
   FAN_BASE,
@@ -186,6 +188,17 @@ export function assignSlot(s: GameState, gameId: string, playerId: string, slot:
   return true;
 }
 
+/**
+ * The player puts someone in a seat by hand. A bench player brought onto a desk counts towards "Best
+ * on the field"; the engine's own substitutions call assignSlot directly and do not.
+ */
+export function startPlayer(s: GameState, gameId: string, playerId: string, slot: number): boolean {
+  const fromBench = s.teams[gameId]?.bench.includes(playerId) ?? false;
+  if (!assignSlot(s, gameId, playerId, slot)) return false;
+  if (fromBench) s.stats.lineupMoves++;
+  return true;
+}
+
 export function benchPlayer(s: GameState, gameId: string, playerId: string, mods: Pick<Mods, 'benchSlots'>): boolean {
   const team = s.teams[gameId];
   if (!team) return false;
@@ -337,6 +350,10 @@ export function scoreline(genre: Genre, win: boolean, rng: Rng): string {
   }
 }
 
+/** What the Rival file adds to the win chance of a grudge match, and the most it can bring it to. */
+export const RIVAL_FILE_EDGE = 0.1;
+export const RIVAL_FILE_CAP = 0.95;
+
 /** A win at less than this chance counts as an upset. */
 export const UPSET_CHANCE = 0.1;
 
@@ -351,7 +368,10 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
   const roll = rng.next();
   // An org's very first match is always a win, so the tutorial starts on a high.
   const firstEver = s.stats.matchesWon + s.stats.matchesLost === 0;
-  let win = firstEver || roll < ev.winChance;
+  // The Rival file (a quest tool) gives an edge in a billed grudge match.
+  const grudge = !!team.nextOpponent?.rival && team.nextOpponent.name === s.rival?.name;
+  const chance = grudge && hasTool(s, 'rival_file') ? Math.min(RIVAL_FILE_CAP, ev.winChance + RIVAL_FILE_EDGE) : ev.winChance;
+  let win = firstEver || roll < chance;
   const hasBubbystr = team.lineup.some((id) => id && playerEasterEgg(s.players[id]) === 'bubbystr');
   if (!win && hasBubbystr) {
     s.stats.bubbystrLosses = (s.stats.bubbystrLosses ?? 0) + 1;
@@ -423,7 +443,8 @@ export function playMatch(s: GameState, team: TeamState, ev: TeamEval, mods: Mod
     applyMorale(p, (win ? mood.moraleWin : mood.moraleLoss) - (opponent.rival && !win ? 4 + Math.min(12, (s.rival?.heat ?? 0) * 2) : 0), mods);
     // Winning without effort wears players down in its own way: they get restless, and tire sooner.
     drainEnergy(p, mods, plan.drain * (1 + 0.6 * (1 - ev.stakes)));
-    if (!calmStart(s)) rollHealth(s, p, mods, rng, hasBench, plan.injuryRisk);
+    // Knocks and colds wait for the bench lesson in a guided first run (engine/firstRun.ts).
+    if (!calmStart(s) && awake(s, 'health')) rollHealth(s, p, mods, rng, hasBench, plan.injuryRisk);
   }
   // Bench players train alongside; how much depends on the plan.
   if (plan.benchXp > 0) {
@@ -444,7 +465,8 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
   // Promotion goes by Elo, not the season's record: a team that has shown it plays a tier higher moves
   // up whatever its win rate, and one that has fallen well behind its tier drops down.
   const elo = teamElo(team);
-  const promoted = team.autoPromote && canPromote(team);
+  // A guided first run keeps its teams in their league until the first title (engine/firstRun.ts).
+  const promoted = team.autoPromote && canPromote(team) && (wins >= TITLE_WINS || awake(s, 'promotion'));
   const relegated = !promoted && team.tier > 0 && elo < relegationElo(team.tier);
   recordSeason(s, team, { title: wins >= TITLE_WINS, promoted, relegated });
   const resultBody: string[] = [`${record} in the ${tierName(team.tier)} (Elo ${Math.round(elo)}).`];

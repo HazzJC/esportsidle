@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUEST_MAP, QUESTS } from '../src/data/quests';
+import { QUEST_MAP, QUESTS, type QuestDef } from '../src/data/quests';
 import { FIRST_PLAYER_PRICE, TUTORIAL_INJURY_SECONDS } from '../src/data/tutorial';
 import { clickLogo } from '../src/engine/clicker';
 import { customiseDraft, signDraftPick } from '../src/engine/draft';
@@ -225,8 +225,9 @@ describe('tabs that open as the org grows', () => {
     expect(s.quests.active.map((q) => q.id)).toEqual(['grinders_10']);
     for (const id of ['market', 'staff', 'house', 'studio', 'sponsors']) expect(sectionOpen(s, id), id).toBe(false);
     // Each quest that opens a tab opens it the moment it is offered.
-    const line = ['grinders_10', 'gear_1', 'crowd_1', 'upgrades_3'];
-    for (const id of line) s.quests.done[id] = 0;
+    for (const q of QUESTS.slice(0, QUESTS.findIndex((d) => d.id === 'scout_1'))) s.quests.done[q.id] = 0;
+    s.sections.achievements = 0;
+    s.sectionsSeen.achievements = true;
     s.quests.active = [];
     updateQuests(s);
     updateSections(s);
@@ -316,7 +317,7 @@ describe('quests', () => {
     const s = foundedGame(0, 1);
     s.stats.gearBought = 7;
     s.quests.active = [];
-    s.quests.done.grinders_10 = 0;
+    for (const q of QUESTS.slice(0, QUESTS.findIndex((d) => d.id === 'gear_1'))) s.quests.done[q.id] = 0;
     fillQuests(s);
     const gear = s.quests.active.find((q) => q.id === 'gear_1')!;
     expect(gear.base).toBe(7);
@@ -361,14 +362,19 @@ describe('quests', () => {
   });
 
   it('pays cash worth minutes of income, with a floor for small orgs', () => {
-    const s = foundedGame(0, 1);
-    s.quests.done = Object.fromEntries(QUESTS.filter((q) => q.id !== 'staff_1').map((q) => [q.id, 0]));
-    s.stats.playersSigned = STAFF_UNLOCK_SIGNINGS;
-    fillQuests(s);
-    s.stats.staffHired++;
-    const cash = s.cash;
-    expect(claimQuest(s, 'staff_1', 0, { cps: 0, fansPerSec: 0 }, new Rng(s))).toBe(true);
-    expect(s.cash - cash).toBe(1_500);
+    // No quest in today's line pays cash, so a stand-in shows the rule.
+    const def: QuestDef = { ...QUEST_MAP.get('staff_1')!, id: 'cash_test', rewards: [{ kind: 'cash', seconds: 480, min: 1_500 }] };
+    QUEST_MAP.set(def.id, def);
+    try {
+      const s = foundedGame(0, 1);
+      s.quests.active = [{ id: def.id, base: 0, ready: true }];
+      s.stats.staffHired++;
+      const cash = s.cash;
+      expect(claimQuest(s, def.id, 0, { cps: 0, fansPerSec: 0 }, new Rng(s))).toBe(true);
+      expect(s.cash - cash).toBe(1_500);
+    } finally {
+      QUEST_MAP.delete(def.id);
+    }
   });
 
   it('follows the line in order, one quest at a time', () => {
@@ -385,12 +391,12 @@ describe('quests', () => {
 
   it('asks for a choice only once the player has met both options', () => {
     expect(new Set(QUESTS.map((q) => q.id)).size).toBe(QUESTS.length);
-    // The quests that arrive straight after the tutorial pay one clear reward each.
-    for (const q of QUESTS.slice(0, 7)) expect(q.rewards, q.id).toHaveLength(1);
+    // The first chapter and the first title pay one clear reward each.
+    for (const q of QUESTS.slice(0, QUESTS.findIndex((d) => d.id === 'trophies_1'))) expect(q.rewards, q.id).toHaveLength(1);
     for (const q of QUESTS) {
       if (q.rewards.length === 2) expect(q.rewards[0]).not.toEqual(q.rewards[1]);
-      // Trophies are only offered by quests that themselves earn a trophy or come later.
-      if (q.rewards.some((r) => r.kind === 'trophies')) expect(QUESTS.indexOf(q), q.id).toBeGreaterThan(12);
+      // Trophies are offered from the first league title on, which is when the player meets them.
+      if (q.rewards.some((r) => r.kind === 'trophies')) expect(QUESTS.indexOf(q), q.id).toBeGreaterThanOrEqual(QUESTS.findIndex((d) => d.id === 'title_1'));
     }
   });
 
@@ -483,7 +489,9 @@ describe('the market', () => {
     expect(sectionOpen(s, 'market')).toBe(false); // still in the tutorial
     skipTutorial(s);
     // The quest line reaches "Scout the market", which waits for the cash.
-    for (const id of ['grinders_10', 'gear_1', 'crowd_1', 'upgrades_3']) s.quests.done[id] = 0;
+    for (const q of QUESTS.slice(0, QUESTS.findIndex((d) => d.id === 'scout_1'))) s.quests.done[q.id] = 0;
+    s.sections.achievements = 0;
+    s.sectionsSeen.achievements = true;
     s.cash = MARKET_UNLOCK_CASH - 1;
     updateQuests(s);
     updateSections(s);

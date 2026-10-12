@@ -19,7 +19,66 @@
 
 ## Pending Changes
 
-### First-run playthrough fixes: modals, decisions, Studio, promotion and copy [Status: Pending]
+### A chaptered first run: one system at a time, rewards that lead on, meters for the long goals [Status: Pending]
+
+* **The Issue / Motivation**: The owner asked for a fully scoped plan from a new-player playthrough, then for all of it, so that a first run explores each feature in turn, without distractions, at a sensible pace, with quest rewards that lead into what comes next. The playthrough found:
+  * **Things happened before the quest that explains them, and the quest then asked again.** The crowd went wild at 5:30 (quest 3), a league title at 13 min (quest 17), an Invitational at 16 min (quest 18), a promotion at 17 min (quest 12), a grudge win at 10 min (quest 19), level 10 at 15 min (quest 16, which then completed on arrival). Delta quests threw the earlier success away.
+  * **Long dead stretches.** "Moving up" held the line for 13 minutes, "League champions" for 20 and "Invitational winners" for 40+ (it waited on chance), while Sponsors and Merch were earned but held back. A 90-second breather followed a tab whose quest was already done.
+  * **Systems arrived unannounced:** Hype Drops from 8 minutes, the first drop the quest promised turned out to be an Invitational invite, decisions and the rival before their quests, five achievements on top of the tutorial's last step, a house move over the Market's arrival, the Trophies tab during the tutorial.
+  * **Mechanics no quest taught**: the lineup (a star signing sat on the bench), trophies and operation levels, decisions, merch pricing and automation. The merch quest completed on a product that sold nothing.
+  * The owner added that credited quests must be placed fairly: most players should not have done the thing already when the quest arrives.
+* **What Changed**:
+  * **Six chapters** (`CHAPTERS` in `data/quests.ts`; design in `docs/quest-tour.md`): Garage days, Making a name, Building a squad, The brand, The circuit, The big exit. The console shows the chapter's title and a line of story above its first quest, names the chapter on every quest, colours the rail by chapter with a gap between chapters, and says when the next quest opens a tab ("· opens Market").
+  * **The line** (~~23 quests~~ 26): Grinder squad, Read the patch notes, Hype streak, Catch the drop, Gear up · League champions, **Trophy room** (new: level an operation with a trophy; opens Trophies) · Scout the market, **Best on the field** (new: start a bench player by hand), Hire help, Have a plan, Branch out · Make it home, Design a shirt, Take the money, Deliver for the sponsor, **A tough call** (new: answer a decision), Merch drop (~~launch a product~~ a line with a design on it), **Price it right** (new: a selling line at its sweet spot) · Invitational winners, Grudge match, Moving up, Business is business, **Landmark** (new: the next new kind of building, in place of ~~Business empire, own 100 operations~~), **Front office** (new: switch on a routine) · The big exit. Homegrown and Semi-pro leave the line.
+  * **Rewards lead on.** No quest pays cash any more (the early guard capped it at one building's price, so nobody took it). Each pays a perk for the system just learned or a tool for the next: Trophy room pays Scout's choice for the Market, A tough call a PR shield for Drama Drops, Deliver for the sponsor a Sponsor meeting. Bonus rewards show under the reward keys, including **"Unlocks: …"** lines for what claiming wakes (`QuestReward` kind `unlock`).
+  * **Quest tools now work** (`QUEST_TOOLS`, read with `hasTool` / `useToken`):
+    * Scout's choice puts a pinned star prospect on the board the moment the Market opens (`market.ts` `placeScoutsChoice`).
+    * A Sponsor meeting makes one offer in the next batch come from the highest tier the org qualifies for (`sponsors.ts` `meetingTier`, `SponsorOffer.meeting`).
+    * A PR shield buries the next scandal, outage or backlash (`drops.ts`).
+    * A Wildcard invite makes the next Hype Drop an invite.
+    * The Rival file adds 10 points of win chance in grudge matches, up to 95% (`teams.ts` `RIVAL_FILE_EDGE`).
+    * The Trend tip shows the next merch trend in the Studio (`MerchState.nextTrend`, drawn a rotation early).
+  * **A quiet world** (new `engine/firstRun.ts`: `guidedRun`, `awake`). On a guided first run (the first run, tutorial not skipped) these wait for their quest:
+    * Hype Drops (~~after 8 minutes, `CALM_START_SECONDS`~~ once "Hype streak" is claimed)
+    * Invitational invites ("Invitational winners")
+    * decisions ("A tough call")
+    * Drama Drops (once that quest is claimed)
+    * other world events ("Branch out")
+    * the rival ("Grudge match")
+    * illness and injury ("Best on the field")
+    * merch ("Merch drop")
+    * trophy spending on operation levels and trophy upgrades (the Trophies tab)
+    * Drop tier, Challenge, Auto-promote and Auto-sub ("League champions")
+    * Found team cards and the Coach's "found a team" goal ("Branch out")
+    * Front Office routines ("Front office")
+    * move-house cards (the House tab; earlier moves happen quietly)
+    * achievement popups (the Trophies tab, then one card for all of them)
+    * Orgs that skip the tutorial keep the eight-minute calm start (`tutorial.skipped`), and later runs have everything awake.
+  * **Quests that promise something bring it.** The drop quest's drop always pays a plain Prize Pool. The Invitational quest brings a drop within 12 seconds, and the first drop after it is the invite (`firstInviteDue`); invites come three times as often while it is live. "A tough call" brings a decision within 15 seconds, and another 30 seconds after one runs out unanswered (`EVENT_QUEST_*`). The rival appears when "Grudge match" arrives.
+  * **Placing the milestones fairly.**
+    * `QuestDef.credit`: a league title or a player sale already made this run counts, with the note "You did this before the quest arrived". Quick actions are asked for again.
+    * In a guided first run, a team is not promoted out of its league before the org's first title (a title season can still promote). Before this, the simulator showed promotions usually landing with or before the first title, which made the title a long chase in a harder league.
+    * "Moving up" moves to chapter 5 as a fresh promotion with an Elo meter, since a first promotion usually came at the same season end as the first title.
+    * The simulator now records each quest's arrival (`quest title_1`, `… (credited)`) and the first title, promotion and crowd. Across eight active seeds no quest was credited on arrival: titles came 4 to 13 minutes after their quest, chapters 3 and 4 moved about a minute a quest, and the first legacy point stayed between 2.7 and 3.2 hours.
+  * **Meters and tips** (`QuestDef.meter`, `QuestDef.stuck`, `STUCK_SECONDS`): long yes-or-no quests show how close the org is (wins this season, Elo against the line, the closest sponsor goal, cash towards the next building, the climb to a first sale). After five minutes the console offers a next step. A quest announced as done stays claimable if its condition slips afterwards.
+  * **Tabs**: Trophies (`trophies_1`) and Legacy (`sell_org`) now open with their quests too. The breather after a new tab now only applies while that tab's own quest is unclaimed, so the next tab arrives once the last one's quest is done.
+  * **Interface**:
+    * The tutorial hands over to HQ and marks the Teams intro read.
+    * A house-move card waits until nothing else is open and no tab opened in the last 45 seconds.
+    * New "Show me" targets: the bench, operation levels, the merch store and the Front Office.
+    * Store tool chips appear with the first tool. The Sponsors page mentions Legacy-only tiers once Legacy is open. The design editor's merch appeal panel appears with merch.
+  * **Saves**: no version bump. A save from the old line is migrated once (`engine/questMigration.ts`, flag `questline2`):
+    * A pick whose reward means something else today is carried as the perk it paid (`quests.carried`).
+    * Quests now earlier than the furthest one claimed are marked done.
+    * Retired quests come off the board.
+  * **Simulator**: the persona takes each quest's action (gear for "Gear up" and, after the tip, for the title; a signing; starting a bench player; switching on a routine; selling a player), fills the meter for "Hype streak", respects the sleeping systems, and records quest arrivals.
+  * **Tests**:
+    * New `tests/chapters.test.ts`: wake rules, forced drops, every quest tool, credit, the lineup and sweet-spot checks, merch needing a design, migration, and claimable-once-ready.
+    * `firstrun`, `onboarding`, `quests`, `rewards` and `business` tests follow the new line; `TOUR_GAPS` is empty.
+    * `npm test`: 504 passing.
+
+### First-run playthrough fixes: modals, decisions, Studio, promotion and copy [Status: Committed]
+*Commit*: `60125e5` (Oct 12 2026)
 
 * **The Issue / Motivation**: A playthrough of a brand-new org (headless Chrome, fresh profile) turned up bugs and inconsistencies a new player meets in the first two hours:
   * Escape stopped closing a modal once anything inside it had been clicked: the dialog stopped every keydown from reaching the window.
@@ -56,13 +115,13 @@
   * **Some mechanics turned up with no introduction.** The first Drama Drop is a gamble nobody explained. The first decision card falls back to an option when its timer runs out, without saying which. The first Invitational arrives mid-play.
 * **What Changed**:
   * **Paced tab openings** (`engine/sections.ts` `sectionPace`, `SECTION_BREATHER`, `questSection`; `engine/quests.ts` `fillQuests`, `questLineWait`):
-    * In the first run, a quest that would open a new tab waits until every tab a quest has opened has been visited, and until 120 seconds have passed since the last one opened.
+    * In the first run, a quest that would open a new tab waits until every tab a quest has opened has been visited, ~~and until 120 seconds have passed since the last one opened~~ *(Changed 1 time since: the breather only applies while the last tab's own quest is unclaimed, which the strict line never leaves it in, so the next tab comes as soon as the last one's quest is done, in the chaptered first run)*.
     * It only applies while that quest's own tab is still closed, so orgs that skipped the tutorial, and every later run, are unaffected.
     * While it waits, the console says why, with the tab named: "Take a look at the new Market tab first", or "The Staff tab opens next. Until then, get to know the Market tab", with a meter and a countdown. Sections now carry a `name` for these messages.
-    * In the simulated first run the tabs now open two minutes apart: Market 28.3, Staff 30.3, House 32.3, Studio 34.3 min.
+    * ~~In the simulated first run the tabs now open two minutes apart: Market 28.3, Staff 30.3, House 32.3, Studio 34.3 min.~~ *(Changed 1 time since: the line runs in chapters and each tab arrives with its quest; see the chaptered first run)*
   * **A "New tab" card on the quest console** (`Quests.svelte`): when a quest opens a tab, a lit card names it, says what it is for and has an "Open …" button. It stays until the tab has been visited, unlike the toast.
   * **Tab intro cards** (new `data/intros.ts` `TAB_INTROS`, new `TabIntro.svelte`, mounted once in `CenterPanel.svelte`):
-    * The first visit to Teams, Market, Staff, House, Studio, Sponsors, Trophies or Legacy shows a short card: what the tab is for, a gold "Start here" step (the live quest's own words when it is about this tab) with "Show me", and two or three terms.
+    * The first visit to ~~Teams,~~ *(Changed 1 time since: the tutorial marks the Teams card read, since it has just walked the player through the room, and hands over to HQ, in the chaptered first run)* Market, Staff, House, Studio, Sponsors, Trophies or Legacy shows a short card: what the tab is for, a gold "Start here" step (the live quest's own words when it is about this tab) with "Show me", and two or three terms.
     * Opening a card makes its first step's target pulse for a few seconds, using the same highlights the quests use.
     * "Got it" puts the card away, and a "?" button beside the tab strip brings it back. The button sits outside the scrolling strip so it is always in view.
     * The Teams and Market paged guides no longer open by themselves; they open from the card's "The full guide" button (`Guide.svelte`). No cards show during the tutorial.
@@ -151,10 +210,10 @@
 * **What Changed**:
   * **First win** (`data/tutorial.ts`, `engine/tutorial.ts`): the tutorial's first win pays a one-off **$85 bonus** (`FIRST_WIN_BONUS`, `tutorial.firstWinPaid`) with a toast. Clicking only what each step needs, the Streamer now comes at about 54 clicks with the hype meter around 64% (it was about 69 clicks and 83%); a player who keeps clicking hard still sets the crowd off.
   * **The quest line runs the first run** (`data/quests.ts`, `engine/quests.ts`, `engine/sections.ts`):
-    * New order: Grinder squad, Gear up, **Hype streak, then Read the patch notes** (swapped), **Scout the market** (new: sign a player from the market; perk: one more bench seat), Catch the drop, Hire help, Have a plan, Branch out, Make it home, Design a shirt, Moving up, Take the money, Deliver for the sponsor, Merch drop, Homegrown, League champions, Invitational winners, Grudge match, Business is business, Business empire, Semi-pro, The big exit. Descriptions now say what each system does.
-    * In the first run the line is **strict**: a quest whose requirement is not met yet holds the line (`strictQuestLine`), and the console shows what it waits for with a meter ("Up next: Take the money. Reach 1,000 fans (613 so far)", `questLineWait`, `QuestDef.waiting`). The rival quest waits on chance, so it is passed over and comes back (`skipWhileLocked`). After the first sale, quests not yet available are passed over as before.
+    * ~~New order: Grinder squad, Gear up, **Hype streak, then Read the patch notes** (swapped), **Scout the market** (new: sign a player from the market; perk: one more bench seat), Catch the drop, Hire help, Have a plan, Branch out, Make it home, Design a shirt, Moving up, Take the money, Deliver for the sponsor, Merch drop, Homegrown, League champions, Invitational winners, Grudge match, Business is business, Business empire, Semi-pro, The big exit. Descriptions now say what each system does.~~ *(Changed 1 time since: 26 quests in six chapters, with new quests for trophies, the lineup, decisions, merch pricing, the empire and automation, in the chaptered first run)*
+    * In the first run the line is **strict**: a quest whose requirement is not met yet holds the line (`strictQuestLine`), and the console shows what it waits for with a meter ("Up next: Take the money. Reach 1,000 fans (613 so far)", `questLineWait`, `QuestDef.waiting`). ~~The rival quest waits on chance, so it is passed over and comes back (`skipWhileLocked`).~~ *(Changed 1 time since: the rival quest brings the rival, in the chaptered first run)* After the first sale, quests not yet available are passed over as before.
     * **Quests open their tabs** (`SectionDef.quest`): the market (with Scout the market, at $500 in the bank), Staff (Hire help; its requirement is now ~~found a third team~~ two players signed, `STAFF_UNLOCK_SIGNINGS`), the House (Make it home, second team), the Studio (Design a shirt, 500 fans) and Sponsors (Take the money, 1,000 fans) open the moment their quest is offered ~~(back to back, when a held line released several met requirements at once)~~ *(Changed 1 time since: a tab-opening quest now waits until the last new tab has been visited and two minutes have passed since it opened, in the smoother mechanic introductions)*. After a sale tabs open on their requirement; open tabs stay open.
-    * Catch the drop is offered once the calm start is over, brings the next drop forward to 12 seconds, and while it is live a missed drop is followed by another within 30 seconds (`DROP_QUEST_*`).
+    * Catch the drop is offered ~~once the calm start is over~~ *(Changed 1 time since: once "Hype streak" wakes Hype Drops, and its drop always pays a plain Prize Pool, in the chaptered first run)*, brings the next drop forward to 12 seconds, and while it is live a missed drop is followed by another within 30 seconds (`DROP_QUEST_*`).
     * New emblem for Scout the market (binoculars over a player card) in `ui/questArt.ts`.
   * **Guidance and highlights** (`ui/hints.ts`, `Coach.svelte`, `global.css`):
     * The highlight is a ring in the interface tone with a ripple running out of it (`tut-pulse`), or an outline glow for drawings (`tut-soft`), replacing the faint glow. The tutorial card has a **Show me** button on every step that goes to the target and gives it an extra beat. New arrows: "Click your logo" above the logo, "Your first win is on its way" over the match.

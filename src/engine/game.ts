@@ -1,4 +1,5 @@
 import { OPERATIONS } from '../data/operations';
+import { awake } from './firstRun';
 import { checkAchievements } from './achievements';
 import { fmt } from './format';
 import { emit } from './bus';
@@ -72,7 +73,8 @@ export function tick(s: GameState, dt: number, offline = false, options?: TickOp
     const ctx = { rng, mods, rates };
     // A new org gets a calm start: no drops or world events while it finds its feet.
     if (!calmStart(s)) {
-      updateDrops(s, ctx);
+      // In a guided first run, drops wake with the "Hype streak" quest (engine/firstRun.ts).
+      if (awake(s, 'drops')) updateDrops(s, ctx);
       updateWorldEvents(s, ctx);
     }
     updateInvitation(s, ctx);

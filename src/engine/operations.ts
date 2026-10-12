@@ -1,4 +1,5 @@
 import { OPERATIONS, getOp, type OperationDef } from '../data/operations';
+import { awake } from './firstRun';
 import { computeMods } from './economy';
 import { PRICE_GROWTH, geometricMax, geometricPrice } from './pricing';
 import { operationsOpen } from './tutorial';
@@ -96,7 +97,8 @@ export function operationLevelCost(level: number): number {
 
 export function levelUpOperation(s: GameState, id: string): boolean {
   const st = s.ops[id];
-  if (!st || st.owned < 1) return false;
+  // Trophies are spent once the Trophies tab has explained them (engine/firstRun.ts).
+  if (!st || st.owned < 1 || !awake(s, 'trophySpending')) return false;
   const cost = operationLevelCost(st.level);
   if (s.trophies < cost) return false;
   s.trophies -= cost;

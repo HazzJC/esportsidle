@@ -1,7 +1,7 @@
 import LZString from 'lz-string';
 import { describe, expect, it } from 'vitest';
 import { OPERATIONS } from '../src/data/operations';
-import { QUESTS } from '../src/data/quests';
+import { QUEST_MAP, QUESTS, type QuestDef } from '../src/data/quests';
 import { PRICE_INCOME_SECONDS, baseIncome, updatePriceIncome } from '../src/engine/baseIncome';
 import { addBuff } from '../src/engine/buffs';
 import { CROWD_BUFF_ID, HYPE_MAX, HYPE_PER_CLICK, chainReward, clickLogo } from '../src/engine/clicker';
@@ -174,14 +174,17 @@ describe('the early-game guard', () => {
     const s = foundedGame(0, 3);
     s.sections = {};
     s.ops.grinder.highest = 1;
-    const q = QUESTS.find((d) => d.rewards.some((r) => r.kind === 'cash'))!;
-    const rewardIndex = q.rewards.findIndex((r) => r.kind === 'cash');
+    // No quest in today's line pays cash, so a stand-in shows the rule.
+    const q: QuestDef = { ...QUESTS[0], id: 'cash_test', rewards: [{ kind: 'cash', seconds: 600, min: 1 }] };
+    QUEST_MAP.set(q.id, q);
+    const rewardIndex = 0;
     const huge = { cps: 1e30, fansPerSec: 1, state: s };
     expect(describeReward(q.rewards[rewardIndex], huge)).not.toContain('e+30');
     s.quests.active = [{ id: q.id, base: 0, ready: true }];
     const before = s.earnedRun;
     claimQuest(s, q.id, rewardIndex, huge, new Rng(s));
     expect(s.earnedRun - before).toBeLessThanOrEqual(earlyRewardLimit(s) + 1);
+    QUEST_MAP.delete(q.id);
   });
 });
 

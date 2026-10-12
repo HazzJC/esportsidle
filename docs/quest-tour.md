@@ -1,74 +1,106 @@
-# The first-run quest tour: design for review (WS6)
+# The first-run quest line: a guided story in six chapters
 
-The build sheet behind WS6 in `docs/archive/implementation-plan.md` (archived: the plan's balance targets no longer apply; only this tour's content is still relevant). The plan's table says *what* each stop teaches and pays; this says *how*: the metric each quest reads, the engine hook each new reward needs, and the order. **Phase A built the data model** (WS6.1: `mechanic` tags, reward kinds `tool` / `opAffinity` / `cosmetic` / `title`, `QUEST_TOOLS`, the first-units discount effect, `hasTool` / `useToken`, tests). **Nothing below is live yet:** the live line is still today's 22 quests, and the rewrite (WS6.2) waits for the WS3 numbers.
+The first run is told as a story. A quest line on the HQ console walks the player through every system one at a time, and the systems themselves stay asleep until their quest arrives, so nothing turns up before something has explained it. This page is the design; the data lives in `src/data/quests.ts` (`QUESTS`, `CHAPTERS`, `QUEST_TOOLS`) and the wake rules in `src/engine/firstRun.ts`.
 
-## 1. The recipe
+It applies to a **guided first run**: an org's first run when the player did not skip the tutorial (`guidedRun`). Later runs, and orgs that skipped the tutorial, have every system awake from the start, and their quest line passes over anything not available yet.
 
-Every stop pays three things at once (`rewards` is the choice, `bonus` is always paid):
+## 1. The shape
 
-1. **Area reward:** a perk, tool or token in the system the quest taught.
-2. **Operation affinity:** `{ kind: 'opAffinity', op }` in `bonus`. Settled when claimed: ×2 on that operation if one is owned, otherwise its first 10 units cost 25% less (`AFFINITY_*` in `src/data/quests.ts`).
-3. **Flavour,** where there is something to give: a `title` or `cosmetic` in `bonus`, kept across sales in `quests.collection`.
+- **Chapters.** Six of them, each with a title and a line of story shown above its first quest. The first chapters are short steps a minute or two apart; the later ones are goals to work towards, each with a meter.
+- **One quest at a time, in order.** A quest that cannot be offered yet holds the line, and the console says what it is waiting for, with a meter when there is a number.
+- **Each reward leads into the next quest.** A perk for the system just learned, or a tool or token for the next one (Scout's choice for the Market, a PR shield for Drama Drops). A quest that wakes a system shows it as "Unlocks: …" under its reward, and a quest whose successor opens a tab says "opens …" next to "Next".
+- **Systems wake with their quest** (`awake` in `engine/firstRun.ts`):
 
-Cash only where a catch-up helps, and never more than a couple of minutes of income.
+| Wakes | When | Before then |
+| --- | --- | --- |
+| Hype Drops | "Hype streak" claimed | none fall |
+| Invitational invites | "Invitational winners" offered (the first drop after it is the invite) | drops never carry one |
+| Decisions | "A tough call" offered (one arrives within seconds) | none fire |
+| Drama Drops | "A tough call" claimed (its PR shield covers the first bad one) | none fall |
+| Other world events | "Branch out" claimed | none fire |
+| The rival | "Grudge match" offered | none appears |
+| Illness and injury | "Best on the field" claimed | none (the tutorial's one injury apart) |
+| Merch | "Merch drop" offered, at 25,000 fans | the Studio's merch store stays locked |
+| Found team cards, the Coach's "found a team" goal | "Branch out" offered | hidden |
+| Trophy spending (operation levels, trophy upgrades) | the Trophies tab opens | hidden |
+| Drop tier, Challenge, Auto-promote, Auto-sub | "League champions" claimed | hidden |
+| Promotion out of a league | the org's first title (a title season can promote) | a team ready to go up stays and dominates |
+| Front Office routines | "Front office" offered | hidden |
+| Move-house cards | the House tab opens | the org moves quietly |
+| Achievement popups | the Trophies tab opens | held, then shown together |
 
-## 2. The stops
+Tabs still open with their quest (`SectionDef.quest`), and the next tab-opening quest waits until the last new tab has been visited. The two-minute breather after a new tab only applies while that tab's own quest is unclaimed, which the strict line never leaves it in, so in practice the line moves on as soon as the player has finished with the tab.
 
-**Metric** is what `QuestDef.metric` reads. *New stat* means a counter to add to `Stats` (default 0, filled in by `mergeDefaults`). **Hook** is the engine change the area reward needs.
+## 2. The line
 
-| # | id | Mechanic | Metric | Area reward | Hook | Affinity | Flavour |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `grinders_10` | operations | `ops.grinder.owned` ≥ 10 | Grinders ×2 (exists) | — | grinder | |
-| 2 | `upgrades_3` | upgrades | `stats.upgradesBoughtTotal` +3 | Clicks ×2 (exists) | — | grinder | |
-| 3 | `crowd_1` | clicking | `stats.crowdsTotal` +1 | Crowds last 50% longer (exists) | — | broadcast | |
-| 4 | `drop_1` | drops | `stats.dropsClicked` +1 | Drops 20% more often (exists) | — | creator | |
-| 5 | `gear_1` | gear | `stats.gearBought` +1 | A free gear tier on your best player | new reward kind or a one-off in `applyReward` | bootcamp | |
-| 6 | `staff_1` | staff | `stats.staffHired` +1 | Next 10 hires −10% | `staffCostMult` with a count (new effect) | bootcamp | |
-| 7 | `scout_1` (new) | scouting | `stats.playersSigned` +1 | **Scout's choice** token | Market: one rarer prospect on the next refresh, `useToken('scout_choice')` in `market.ts` | bootcamp | title "Talent Scout" |
-| 8 | `lineup_1` (new) | lineup | *new stat* `lineupFixes` (an off-role player moved on-role) | Off-role penalty halved | `offRoleMult` field on `Mods`, read in `teams.ts` | arena | |
-| 9 | `plan_1` | seasonPlan | exists | Change the plan once mid-season | `useToken`-style flag in `teams.ts` | arena | |
-| 10 | `merch_trend` (new) | merchDesign | a line whose design is on trend (`analyzeDesign(...).trend ≥ TRENDING_THRESHOLD`) | **Trend tip** tool | `merch.ts`: expose the next trend when `hasTool('trend_tip')`; Studio shows it | streamer | a merch finish |
-| 11 | `merch_price` (new) | merchPricing | *new stat* `sweetSpotPrices` (a price set inside the sweet spot) | Sweet-spot band wider | `sweetSpotWidth` on `Mods` | streamer | |
-| 12 | `design_shirt` | jersey | exists | +10% fans (exists) | — | cafe | a jersey pattern |
-| 13 | `decor_1` | decor | exists | Decor effects +10% | `decorMult` on `Mods` | cafe | a decor piece |
-| 14 | `sponsor_1` | sponsors | exists | Extra sponsor slot (exists) | — | platform | |
-| 15 | `sponsor_goal` | sponsorGoals | exists | **Sponsor meeting** token | `sponsors.ts`: next offer one tier up | platform | title "Closer" |
-| 16 | `event_1` (new) | events | `stats.choicesMade` +1 | **PR shield** token | `drops.ts`: a scandal is blocked and the token spent | studio | |
-| 17 | `second_team` | teams | exists | Prize money +10% (exists) | — | arena | |
-| 18 | `promotion_1` | promotion | exists | Team ratings +3% (exists) | — | league | |
-| 19 | `title_1` | leagueTitle | exists | Trophies (exists) | — | arena | a cabinet plaque |
-| 20 | `tourney_1` | invitationals | exists | **Wildcard invite** token | `tournament.ts`: next invitation guaranteed | lan | |
-| 21 | `rival_1` | rival | exists | **Rival file** tool | Teams tab shows the rival's strength | league | |
-| 22 | `sell_player` | playerSales | exists | Signing fees −15% (exists) | — | bootcamp | |
-| 23 | `trophies_1` (new) | trophies | `stats.opLevels` +1 | The first operation level is free | a token read by `levelUpOperation` | (any owned) | |
-| 24 | `auto_1` (new) | automation | any `automation.*.on` after it is unlocked | Automation budget starts a notch higher | default `maxCostPct` raised | studio | |
-| 25 | `ops_100` | empire | exists | +5% income (exists) | — | (none) | |
-| 26 | `sell_org` | sale | exists (paid on sale) | Legacy and trophies (exists) | — | (none) | |
+| # | Quest | Teaches | Reward (pick one) · also paid | Leads into |
+| --- | --- | --- | --- | --- |
+| | **1. Garage days** | | | |
+| 1 | Grinder squad | operations | Grinders ×2 | upgrades |
+| 2 | Read the patch notes | upgrades | Clicks ×2 | clicking fills the meter |
+| 3 | Hype streak | clicking | Crowd 50% longer · *unlocks Hype Drops* | the first drop |
+| 4 | Catch the drop | drops (the promised drop is always a plain Prize Pool) | Drops 20% more often | |
+| 5 | Gear up | gear | +2 levels | a title |
+| | **2. Making a name** | | | |
+| 6 | League champions (credits a title already won) | league titles | 2 trophies · *unlocks team controls* | trophies to spend |
+| 7 | Trophy room (opens Trophies) | trophies | Players +10% XP / 3 trophies · Scout's choice | a star on the Market |
+| | **3. Building a squad** | | | |
+| 8 | Scout the market (opens Market) | scouting | +1 bench seat | the signing sits on the bench |
+| 9 | Best on the field | lineup | Players tire 10% slower / +2 levels · *unlocks injuries* | |
+| 10 | Hire help (opens Staff) | staff | Staff 10% cheaper | the Coach's plan |
+| 11 | Have a plan | season plans | +2 levels / +15% XP | |
+| 12 | Branch out | teams | Prize +10% / fans · *unlocks world events* | a home for two teams |
+| | **4. The brand** | | | |
+| 13 | Make it home (opens House) | decor | Gear 15% cheaper / fans | |
+| 14 | Design a shirt (opens Studio) | jersey | +10% fans / Content Creator affinity | fans bring sponsors |
+| 15 | Take the money (opens Sponsors) | sponsors | +1 sponsor slot / fans | |
+| 16 | Deliver for the sponsor | sponsor goals | Sponsor meeting / sponsor income +15% | |
+| 17 | A tough call | decisions | PR shield · *unlocks Drama Drops* | |
+| 18 | Merch drop (a line with a design) | merch design | Trend tip / fans | |
+| 19 | Price it right (a selling line at its sweet spot) | merch pricing | Merch +20% / Platform affinity | |
+| | **5. The circuit** | | | |
+| 20 | Invitational winners | Invitationals | Wildcard invite / prizes ×1.5 | |
+| 21 | Grudge match | the rival | Rival file / fans | |
+| 22 | Moving up (a promotion from when it is offered) | promotion | Team ratings +3% / 5 trophies | |
+| 23 | Business is business (credits a sale already made) | player sales | Fees 15% cheaper / 3 trophies | |
+| 24 | Landmark (the next new kind of building) | the empire | +5% income / 5 trophies | |
+| 25 | Front office | automation | Upgrades 10% cheaper / 5 trophies | |
+| | **6. The big exit** | | | |
+| 26 | The big exit (opens Legacy) | the sale | 3 legacy / 10 trophies | the next run |
 
-`level_10` (training) and `tier_5` (a second promotion quest) leave the tour; training is taught by `plan_1` and the player screen, and the semi-pro milestone moves to the Dynasty Line.
+No quest pays cash: while any tab is locked, a lump sum is capped at one new building's price (`earlyRewardLimit`), which made cash the option nobody took.
 
-### 2.1 Order
+## 3. Quest mechanics
 
-The table order is the line order. A stop whose system has not opened yet waits (today's `available` rule), so the line never blocks. Stops 1–4 are single-reward, as now; from stop 5 a stop may offer a choice, and a choice is always between **different kinds** (a tool or a perk, never cash or fans), which `tests/quests.test.ts` checks.
+- **Credit** (`QuestDef.credit`). A milestone a quick org can reach just before the line arrives (a league title, selling a player) counts if it happened earlier in the run. The console says "You did this before the quest arrived". Quick actions (filling the crowd, buying gear) are asked for again, since repeating them costs seconds.
+- **Meters** (`QuestDef.meter`) for yes-or-no quests that take a while: wins this season for a title, Elo against the promotion line, the closest sponsor goal, cash towards the next building, the climb to a first sale.
+- **Tips** (`QuestDef.stuck`). After five minutes live (`STUCK_SECONDS`), the console offers one concrete step.
+- **Ready stays ready.** Once a quest has been announced as done it can be claimed, even if its condition slips (a merch price off its sweet spot after the trend changes).
 
-A stop that opens a tab also waits until the last new tab has been visited and two minutes have passed since it opened (`sectionPace` in `engine/sections.ts`), so new systems arrive one at a time even when several requirements are met together.
+## 4. Quest tools
 
-## 3. What changes for the player
+`QUEST_TOOLS` in `data/quests.ts`, read with `hasTool` / `useToken`:
 
-- **Cash nearly disappears from quests.** Today, quest cash is 48% of all income at 30 minutes. After the rewrite, quests pay tools, perks and head starts, so the 10-minute-window target (quests ≤ 10% after 30 minutes) passes by construction.
-- **Each reward is in the place they just learned,** with a head start on the matching operation.
-- **The Quests card** shows the mechanic icon, the reward kind, and a one-line "what this teaches" (WS6.3).
+| Tool | Kind | What it does | Read in |
+| --- | --- | --- | --- |
+| Scout's choice | token | A pinned star prospect for the flagship team, the moment the Market is open | `engine/market.ts` `placeScoutsChoice` |
+| Sponsor meeting | token | The next batch of offers includes one from the highest tier the org qualifies for | `engine/sponsors.ts` `refreshOffers` |
+| PR shield | token | Buries the next scandal, outage or backlash | `engine/drops.ts` `clickDrop` |
+| Wildcard invite | token | The next Hype Drop is an Invitational invite | `engine/drops.ts` `forcedOutcome` |
+| Rival file | tool | +10 points of win chance in grudge matches | `engine/teams.ts` `playMatch` |
+| Trend tip | tool | The Studio shows the next merch trend | `engine/merch.ts` `rotateTrend`, `Studio.svelte` |
 
-## 4. Run 2 and later: the Dynasty Line (WS6.4, later)
+## 5. How positions were checked
 
-A separate, procedural line keyed to Paths, history and the new systems: "Win a league title on the Purist Path", "Beat *Apex Void* twice", "Fill an Heirloom slot", "Complete a challenge". Two tracks at once (Empire and Story). Rewards: Path Mastery, Heirloom tokens, titles, cosmetics, occasional bounded Legacy points. It needs WS2 and A2/A3 first.
+Each quest should usually arrive before the player has done its thing. The simulator (`npm run sim`) records when each quest arrives and marks it `(credited)` if it was already done: `quest title_1`, `quest title_1 (credited)`. It also records `first title`, `first promotion` and `first crowd` for comparison. Read across several seeds, these show whether a quest is placed after the moment most players would reach it anyway. They are notes to look at, not targets: nothing passes or fails on them.
 
-## 5. Checks
+What that showed when the line was laid out:
+- A first promotion usually lands at the same season end as the first title, so "Moving up" sits in chapter 5 and counts from when it is offered, and promotion out of the first league waits for the first title.
+- An active player claims a quest a minute or two apart in chapters 3 and 4, and spends longer in chapters 2 and 5, where the meters are.
 
-- `tests/quests.test.ts` already fails the build if a mechanic loses its quest; `TOUR_GAPS` there shrinks to empty as stops 7, 8, 11, 16, 23 and 24 land.
-- Simulator: personas claim tool and affinity rewards; target quests ≤ 10% of any 10-minute window after 30 minutes.
+## 6. Orgs from the old line
 
-## 6. Questions for you
-
-1. Operation affinity as a discount when the operation is not owned yet (recommended), or only ×2 once owned? (Plan, decision 3.)
-2. Are tokens (scout's choice, sponsor meeting, PR shield, wildcard invite) the right kind of reward, or would you rather every area reward be permanent for the run?
+`engine/questMigration.ts`, run once on load (flag `questline2`):
+- A reward pick that means something else today is carried as the perk it paid, in `quests.carried`.
+- Quests now earlier than the furthest one an org had claimed are marked done.
+- Quests that have left the line (`level_10`, `ops_100`, `tier_5`) come off the board.

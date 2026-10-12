@@ -1,4 +1,4 @@
-import { QUESTS, QUEST_TOOLS, type QuestDef, type QuestReward } from '../data/quests';
+import { QUEST_MAP, QUEST_TOOLS, type QuestDef, type QuestReward } from '../data/quests';
 import { K, circ, grid, line, op, path, rect, rr, stroke } from './artKit';
 import { opSpriteSvg } from './opsArt';
 import { rarityColor } from './theme';
@@ -285,9 +285,10 @@ export function questArtSvg(art: string, c: string): string | null {
 }
 
 /** Quests further along the line glow in rarer colours, like trophies higher up the shelf. */
+/** A quest's colour: one per chapter, stepping up the rarity colours as the first run goes on. */
 export function questColor(id: string): string {
-  const i = Math.max(0, QUESTS.findIndex((q) => q.id === id));
-  return rarityColor(1 + Math.floor((i * 4) / QUESTS.length));
+  const chapter = QUEST_MAP.get(id)?.chapter ?? 0;
+  return rarityColor(Math.min(5, 1 + chapter));
 }
 
 /** The quest's emblem. */
@@ -304,6 +305,7 @@ const REWARD_ART: Record<Exclude<QuestReward['kind'], 'perk' | 'tool' | 'opAffin
   legacy: 'crown',
   cosmetic: 'palette',
   title: 'medal',
+  unlock: 'upgrade:star',
 };
 
 export function rewardArtSvg(r: QuestReward, def: QuestDef): string {

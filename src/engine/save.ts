@@ -10,6 +10,7 @@ import { SAVE_VERSION, addFounder, createBaseState, setupNewRun } from './state'
 import { createDraft } from './draft';
 import { isEmblem } from '../data/emblems';
 import { INTROS_KNOWN, firstKey, introKey } from '../data/intros';
+import { QUEST_LINE_KNOWN, migrateQuestLine } from './questMigration';
 import { openAllSections, updateSections } from './sections';
 import { addToTeam, createTeam, teamPlayerIds } from './teams';
 import type { GameState } from './types';
@@ -213,6 +214,11 @@ export function repairState(s: GameState): void {
     if (s.stats.choicesMade > 0) s.guides[firstKey('choice')] = true;
     if (s.stats.tournamentsPlayed > 0) s.guides[firstKey('invitational')] = true;
     s.guides[INTROS_KNOWN] = true;
+  }
+  // Orgs from before the chaptered quest line keep their perks and carry on from where they were.
+  if (!s.guides[QUEST_LINE_KNOWN]) {
+    migrateQuestLine(s);
+    s.guides[QUEST_LINE_KNOWN] = true;
   }
   for (const [id, design] of Object.entries(s.designs)) {
     s.designs[id] = sanitizeDesign({ ...design, id });

@@ -30,6 +30,7 @@
   import { tip, tooltip, type TipContent } from '../tooltip.svelte';
   import Guide from '../components/Guide.svelte';
   import { hinted } from '../hints';
+  import { awake } from '../../engine/firstRun';
   import { teamsGuide } from '../guides';
   import { onDestroy, tick } from 'svelte';
 
@@ -57,6 +58,8 @@
   let kitGame: string | null = $state(null);
   const kitTeam = $derived(kitGame ? v.s.teams[kitGame] : undefined);
   const nextLocked = $derived(GAMES.find((g) => !v.s.games[g.id]?.unlocked));
+  /** Drop tier, Challenge, Auto-promote and Auto-sub arrive with "League champions" in a guided first run. */
+  const controlsAwake = $derived(awake(v.s, 'teamControls'));
   const lockedCount = $derived(GAMES.filter((g) => !v.s.games[g.id]?.unlocked).length);
 
   // The roster at a glance, folded in from the old Roster page.
@@ -644,7 +647,7 @@
           class="bench"
           class:droppable={canTake(g.id) && drag?.from !== 'bench'}
           class:over={isOver(`bench:${g.id}`) && drag?.from !== 'bench'}
-          class:tut-target={restStep && g.index === 0}
+          class:tut-target={(restStep && g.index === 0) || (hinted(v.s, 'bench') && team.bench.length > 0)}
           data-drop="bench:{g.id}"
           use:tooltip={benchTip}
         >
@@ -748,6 +751,7 @@
         </div>
 
         <footer>
+          {#if controlsAwake}
           <button
             class="btn small"
             disabled={team.tier === 0}
@@ -807,12 +811,13 @@
           >
             <input type="checkbox" checked={team.autoSub} onchange={(e) => game.setTeamOption(g.id, 'autoSub', e.currentTarget.checked)} /> Auto-sub
           </label>
+          {/if}
           <button class="help-btn" onclick={help} aria-label="How teams work" title="How teams work"><Icon name="help" size={15} /></button>
           <span class="record muted small num">{fmt(team.wins)}W {fmt(team.losses)}L · {team.titles} league title{team.titles === 1 ? '' : 's'} · {money(team.earnings)}</span>
         </footer>
         {/if}
       </article>
-    {:else if g.id === nextLocked?.id && !v.s.draft}
+    {:else if g.id === nextLocked?.id && !v.s.draft && awake(v.s, 'foundTeams')}
       <article class="team locked" style="--gc:{g.color}">
         <header>
           <span class="logo">{@html gameLogoSvg(g.id, g.color, g.name)}</span>

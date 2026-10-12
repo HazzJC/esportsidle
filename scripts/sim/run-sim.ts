@@ -9,18 +9,22 @@
  * (random.ts) are seeded separately.
  */
 import { GAMES } from '../../src/data/games';
+import { GEAR_SLOTS } from '../../src/data/gear';
+import { buyGear, gearPrice } from '../../src/engine/players';
 import { DYNASTY, LEGACY_NODES } from '../../src/data/legacy';
 import { PRODUCTS } from '../../src/data/merch';
 import { OPERATIONS } from '../../src/data/operations';
-import { QUEST_MAP } from '../../src/data/quests';
+import { QUEST_MAP, STUCK_SECONDS } from '../../src/data/quests';
 import { CROWD_BUFF_ID, applyChain, clickLogo } from '../../src/engine/clicker';
 import { MAX_DESIGNS, addDesign, analyzeDesign, deleteDesign, generateDesign, setJerseyDesign } from '../../src/engine/designs';
 import { signDraftPick } from '../../src/engine/draft';
 import { clickDrop } from '../../src/engine/drops';
 import { computeMods, computeRates } from '../../src/engine/economy';
 import { applyOfflineProgress, tick } from '../../src/engine/game';
-import { signListing } from '../../src/engine/market';
-import { TRENDING_THRESHOLD, optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../../src/engine/merch';
+import { sellPlayer, signListing } from '../../src/engine/market';
+import { automationUnlocked } from '../../src/engine/automation';
+import { awake } from '../../src/engine/firstRun';
+import { TRENDING_THRESHOLD, isMerchUnlocked, optimalPrice, setLineDesign, setLinePrice, unlockProduct } from '../../src/engine/merch';
 import { buyDynasty, buyNode, canSell, dynastyCost, dynastyRank, mandateOffers, nodeState, pendingLegacy, sellOrg } from '../../src/engine/prestige';
 import { claimQuest } from '../../src/engine/quests';
 import { Rng } from '../../src/engine/rng';
@@ -28,7 +32,7 @@ import { decodeSave, encodeSave } from '../../src/engine/save';
 import { sectionOpen } from '../../src/engine/sections';
 import { signOffer } from '../../src/engine/sponsors';
 import { createNewGame } from '../../src/engine/state';
-import { setSeasonPlan, unlockGame } from '../../src/engine/teams';
+import { setSeasonPlan, startPlayer, unlockGame } from '../../src/engine/teams';
 import { playInvitation } from '../../src/engine/tournament';
 import { INCOME_SOURCES, type GameState, type IncomeSource, type Mods, type Rates } from '../../src/engine/types';
 import { resolveChoice } from '../../src/engine/worldEvents';
@@ -102,6 +106,41 @@ export function runSim(opts: SimOptions): SimRecord {
         const team = Object.values(s.teams)[0];
         if (team) setSeasonPlan(s, team.gameId, team.plan === 'balanced' ? 'development' : 'balanced');
       }
+      // The newer quests ask for one action each, which a player following the line takes.
+      if (!q.ready && q.id === 'title_1' && s.time - (q.since ?? s.time) >= STUCK_SECONDS) {
+        // The console's tip says to upgrade the player's gear: buy what is affordable, cheapest first.
+        const p = s.players.founder ?? Object.values(s.players)[0];
+        for (let i = 0; p && i < 10; i++) {
+          const slot = GEAR_SLOTS.map((g) => ({ id: g.id, cost: gearPrice(s, p, g.id, mods, rates) })).sort((x, y) => x.cost - y.cost)[0];
+          if (!slot || slot.cost > s.cash * 0.5 || !buyGear(s, p.id, slot.id, mods, rates)) break;
+        }
+      }
+      if (!q.ready && q.id === 'gear_1') {
+        // The quest points at the founder's kit: buy its cheapest item.
+        const p = s.players.founder ?? Object.values(s.players)[0];
+        const slot = p && GEAR_SLOTS.map((g) => ({ id: g.id, cost: gearPrice(s, p, g.id, mods, rates) })).sort((x, y) => x.cost - y.cost)[0];
+        if (p && slot && slot.cost <= s.cash) buyGear(s, p.id, slot.id, mods, rates);
+      }
+      if (!q.ready && q.id === 'scout_1') {
+        // The quest asks for a signing: the best prospect the org can comfortably afford, for any team.
+        const listing = s.market.listings
+          .filter((l) => l.currency === 'cash' && l.price <= s.cash * 0.5 && s.teams[l.player.gameId])
+          .sort((a, b) => b.player.potential - a.player.potential)[0];
+        if (listing) signListing(s, listing.player.id, computeMods(s));
+      }
+      if (!q.ready && q.id === 'lineup_1') {
+        const team = Object.values(s.teams).find((t) => t.bench.length > 0);
+        const seat = team ? Math.max(0, team.lineup.findIndex((id) => id !== null)) : -1;
+        if (team && seat >= 0) startPlayer(s, team.gameId, team.bench[0], seat);
+      }
+      if (!q.ready && q.id === 'auto_1') {
+        const routine = (Object.keys(s.automation) as (keyof typeof s.automation)[]).find((id) => automationUnlocked(s, id));
+        if (routine) s.automation[routine].on = true;
+      }
+      if (!q.ready && q.id === 'sell_player') {
+        const spare = Object.values(s.players).filter((p) => !p.founder).sort((a, b) => a.level - b.level)[0];
+        if (spare) sellPlayer(s, spare.id);
+      }
       if (!q.ready && q.id === 'design_shirt') {
         const designId = Object.keys(s.designs)[0] ?? addDesign(s, generateDesign(new Rng(s), 32, 'Audit jersey'));
         if (designId) setJerseyDesign(s, designId);
@@ -113,7 +152,8 @@ export function runSim(opts: SimOptions): SimRecord {
       claimQuest(s, q.id, choice, { cps: rates.cpsNoBuffs, fansPerSec: rates.fansPerSec }, new Rng(s));
     }
     if (variant !== 'no-teams') {
-      const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
+      // In a guided first run the Found team cards appear with "Branch out".
+      const next = awake(s, 'foundTeams') ? GAMES.find((g) => !s.games[g.id]?.unlocked) : undefined;
       if (next && s.cash >= next.unlockCost * 2) {
         const cash = s.cash;
         unlockGame(s, next.id);
@@ -130,7 +170,7 @@ export function runSim(opts: SimOptions): SimRecord {
         }
       }
     }
-    if (variant !== 'no-merch' && s.fansRun >= 5_000) {
+    if (variant !== 'no-merch' && s.fansRun >= 5_000 && isMerchUnlocked(s)) {
       for (const p of PRODUCTS) {
         if (!s.merch.unlocked[p.id] && s.fansRun >= p.unlockFans && s.cash >= p.unlockCost * 3) {
           const cash = s.cash;
@@ -161,7 +201,7 @@ export function runSim(opts: SimOptions): SimRecord {
         setLinePrice(s, productId, optimalPrice(line.designId ? analyzeDesign(s.designs[line.designId], s.merch.trend).trend >= TRENDING_THRESHOLD : false));
       }
     }
-    for (const offer of [...s.sponsors.offers]) signOffer(s, offer.id, mods);
+    if (sectionOpen(s, 'sponsors')) for (const offer of [...s.sponsors.offers]) signOffer(s, offer.id, mods);
     if (P.playsInvitationals && s.events.invitation) playInvitation(s, { rng: new Rng(s), mods, rates }, 'none');
     if (P.answersEvents) {
       for (const choice of [...s.events.pending]) {
@@ -250,6 +290,8 @@ export function runSim(opts: SimOptions): SimRecord {
         return 0;
       case 'crowd': {
         if (c.opening && intoRun < c.opening.seconds) return c.opening.cps;
+        // A player following the quest line fills the meter when "Hype streak" asks for it.
+        if (s.quests.active.some((q) => q.id === 'crowd_1' && !q.ready)) nextBurst = Math.min(nextBurst, wall);
         if (wall < nextBurst || s.buffs.some((b) => b.id === CROWD_BUFF_ID && b.endsAt > s.time)) return 0;
         if (burstStart < 0) burstStart = wall;
         if (wall - burstStart >= c.maxBurst) {
@@ -355,6 +397,10 @@ export function runSim(opts: SimOptions): SimRecord {
     for (const g of GAMES) if (s.games[g.id]?.unlocked && g.index > 0) mark(`unlock ${g.id}`);
     for (const op of OPERATIONS) if (s.ops[op.id].owned > 0) mark(`first ${op.id}`);
     if (s.tutorial.step === 'done') mark('tutorial done');
+    // When the first title and promotion come by themselves, to compare with when the quest line asks for them.
+    if (s.stats.seasonTitles > 0) mark('first title');
+    if (s.stats.promotions > 0) mark('first promotion');
+    if (s.stats.crowdsTotal > 0) mark('first crowd');
     if (s.sponsors.active.length > 0) mark('first sponsor');
     if (Object.keys(s.merch.unlocked).length > 0) mark('merch launched');
     if (canSell(s)) mark('first legacy point');
@@ -538,6 +584,8 @@ export function runSim(opts: SimOptions): SimRecord {
       }
       // Record each tab as it opens ("tab market"), to see how the first run spaces new systems out.
       for (const id of Object.keys(s.sections)) mark(`tab ${id}`);
+      // And each quest as the line reaches it, marked when it was already done on arrival (credited).
+      for (const q of s.quests.active) mark(`quest ${q.id}${q.credited ? ' (credited)' : ''}`);
       if (wall % 60 === 0) checkMilestones();
     }
     if (wall % sampleEvery === 0) sample();

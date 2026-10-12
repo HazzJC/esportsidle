@@ -1,4 +1,5 @@
 import { DECOR, DECOR_MAP, ROOMS } from '../data/decor';
+import { awake } from './firstRun';
 import { STAFF, STAFF_EXPONENT, STAFF_MAP, STAFF_SOFT_EXPONENT, effectAmount, type QolId, type StaffDef, type StaffStat } from '../data/staff';
 import { geometricMax, geometricPrice } from './pricing';
 import { sectionOpen } from './sections';
@@ -175,6 +176,9 @@ export function checkHouseMove(s: GameState): void {
   }
   if (level <= s.roomSeen) return;
   s.roomSeen = level;
+  // Before the House tab opens in a guided first run, the org moves quietly: the rooms change, and the
+  // House tab tells the story when it opens.
+  if (!awake(s, 'houseMoves')) return;
   emit({ type: 'house', level });
 }
 

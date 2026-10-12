@@ -6,6 +6,7 @@
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { GOAL_EARNINGS_SHARE, MIN_GOAL_SECONDS, goalLabel, goalShareRate, goalProgress, goalReward, goalRewardPotential, maxSponsorTier, offerRequirements, sponsorsUnlocked } from '../../engine/sponsors';
   import { brandLogoSvg } from '../brandArt';
+  import { sectionOpen } from '../../engine/sections';
   import { rarityColor } from '../theme';
   import type { SponsorOffer } from '../../engine/types';
   import Icon from '../components/Icon.svelte';
@@ -33,6 +34,8 @@
   /** Tiers share the rarity ladder: two tiers to a band, so tier 10 is mythic red. */
   const tierColor = (tier: number) => rarityColor(Math.floor(tier / 2));
   const topTier = $derived(maxSponsorTier(s) + 1);
+  /** The Legacy-only tiers are mentioned once the Legacy tab has explained legacy points. */
+  const legacyOpen = $derived(sectionOpen(s, 'legacy'));
   /** The bigger brands that are waiting behind the Global Brand Portfolio Legacy node. */
   const waitingTiers = $derived(SPONSOR_TIERS.slice(topTier));
   const portfolioCost = LEGACY_NODE_MAP.get('sponsor_tiers')?.cost ?? 0;
@@ -44,7 +47,7 @@
       <h2 class="section-title">Sponsors <span class="dim">{s.sponsors.active.length}/{slots} slots</span></h2>
       <p class="muted small">
         Every deal has two parts: a boost that lasts <b>while the contract runs</b>, and a goal that pays a <b>one-off bonus</b> when you hit it.
-        Harder goals come with stronger perks. Tiers {topTier < SPONSOR_TIERS.length ? `1 to ${topTier} are open; the Global Brand Portfolio legacy node opens up to tier ${SPONSOR_TIERS.length}` : `1 to ${topTier} are open`}.
+        Harder goals come with stronger perks.{#if legacyOpen} Tiers {topTier < SPONSOR_TIERS.length ? `1 to ${topTier} are open; the Global Brand Portfolio legacy node opens up to tier ${SPONSOR_TIERS.length}` : `1 to ${topTier} are open`}.{/if}
       </p>
     </div>
     {#if unlocked}
@@ -219,7 +222,7 @@
       {/if}
     </section>
 
-    {#if waitingTiers.length > 0}
+    {#if waitingTiers.length > 0 && legacyOpen}
       <section class="teaser">
         <h3 class="section-title"><Icon name="globe" size={14} /> Bigger brands are watching</h3>
         <p class="muted small">

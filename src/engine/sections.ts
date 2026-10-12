@@ -62,8 +62,9 @@ export const SECTIONS: SectionDef[] = [
     id: 'achievements',
     name: 'Trophies',
     unlock: (s) => Object.keys(s.achievements).length > 0,
+    quest: 'trophies_1',
     requirement: () => 'Unlock an achievement',
-    announce: 'Every achievement adds to your trophy cabinet, which boosts income.',
+    announce: 'Every achievement and trophy on one shelf. Trophies are currency too: spend them on operation levels in HQ.',
   },
   {
     id: 'studio',
@@ -105,7 +106,9 @@ export const SECTIONS: SectionDef[] = [
     id: 'legacy',
     name: 'Legacy',
     unlock: (s) => s.prestige.runs > 0 || s.earnedTotal >= LEGACY_TAB_EARNED,
-    requirement: () => `Earn ${money(LEGACY_TAB_EARNED)} in total`,
+    quest: 'sell_org',
+    requirement: (s) => `Earn ${money(LEGACY_TAB_EARNED)} in total (${money(s.earnedTotal)} so far)`,
+    progress: (s) => ({ value: Math.min(LEGACY_TAB_EARNED, s.earnedTotal), target: LEGACY_TAB_EARNED }),
     announce: 'Your org is worth something now. One day you can sell it for legacy points.',
   },
   { id: 'stats' },
@@ -132,16 +135,19 @@ export type SectionPace = { reason: 'visit'; section: string } | { reason: 'brea
 /**
  * Whether a quest that opens a new tab should wait before it is offered. It waits until every tab a
  * quest has opened has been visited (the badge alone is easy to miss), and until a short breather has
- * passed since the last one opened, so each new system gets a moment of its own. Null when it can go.
+ * passed since the last one opened, so each new system gets a moment of its own. The breather ends
+ * early once the last tab's own quest has been claimed. Null when it can go.
  */
 export function sectionPace(s: GameState): SectionPace | null {
-  let last: { id: string; at: number } | null = null;
+  let last: { id: string; at: number; quest: string } | null = null;
   for (const def of SECTIONS) {
     const at = s.sections[def.id];
     if (!def.quest || at === undefined) continue;
     if (!s.sectionsSeen[def.id]) return { reason: 'visit', section: def.id };
-    if (!last || at > last.at) last = { id: def.id, at };
+    if (!last || at > last.at) last = { id: def.id, at, quest: def.quest };
   }
+  // A player who has already finished the last tab's quest has got to know it: no need to wait.
+  if (last && s.quests.done[last.quest] !== undefined) return null;
   if (last && s.time < last.at + SECTION_BREATHER) return { reason: 'breather', section: last.id, since: last.at, until: last.at + SECTION_BREATHER };
   return null;
 }

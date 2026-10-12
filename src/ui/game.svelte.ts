@@ -36,7 +36,7 @@ import { buyGear } from '../engine/players';
 import { bulkAmount, buyDecor, hasQol, hireStaff } from '../engine/staff';
 import { STAFF_MAP } from '../data/staff';
 import { Rng } from '../engine/rng';
-import { assignSlot, benchPlayer, changeTier, setSeasonPlan, unlockGame } from '../engine/teams';
+import { benchPlayer, changeTier, setSeasonPlan, startPlayer, unlockGame } from '../engine/teams';
 import type { SeasonPlan } from '../data/seasonPlans';
 import type { Appearance, AutomationSettings, MarketState, TeamKit } from '../engine/types';
 import { isHexColor } from '../data/palette';
@@ -55,6 +55,7 @@ import { introKey } from '../data/intros';
 import { QUEST_MAP, type QuestHint } from '../data/quests';
 import { claimQuest, describeReward } from '../engine/quests';
 import { restDuringTutorial, skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
+import { awake } from '../engine/firstRun';
 import { playSound, type SoundId } from './sound';
 import { pauseMusicForVisibility, setMusicVolume, startMusic, stopMusic } from './audio/music';
 
@@ -119,6 +120,8 @@ const MAX_ONLINE_CATCHUP_SECONDS = 3600;
 const MAX_TOASTS = 3;
 /** Unlocks landing within this window share one popup and one chime. */
 const ACHIEVEMENT_BATCH_MS = 450;
+/** Seconds after a tab opens before a card that arrives by itself (a house move) may cover it. */
+const INTRO_GAP_SECONDS = 45;
 
 /**
  * The engine mutates one plain state object in place. Svelte skips updates when a derived value keeps the
@@ -223,9 +226,39 @@ class GameStore {
 
   refresh(): void {
     this.view = this.makeView();
-    if (this.pendingAchievements.length > 0 && !this.achievementTimer && !tutorialActive(this.state)) {
+    if (this.pendingAchievements.length > 0 && !this.achievementTimer && this.achievementsCanShow()) {
       this.achievementTimer = setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
     }
+    // The tutorial ends on the Teams tab; the quest line it hands over to lives in HQ.
+    const step = this.state.tutorial.step;
+    if (this.lastTutorialStep !== null && this.lastTutorialStep !== 'done' && step === 'done' && !this.state.tutorial.skipped) this.tab = 'hq';
+    this.lastTutorialStep = step;
+    // A house move waits its turn rather than landing on top of another card (see `canInterrupt`).
+    if (this.pendingHouse !== null && this.houseMove === null && this.canInterrupt()) {
+      this.houseMove = this.pendingHouse;
+      this.pendingHouse = null;
+      this.sfx('promote');
+    }
+  }
+
+  private lastTutorialStep: string | null = null;
+  /** A house move announced while something else was on screen, shown once it can be. */
+  private pendingHouse: number | null = null;
+
+  /**
+   * Whether a card that arrives by itself (a house move) may open now: nothing else is open, and no tab
+   * opened in the last `INTRO_GAP_SECONDS` (that tab has the player's attention).
+   */
+  private canInterrupt(): boolean {
+    const s = this.state;
+    if (s.events.invitation || (s.events.lastTournament && !s.events.lastTournament.seen) || this.offlineReport) return false;
+    const lastOpened = Math.max(0, ...Object.values(s.sections));
+    return s.time - lastOpened >= INTRO_GAP_SECONDS;
+  }
+
+  /** Achievement popups wait for the tutorial, and in a guided first run for the Trophies tab that shows them. */
+  private achievementsCanShow(): boolean {
+    return !tutorialActive(this.state) && awake(this.state, 'achievementPopups');
   }
 
   // ---------------------------------------------------------------------------
@@ -388,8 +421,8 @@ class GameStore {
         break;
       case 'achievement': {
         this.pendingAchievements.push(e.id);
-        // During the tutorial they wait, and arrive together once it is done (see refresh).
-        if (!tutorialActive(this.state)) this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
+        // During the tutorial (and a guided run's first chapters) they wait, and arrive together (see refresh).
+        if (this.achievementsCanShow()) this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
         break;
       }
       case 'crowd':
@@ -412,8 +445,7 @@ class GameStore {
       }
       case 'house':
         if (tutorialActive(this.state)) break;
-        this.houseMove = e.level;
-        this.sfx('promote');
+        this.pendingHouse = e.level;
         break;
       case 'section': {
         // The tutorial already walks the player to new tabs; the tab's NEW badge is enough.
@@ -595,7 +627,16 @@ class GameStore {
     else if (hint === 'logo') {
       this.mobileView = 'clicker';
     } else {
-      const tab: TabId = hint === 'player' || hint === 'plan' || hint === 'found' ? 'teams' : hint;
+      const tab: TabId =
+        hint === 'player' || hint === 'plan' || hint === 'found' || hint === 'bench'
+          ? 'teams'
+          : hint === 'levels'
+            ? 'hq'
+            : hint === 'merch'
+              ? 'studio'
+              : hint === 'routines'
+                ? 'staff'
+                : hint;
       if (sectionOpen(this.state, tab)) this.tab = tab;
       this.mobileView = 'center';
     }
@@ -759,7 +800,7 @@ class GameStore {
   }
 
   assignSlot(gameId: string, playerId: string, slot: number): void {
-    if (assignSlot(this.state, gameId, playerId, slot)) this.refresh();
+    if (startPlayer(this.state, gameId, playerId, slot)) this.refresh();
   }
 
   benchPlayer(gameId: string, playerId: string): void {

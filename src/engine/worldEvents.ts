@@ -1,4 +1,6 @@
 import { GAMES, GENRE_LABEL, type GameDef } from '../data/games';
+import { awake } from './firstRun';
+import { EVENT_QUEST_ID, questLive } from './quests';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { RIVAL_ORGS } from '../data/names';
 import { addBuff } from './buffs';
@@ -46,6 +48,8 @@ export function retentionBids(s: GameState, p: Player, baseIncomePerSecond = 0, 
 }
 
 export const CHOICE_LIFETIME = 120;
+/** Seconds before another decision while the decision quest is live and nothing is waiting. */
+export const EVENT_QUEST_RETRY = 30;
 export const MAX_PENDING_CHOICES = 3;
 export const LOG_LENGTH = 30;
 
@@ -518,8 +522,20 @@ export function fireEvent(s: GameState, id: string, ctx: EventContext): boolean 
   return true;
 }
 
+/**
+ * Which events can fire now. In a guided first run, events that need no answer wait for a second team
+ * and decisions wait for "A tough call"; while that quest is live and nothing is waiting, only a
+ * decision fires, since the quest promised one.
+ */
+function eventWeight(s: GameState, ctx: EventContext, def: WorldEventDef): number {
+  const decision = def.resolve !== undefined;
+  if (decision ? !awake(s, 'decisions') : !awake(s, 'ambient')) return 0;
+  if (!decision && questLive(s, EVENT_QUEST_ID) && s.events.pending.length === 0) return 0;
+  return def.weight(s, ctx);
+}
+
 export function fireRandomEvent(s: GameState, ctx: EventContext): string | null {
-  const def = ctx.rng.weighted(WORLD_EVENTS, (d) => d.weight(s, ctx));
+  const def = ctx.rng.weighted(WORLD_EVENTS, (d) => eventWeight(s, ctx, d));
   if (!def) return null;
   def.fire(s, ctx);
   return def.id;
@@ -544,6 +560,8 @@ export function updateWorldEvents(s: GameState, ctx: EventContext): void {
     s.events.nextAt = s.time + ctx.rng.range(FIRST_EVENT[0], FIRST_EVENT[1]);
     return;
   }
+  // The decision quest promised a card: if the last one ran out unanswered, another follows soon.
+  if (questLive(s, EVENT_QUEST_ID) && s.events.pending.length === 0) s.events.nextAt = Math.min(s.events.nextAt, s.time + EVENT_QUEST_RETRY);
   if (s.time >= s.events.nextAt) {
     fireRandomEvent(s, ctx);
     s.events.nextAt = s.time + ctx.rng.range(EVENT_INTERVAL[0], EVENT_INTERVAL[1]);

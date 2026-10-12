@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { GAMES } from '../src/data/games';
-import { QUESTS } from '../src/data/quests';
+import { CHAPTERS, QUESTS } from '../src/data/quests';
 import { BRAND_MAP, CATEGORY_INFO, STARTER_DEALS, brandPerk } from '../src/data/sponsors';
 import { STAFF } from '../src/data/staff';
 import { FIRST_WIN_BONUS } from '../src/data/tutorial';
@@ -13,7 +13,8 @@ import { subscribe, type GameEvent } from '../src/engine/bus';
 import { computeMods, computeRates } from '../src/engine/economy';
 import { signDraftPick } from '../src/engine/draft';
 import { DROP_QUEST_WAIT, fillQuests, questLineWait, strictQuestLine, updateQuests } from '../src/engine/quests';
-import { SECTION_BREATHER, sectionOpen, updateSections } from '../src/engine/sections';
+import { SECTION_BREATHER, sectionOpen, sectionPace, updateSections } from '../src/engine/sections';
+import { pickOpponent } from '../src/engine/stories';
 import { Rng } from '../src/engine/rng';
 import { BASE_SPONSOR_SLOTS } from '../src/engine/economy';
 import { refreshOffers, signOffer, sponsorBonuses } from '../src/engine/sponsors';
@@ -23,7 +24,7 @@ import { createTeam, playMatch } from '../src/engine/teams';
 import { updateTutorial } from '../src/engine/tutorial';
 import { GAME_SCREEN_IDS, gameScreenSvg } from '../src/ui/gameArt';
 import { ROOM_PROP_GAMES, ROOM_SIGN_GAMES, roomFloorBackground, roomPropSvg, roomSignSvg, roomWallBackground } from '../src/ui/roomArt';
-import { foundedGame } from './fixtures';
+import { foundedGame, guidedGame } from './fixtures';
 
 describe('the first win', () => {
   it('pays its bonus once, as the tutorial moves past the match step', () => {
@@ -61,16 +62,18 @@ describe('the first-run quest line', () => {
     expect(strictQuestLine(s)).toBe(false);
   });
 
-  it('passes over a quest that waits on chance, and comes back for it', () => {
-    const s = foundedGame(0, 1);
+  it('brings the rival with the rival quest, not before', () => {
+    const s = guidedGame(0, 1);
+    s.stats.matchesWon = 50;
     doneUpTo(s, 'rival_1');
     s.rival = null;
-    fillQuests(s);
-    // The line moves past the rival quest and waits on the next one, which needs two signings.
-    expect(questLineWait(s)?.quest.id).toBe('sell_player');
-    s.rival = { name: 'Cloud Nein', wins: 0, losses: 0, streak: 0, since: 0, heat: 0 };
+    // Before the line reaches it, matches draw no rival in a guided first run.
+    pickOpponent(s, new Rng(s));
+    expect(s.rival).toBeNull();
     fillQuests(s);
     expect(s.quests.active.map((q) => q.id)).toEqual(['rival_1']);
+    pickOpponent(s, new Rng(s));
+    expect(s.rival).not.toBeNull();
   });
 
   it('passes over anything not yet available after a sale', () => {
@@ -81,7 +84,8 @@ describe('the first-run quest line', () => {
     s.sections = {};
     s.fansRun = 0;
     fillQuests(s);
-    expect(s.quests.active.map((q) => q.id)).toEqual(['promotion_1']);
+    // No fans for Sponsors and no deal for a goal, so the line passes on to the first decision.
+    expect(s.quests.active.map((q) => q.id)).toEqual(['event_1']);
   });
 
   it('says what it waits for when no quest can be offered', () => {
@@ -105,7 +109,7 @@ describe('the first-run quest line', () => {
     expect(s.drops.nextAt).toBeLessThanOrEqual(s.time + DROP_QUEST_WAIT);
   });
 
-  it('waits for the last new tab to be seen, then a breather, before opening the next one', () => {
+  it('waits for the last new tab to be seen before opening the next one', () => {
     const s = foundedGame(0, 1);
     doneUpTo(s, 'staff_1');
     s.stats.playersSigned = 5;
@@ -119,20 +123,26 @@ describe('the first-run quest line', () => {
     expect(s.quests.active).toEqual([]);
     expect(questLineWait(s)?.pace).toEqual({ reason: 'visit', section: 'market' });
     expect(questLineWait(s)?.text).toMatch(/Market/);
-    // Seen, but it only opened 10 seconds ago: a breather first, with progress for the console's meter.
+    // Seen, and its own quest is claimed, so there is nothing to wait for: Staff's quest opens its tab.
     s.sectionsSeen.market = true;
-    fillQuests(s);
-    expect(s.quests.active).toEqual([]);
-    const wait = questLineWait(s);
-    expect(wait?.pace?.reason).toBe('breather');
-    expect(wait?.value).toBe(10);
-    expect(wait?.target).toBe(SECTION_BREATHER);
-    // Once the breather has passed, Staff's quest comes in and opens its tab.
-    s.time = 990 + SECTION_BREATHER;
     updateQuests(s);
     updateSections(s);
     expect(s.quests.active.map((q) => q.id)).toEqual(['staff_1']);
     expect(sectionOpen(s, 'staff')).toBe(true);
+  });
+
+  it('keeps a breather after a new tab whose own quest is still open', () => {
+    const s = foundedGame(0, 1);
+    for (const id of Object.keys(s.sections)) s.sectionsSeen[id] = true;
+    s.time = 1_000;
+    s.sections.market = 990;
+    s.sectionsSeen.market = true;
+    delete s.quests.done.scout_1;
+    const pace = sectionPace(s);
+    expect(pace?.reason).toBe('breather');
+    expect(pace && 'until' in pace ? pace.until : 0).toBe(990 + SECTION_BREATHER);
+    s.quests.done.scout_1 = 995;
+    expect(sectionPace(s)).toBeNull();
   });
 
   it('never paces a quest whose tab is already open, as after skipping the tutorial', () => {
@@ -145,11 +155,24 @@ describe('the first-run quest line', () => {
     expect(s.quests.active.map((q) => q.id)).toEqual(['staff_1']);
   });
 
-  it('puts the hype quest before the upgrades quest', () => {
+  it('puts each quest after the one whose reward leads into it, chapter by chapter', () => {
     const ids = QUESTS.map((q) => q.id);
-    expect(ids.indexOf('crowd_1')).toBeLessThan(ids.indexOf('upgrades_3'));
-    expect(ids.indexOf('sponsor_1')).toBeLessThan(ids.indexOf('sponsor_goal'));
-    expect(ids.indexOf('second_team')).toBeLessThan(ids.indexOf('decor_1'));
+    const before = (a: string, b: string) => expect(ids.indexOf(a), `${a} before ${b}`).toBeLessThan(ids.indexOf(b));
+    before('upgrades_3', 'crowd_1'); // Clicks x2 helps fill the meter
+    before('crowd_1', 'drop_1'); // the crowd wakes Hype Drops
+    before('title_1', 'trophies_1'); // the title pays the trophies to spend
+    before('trophies_1', 'scout_1'); // Scout's choice waits on the market
+    before('scout_1', 'lineup_1'); // the signing sits on the bench
+    before('sponsor_1', 'sponsor_goal');
+    before('second_team', 'decor_1');
+    before('event_1', 'merch_1');
+    before('merch_1', 'merch_price');
+    // Chapters run in order and the line ends with the sale.
+    QUESTS.forEach((q, i) => {
+      if (i > 0) expect(q.chapter, q.id).toBeGreaterThanOrEqual(QUESTS[i - 1].chapter);
+    });
+    expect(QUESTS[QUESTS.length - 1].id).toBe('sell_org');
+    expect(new Set(QUESTS.map((q) => q.chapter)).size).toBe(CHAPTERS.length);
   });
 });
 
