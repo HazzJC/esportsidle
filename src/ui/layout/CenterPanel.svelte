@@ -51,6 +51,14 @@
   });
   // The active tab stays in view when the strip is too wide for the column.
   let strip: HTMLElement | undefined = $state();
+  /**
+   * When every label will not fit, only the active tab keeps its name and the rest show their icons
+   * (each still has its name on hover and for screen readers). Measured against the column, not the
+   * window, since the strip gains tabs as the org grows.
+   */
+  let stripWidth = $state(0);
+  const fullWidth = $derived(open.reduce((w, t) => w + 44 + t.label.length * 8.6, 0) + (locked.length > 0 ? 56 : 0));
+  const compact = $derived(stripWidth > 0 && fullWidth > stripWidth);
   $effect(() => {
     void game.tab;
     strip?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -74,9 +82,9 @@
 <div class="center panel">
   <!-- The tab strip scrolls sideways when it is too wide; the help button sits outside it, always in view. -->
   <div class="tabbar">
-    <nav class="tabs" aria-label="Sections" bind:this={strip}>
+    <nav class="tabs" class:compact aria-label="Sections" bind:this={strip} bind:clientWidth={stripWidth}>
       {#each open as t (t.id)}
-        <!-- Below 1280px only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
+        <!-- In a compact strip only the active tab shows its label, so every tab carries its name for screen readers and on hover. -->
         <button class="tab" class:active={game.tab === t.id} class:tut-target={tabHinted(t.id)} onclick={() => (game.tab = t.id)} aria-current={game.tab === t.id} aria-label={t.label} use:tooltip={() => ({ title: t.label, icon: t.icon })}>
           <Icon name={t.icon} size={16} />
           <span>{t.label}</span>
@@ -247,12 +255,10 @@
       opacity: 0;
     }
   }
-  @media (max-width: 1280px) {
-    .tab span {
-      display: none;
-    }
-    .tab.active span {
-      display: inline;
-    }
+  .compact .tab span {
+    display: none;
+  }
+  .compact .tab.active span {
+    display: inline;
   }
 </style>

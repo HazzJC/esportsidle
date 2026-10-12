@@ -19,6 +19,34 @@
 
 ## Pending Changes
 
+### First-run playthrough fixes: modals, decisions, Studio, promotion and copy [Status: Pending]
+
+* **The Issue / Motivation**: A playthrough of a brand-new org (headless Chrome, fresh profile) turned up bugs and inconsistencies a new player meets in the first two hours:
+  * Escape stopped closing a modal once anything inside it had been clicked: the dialog stopped every keydown from reaching the window.
+  * A poaching offer left to its timer took "Beat their offer", spending about an eighth of the bank on the player's behalf. When the bank could not cover it, the log said "You refused the transfer" although nobody had.
+  * The first saved design became the clicker logo by itself, even when the player was drawing a shirt for the jersey quest, and the Studio's logo preview kept showing the initials while the clicker showed the drawing.
+  * A team could win the league 15-1 and stay in its tier with nothing saying why (promotion goes by Elo). It happened twice in the playthrough, once 5 Elo short.
+  * Market cards did not show age, so a 30-year-old star signed at 15 minutes retired 40 minutes later without warning.
+  * The gear quest hint named the slot ("The Lucky Charm") while the list shows the item ("Lucky Penny").
+  * The store said operations "open just after your first win" (they open after the injury step), and HQ told a brand-new org to buy a Ranked Grinder before the store had any.
+  * The tutorial said "Click your logo until you have $15" to a player holding $86 from the first-win bonus. The Market's announcement promised a guide that no longer opens by itself.
+  * Trophy-priced upgrades were announced to screen readers as "costs $3".
+  * The colour picked when founding the org (Violet, Sky...) is not a Studio kit preset, so it seemed to vanish from the Studio.
+  * The tab strip overflowed at 1440px (Options clipped) because its compact mode keyed off the window width, not the column.
+  * Substitutions were paused for as long as the Teams tab was open, so new signings sat on the bench while the player watched.
+* **What Changed**:
+  * `Modal.svelte`: Escape still reaches the window from inside a dialog; every other key stays inside it.
+  * `engine/worldEvents.ts`: the poaching offer's timer now takes "Refuse to negotiate" ~~("Beat their offer")~~ *(Changed 1 time since: the "If you wait" tag, Smoother introductions)*. A counter-offer the bank cannot cover says so ("There was not $X in the bank to keep them…").
+  * `game.svelte.ts` `saveDesign`: a new design is never put anywhere by itself; the toast points at the Logo and Jersey buttons. ~~The first design became the logo.~~ The Studio's empty state says the same, and its logo preview shows the drawn logo.
+  * `engine/teams.ts` `endSeason`: a title that does not promote adds "Not promoted yet: promotion goes by Elo, and the team needs N more" (or that auto-promote is off).
+  * `PlayerCard.svelte` shows a player's age; Market cards add a chip from 28 ("Past their peak soon") and 30 ("Near retirement"), with the ageing rules in its tooltip.
+  * Copy: the gear hint names the item, the store and HQ say when operations open, the tutorial's Grinder step reads "Buy a Ranked Grinder from the store for $15; if you are short, click your logo", and the Market announcement says each card shows how a signing changes the win chance.
+  * `Store.svelte`: trophy upgrades read "costs 3 trophies" to screen readers.
+  * `KitPicker.svelte`: a kit that matches no preset shows first, named after the founding colour.
+  * `CenterPanel.svelte`: the strip turns compact (icons, with the active tab named) when its tabs will not fit the column ~~(below 1280px window width)~~.
+  * `game.svelte.ts`: substitutions and role moves pause only while a player is being dragged ~~(while the Teams tab is open)~~.
+  * Tests: poaching default and a counter-offer the bank cannot cover (`events.test.ts`), the champions' Elo note (`seasons.test.ts`).
+
 ### Smoother introductions to new mechanics [Status: Committed]
 *Commit*: `5f22e92` (Oct 4 2026)
 

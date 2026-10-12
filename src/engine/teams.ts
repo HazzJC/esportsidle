@@ -32,7 +32,7 @@ import {
   traitsOf,
 } from './players';
 import { MOODS, engagementMult, recordForm, resetFormForTier, teamMood } from './mood';
-import { canPromote, recordEloResult, relegationElo, teamElo, tierElo } from './elo';
+import { canPromote, promotionElo, recordEloResult, relegationElo, teamElo, tierElo } from './elo';
 import { calmStart } from './tutorial';
 import { Rng } from './rng';
 import { automationActive } from './automation';
@@ -470,6 +470,13 @@ export function endSeason(s: GameState, team: TeamState, ev: TeamEval, rng: Rng 
     team.tier--;
     resetFormForTier(team);
     resultBody.push(`Relegated to the ${tierName(team.tier)}.`);
+  } else if (wins >= TITLE_WINS) {
+    // A title alone does not move a team up: say what does, so a champion staying put makes sense.
+    resultBody.push(
+      canPromote(team)
+        ? 'Auto-promote is off: challenge up from the Teams tab.'
+        : `Not promoted yet: promotion goes by Elo, and the team needs ${Math.ceil(promotionElo(team.tier) - elo)} more.`,
+    );
   }
   if (wins >= TITLE_WINS || promoted || relegated) emit({
     type: 'toast',

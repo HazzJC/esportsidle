@@ -16,6 +16,7 @@
   import MerchIcon from '../components/MerchIcon.svelte';
   import MerchPreview from '../components/MerchPreview.svelte';
   import { merchLookName, merchMilestones, nextMerchMilestone } from '../merchArt';
+  import { designUrl } from '../designImage';
   import { rarityColor, rarityName } from '../theme';
   import PixelEditor from '../components/PixelEditor.svelte';
   import { game } from '../game.svelte';
@@ -37,6 +38,8 @@
   const full = $derived(designs.length >= MAX_DESIGNS);
   const trend = $derived(TREND_MAP.get(s.merch.trend));
   const merchOpen = $derived(isMerchUnlocked(s));
+  const logoDesign = $derived(s.org.logo ? s.designs[s.org.logo] : undefined);
+  const logoUrl = $derived(logoDesign ? designUrl(logoDesign) : undefined);
   const editingDesign = $derived(editing?.id ? (s.designs[editing.id] ?? null) : null);
 
   function save(draft: DesignDraft) {
@@ -103,7 +106,7 @@
 
   <section class="colours">
     <div class="kit-preview">
-      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={96} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={96} {logoUrl} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
     </div>
     <div class="kit-main">
       <h3 class="section-title">Logo</h3>
@@ -129,7 +132,7 @@
     {#if designs.length === 0}
       <div class="empty">
         <Icon name="palette" size={40} />
-        <p class="muted">No designs yet. Draw a logo for {s.org.name}. It will replace the initials on your clicker shield and appear on every jersey.</p>
+        <p class="muted">No designs yet. Draw one, then choose where it goes: <b>Logo</b> puts it inside your badge, <b>Jersey</b> puts it on every team shirt.</p>
       </div>
     {:else}
       <div class="designs">

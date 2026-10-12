@@ -56,7 +56,7 @@ export const SECTIONS: SectionDef[] = [
     requirement: (s) =>
       tutorialActive(s) ? 'Finish the tutorial' : `Have ${money(MARKET_UNLOCK_CASH)} in the bank (${money(Math.floor(s.cash))} now)`,
     progress: (s) => ({ value: Math.min(MARKET_UNLOCK_CASH, Math.floor(s.cash)), target: MARKET_UNLOCK_CASH }),
-    announce: 'The transfer market is open. Sign players to fill your teams and bench. Open it for a quick guide to reading a player.',
+    announce: 'The transfer market is open. Sign players to fill your teams and bench. Each card shows how a signing would change your win chance.',
   },
   {
     id: 'achievements',

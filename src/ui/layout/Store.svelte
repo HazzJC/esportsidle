@@ -182,7 +182,7 @@
             style="--c:{tierColor(def.tier)}; --rank:{tierRank(def.tier)}"
             onclick={() => game.buyUpgrade(def.id)}
             use:tooltip={() => upgradeTip(def)}
-            aria-label="{def.name}, costs {money(upgradePrice(def, v.m))}"
+            aria-label="{def.name}, costs {def.currency === 'cash' ? money(upgradePrice(def, v.m)) : `${fmt(upgradePrice(def, v.m))} trophies`}"
           >
             {#if def.art}
               <span class="art">{@html opArt(def.art)}</span>
@@ -244,7 +244,7 @@
         <div class="ops-locked">
           <Icon name="lock" size={22} />
           <b>Operations</b>
-          <span class="muted">Businesses that earn money every second, even while you are away. They open just after your first win.</span>
+          <span class="muted">Businesses that earn money every second, even while you are away. They open once your first team has won a match and your player is fit again.</span>
         </div>
       {:else}
         {#each shownOps as op (op.id)}

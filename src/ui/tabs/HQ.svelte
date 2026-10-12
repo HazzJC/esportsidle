@@ -5,6 +5,7 @@
   import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
+  import { operationsOpen } from '../../engine/tutorial';
   import Collapsible from '../components/Collapsible.svelte';
   import HQOverview from '../components/HQOverview.svelte';
   import { GRIND_NEED, TIER_NEED } from '../../data/upgrades';
@@ -183,8 +184,9 @@
       <Icon name="gamepad-2" size={46} />
       <h3>It's just you and a dream</h3>
       <p class="muted">
-        Operations earn money every second, even while the game is closed. Start with a <b>Ranked Grinder</b> from the store;
-        every operation you own shows up here.
+        Operations earn money every second, even while the game is closed.
+        {#if operationsOpen(s)}Start with a <b>Ranked Grinder</b> from the store; every operation you own shows up here.{:else}They open
+          once your first team has its first win.{/if}
       </p>
     </div>
   {:else}

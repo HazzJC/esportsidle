@@ -275,7 +275,8 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         title: `${rival} wants ${p.tag}`,
         body: `They're offering ${money(value)} to sign ${p.tag} away from you.`,
         icon: 'handshake',
-        defaultOption: 2,
+        // Waiting never spends the bank on the player's behalf: the timer turns the offer down.
+        defaultOption: COUNTER_BIDS.length + 1,
         data: { playerId: p.id, value, rival, bid0: bids[0].cost, bid1: bids[1].cost, bid2: bids[2].cost },
         options: [
           { label: `Sell ${p.tag}`, desc: `They join ${rival} and you are paid.`, tone: 'info', cash: -value },
@@ -307,8 +308,17 @@ export const WORLD_EVENTS: WorldEventDef[] = [
           tone: 'good',
         });
       } else {
+        // A counter-offer the bank can no longer cover falls through to turning the rival down.
+        const short = option >= 1 && option <= bids.length;
         applyMorale(p, -15, ctx.mods);
-        logEvent(s, { title: `${p.tag} is unhappy`, body: 'You refused the transfer. Morale -15.', icon: 'face-slightly-frowning', tone: 'bad' });
+        logEvent(s, {
+          title: `${p.tag} is unhappy`,
+          body: short
+            ? `There was not ${money(bids[option - 1].cost)} in the bank to keep them, so the offer was turned down. Morale -15.`
+            : 'You turned the transfer down. Morale -15.',
+          icon: 'face-slightly-frowning',
+          tone: 'bad',
+        });
       }
     },
   },

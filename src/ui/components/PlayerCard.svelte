@@ -44,7 +44,7 @@
       <span class="tag">{player.tag}</span>
       <span class="rarity">{player.founder ? 'Founder' : rarity.name}</span>
     </div>
-    <div class="sub muted">{player.founder ? 'Org founder' : `${player.first} ${player.last}`} · {player.nation}</div>
+    <div class="sub muted">{player.founder ? 'Org founder' : `${player.first} ${player.last}`} · {player.nation}{player.founder ? '' : ` · age ${player.age}`}</div>
     <div class="meta">
       <span class="game-badge" style="color: {title.color}">
         <Icon name={title.icon} size={12} color={title.color} />

@@ -131,6 +131,7 @@
     if (press.touch) navigator.vibrate?.(12);
     scroller = scrollParent(root ?? null);
     document.body.classList.add('dragging-player');
+    game.draggingPlayer = true;
     // Once a finger has picked a player up, moving it drags the card instead of scrolling the page.
     // Without this the browser starts a scroll, which cancels the drag.
     if (press.touch) window.addEventListener('touchmove', holdTouch, { passive: false });
@@ -176,6 +177,7 @@
     drag = null;
     cancelAnimationFrame(edgeFrame);
     document.body.classList.remove('dragging-player');
+    game.draggingPlayer = false;
     window.removeEventListener('touchmove', holdTouch);
   }
 

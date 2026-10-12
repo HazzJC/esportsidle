@@ -164,6 +164,8 @@ class GameStore {
   lastSavedAt = $state(0);
   saveError = $state<string | null>(null);
   viewingGear = $state(false);
+  /** A player is being dragged between seats: substitutions and role moves wait so the room does not shift under the cursor. */
+  draggingPlayer = false;
   /** A house the org has just moved into (its ROOMS index), shown on a card until dismissed. */
   houseMove = $state<number | null>(null);
 
@@ -309,7 +311,7 @@ class GameStore {
         let steps = 0;
         const options: TickOptions = {
           pauseMarket: this.tab === 'market',
-          pauseTeams: this.tab === 'teams',
+          pauseTeams: this.draggingPlayer,
           pauseGear: this.viewingGear,
         };
         while (this.acc >= TICK_SECONDS && steps < 40) {
@@ -861,10 +863,10 @@ class GameStore {
       this.toast({ title: 'Design library full', body: 'Delete a design to make room.', icon: 'palette', tone: 'bad' }, 3000);
       return null;
     }
-    if (!this.state.org.logo) setOrgLogo(this.state, newId);
+    // A new design is never put anywhere by itself: the player picks Logo, Jersey or a merch line for it.
     this.toast({
       title: 'Design saved',
-      body: this.state.org.logo === newId ? `${draft.name} is now your org logo.` : draft.name,
+      body: `${draft.name}: use the Logo or Jersey button under it to wear it.`,
       icon: 'palette',
       tone: 'good',
     });
