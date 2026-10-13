@@ -5,6 +5,7 @@
   import Agenda from '../components/Agenda.svelte';
   import { hinted } from '../hints';
   import FrontOffice from '../components/FrontOffice.svelte';
+  import { awake } from '../../engine/firstRun';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
   import { countQuality } from '../theme';
@@ -183,7 +184,7 @@
     {/each}
   </div>
 
-  <FrontOffice />
+  {#if awake(v.s, 'frontOffice')}<FrontOffice />{/if}
 </div>
 
 <style>

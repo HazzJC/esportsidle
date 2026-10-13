@@ -7,7 +7,7 @@ import { game } from './game.svelte';
  * the tutorial does: the player rig for "Gear up", the Staff tab for "Hire help". Long goals (win a
  * title, own 100 operations) only flash their target when the player presses "Show me".
  */
-const PULSING: ReadonlySet<QuestHint> = new Set(['player', 'plan', 'found', 'upgrades', 'logo', 'market', 'staff', 'house', 'studio', 'sponsors']);
+const PULSING: ReadonlySet<QuestHint> = new Set(['player', 'plan', 'found', 'bench', 'levels', 'merch', 'routines', 'upgrades', 'logo', 'market', 'staff', 'house', 'studio', 'sponsors']);
 
 /** The live quest's hint if its target should pulse right now. */
 export function liveQuestHint(s: GameState): QuestHint | null {

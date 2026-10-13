@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { QUESTS, QUEST_MAP, type QuestDef, type QuestReward } from '../../data/quests';
-  import { fmt } from '../../engine/format';
+  import { CHAPTERS, QUESTS, QUEST_MAP, STUCK_SECONDS, type QuestDef, type QuestReward } from '../../data/quests';
+  import { fmt, fmtTime } from '../../engine/format';
   import { describeReward, nextQuest, questLineWait, questPerkSources, questProgress, rewardDetail } from '../../engine/quests';
+  import { SECTIONS, questSection, sectionOpen } from '../../engine/sections';
+  import { TAB_MAP } from '../tabs';
+  import type { TabId } from '../game.svelte';
   import { tooltip } from '../tooltip.svelte';
   import { game } from '../game.svelte';
   import { questColor, questEmblemSvg, rewardArtSvg } from '../questArt';
@@ -37,11 +40,33 @@
         color: questColor(q.id),
         fill: p ? (p.complete ? 1 : Math.min(1, p.value / Math.max(1, p.target))) : 0,
         state: s.quests.done[q.id] !== undefined ? 'done' : live ? 'live' : 'ahead',
+        chapterStart: i > 0 && QUESTS[i - 1].chapter !== q.chapter,
       };
     });
   });
+  /**
+   * The newest tab a quest has opened that the player has not looked at yet. The console holds it up
+   * until it is opened: a toast is easy to miss, and the quest line waits for it.
+   */
+  const arrival = $derived.by(() => {
+    let newest: { id: string; at: number; text: string } | null = null;
+    for (const def of SECTIONS) {
+      const at = s.sections[def.id];
+      if (!def.quest || at === undefined || s.sectionsSeen[def.id]) continue;
+      if (!newest || at > newest.at) newest = { id: def.id, at, text: def.announce ?? '' };
+    }
+    const tab = newest ? TAB_MAP.get(newest.id) : undefined;
+    return newest && tab ? { ...newest, label: tab.label, icon: tab.icon } : null;
+  });
   /** Where a quest sits in the line, counting from one. */
   const questNumber = (id: string) => QUESTS.findIndex((q) => q.id === id) + 1;
+  /** The chapter's opening quest carries its title and a line of story above the screen. */
+  const opensChapter = (def: QuestDef) => QUESTS.find((q) => q.chapter === def.chapter)?.id === def.id;
+  /** The tab the next quest will open, so the current one can say what finishing it leads to. */
+  const nextTab = $derived.by(() => {
+    const section = upNext ? questSection(upNext.id) : undefined;
+    return section && !sectionOpen(s, section.id) ? (TAB_MAP.get(section.id)?.label ?? section.name) : null;
+  });
 
 </script>
 
@@ -69,13 +94,26 @@
         {#each rail as step (step.def.id)}
           <li
             class="seg {step.state}"
+            class:chapter-start={step.chapterStart}
             style="--c:{step.color}; --fill:{step.fill}"
             aria-label="{step.n}. {step.def.title}: {step.state === 'done' ? 'done' : step.state === 'live' ? 'in progress' : 'still to come'}"
-            use:tooltip={() => ({ title: `${step.n}. ${step.def.title}`, icon: step.def.icon, lines: [step.def.desc, step.state === 'done' ? { text: 'Done', tone: 'good' as const } : step.state === 'live' ? { text: 'In progress', tone: 'gold' as const } : { text: 'Still to come', tone: 'muted' as const }] })}
+            use:tooltip={() => ({ title: `${step.n}. ${step.def.title}`, subtitle: `Chapter ${step.def.chapter + 1}: ${CHAPTERS[step.def.chapter].title}`, icon: step.def.icon, lines: [step.def.desc, step.state === 'done' ? { text: 'Done', tone: 'good' as const } : step.state === 'live' ? { text: 'In progress', tone: 'gold' as const } : { text: 'Still to come', tone: 'muted' as const }] })}
           ></li>
         {/each}
       </ol>
     </header>
+
+    {#if arrival}
+      <div class="arrival">
+        <span class="aicon"><Icon name={arrival.icon} size={22} /></span>
+        <span class="atext">
+          <span class="alabel">New tab unlocked</span>
+          <b>{arrival.label}</b>
+          <span class="adesc">{arrival.text}</span>
+        </span>
+        <button class="btn primary" onclick={() => game.openTab(arrival.id as TabId)}>Open {arrival.label} <Icon name="arrow-right" size={14} /></button>
+      </div>
+    {/if}
 
     {#each s.quests.active as q (q.id)}
       {@const def = QUEST_MAP.get(q.id)}
@@ -83,13 +121,27 @@
       {#if def}
         {@const choice = def.rewards.length > 1}
         {@const lit = Math.round(Math.min(1, p.value / p.target) * SEGMENTS)}
+        {@const chapter = CHAPTERS[def.chapter]}
+        {@const meter = !p.complete && p.target <= 1 && def.meter ? def.meter(s) : null}
+        {@const meterLit = meter ? Math.round(Math.min(1, meter.value / Math.max(1e-9, meter.target)) * SEGMENTS) : 0}
+        {@const tip = !p.complete && def.stuck && s.time - (q.since ?? s.time) >= STUCK_SECONDS ? def.stuck(s) : null}
+        {#if chapter && opensChapter(def) && !p.complete}
+          <div class="chapter" style="--qc:{questColor(def.id)}">
+            <span class="cicon"><Icon name={chapter.icon} size={18} /></span>
+            <span class="ctext">
+              <span class="clabel">Chapter {def.chapter + 1} of {CHAPTERS.length}</span>
+              <b>{chapter.title}</b>
+              <span class="cintro">{chapter.intro}</span>
+            </span>
+          </div>
+        {/if}
         <div class="deck" class:complete={p.complete} style="--qc:{questColor(def.id)}">
           <div class="bezel">
             <div class="screen">
               <div class="sline">
                 <span class="sicon" style="--c:{questColor(def.id)}">{@html questEmblemSvg(def)}</span>
                 <span class="stitles">
-                  <span class="kicker">Quest {questNumber(def.id)} of {QUESTS.length}</span>
+                  <span class="kicker">{chapter ? `${chapter.title} · ` : ''}Quest {questNumber(def.id)} of {QUESTS.length}</span>
                   <b class="stitle">{def.title}</b>
                 </span>
                 {#if p.complete}
@@ -99,9 +151,20 @@
                 {/if}
               </div>
               <p class="sdesc">{def.desc}</p>
+              {#if q.credited}
+                <p class="note good"><Icon name="check" size={13} /> You did this before the quest arrived: it counts. Claim your reward.</p>
+              {/if}
+              {#if tip}
+                <p class="note"><Icon name="info" size={13} /> {tip}</p>
+              {/if}
               {#if p.target > 1}
                 <span class="meter" aria-hidden="true">
                   {#each { length: SEGMENTS } as _, i (i)}<i class:on={p.complete || i < lit}></i>{/each}
+                </span>
+              {:else if meter}
+                <span class="mtext">{meter.text}</span>
+                <span class="meter" role="progressbar" aria-label={meter.text} aria-valuemin={0} aria-valuemax={meter.target} aria-valuenow={meter.value}>
+                  {#each { length: SEGMENTS } as _, i (i)}<i class:on={i < meterLit}></i>{/each}
                 </span>
               {:else}
                 <span class="status" class:ready={p.complete}><i></i>{p.complete ? 'Done: claim your reward' : 'In progress'}</span>
@@ -110,7 +173,7 @@
                 {#if def.hint && !p.complete}
                   <button class="showme" onclick={() => game.showQuestHint(def.hint!)}><Icon name="eye" size={12} /> Show me</button>
                 {/if}
-                {#if upNext && upNext.id !== def.id}<span class="snext">Next <Icon name="chevron-right" size={11} /> {upNext.title}</span>{/if}
+                {#if upNext && upNext.id !== def.id}<span class="snext">Next <Icon name="chevron-right" size={11} /> {upNext.title}{#if nextTab}<i class="opens">· opens {nextTab}</i>{/if}</span>{/if}
               </div>
             </div>
           </div>
@@ -128,6 +191,16 @@
                 <div class="key">{@render rewardBody(r, def)}</div>
               {/if}
             {/each}
+            {#if def.bonus && def.bonus.length > 0}
+              <ul class="bonus" aria-label="Also paid">
+                {#each def.bonus as b, i (i)}
+                  <li>
+                    <Icon name={b.kind === 'unlock' ? b.icon : 'plus'} size={13} />
+                    <span><b>{b.kind === 'unlock' ? 'Unlocks: ' : 'Also: '}{describeReward(b, ctx)}</b> <span class="kdetail">{rewardDetail(b, ctx)}</span></span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
           </div>
         </div>
       {/if}
@@ -143,6 +216,9 @@
               <span class="wtext">
                 <span class="wlabel"><Icon name="clock" size={11} /> Up next: {wait.quest.title}</span>
                 <b>{wait.text}</b>
+                {#if wait.pace?.reason === 'breather'}
+                  <span class="wcount num">In {fmtTime(Math.max(0, wait.pace.until - s.time))}</span>
+                {/if}
               </span>
             </div>
             {#if wait.target}
@@ -178,7 +254,7 @@
                 lines: [`From the quest “${perk.quest}”.`, { text: 'Lasts until you sell the org.', tone: 'muted' }],
               })}
             >
-              <span class="niche">{#if def}{@html questEmblemSvg(def)}{/if}</span>
+              <span class="niche">{#if def}{@html questEmblemSvg(def)}{:else}<Icon name={perk.icon} size={20} />{/if}</span>
               <span class="ptext">
                 <b>{perk.label}</b>
                 <span class="from">{perk.quest}</span>
@@ -592,7 +668,184 @@
     color: var(--dim);
   }
 
+  /* A tab a quest has just opened: a lit panel with a button, until the player has been to look. */
+  .arrival {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 11px 14px;
+    border-radius: 11px;
+    border: 1px solid color-mix(in srgb, var(--gold) 55%, #000);
+    background:
+      radial-gradient(80% 140% at 0% 50%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 70%),
+      linear-gradient(180deg, #24211a, #15130f);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--gold) 30%, transparent),
+      0 0 18px color-mix(in srgb, var(--gold) 16%, transparent);
+    animation: arrive 0.5s ease-out;
+  }
+  .aicon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 16%, #0d0c09);
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  }
+  .atext {
+    flex: 1 1 240px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .alabel {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .atext b {
+    font-family: var(--font-ui);
+    font-size: 18px;
+    color: var(--text);
+  }
+  .adesc {
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .arrival .btn {
+    flex: none;
+  }
+  .wcount {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+
   /* Reward keys: chunky caps that sit proud of the panel and press down when they can be claimed. */
+  /* Chapters: a gap in the rail where one begins, and a title card over its first quest. */
+  .seg.chapter-start {
+    margin-left: 5px;
+  }
+  .chapter {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--qc) 35%, #000);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--qc) 16%, #121316), #101114 70%);
+  }
+  .cicon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    color: var(--qc);
+    background: color-mix(in srgb, var(--qc) 14%, #0b0c0e);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--qc) 40%, transparent);
+  }
+  .ctext {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+  .clabel {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--qc);
+  }
+  .ctext b {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--text);
+  }
+  .cintro {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .note {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 9px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .note :global(svg) {
+    flex: none;
+    margin-top: 2px;
+  }
+  .note.good {
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
+    border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  }
+  .mtext {
+    margin-top: auto;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--qc) 40%, #a9acb2);
+  }
+  .mtext + .meter {
+    margin-top: 0;
+  }
+  .opens {
+    font-style: normal;
+    margin-left: 4px;
+    color: color-mix(in srgb, var(--gold) 70%, #6f7377);
+  }
+  .bonus {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .bonus li {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--muted);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed color-mix(in srgb, var(--accent) 25%, #2a2b30);
+  }
+  .bonus li :global(svg) {
+    flex: none;
+    margin-top: 1px;
+    color: var(--gold);
+  }
+  .bonus b {
+    color: var(--text);
+  }
   .keys {
     display: flex;
     flex-direction: column;
@@ -891,6 +1144,7 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .arrival,
     .seg.live,
     .status i,
     .readout.ready,

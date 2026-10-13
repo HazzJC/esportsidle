@@ -1,6 +1,7 @@
 import { PRODUCTS, PRODUCT_MAP, TRENDS, TREND_MAP, finishSalesMult, type TrendId } from '../data/merch';
 import { emit } from './bus';
 import { analyzeDesign } from './designs';
+import { awake } from './firstRun';
 import type { Rng } from './rng';
 import type { GameState, MerchLine, MerchLineRate, Mods, Rates } from './types';
 
@@ -62,8 +63,9 @@ export function noveltyOf(line: MerchLine, time: number, mods: Pick<Mods, 'novel
   return Math.max(NOVELTY_FLOOR, Math.exp(-Math.max(0, time - line.launchedAt) / tau));
 }
 
+/** Merch opens at `MERCH_UNLOCK_FANS`, and in a guided first run once the line reaches "Merch drop". */
 export function isMerchUnlocked(s: GameState): boolean {
-  return s.fansRun >= MERCH_UNLOCK_FANS || Object.keys(s.merch.unlocked).length > 0;
+  return Object.keys(s.merch.unlocked).length > 0 || (s.fansRun >= MERCH_UNLOCK_FANS && awake(s, 'merch'));
 }
 
 export interface MerchEval {
@@ -119,7 +121,9 @@ export function pickTrend(rng: Rng, current: TrendId): TrendId {
 }
 
 export function rotateTrend(s: GameState, rng: Rng, announce: boolean, mods: Pick<Mods, 'trendLengthMult'>): void {
-  s.merch.trend = pickTrend(rng, s.merch.trend);
+  // The next trend is drawn a rotation early, so the Trend tip (a quest tool) can show it coming.
+  s.merch.trend = s.merch.nextTrend && s.merch.nextTrend !== s.merch.trend ? s.merch.nextTrend : pickTrend(rng, s.merch.trend);
+  s.merch.nextTrend = pickTrend(rng, s.merch.trend);
   s.merch.trendEndsAt = s.time + trendLength(mods);
   s.merch.mania = null;
   if (Object.keys(s.merch.unlocked).length > 0 && rng.chance(0.25)) {
@@ -174,6 +178,17 @@ export function setLineDesign(s: GameState, productId: string, designId: string 
   line.launchedAt = before !== undefined && s.time - before < DESIGN_REST_SECONDS ? before : s.time;
   for (const [id, at] of Object.entries(history)) if (s.time - at >= DESIGN_REST_SECONDS || !s.designs[id]) delete history[id];
   return true;
+}
+
+/** How close to the sweet spot (`optimalPrice`) a price counts as being in it, for "Price it right". The default price (×1) is outside it. */
+export const SWEET_SPOT_TOLERANCE = 0.05;
+
+/** Whether a line's price is at its sweet spot, for its design's trend or without one. */
+export function inSweetSpot(s: GameState, line: MerchLine): boolean {
+  const design = line.designId ? s.designs[line.designId] : undefined;
+  if (!design) return false;
+  const trending = analyzeDesign(design, s.merch.trend).trend >= TRENDING_THRESHOLD;
+  return Math.abs(line.price - optimalPrice(trending)) <= SWEET_SPOT_TOLERANCE;
 }
 
 export function setLinePrice(s: GameState, productId: string, price: number): boolean {

@@ -5,6 +5,8 @@
   import { game } from '../game.svelte';
   import { orgLogoSvg } from '../orgArt';
   import Avatar from './Avatar.svelte';
+  import FirstTimeNote from './FirstTimeNote.svelte';
+  import { firstKey } from '../../data/intros';
   import Icon from './Icon.svelte';
 
   const s = $derived(game.view.s);
@@ -66,6 +68,7 @@
         {/if}
       </div>
       <div class="content">
+        {#if !s.guides[firstKey('choice')]}<FirstTimeNote id="choice" />{/if}
         <div class="body muted">{choice.body}</div>
         <div class="options">
           {#each choice.options as option, i (i)}
@@ -74,6 +77,7 @@
             <button class="option {option.tone}" class:too-dear={tooDear} disabled={tooDear} onclick={() => game.resolveChoice(choice.id, i)}>
               <span class="label">
                 {option.label}
+                {#if i === choice.defaultOption}<span class="if-wait" title="Taken for you if the timer runs out">If you wait</span>{/if}
                 {#if cost > 0}<span class="money out num">−{money(cost)}</span>
                 {:else if cost < 0}<span class="money in num">+{money(-cost)}</span>{/if}
               </span>
@@ -94,6 +98,20 @@
 {/if}
 
 <style>
+  /* The option the timer picks when nobody does. */
+  .if-wait {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    border: 1px solid var(--line-2);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    vertical-align: middle;
+  }
   .money {
     margin-left: 6px;
     font-weight: 800;

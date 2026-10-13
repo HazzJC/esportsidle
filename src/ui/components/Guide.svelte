@@ -5,13 +5,13 @@
   import Icon from './Icon.svelte';
 
   /**
-   * A short paged explainer. It shows until the player closes it, and a help button elsewhere can
-   * bring it back with game.showGuide(id).
+   * A paged explainer, opened from a tab's intro card ("The full guide") with game.showGuide(id).
+   * The intro card is what a new tab shows first; this is the longer read behind it.
    */
   let { id, title, pages }: { id: string; title: string; pages: GuidePage[] } = $props();
 
   let index = $state(0);
-  const open = $derived(!game.view.s.guides[id] || game.guideOpen === id);
+  const open = $derived(game.guideOpen === id);
   const page = $derived(pages[Math.min(index, pages.length - 1)]);
   const last = $derived(index >= pages.length - 1);
 

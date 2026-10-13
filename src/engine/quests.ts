@@ -6,7 +6,7 @@ import { fmt, fmtTime, money } from './format';
 import { grantXp, xpToNext } from './players';
 import type { Rng } from './rng';
 import { limitReward } from './rewards';
-import { SECTIONS, updateSections } from './sections';
+import { SECTIONS, questSection, sectionOpen, sectionPace, type SectionPace, updateSections } from './sections';
 import { tutorialActive } from './tutorial';
 import type { ActiveQuest, Effect, GameState } from './types';
 import { earnCash, gainFans, gainTrophies } from './wallet';
@@ -23,7 +23,10 @@ export interface QuestProgress {
 export function questProgress(s: GameState, q: ActiveQuest): QuestProgress {
   const def = QUEST_MAP.get(q.id);
   if (!def) return { value: 0, target: 1, complete: false };
-  const raw = def.metric(s) - (def.mode === 'delta' ? q.base : 0);
+  const raw = def.metric(s) - (def.mode === 'delta' && !creditsHistory(s, def) ? q.base : 0);
+  // A quest announced as done stays done, even if its condition slips afterwards (a merch price off its
+  // sweet spot once the trend changes), so the reward the player was told about can always be claimed.
+  if (q.ready) return { value: def.target, target: def.target, complete: true };
   const value = Math.max(0, Math.min(def.target, raw));
   return { value, target: def.target, complete: raw >= def.target };
 }
@@ -39,12 +42,16 @@ export function strictQuestLine(s: GameState): boolean {
 
 const isAvailable = (s: GameState, def: QuestDef) => !def.available || def.available(s);
 
+/** A `credit` quest in the first run counts what the org did before the line reached it (all-time is this run). */
+const creditsHistory = (s: GameState, def: QuestDef) => !!def.credit && strictQuestLine(s);
+
 /**
  * Puts the next quest in the line on the board. Quests are followed in order and cannot be set
  * aside. In the first run a quest whose requirement is not met yet (fans for the Studio, a second
  * team for the House) waits, and so does everything after it; quests that wait on chance are passed
  * over and come back. Later runs pass over any quest that cannot be offered yet. Quests wait for the
- * tutorial.
+ * tutorial. A quest that would open a new tab also waits until the player has looked at the last new
+ * tab and a short breather has passed since it opened (`sectionPace`).
  */
 export function fillQuests(s: GameState): void {
   if (tutorialActive(s)) return;
@@ -55,8 +62,10 @@ export function fillQuests(s: GameState): void {
   for (const def of QUESTS) {
     if (q.active.length >= QUEST_SLOTS) return;
     if (q.done[def.id] !== undefined || q.active.some((a) => a.id === def.id)) continue;
-    if (isAvailable(s, def)) {
-      q.active.push({ id: def.id, base: def.metric(s), ready: false });
+    if (isAvailable(s, def) && !pacedOut(s, def)) {
+      const base = def.metric(s);
+      const credited = creditsHistory(s, def) && base >= def.target;
+      q.active.push({ id: def.id, base, ready: false, since: s.time, ...(credited ? { credited } : {}) });
       onQuestOffered(s, def.id);
     } else if (strict && !def.skipWhileLocked) {
       return;
@@ -64,17 +73,42 @@ export function fillQuests(s: GameState): void {
   }
 }
 
+/** Whether a quest that opens a tab has to wait for the player to catch up with the last new tab. */
+function pacedOut(s: GameState, def: QuestDef): boolean {
+  const section = questSection(def.id);
+  return !!section && !sectionOpen(s, section.id) && sectionPace(s) !== null;
+}
+
 /** The Hype Drop quest promises a drop is on its way, so the next one is brought forward. */
 export const DROP_QUEST_ID = 'drop_1';
 export const DROP_QUEST_WAIT = 12;
 
+/** The Invitational quest says an invite is on its way: a Hype Drop comes soon, and the first one carries the invite. */
+export const INVITE_QUEST_ID = 'tourney_1';
+/** The decision quest says a decision card is on its way, so the next world event comes soon and asks for an answer. */
+export const EVENT_QUEST_ID = 'event_1';
+export const EVENT_QUEST_WAIT = 15;
+
 function onQuestOffered(s: GameState, id: string): void {
-  if (id === DROP_QUEST_ID && s.drops.nextAt > s.time + DROP_QUEST_WAIT) s.drops.nextAt = s.time + DROP_QUEST_WAIT;
+  // A schedule of zero means drops or events have been asleep (a guided first run) and are only now waking.
+  const soon = (at: number, wait: number) => at <= 0 || at > s.time + wait;
+  if ((id === DROP_QUEST_ID || id === INVITE_QUEST_ID) && soon(s.drops.nextAt, DROP_QUEST_WAIT)) s.drops.nextAt = s.time + DROP_QUEST_WAIT;
+  if (id === EVENT_QUEST_ID && soon(s.events.nextAt, EVENT_QUEST_WAIT)) s.events.nextAt = s.time + EVENT_QUEST_WAIT;
+}
+
+/** A quest is on the board and not finished yet. */
+export function questLive(s: GameState, id: string): boolean {
+  return s.quests.active.some((q) => q.id === id && !q.ready);
 }
 
 /** While the Hype Drop quest is live, a missed drop is followed by another one soon rather than minutes later. */
 export function dropQuestLive(s: GameState): boolean {
-  return s.quests.active.some((q) => q.id === DROP_QUEST_ID && !q.ready);
+  return questLive(s, DROP_QUEST_ID) || firstInviteDue(s);
+}
+
+/** The Invitational quest is live and the org has never been invited: the next Hype Drop is the invite. */
+export function firstInviteDue(s: GameState): boolean {
+  return questLive(s, INVITE_QUEST_ID) && s.stats.tournamentsPlayed === 0 && !s.events.invitation;
 }
 
 /** The quest after the current one, for an "Up next" preview: the next in the line that is not done. */
@@ -88,6 +122,8 @@ export interface QuestWait {
   text: string;
   value?: number;
   target?: number;
+  /** Set when the line is pacing itself: the tab to look at, or the breather before the next one opens. */
+  pace?: SectionPace;
 }
 
 /**
@@ -99,6 +135,12 @@ export function questLineWait(s: GameState): QuestWait | undefined {
   const def = nextQuest(s);
   if (!def) return undefined;
   const section = SECTIONS.find((d) => d.quest === def.id);
+  if (section && isAvailable(s, def) && pacedOut(s, def)) {
+    const pace = sectionPace(s)!;
+    const last = SECTIONS.find((d) => d.id === pace.section)?.name ?? pace.section;
+    if (pace.reason === 'visit') return { quest: def, text: `Take a look at the new ${last} tab first.`, pace };
+    return { quest: def, text: `The ${section.name ?? section.id} tab opens next. Until then, get to know the ${last} tab.`, value: s.time - pace.since, target: pace.until - pace.since, pace };
+  }
   const own = def.waiting?.(s);
   if (own) return { quest: def, ...own };
   if (section?.requirement) return { quest: def, text: section.requirement(s), ...section.progress?.(s) };
@@ -169,6 +211,8 @@ export function describeReward(r: QuestReward, ctx: RewardContext): string {
         : `First ${AFFINITY_UNITS} ${opPlural(r.op)} ${Math.round((1 - AFFINITY_DISCOUNT) * 100)}% off`;
     case 'cosmetic':
       return r.label;
+    case 'unlock':
+      return r.label;
     case 'title':
       return `Title: “${r.label}”`;
   }
@@ -192,13 +236,15 @@ export function rewardDetail(r: QuestReward, ctx: RewardContext): string {
     case 'perk':
       return 'Lasts for the rest of this run';
     case 'tool':
-      return QUEST_TOOLS[r.id].consumable ? 'Used up when you spend it' : 'Yours for the rest of this run';
+      return `${QUEST_TOOLS[r.id].desc} ${QUEST_TOOLS[r.id].consumable ? 'Used once.' : 'Yours for the rest of this run.'}`;
     case 'opAffinity':
       return affinityBranch(ctx.state, r.op) === 'mult' ? 'The operation most like this, for the rest of this run' : 'Until you own a few: a head start on the operation most like this';
     case 'cosmetic':
       return 'A look for your org, kept after you sell';
     case 'title':
       return 'Shown on your org, kept after you sell';
+    case 'unlock':
+      return r.detail;
   }
 }
 
@@ -233,6 +279,9 @@ function applyReward(s: GameState, r: QuestReward, ctx: RewardContext, rng: Rng,
     case 'opAffinity':
       // Settled once, when claimed, so the reward cannot change under the player afterwards.
       s.quests.affinity[questId] = affinityBranch(s, r.op);
+      break;
+    case 'unlock':
+      // Nothing to pay: claiming the quest is what wakes the system (engine/firstRun.ts).
       break;
     case 'cosmetic':
     case 'title':
@@ -276,6 +325,7 @@ export function claimQuest(s: GameState, id: string, choice: number, ctx: Reward
 /** Effects from every perk the org has chosen this run, and the operation affinities it was paid. */
 export function questPerkEffects(s: GameState): Effect[] {
   const out: Effect[] = [];
+  for (const kept of Object.values(s.quests.carried ?? {})) out.push(...kept.effects);
   for (const [id, choice] of Object.entries(s.quests.picks)) {
     const def = QUEST_MAP.get(id);
     const reward = def?.rewards[choice];
@@ -296,6 +346,7 @@ export function questPerkLabels(s: GameState): string[] {
 /** Each perk and the quest that earned it, so the board can say where a perk came from. */
 export function questPerkSources(s: GameState): { id: string; label: string; quest: string; icon: string; claimedAt: number }[] {
   const out: { id: string; label: string; quest: string; icon: string; claimedAt: number }[] = [];
+  for (const [id, kept] of Object.entries(s.quests.carried ?? {})) out.push({ id, label: kept.label, quest: kept.title, icon: kept.icon, claimedAt: kept.claimedAt });
   for (const [id, choice] of Object.entries(s.quests.picks)) {
     const def = QUEST_MAP.get(id);
     const reward = def?.rewards[choice];

@@ -18,6 +18,7 @@
   import Guide from '../components/Guide.svelte';
   import { marketGuide } from '../guides';
   import { statTip } from '../statInfo';
+  import { DECLINE_AGE, RETIRE_AGE, SEASONS_PER_YEAR } from '../../data/seasonPlans';
 
   const v = $derived(game.view);
   const marketHint = $derived(hinted(v.s, 'market'));
@@ -163,6 +164,22 @@
             </span>
           {/if}
           <PlayerCard player={p} showCondition={false} />
+          {#if p.age >= DECLINE_AGE - 1}
+            <span
+              class="ageing"
+              use:tooltip={() => ({
+                title: 'Getting older',
+                icon: 'calendar-clock',
+                lines: [
+                  `Players age a year every ${SEASONS_PER_YEAR} seasons. From ${DECLINE_AGE} they lose a little each year, and from ${RETIRE_AGE} they can announce their retirement.`,
+                  { text: 'A strong signing now, but not one to build around.', tone: 'muted' },
+                ],
+              })}
+            >
+              <Icon name="calendar-clock" size={12} />
+              {p.age >= RETIRE_AGE - 1 ? 'Near retirement: may retire within a few seasons' : 'Past their peak soon'}
+            </span>
+          {/if}
           <RosterImpact preview={previewSigning(v.s, p, v.m)} />
           <div class="stats">
             {#each ALL_STATS as st (st)}
@@ -373,6 +390,19 @@
     color: #f3e8ff;
     background: linear-gradient(90deg, rgba(168, 85, 247, 0.4), rgba(168, 85, 247, 0.08));
     border: 1px solid rgba(192, 132, 252, 0.5);
+  }
+  .ageing {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--warn, #fbbf24);
+    background: color-mix(in srgb, #fbbf24 10%, transparent);
+    border: 1px solid color-mix(in srgb, #fbbf24 35%, transparent);
   }
   .legacy-btn {
     border-color: color-mix(in srgb, #c084fc 50%, var(--line-2));

@@ -1,4 +1,6 @@
 import { GAMES, getGame } from '../data/games';
+import { sectionOpen } from './sections';
+import { awake } from './firstRun';
 import { QUEST_MAP, type Mechanic } from '../data/quests';
 import { tierName } from '../data/leagues';
 import { relegationElo, teamElo } from './elo';
@@ -66,7 +68,8 @@ export function buildAgenda(s: GameState, mods: Mods, rates: Rates): Agenda {
 function growthObjectives(s: GameState, rates: Rates): AgendaItem[] {
   const out: AgendaItem[] = [];
   const income = rates.totalCps;
-  const next = GAMES.find((g) => !s.games[g.id]?.unlocked);
+  // A guided first run founds its second team with "Branch out"; until then the Coach does not suggest it.
+  const next = awake(s, 'foundTeams') ? GAMES.find((g) => !s.games[g.id]?.unlocked) : undefined;
   const nextGameReachable = next && (s.cash >= next.unlockCost || (next.unlockCost - s.cash) / Math.max(1e-9, income) <= REACHABLE_SECONDS);
   const saveFor = (g: NonNullable<typeof next>): AgendaItem => ({
     icon: g.icon,
@@ -96,7 +99,7 @@ function growthObjectives(s: GameState, rates: Rates): AgendaItem[] {
       progress: s.fansRun / SPONSORS_UNLOCK_FANS,
       mechanic: 'sponsors',
     });
-  } else if (!isMerchUnlocked(s)) {
+  } else if (!isMerchUnlocked(s) && s.fansRun < MERCH_UNLOCK_FANS) {
     out.push({
       icon: 'shirt',
       title: `Reach ${fmt(MERCH_UNLOCK_FANS)} fans for merch`,
@@ -260,7 +263,7 @@ function* opportunities(s: GameState, mods: Mods, rates: Rates): Generator<Agend
   const best = bestSigning(s, mods);
   if (best) yield best.item;
 
-  if (sponsorsUnlocked(s) && s.sponsors.active.length < mods.sponsorSlots) {
+  if (sectionOpen(s, 'sponsors') && s.sponsors.active.length < mods.sponsorSlots) {
     const offer = s.sponsors.offers.find((o) => offerRequirements(s, o).ok);
     if (offer) {
       yield {

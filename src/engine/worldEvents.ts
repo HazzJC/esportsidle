@@ -1,4 +1,6 @@
 import { GAMES, GENRE_LABEL, type GameDef } from '../data/games';
+import { awake } from './firstRun';
+import { EVENT_QUEST_ID, questLive } from './quests';
 import { FAN_BASE, FAN_GROWTH } from '../data/leagues';
 import { RIVAL_ORGS } from '../data/names';
 import { addBuff } from './buffs';
@@ -46,6 +48,8 @@ export function retentionBids(s: GameState, p: Player, baseIncomePerSecond = 0, 
 }
 
 export const CHOICE_LIFETIME = 120;
+/** Seconds before another decision while the decision quest is live and nothing is waiting. */
+export const EVENT_QUEST_RETRY = 30;
 export const MAX_PENDING_CHOICES = 3;
 export const LOG_LENGTH = 30;
 
@@ -275,7 +279,8 @@ export const WORLD_EVENTS: WorldEventDef[] = [
         title: `${rival} wants ${p.tag}`,
         body: `They're offering ${money(value)} to sign ${p.tag} away from you.`,
         icon: 'handshake',
-        defaultOption: 2,
+        // Waiting never spends the bank on the player's behalf: the timer turns the offer down.
+        defaultOption: COUNTER_BIDS.length + 1,
         data: { playerId: p.id, value, rival, bid0: bids[0].cost, bid1: bids[1].cost, bid2: bids[2].cost },
         options: [
           { label: `Sell ${p.tag}`, desc: `They join ${rival} and you are paid.`, tone: 'info', cash: -value },
@@ -307,8 +312,17 @@ export const WORLD_EVENTS: WorldEventDef[] = [
           tone: 'good',
         });
       } else {
+        // A counter-offer the bank can no longer cover falls through to turning the rival down.
+        const short = option >= 1 && option <= bids.length;
         applyMorale(p, -15, ctx.mods);
-        logEvent(s, { title: `${p.tag} is unhappy`, body: 'You refused the transfer. Morale -15.', icon: 'face-slightly-frowning', tone: 'bad' });
+        logEvent(s, {
+          title: `${p.tag} is unhappy`,
+          body: short
+            ? `There was not ${money(bids[option - 1].cost)} in the bank to keep them, so the offer was turned down. Morale -15.`
+            : 'You turned the transfer down. Morale -15.',
+          icon: 'face-slightly-frowning',
+          tone: 'bad',
+        });
       }
     },
   },
@@ -508,8 +522,20 @@ export function fireEvent(s: GameState, id: string, ctx: EventContext): boolean 
   return true;
 }
 
+/**
+ * Which events can fire now. In a guided first run, events that need no answer wait for a second team
+ * and decisions wait for "A tough call"; while that quest is live and nothing is waiting, only a
+ * decision fires, since the quest promised one.
+ */
+function eventWeight(s: GameState, ctx: EventContext, def: WorldEventDef): number {
+  const decision = def.resolve !== undefined;
+  if (decision ? !awake(s, 'decisions') : !awake(s, 'ambient')) return 0;
+  if (!decision && questLive(s, EVENT_QUEST_ID) && s.events.pending.length === 0) return 0;
+  return def.weight(s, ctx);
+}
+
 export function fireRandomEvent(s: GameState, ctx: EventContext): string | null {
-  const def = ctx.rng.weighted(WORLD_EVENTS, (d) => d.weight(s, ctx));
+  const def = ctx.rng.weighted(WORLD_EVENTS, (d) => eventWeight(s, ctx, d));
   if (!def) return null;
   def.fire(s, ctx);
   return def.id;
@@ -534,6 +560,8 @@ export function updateWorldEvents(s: GameState, ctx: EventContext): void {
     s.events.nextAt = s.time + ctx.rng.range(FIRST_EVENT[0], FIRST_EVENT[1]);
     return;
   }
+  // The decision quest promised a card: if the last one ran out unanswered, another follows soon.
+  if (questLive(s, EVENT_QUEST_ID) && s.events.pending.length === 0) s.events.nextAt = Math.min(s.events.nextAt, s.time + EVENT_QUEST_RETRY);
   if (s.time >= s.events.nextAt) {
     fireRandomEvent(s, ctx);
     s.events.nextAt = s.time + ctx.rng.range(EVENT_INTERVAL[0], EVENT_INTERVAL[1]);

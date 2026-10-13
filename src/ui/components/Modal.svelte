@@ -28,7 +28,10 @@
     aria-label={title}
     tabindex="-1"
     onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
+    onkeydown={(e) => {
+      // Keys typed inside the dialog stay inside it, except Escape, which still closes it.
+      if (e.key !== 'Escape') e.stopPropagation();
+    }}
     in:scale={{ start: 0.95, duration: 160 }}
   >
     <header>

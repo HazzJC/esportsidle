@@ -1,5 +1,6 @@
 <script lang="ts">
   import { hinted } from '../hints';
+  import { hasTool } from '../../engine/quests';
   import { hasQol } from '../../engine/staff';
   import { FINISH_ART_LEVELS, FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishName, finishSalesMult } from '../../data/merch';
   import { MAX_DESIGNS, analyzeDesign, type DesignDraft } from '../../engine/designs';
@@ -16,6 +17,7 @@
   import MerchIcon from '../components/MerchIcon.svelte';
   import MerchPreview from '../components/MerchPreview.svelte';
   import { merchLookName, merchMilestones, nextMerchMilestone } from '../merchArt';
+  import { designUrl } from '../designImage';
   import { rarityColor, rarityName } from '../theme';
   import PixelEditor from '../components/PixelEditor.svelte';
   import { game } from '../game.svelte';
@@ -36,7 +38,11 @@
   const designs = $derived(Object.values(s.designs).sort((a, b) => b.createdAt - a.createdAt));
   const full = $derived(designs.length >= MAX_DESIGNS);
   const trend = $derived(TREND_MAP.get(s.merch.trend));
+  /** The Trend tip (a quest tool) shows the next trend a rotation early. */
+  const nextTrend = $derived(hasTool(s, 'trend_tip') && s.merch.nextTrend ? TREND_MAP.get(s.merch.nextTrend) : undefined);
   const merchOpen = $derived(isMerchUnlocked(s));
+  const logoDesign = $derived(s.org.logo ? s.designs[s.org.logo] : undefined);
+  const logoUrl = $derived(logoDesign ? designUrl(logoDesign) : undefined);
   const editingDesign = $derived(editing?.id ? (s.designs[editing.id] ?? null) : null);
 
   function save(draft: DesignDraft) {
@@ -78,6 +84,7 @@
         <Icon name={trend.icon} size={18} />
         <span>Trend: <b>{trend.name}</b></span>
         <span class="dim small num">{fmtTime(s.merch.trendEndsAt - s.time)} left</span>
+        {#if nextTrend}<span class="next-trend" title="Your Trend tip shows the next trend before it arrives"><Icon name="arrow-right" size={12} /> Next: <b>{nextTrend.name}</b></span>{/if}
       </div>
       {#if s.merch.mania && s.merch.mania.endsAt > s.time}
         <div class="trend mania"><Icon name="flame" size={18} /> <b>MANIA: {PRODUCTS.find((p) => p.id === s.merch.mania?.productId)?.name}</b> · {fmtTime(s.merch.mania.endsAt - s.time)} left</div>
@@ -103,7 +110,7 @@
 
   <section class="colours">
     <div class="kit-preview">
-      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={96} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
+      <OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={96} {logoUrl} shape={s.org.emblem.shape} mark={s.org.emblem.mark} />
     </div>
     <div class="kit-main">
       <h3 class="section-title">Logo</h3>
@@ -129,7 +136,7 @@
     {#if designs.length === 0}
       <div class="empty">
         <Icon name="palette" size={40} />
-        <p class="muted">No designs yet. Draw a logo for {s.org.name}. It will replace the initials on your clicker shield and appear on every jersey.</p>
+        <p class="muted">No designs yet. Draw one, then choose where it goes: <b>Logo</b> puts it inside your badge, <b>Jersey</b> puts it on every team shirt.</p>
       </div>
     {:else}
       <div class="designs">
@@ -165,7 +172,7 @@
     {/if}
   </section>
 
-  <section>
+  <section class:tut-target={hinted(s, 'merch')}>
     <h3 class="section-title">Merch store</h3>
     {#if !merchOpen}
       <div class="locked">
@@ -286,7 +293,7 @@
 {#if editing}
   <Modal title={editing.id ? 'Edit design' : 'New design'} onclose={() => (editing = null)} width={1000}>
     {#key editing.id ?? 'new'}
-      <PixelEditor initial={editingDesign} trend={s.merch.trend} onsave={save} oncancel={() => (editing = null)} />
+      <PixelEditor initial={editingDesign} trend={s.merch.trend} showAppeal={merchOpen} onsave={save} oncancel={() => (editing = null)} />
     {/key}
   </Modal>
 {/if}
@@ -320,6 +327,14 @@
   }
   .trend b {
     color: var(--text);
+  }
+  .next-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 8px;
+    border-left: 1px solid color-mix(in srgb, var(--accent-2) 35%, transparent);
+    font-size: 12px;
   }
   .trend.mania { color:var(--gold); border-color:var(--gold); background:color-mix(in srgb,var(--gold) 12%,var(--bg-2)); }
   .section-head {

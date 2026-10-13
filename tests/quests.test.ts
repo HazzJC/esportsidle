@@ -15,11 +15,8 @@ import { decodeSave, encodeSave } from '../src/engine/save';
 import type { GameState } from '../src/engine/types';
 import { finishLadder, foundedGame } from './fixtures';
 
-/**
- * Mechanics the first-run quest line does not teach yet. The tour rewrite (WS6.2) adds a quest for
- * each; remove a mechanic from this list when its quest lands.
- */
-const TOUR_GAPS: Mechanic[] = ['lineup', 'merchPricing', 'events', 'trophies', 'automation'];
+/** Mechanics the first-run quest line does not teach yet. Every mechanic has its quest now. */
+const TOUR_GAPS: Mechanic[] = [];
 
 const ctx = (s: GameState) => ({ cps: computeRates(s).cpsNoBuffs, fansPerSec: 1 });
 
@@ -34,7 +31,7 @@ describe('the quest line', () => {
     }
   });
 
-  it('teaches every mechanic, apart from the known gaps the tour rewrite will fill', () => {
+  it('teaches every mechanic', () => {
     const taught = new Set(QUESTS.map((q) => q.mechanic));
     const untaught = MECHANICS.filter((m) => !taught.has(m));
     expect(untaught).toEqual(TOUR_GAPS);
@@ -61,6 +58,7 @@ describe('the quest line', () => {
 describe('newer reward kinds', () => {
   const extra: QuestDef = {
     id: 'test_tour',
+    chapter: 0,
     title: 'Test tour stop',
     desc: 'For tests only.',
     icon: 'flag',

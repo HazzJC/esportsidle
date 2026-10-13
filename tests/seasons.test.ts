@@ -176,3 +176,23 @@ describe('transfer value', () => {
     expect(loaded.players.px.signedLevel).toBe(30);
   });
 });
+
+describe('a title without promotion', () => {
+  it('tells the champions how much Elo they still need', async () => {
+    const { subscribe } = await import('../src/engine/bus');
+    const { TITLE_WINS } = await import('../src/data/leagues');
+    const { promotionElo } = await import('../src/engine/elo');
+    const s = foundedGame(0, 5);
+    const team = s.teams.smash;
+    team.seasonWins = TITLE_WINS;
+    team.elo = promotionElo(team.tier) - 40;
+    const bodies: string[] = [];
+    const off = subscribe((e) => {
+      if (e.type === 'toast') bodies.push(e.body ?? '');
+    });
+    endSeason(s, team, computeRates(s).teams.smash);
+    off();
+    expect(team.tier).toBe(0);
+    expect(bodies.some((b) => b.includes('Not promoted yet') && b.includes('40 more'))).toBe(true);
+  });
+});

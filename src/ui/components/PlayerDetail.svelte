@@ -281,7 +281,9 @@
             <div class="muted small gear-league">Priced for {tierName(league)}: gear costs ×{fmt(Math.pow(GEAR_LEAGUE_GROWTH, league))} at the best league this team has reached, and never less than {GEAR_INCOME_FLOOR_SECONDS} seconds of what the team earns at your base income, with no buffs ({money(GEAR_INCOME_FLOOR_SECONDS * teamIncome(v.s, p.gameId, v.m, v.r))}).</div>
           {/if}
           {#if gearHint && cheapestGear}
-            {@const slotName = GEAR_SLOTS.find((x) => x.id === cheapestGear.id)?.name ?? 'item'}
+            {@const cheapSlot = GEAR_SLOTS.find((x) => x.id === cheapestGear.id)}
+            <!-- Name the item as the list shows it (the Lucky Penny), not its slot (the Lucky Charm). -->
+            {@const slotName = cheapSlot ? cheapSlot.tiers[p.gear[cheapSlot.id]] : 'item'}
             <div class="gear-tip">
               <Icon name="sparkles" size={15} />
               <span>

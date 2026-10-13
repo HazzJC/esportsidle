@@ -189,6 +189,27 @@ describe('world events', () => {
     expect(s.stats.choicesMade).toBe(1);
   });
 
+  it('a poaching offer left to its timer turns the rival down and spends nothing', () => {
+    const s = richState();
+    expect(fireEvent(s, 'poaching', ctxFor(s))).toBe(true);
+    const choice = s.events.pending[0];
+    expect(choice.options[choice.defaultOption].label).toBe('Refuse to negotiate');
+    const cash = s.cash;
+    expect(resolveChoice(s, choice.id, choice.defaultOption, ctxFor(s), true)).toBe(true);
+    expect(s.cash).toBe(cash);
+    expect(s.events.log[0].body).toContain('turned the transfer down');
+  });
+
+  it('a counter-offer the bank cannot cover says so rather than claiming a refusal', () => {
+    const s = richState();
+    expect(fireEvent(s, 'poaching', ctxFor(s))).toBe(true);
+    const choice = s.events.pending[0];
+    s.cash = 0;
+    expect(resolveChoice(s, choice.id, 2, ctxFor(s))).toBe(true);
+    expect(s.events.log[0].body).toContain('was not');
+    expect(s.events.log[0].body).not.toContain('You turned');
+  });
+
   it('unanswered choices resolve to their default', () => {
     const s = richState();
     const p = Object.values(s.players).find((x) => !x.founder)!;

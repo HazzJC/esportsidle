@@ -5,6 +5,8 @@
   import { PR_CLEANUP_SECONDS, SCANDAL_FAN_MULT, SCANDAL_INCOME_MULT, SCANDAL_SECONDS, dramaShare, prCleanupCost, scandalFanLoss } from '../../engine/drops';
   import { fmt, fmtPct, fmtTime, money } from '../../engine/format';
   import { operationLevelCost } from '../../engine/operations';
+  import { operationsOpen } from '../../engine/tutorial';
+  import { awake } from '../../engine/firstRun';
   import Collapsible from '../components/Collapsible.svelte';
   import HQOverview from '../components/HQOverview.svelte';
   import { GRIND_NEED, TIER_NEED } from '../../data/upgrades';
@@ -12,6 +14,7 @@
   import Stories from '../components/Stories.svelte';
   import Icon from '../components/Icon.svelte';
   import { game } from '../game.svelte';
+  import { hinted } from '../hints';
   import { opColor } from '../theme';
   import { opSceneBackground, opSpriteSvg } from '../opsArt';
   import { tooltip } from '../tooltip.svelte';
@@ -74,7 +77,8 @@
   const activitySummary = $derived(modifiers.length > 0 ? `${modifiers.length} active` : 'quiet');
   let activityMode = $state<'active' | 'all'>('active');
   const activityLog = $derived(activityEntries(s.events.log, s.time, activityMode).slice(0, 8));
-  const showLevels = $derived(s.stats.trophiesTotal > 0);
+  // Trophies are spent on operations once the Trophies tab has explained them (engine/firstRun.ts).
+  const showLevels = $derived(s.stats.trophiesTotal > 0 && awake(s, 'trophySpending'));
   const drama = $derived(dramaShare(s, v.m));
   const calm = $derived(s.events.calmUntil > s.time);
   const prCost = $derived(prCleanupCost(baseIncome(s, r)));
@@ -183,8 +187,9 @@
       <Icon name="gamepad-2" size={46} />
       <h3>It's just you and a dream</h3>
       <p class="muted">
-        Operations earn money every second, even while the game is closed. Start with a <b>Ranked Grinder</b> from the store;
-        every operation you own shows up here.
+        Operations earn money every second, even while the game is closed.
+        {#if operationsOpen(s)}Start with a <b>Ranked Grinder</b> from the store; every operation you own shows up here.{:else}They open
+          once your first team has its first win.{/if}
       </p>
     </div>
   {:else}
@@ -236,6 +241,7 @@
               {#if showLevels}
                 <button
                   class="lvl"
+                  class:tut-target={hinted(s, 'levels') && s.trophies >= cost}
                   disabled={s.trophies < cost}
                   onclick={(e) => {
                     e.stopPropagation();

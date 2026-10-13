@@ -1,5 +1,7 @@
 import { FIRST_WIN_BONUS, TUTORIAL_INJURY_SECONDS, TUTORIAL_ORDER, TUTORIAL_STEPS, tutorialPlayer, type TutorialStep, type TutorialStepDef } from '../data/tutorial';
 import { emit } from './bus';
+import { introKey } from '../data/intros';
+import { guidedRun } from './firstRun';
 import type { GameState } from './types';
 import { earnCash } from './wallet';
 
@@ -73,19 +75,22 @@ export function updateTutorial(s: GameState): boolean {
   }
   if (s.tutorial.step === start) return false;
   if (s.tutorial.step === 'done') {
+    // The tutorial has just walked the player through the team room, so its intro card is not needed.
+    s.guides[introKey('teams')] = true;
     emit({ type: 'toast', title: 'Tutorial complete', body: 'Your quest board is in HQ. Pick a quest, finish it and choose your reward.', icon: 'flag', tone: 'gold' });
   }
   return true;
 }
 
 /**
- * Playtime on a brand-new org before random events begin: no Hype Drops, world news, illness or
- * rival, so the first minutes follow the tutorial and the quests without interruptions.
+ * Playtime on a brand-new org that skipped the tutorial before random events begin: no Hype Drops,
+ * world news, illness or rival for the first minutes. A guided first run has no timer: each of those
+ * wakes with its own quest instead (engine/firstRun.ts).
  */
 export const CALM_START_SECONDS = 480;
 
 export function calmStart(s: GameState): boolean {
-  return tutorialActive(s) || (s.prestige.runs === 0 && s.stats.playtimeTotal < CALM_START_SECONDS);
+  return tutorialActive(s) || (s.prestige.runs === 0 && !guidedRun(s) && s.stats.playtimeTotal < CALM_START_SECONDS);
 }
 
 /**
@@ -118,4 +123,6 @@ export function restDuringTutorial(s: GameState, gameId: string, playerId: strin
 
 export function skipTutorial(s: GameState): void {
   s.tutorial.step = 'done';
+  // A player who skips knows their way round: nothing waits for the quest line.
+  s.tutorial.skipped = true;
 }

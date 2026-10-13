@@ -5,7 +5,8 @@ import { emit } from './bus';
 import { fmt, fmtTime, money } from './format';
 import { dropCapMinutes, dropMinutes, dropPayout, limitReward, runHours } from './rewards';
 import type { Rng } from './rng';
-import { dropQuestLive } from './quests';
+import { awake } from './firstRun';
+import { DROP_QUEST_ID, dropQuestLive, firstInviteDue, hasTool, questLive, useToken } from './quests';
 import { INVITATION_SECONDS, invitationOdds, invitationalName, offerInvitation, pickTournamentTeam } from './tournament';
 import type { ActiveDrop, DropKind, GameState, Mods, Rates, Tone } from './types';
 import { earnCash, gainFans } from './wallet';
@@ -57,6 +58,8 @@ export function dramaShare(s: GameState, mods: Mods): number {
   // Tabloid Darling challenge: every drop is drama.
   if (s.prestige.challenge === 'drama') return 1;
   if (s.time < s.events.calmUntil) return 0;
+  // A guided first run meets Drama Drops once "A tough call" has paid its PR shield.
+  if (!awake(s, 'drama')) return 0;
   const level = Math.max(0, Math.min(DRAMA_SHARE.length - 1, Math.floor(mods.dramaLevel)));
   return DRAMA_SHARE[level] * mods.dramaShareMult;
 }
@@ -223,7 +226,9 @@ const OUTCOMES: Outcome[] = [
     id: 'tournament',
     kind: 'hype',
     // About one hype drop in six once a team is playing: roughly one Invitational every 40 minutes.
-    weight: (s, ctx) => (!s.events.invitation && pickTournamentTeam(s, ctx.rates) ? 24 * ctx.mods.tournamentWeightMult : 0),
+    // Invites wake with the Invitational quest in a guided first run, and come more often while it is live.
+    weight: (s, ctx) =>
+      !s.events.invitation && awake(s, 'invites') && pickTournamentTeam(s, ctx.rates) ? 24 * ctx.mods.tournamentWeightMult * (questLive(s, 'tourney_1') ? 3 : 1) : 0,
     apply: (s, ctx) => {
       const inv = offerInvitation(s, ctx);
       const odds = inv ? invitationOdds(s, ctx.rates, ctx.mods, 0, inv.gameId) : null;
@@ -435,6 +440,24 @@ export function calmDrama(s: GameState, baseIncomePerSecond: number): boolean {
   return true;
 }
 
+/** Drama outcomes that cost the org something, which a PR shield blocks. */
+const SHIELDED = new Set(['scandal', 'outage', 'backlash']);
+
+/**
+ * A drop that a quest has promised: the Hype Drop quest's drop pays out plainly (it teaches what a
+ * drop is), the Invitational quest's first drop is the invite, and a Wildcard invite turns the next
+ * Hype Drop into one.
+ */
+function forcedOutcome(s: GameState, kind: DropKind, ctx: DropContext): Outcome | undefined {
+  if (kind !== 'hype') return undefined;
+  const find = (id: string) => OUTCOMES.find((o) => o.id === id);
+  if (questLive(s, DROP_QUEST_ID)) return find('prize');
+  const inviteReady = !s.events.invitation && !!pickTournamentTeam(s, ctx.rates);
+  if (inviteReady && firstInviteDue(s)) return find('tournament');
+  if (inviteReady && hasTool(s, 'wildcard_invite') && useToken(s, 'wildcard_invite')) return find('tournament');
+  return undefined;
+}
+
 export function clickDrop(s: GameState, dropId: number, ctx: DropContext): DropResult | null {
   const index = s.drops.active.findIndex((d) => d.id === dropId);
   if (index < 0) return null;
@@ -445,9 +468,14 @@ export function clickDrop(s: GameState, dropId: number, ctx: DropContext): DropR
   if (drop.chain > 0) {
     result = continueHypeTrain(s, ctx, drop.chain);
   } else {
+    const forced = forcedOutcome(s, drop.kind, ctx);
     const pool = OUTCOMES.filter((o) => o.kind === drop.kind);
-    const outcome = ctx.rng.weighted(pool, (o) => o.weight(s, ctx)) ?? pool[0];
-    result = outcome.apply(s, ctx);
+    const outcome = forced ?? ctx.rng.weighted(pool, (o) => o.weight(s, ctx)) ?? pool[0];
+    if (drop.kind === 'drama' && SHIELDED.has(outcome.id) && useToken(s, 'pr_shield')) {
+      result = { outcome: 'shielded', title: 'PR shield!', body: 'Your PR team buried the story before it ran. That was your shield.', icon: 'shield', tone: 'good' };
+    } else {
+      result = outcome.apply(s, ctx);
+    }
   }
   emit({ type: 'toast', title: result.title, body: result.body, icon: result.icon, tone: result.tone });
   return result;

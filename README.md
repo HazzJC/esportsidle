@@ -10,7 +10,7 @@ Click the logo to build crowd hype, scout mechanical prodigies on the transfer m
 
 ## A Guided First Run
 
-New orgs are walked through the whole game in order. A quest line on the HQ console opens each system as it explains it (the transfer market, Staff, the House, the Pixel Studio, Sponsors), shows what it is waiting on, and pulses whatever to press next. Every tutorial step and quest has a **Show me** button. Finishing a quest earns a perk for that run.
+New orgs are walked through the whole game in order. A quest line in six chapters on the HQ console opens each system as it explains it (Trophies, the transfer market, Staff, the House, the Pixel Studio, Sponsors, Legacy), keeps everything else quiet until its turn (Hype Drops, decisions, the rival, Invitationals), shows a meter for the longer goals, and pulses whatever to press next. Every tutorial step and quest has a **Show me** button. Finishing a quest earns a perk for that run.
 
 ## The Core Loop
 

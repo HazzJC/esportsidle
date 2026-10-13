@@ -6,6 +6,7 @@
   import { bulkPrice, isOperationRevealed, maxAffordable, sellRefund } from '../../engine/operations';
   import { canAffordUpgrade, storeUpgrades, upgradePrice } from '../../engine/upgrades';
   import { operationsOpen } from '../../engine/tutorial';
+  import { guidedRun } from '../../engine/firstRun';
   import { sectionOpen } from '../../engine/sections';
   import { bulkAmount, bulkAmounts, hasQol, qolSource } from '../../engine/staff';
   import type { QolId } from '../../data/staff';
@@ -65,7 +66,8 @@
   const canSell = $derived(hasQol(s, 'sell'));
   const canBuyAll = $derived(hasQol(s, 'buyAll'));
   /** Once Staff is open the tools still to come show as locked buttons, so the player knows where they come from. */
-  const showTools = $derived(sectionOpen(s, 'staff') || amounts.length > 1 || canSell);
+  // In a guided first run they show once the first tool has arrived, so the store is not full of locks before Staff means anything.
+  const showTools = $derived(amounts.length > 1 || canSell || (sectionOpen(s, 'staff') && !guidedRun(s)));
   const AMOUNT_QOL: Record<number, QolId> = { 10: 'buy10', 100: 'buy100', [-1]: 'buyMax' };
 
   function toolTip(id: QolId): TipContent {
@@ -182,7 +184,7 @@
             style="--c:{tierColor(def.tier)}; --rank:{tierRank(def.tier)}"
             onclick={() => game.buyUpgrade(def.id)}
             use:tooltip={() => upgradeTip(def)}
-            aria-label="{def.name}, costs {money(upgradePrice(def, v.m))}"
+            aria-label="{def.name}, costs {def.currency === 'cash' ? money(upgradePrice(def, v.m)) : `${fmt(upgradePrice(def, v.m))} trophies`}"
           >
             {#if def.art}
               <span class="art">{@html opArt(def.art)}</span>
@@ -244,7 +246,7 @@
         <div class="ops-locked">
           <Icon name="lock" size={22} />
           <b>Operations</b>
-          <span class="muted">Businesses that earn money every second, even while you are away. They open just after your first win.</span>
+          <span class="muted">Businesses that earn money every second, even while you are away. They open once your first team has won a match and your player is fit again.</span>
         </div>
       {:else}
         {#each shownOps as op (op.id)}

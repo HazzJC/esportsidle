@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { TEAM_KITS } from '../../data/palette';
+  import { TEAM_KITS, UI_TONES } from '../../data/palette';
+  import { kitForTone } from '../../engine/org';
 
   let {
     primary,
@@ -8,10 +9,28 @@
   }: { primary: string; secondary: string; onchange: (primary: string, secondary: string) => void } = $props();
 
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  /**
+   * A kit that matches none of the presets is shown first, so the colour picked when the org was founded
+   * (Violet, Sky...) is still there by name rather than seeming to have vanished.
+   */
+  const own = $derived.by(() => {
+    if (TEAM_KITS.some((k) => same(k.primary, primary) && same(k.secondary, secondary))) return null;
+    const tone = UI_TONES.find((t) => {
+      const k = kitForTone(t.color);
+      return same(k.primary, primary) && same(k.secondary, secondary);
+    });
+    return { name: tone?.name ?? 'Yours' };
+  });
 </script>
 
 <div class="kit-picker">
   <div class="presets">
+    {#if own}
+      <button type="button" class="kit active" aria-pressed="true" title="Your current team colours">
+        <span class="split" style="--p:{primary}; --s:{secondary}"></span>
+        <span class="name">{own.name}</span>
+      </button>
+    {/if}
     {#each TEAM_KITS as k (k.id)}
       {@const active = same(k.primary, primary) && same(k.secondary, secondary)}
       <button type="button" class="kit" class:active aria-pressed={active} onclick={() => onchange(k.primary, k.secondary)}>

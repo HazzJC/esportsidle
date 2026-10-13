@@ -36,7 +36,7 @@ import { buyGear } from '../engine/players';
 import { bulkAmount, buyDecor, hasQol, hireStaff } from '../engine/staff';
 import { STAFF_MAP } from '../data/staff';
 import { Rng } from '../engine/rng';
-import { assignSlot, benchPlayer, changeTier, setSeasonPlan, unlockGame } from '../engine/teams';
+import { benchPlayer, changeTier, setSeasonPlan, startPlayer, unlockGame } from '../engine/teams';
 import type { SeasonPlan } from '../data/seasonPlans';
 import type { Appearance, AutomationSettings, MarketState, TeamKit } from '../engine/types';
 import { isHexColor } from '../data/palette';
@@ -51,9 +51,11 @@ import { isEmblem, type Emblem } from '../data/emblems';
 import { randomLook } from '../engine/players';
 import { TAB_MAP } from './tabs';
 import { sectionOpen, updateSections } from '../engine/sections';
+import { introKey } from '../data/intros';
 import { QUEST_MAP, type QuestHint } from '../data/quests';
 import { claimQuest, describeReward } from '../engine/quests';
 import { restDuringTutorial, skipTutorial, tutorialActive, updateTutorial } from '../engine/tutorial';
+import { awake } from '../engine/firstRun';
 import { playSound, type SoundId } from './sound';
 import { pauseMusicForVisibility, setMusicVolume, startMusic, stopMusic } from './audio/music';
 
@@ -118,6 +120,8 @@ const MAX_ONLINE_CATCHUP_SECONDS = 3600;
 const MAX_TOASTS = 3;
 /** Unlocks landing within this window share one popup and one chime. */
 const ACHIEVEMENT_BATCH_MS = 450;
+/** Seconds after a tab opens before a card that arrives by itself (a house move) may cover it. */
+const INTRO_GAP_SECONDS = 45;
 
 /**
  * The engine mutates one plain state object in place. Svelte skips updates when a derived value keeps the
@@ -163,6 +167,8 @@ class GameStore {
   lastSavedAt = $state(0);
   saveError = $state<string | null>(null);
   viewingGear = $state(false);
+  /** A player is being dragged between seats: substitutions and role moves wait so the room does not shift under the cursor. */
+  draggingPlayer = false;
   /** A house the org has just moved into (its ROOMS index), shown on a card until dismissed. */
   houseMove = $state<number | null>(null);
 
@@ -220,9 +226,39 @@ class GameStore {
 
   refresh(): void {
     this.view = this.makeView();
-    if (this.pendingAchievements.length > 0 && !this.achievementTimer && !tutorialActive(this.state)) {
+    if (this.pendingAchievements.length > 0 && !this.achievementTimer && this.achievementsCanShow()) {
       this.achievementTimer = setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
     }
+    // The tutorial ends on the Teams tab; the quest line it hands over to lives in HQ.
+    const step = this.state.tutorial.step;
+    if (this.lastTutorialStep !== null && this.lastTutorialStep !== 'done' && step === 'done' && !this.state.tutorial.skipped) this.tab = 'hq';
+    this.lastTutorialStep = step;
+    // A house move waits its turn rather than landing on top of another card (see `canInterrupt`).
+    if (this.pendingHouse !== null && this.houseMove === null && this.canInterrupt()) {
+      this.houseMove = this.pendingHouse;
+      this.pendingHouse = null;
+      this.sfx('promote');
+    }
+  }
+
+  private lastTutorialStep: string | null = null;
+  /** A house move announced while something else was on screen, shown once it can be. */
+  private pendingHouse: number | null = null;
+
+  /**
+   * Whether a card that arrives by itself (a house move) may open now: nothing else is open, and no tab
+   * opened in the last `INTRO_GAP_SECONDS` (that tab has the player's attention).
+   */
+  private canInterrupt(): boolean {
+    const s = this.state;
+    if (s.events.invitation || (s.events.lastTournament && !s.events.lastTournament.seen) || this.offlineReport) return false;
+    const lastOpened = Math.max(0, ...Object.values(s.sections));
+    return s.time - lastOpened >= INTRO_GAP_SECONDS;
+  }
+
+  /** Achievement popups wait for the tutorial, and in a guided first run for the Trophies tab that shows them. */
+  private achievementsCanShow(): boolean {
+    return !tutorialActive(this.state) && awake(this.state, 'achievementPopups');
   }
 
   // ---------------------------------------------------------------------------
@@ -308,7 +344,7 @@ class GameStore {
         let steps = 0;
         const options: TickOptions = {
           pauseMarket: this.tab === 'market',
-          pauseTeams: this.tab === 'teams',
+          pauseTeams: this.draggingPlayer,
           pauseGear: this.viewingGear,
         };
         while (this.acc >= TICK_SECONDS && steps < 40) {
@@ -385,8 +421,8 @@ class GameStore {
         break;
       case 'achievement': {
         this.pendingAchievements.push(e.id);
-        // During the tutorial they wait, and arrive together once it is done (see refresh).
-        if (!tutorialActive(this.state)) this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
+        // During the tutorial (and a guided run's first chapters) they wait, and arrive together (see refresh).
+        if (this.achievementsCanShow()) this.achievementTimer ??= setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
         break;
       }
       case 'crowd':
@@ -409,8 +445,7 @@ class GameStore {
       }
       case 'house':
         if (tutorialActive(this.state)) break;
-        this.houseMove = e.level;
-        this.sfx('promote');
+        this.pendingHouse = e.level;
         break;
       case 'section': {
         // The tutorial already walks the player to new tabs; the tab's NEW badge is enough.
@@ -592,7 +627,16 @@ class GameStore {
     else if (hint === 'logo') {
       this.mobileView = 'clicker';
     } else {
-      const tab: TabId = hint === 'player' || hint === 'plan' || hint === 'found' ? 'teams' : hint;
+      const tab: TabId =
+        hint === 'player' || hint === 'plan' || hint === 'found' || hint === 'bench'
+          ? 'teams'
+          : hint === 'levels'
+            ? 'hq'
+            : hint === 'merch'
+              ? 'studio'
+              : hint === 'routines'
+                ? 'staff'
+                : hint;
       if (sectionOpen(this.state, tab)) this.tab = tab;
       this.mobileView = 'center';
     }
@@ -615,6 +659,27 @@ class GameStore {
 
   showGuide(id: string): void {
     this.guideOpen = id;
+  }
+
+  /** A tab intro the player asked to see again after closing it. */
+  introOpen = $state<string | null>(null);
+
+  /** Brings back the current tab's intro card (the help button on the tab strip). */
+  showIntro(tab: string): void {
+    this.introOpen = tab;
+  }
+
+  dismissIntro(tab: string): void {
+    this.state.guides[introKey(tab)] = true;
+    if (this.introOpen === tab) this.introOpen = null;
+    this.refresh();
+  }
+
+  /** Pulses a quest hint's target for a few seconds without moving the page, as a new tab's intro opens. */
+  flashHint(hint: QuestHint): void {
+    this.hintFlash = hint;
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => (this.hintFlash = null), 5000);
   }
 
   /** Goes to a centre tab, on phones too. */
@@ -735,7 +800,7 @@ class GameStore {
   }
 
   assignSlot(gameId: string, playerId: string, slot: number): void {
-    if (assignSlot(this.state, gameId, playerId, slot)) this.refresh();
+    if (startPlayer(this.state, gameId, playerId, slot)) this.refresh();
   }
 
   benchPlayer(gameId: string, playerId: string): void {
@@ -839,10 +904,10 @@ class GameStore {
       this.toast({ title: 'Design library full', body: 'Delete a design to make room.', icon: 'palette', tone: 'bad' }, 3000);
       return null;
     }
-    if (!this.state.org.logo) setOrgLogo(this.state, newId);
+    // A new design is never put anywhere by itself: the player picks Logo, Jersey or a merch line for it.
     this.toast({
       title: 'Design saved',
-      body: this.state.org.logo === newId ? `${draft.name} is now your org logo.` : draft.name,
+      body: `${draft.name}: use the Logo or Jersey button under it to wear it.`,
       icon: 'palette',
       tone: 'good',
     });

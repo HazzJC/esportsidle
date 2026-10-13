@@ -82,7 +82,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 'grinder',
     title: 'Build passive income',
-    body: 'Operations earn money every second, even while the game is closed. They are the passive side of your org. Click your logo until you have $15, then buy a Ranked Grinder.',
+    body: 'Operations earn money every second, even while the game is closed. They are the passive side of your org. Buy a Ranked Grinder from the store for $15; if you are short, click your logo.',
     icon: 'gamepad-2',
     target: 'store',
     progress: (s) => ({ value: Math.min(1, s.ops.grinder?.owned ?? 0), target: 1 }),

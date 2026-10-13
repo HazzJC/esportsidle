@@ -14,6 +14,8 @@ export const LEGACY_TAB_EARNED = 1e12;
 
 export interface SectionDef {
   id: string;
+  /** The tab's name, for messages about it (the same label the tab strip shows). */
+  name?: string;
   /**
    * What the org needs before the section can open. Sections without one are always open. Once open,
    * a section stays open, across sales too.
@@ -48,21 +50,25 @@ export const SECTIONS: SectionDef[] = [
   { id: 'teams' },
   {
     id: 'market',
+    name: 'Market',
     unlock: (s) => playerCount(s) > 0 && !tutorialActive(s) && s.cash >= MARKET_UNLOCK_CASH,
     quest: 'scout_1',
     requirement: (s) =>
       tutorialActive(s) ? 'Finish the tutorial' : `Have ${money(MARKET_UNLOCK_CASH)} in the bank (${money(Math.floor(s.cash))} now)`,
     progress: (s) => ({ value: Math.min(MARKET_UNLOCK_CASH, Math.floor(s.cash)), target: MARKET_UNLOCK_CASH }),
-    announce: 'The transfer market is open. Sign players to fill your teams and bench. Open it for a quick guide to reading a player.',
+    announce: 'The transfer market is open. Sign players to fill your teams and bench. Each card shows how a signing would change your win chance.',
   },
   {
     id: 'achievements',
+    name: 'Trophies',
     unlock: (s) => Object.keys(s.achievements).length > 0,
+    quest: 'trophies_1',
     requirement: () => 'Unlock an achievement',
-    announce: 'Every achievement adds to your trophy cabinet, which boosts income.',
+    announce: 'Every achievement and trophy on one shelf. Trophies are currency too: spend them on operation levels in HQ.',
   },
   {
     id: 'studio',
+    name: 'Studio',
     unlock: (s) => s.fansRun >= STUDIO_UNLOCK_FANS,
     quest: 'design_shirt',
     requirement: (s) => `Reach ${fmt(STUDIO_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`,
@@ -71,6 +77,7 @@ export const SECTIONS: SectionDef[] = [
   },
   {
     id: 'house',
+    name: 'House',
     unlock: (s) => teamCount(s) >= 2,
     quest: 'decor_1',
     requirement: () => 'Found your second team',
@@ -79,6 +86,7 @@ export const SECTIONS: SectionDef[] = [
   },
   {
     id: 'sponsors',
+    name: 'Sponsors',
     unlock: (s) => sponsorsUnlocked(s),
     quest: 'sponsor_1',
     requirement: (s) => `Reach ${fmt(SPONSORS_UNLOCK_FANS)} fans (${fmt(s.fansRun)} so far)`,
@@ -87,6 +95,7 @@ export const SECTIONS: SectionDef[] = [
   },
   {
     id: 'staff',
+    name: 'Staff',
     unlock: (s) => s.stats.playersSigned >= STAFF_UNLOCK_SIGNINGS,
     quest: 'staff_1',
     requirement: (s) => `Sign ${STAFF_UNLOCK_SIGNINGS} players (${Math.min(STAFF_UNLOCK_SIGNINGS, s.stats.playersSigned)} so far)`,
@@ -95,8 +104,11 @@ export const SECTIONS: SectionDef[] = [
   },
   {
     id: 'legacy',
+    name: 'Legacy',
     unlock: (s) => s.prestige.runs > 0 || s.earnedTotal >= LEGACY_TAB_EARNED,
-    requirement: () => `Earn ${money(LEGACY_TAB_EARNED)} in total`,
+    quest: 'sell_org',
+    requirement: (s) => `Earn ${money(LEGACY_TAB_EARNED)} in total (${money(s.earnedTotal)} so far)`,
+    progress: (s) => ({ value: Math.min(LEGACY_TAB_EARNED, s.earnedTotal), target: LEGACY_TAB_EARNED }),
     announce: 'Your org is worth something now. One day you can sell it for legacy points.',
   },
   { id: 'stats' },
@@ -104,6 +116,41 @@ export const SECTIONS: SectionDef[] = [
 ];
 
 export const SECTION_MAP: Map<string, SectionDef> = new Map(SECTIONS.map((d) => [d.id, d]));
+
+/**
+ * Seconds that must pass after a quest opens a tab before the next tab-opening quest is offered. A
+ * player who has been waiting on one quest can have the requirements for the next few met already;
+ * without a breather the line would then open a new tab every minute or so.
+ */
+export const SECTION_BREATHER = 120;
+
+/** The tab a quest opens in the first run, if it opens one. */
+export function questSection(questId: string): SectionDef | undefined {
+  return SECTIONS.find((d) => d.quest === questId);
+}
+
+/** Why the next tab-opening quest has to wait: a new tab nobody has looked at yet, or a short breather. */
+export type SectionPace = { reason: 'visit'; section: string } | { reason: 'breather'; section: string; until: number; since: number };
+
+/**
+ * Whether a quest that opens a new tab should wait before it is offered. It waits until every tab a
+ * quest has opened has been visited (the badge alone is easy to miss), and until a short breather has
+ * passed since the last one opened, so each new system gets a moment of its own. The breather ends
+ * early once the last tab's own quest has been claimed. Null when it can go.
+ */
+export function sectionPace(s: GameState): SectionPace | null {
+  let last: { id: string; at: number; quest: string } | null = null;
+  for (const def of SECTIONS) {
+    const at = s.sections[def.id];
+    if (!def.quest || at === undefined) continue;
+    if (!s.sectionsSeen[def.id]) return { reason: 'visit', section: def.id };
+    if (!last || at > last.at) last = { id: def.id, at, quest: def.quest };
+  }
+  // A player who has already finished the last tab's quest has got to know it: no need to wait.
+  if (last && s.quests.done[last.quest] !== undefined) return null;
+  if (last && s.time < last.at + SECTION_BREATHER) return { reason: 'breather', section: last.id, since: last.at, until: last.at + SECTION_BREATHER };
+  return null;
+}
 
 /** Whether the org meets a section's own requirement, quest or not. Sections without one always do. */
 export function sectionReady(s: GameState, id: string): boolean {
