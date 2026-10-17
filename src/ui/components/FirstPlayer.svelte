@@ -83,7 +83,14 @@
           <span class="small {short === 0 ? 'good' : 'muted'}">
             {#if short === 0}Ready to sign{:else}{fmt(Math.ceil(short / clickValue))} more click{Math.ceil(short / clickValue) === 1 ? '' : 's'}{/if}
           </span>
-          <button class="btn primary sign" class:tut-target={s.tutorial.step === 'draft' && short === 0} disabled={short > 0} onclick={() => game.signDraft(p.id)}>
+          <button
+            class="btn primary sign"
+            class:ready={short === 0}
+            class:tut-target={s.tutorial.step === 'draft' && short === 0}
+            style="--fill:{Math.min(100, (s.cash / pick.price) * 100)}%"
+            disabled={short > 0}
+            onclick={() => game.signDraft(p.id)}
+          >
             <Icon name="user-plus" size={15} /> Sign {p.tag} · {money(pick.price)}
           </button>
         </div>
@@ -222,6 +229,38 @@
   }
   .sign {
     font-size: 15px;
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 0.2s cubic-bezier(0.2, 1.3, 0.3, 1),
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .sign:disabled {
+    opacity: 0.92;
+    color: color-mix(in srgb, var(--text) 78%, var(--muted));
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--line-2));
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 32%, var(--bg-3)) 0%,
+      color-mix(in srgb, var(--accent) 24%, var(--bg-3)) var(--fill, 0%),
+      var(--bg-3) var(--fill, 0%),
+      var(--bg-3) 100%
+    );
+  }
+  .sign.ready {
+    animation: sign-ready 0.42s cubic-bezier(0.2, 1.3, 0.3, 1);
+  }
+  @keyframes sign-ready {
+    0% {
+      transform: scale(0.95);
+    }
+    55% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
   .editor {
     padding-top: 10px;

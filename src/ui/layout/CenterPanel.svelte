@@ -8,7 +8,7 @@
   import { game } from '../game.svelte';
   import { TABS } from '../tabs';
   import { tooltip } from '../tooltip.svelte';
-  import { hinted } from '../hints';
+  import { hinted, liveQuestHint } from '../hints';
   import Achievements from '../tabs/Achievements.svelte';
   import HQ from '../tabs/HQ.svelte';
   import Legacy from '../tabs/Legacy.svelte';
@@ -32,15 +32,18 @@
   /** The tab the live quest needs pulses until the player is on it. */
   function tabHinted(id: string): boolean {
     if (game.tab === id) return false;
-    if (id === 'teams') return hinted(s, 'player') || hinted(s, 'plan') || hinted(s, 'found') || hinted(s, 'bench') || game.hintFlash === 'teams';
-    if (id === 'hq' && hinted(s, 'levels')) return true;
-    if (id === 'studio' && hinted(s, 'merch')) return true;
-    if (id === 'staff' && hinted(s, 'routines')) return true;
-    return (['market', 'staff', 'house', 'studio', 'sponsors'] as const).some((h) => h === id && hinted(s, h));
+    const h = liveQuestHint(s);
+    if (!h) return false;
+    if (id === 'teams') return h === 'player' || h === 'plan' || h === 'found' || h === 'bench';
+    if (id === 'hq') return h === 'levels';
+    if (id === 'studio') return h === 'studio' || h === 'merch';
+    if (id === 'staff') return h === 'staff' || h === 'routines';
+    return h === id;
   }
 
-  /** A finished quest or an open draft waits in HQ. */
-  const hqWaiting = $derived(s.quests.active.some((q) => q.ready) || !!s.draft);
+  /** A finished quest waits in HQ; an affordable first-player draft waits in Teams. */
+  const hqWaiting = $derived(s.quests.active.some((q) => q.ready));
+  const teamsWaiting = $derived(!!s.draft?.some((d) => s.cash >= d.price));
 
   // Never leave the player on a tab that has not opened yet.
   $effect(() => {
@@ -92,6 +95,7 @@
           <Icon name={t.icon} size={16} />
           <span>{t.label}</span>
           {#if t.id === 'hq' && hqWaiting && game.tab !== 'hq'}<i class="dot" aria-label="Something is waiting in HQ"></i>{/if}
+          {#if t.id === 'teams' && teamsWaiting && game.tab !== 'teams'}<i class="dot" aria-label="Something is waiting in Teams"></i>{/if}
           {#if isNew(t.id) && game.tab !== t.id}<i class="new">New</i>{/if}
         </button>
       {/each}
@@ -162,7 +166,7 @@
     flex: 1;
     min-width: 0;
     gap: 2px;
-    padding: 6px 6px 0;
+    padding: 8px 6px 0;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -204,20 +208,27 @@
   }
   .new {
     position: absolute;
-    top: -2px;
-    right: 0;
-    padding: 0 5px;
+    top: -5px;
+    right: 2px;
+    padding: 0 4.5px;
     border-radius: 999px;
     background: var(--gold);
     color: #1a1406;
     font-family: var(--font-ui);
     font-style: normal;
     font-weight: 700;
-    font-size: 9.5px;
-    line-height: 14px;
+    font-size: 9px;
+    line-height: 12px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     animation: new-pop 0.4s ease-out;
+  }
+  .compact .tab:not(.active) .new {
+    top: -6px;
+    right: 1px;
+    padding: 0 3.5px;
+    font-size: 8px;
+    line-height: 11px;
   }
   .help {
     flex: none;

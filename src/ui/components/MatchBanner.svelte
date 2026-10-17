@@ -224,6 +224,19 @@
     background: rgba(0, 0, 0, 0.45);
     overflow: hidden;
   }
+  .track::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(25% - 1px),
+      rgba(0, 0, 0, 0.45) calc(25% - 1px),
+      rgba(0, 0, 0, 0.45) 25%
+    );
+    pointer-events: none;
+  }
   .track i {
     position: absolute;
     inset: 0 auto 0 0;
@@ -373,6 +386,41 @@
       transform: translateX(var(--lean));
     }
   }
+  @container (max-width: 500px) {
+    .versus {
+      gap: 8px;
+      padding: 6px 9px;
+    }
+    .nm {
+      font-size: 14px;
+    }
+    /* Names wrap onto more lines rather than vanishing behind the match bar. */
+    .nt {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .them-crest {
+      width: 38px;
+      height: 38px;
+    }
+    .us .crest :global(svg) {
+      width: 38px;
+      height: 38px;
+    }
+    .mid {
+      width: 82px;
+    }
+    .vs {
+      font-size: 16px;
+    }
+    .prize {
+      font-size: 18px;
+    }
+  }
   @media (max-width: 520px) {
     .versus {
       gap: 6px;
@@ -381,7 +429,6 @@
     .nm {
       font-size: 14px;
     }
-    /* Names wrap onto more lines rather than vanishing behind the match bar. */
     .nt {
       display: -webkit-box;
       -webkit-box-orient: vertical;

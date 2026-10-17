@@ -31,6 +31,8 @@ export function storeUpgrades(s: GameState): UpgradeDef[] {
     if (s.unlockedUpgrades[def.id] === undefined || s.upgrades[def.id] !== undefined) continue;
     // Trophy upgrades join the shelf once the Trophies tab has explained trophies.
     if (def.currency === 'trophies' && !awake(s, 'trophySpending')) continue;
+    // Drama upgrades wait until Drama Drops have woken.
+    if (def.group === 'drama' && !awake(s, 'drama')) continue;
     list.push(def);
   }
   return list.sort((a, b) => (a.currency === b.currency ? a.cost - b.cost : a.currency === 'cash' ? -1 : 1));
@@ -45,6 +47,7 @@ export function buyUpgrade(s: GameState, id: string): boolean {
   const def = UPGRADE_MAP.get(id);
   if (!def || s.upgrades[id] !== undefined || s.unlockedUpgrades[id] === undefined) return false;
   if (def.currency === 'trophies' && !awake(s, 'trophySpending')) return false;
+  if (def.group === 'drama' && !awake(s, 'drama')) return false;
   const mods = computeMods(s);
   if (!canAffordUpgrade(s, def, mods)) return false;
   const price = upgradePrice(def, mods);

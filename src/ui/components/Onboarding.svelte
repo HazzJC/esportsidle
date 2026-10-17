@@ -180,13 +180,51 @@
     font-size: 17px;
   }
   @media (max-width: 620px) {
+    .backdrop {
+      padding: 10px;
+    }
+    .card {
+      max-height: calc(100vh - 20px);
+      gap: 12px;
+      padding: 16px;
+    }
+    .intro {
+      gap: 3px;
+    }
+    h1 {
+      font-size: 22px;
+    }
+    .lede {
+      font-size: 13px;
+    }
     .layout {
       grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
     }
     .preview {
       position: static;
       flex-direction: row;
-      justify-content: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 8px 12px;
+    }
+    .preview :global(svg) {
+      width: 68px;
+      height: 68px;
+      flex: none;
+    }
+    .pname {
+      text-align: left;
+    }
+    .fields {
+      gap: 11px;
+    }
+    .field {
+      gap: 4px;
+    }
+    input {
+      padding: 8px 11px;
+      font-size: 16px;
     }
   }
 </style>

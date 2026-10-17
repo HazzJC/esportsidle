@@ -1,5 +1,6 @@
 <script lang="ts">
   import { hinted } from '../hints';
+  import { awake } from '../../engine/firstRun';
   import { hasTool } from '../../engine/quests';
   import { hasQol } from '../../engine/staff';
   import { FINISH_ART_LEVELS, FINISH_NAMES, PRODUCTS, TREND_MAP, finishBand, finishName, finishSalesMult } from '../../data/merch';
@@ -102,7 +103,7 @@
       <h3 class="section-title">Team colours</h3>
       <p class="muted small">
         The default kit for every team: jerseys, chairs and your gaming house. Give a single team its own colours from its card in the
-        Teams tab.{#if customKits > 0}<span class="dim"> {customKits} {customKits === 1 ? 'team uses' : 'teams use'} their own colours.</span>{/if}
+        Teams tab.{#if customKits > 0}{' '}<span class="dim">{customKits} {customKits === 1 ? 'team uses' : 'teams use'} their own colours.</span>{/if}
       </p>
       <KitPicker primary={s.org.primary} secondary={s.org.secondary} onchange={(p, a) => game.setOrgKit(p, a)} />
     </div>
@@ -148,11 +149,13 @@
               <DesignImage design={d} size={92} alt={d.name} />
             </button>
             <div class="dname">{d.name}</div>
-            <div class="dmeta">
-              <span class="appeal num" use:tooltip={() => appealTip(d)}>{Math.round(a.total * 100)}% appeal</span>
-              {#if merchOpen && a.trend >= TRENDING_THRESHOLD}<span class="chip trending">On trend</span>{/if}
-              {#if !d.handmade}<span class="dim">auto</span>{/if}
-            </div>
+            {#if merchOpen || !d.handmade}
+              <div class="dmeta">
+                {#if merchOpen}<span class="appeal num" use:tooltip={() => appealTip(d)}>{Math.round(a.total * 100)}% appeal</span>{/if}
+                {#if merchOpen && a.trend >= TRENDING_THRESHOLD}<span class="chip trending">On trend</span>{/if}
+                {#if !d.handmade}<span class="dim">auto</span>{/if}
+              </div>
+            {/if}
             {#if uses.length > 0}<div class="uses">{uses.join(' · ')}</div>{/if}
             <div class="dactions">
               <button class="btn small" class:primary={s.org.logo === d.id} onclick={() => game.setLogo(s.org.logo === d.id ? null : d.id)}>Logo</button>
@@ -172,6 +175,7 @@
     {/if}
   </section>
 
+  {#if awake(s, 'merch')}
   <section class:tut-target={hinted(s, 'merch')}>
     <h3 class="section-title">Merch store</h3>
     {#if !merchOpen}
@@ -288,6 +292,7 @@
       </div>
     {/if}
   </section>
+  {/if}
 </div>
 
 {#if editing}

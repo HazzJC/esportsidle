@@ -196,7 +196,7 @@
                 {#each def.bonus as b, i (i)}
                   <li>
                     <Icon name={b.kind === 'unlock' ? b.icon : 'plus'} size={13} />
-                    <span><b>{b.kind === 'unlock' ? 'Unlocks: ' : 'Also: '}{describeReward(b, ctx)}</b> <span class="kdetail">{rewardDetail(b, ctx)}</span></span>
+                    <span><b>{b.kind === 'unlock' ? 'Unlocks: ' : 'Also: '}{describeReward(b, ctx)}</b> · <span class="kdetail">{rewardDetail(b, ctx)}</span></span>
                   </li>
                 {/each}
               </ul>
@@ -747,8 +747,35 @@
     gap: 11px;
     padding: 8px 12px;
     border-radius: 9px;
-    border: 1px solid color-mix(in srgb, var(--qc) 35%, #000);
-    background: linear-gradient(90deg, color-mix(in srgb, var(--qc) 16%, #121316), #101114 70%);
+    border: 1px solid color-mix(in srgb, var(--qc) 45%, #000);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--qc) 20%, #121316), #101114 72%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--qc) 25%, transparent),
+      0 0 16px color-mix(in srgb, var(--qc) 14%, transparent);
+    animation: chapter-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .deck .screen {
+    animation: screen-tune 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  @keyframes chapter-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes screen-tune {
+    0% {
+      opacity: 0.4;
+      filter: brightness(1.45);
+    }
+    100% {
+      opacity: 1;
+      filter: none;
+    }
   }
   .cicon {
     flex: none;

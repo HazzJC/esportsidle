@@ -152,7 +152,7 @@
   });
 </script>
 
-<div class="clicker panel">
+<div class="clicker panel" class:crowd={!!crowd} style="--hype:{crowd ? 1 : Math.min(1, s.hype / HYPE_MAX)}">
   <div class="head">
     <div class="cash num" use:tooltip={cashTip}>{money(s.cash)}</div>
     <div class="cps num" class:buffed={r.buffIncomeMult > 1} use:tooltip={incomeTip}>
@@ -406,15 +406,25 @@
   }
   .spotlight {
     position: absolute;
-    inset: -20px;
+    inset: calc(-18px - var(--hype, 0) * 14px);
     border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%);
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--accent-2) calc(var(--hype, 0) * 28%), color-mix(in srgb, var(--accent) 18%, transparent)),
+      transparent 66%
+    );
     animation: breathe 4s ease-in-out infinite;
     pointer-events: none;
+    transition: inset 0.25s ease;
   }
   .spotlight.crowd {
-    background: radial-gradient(circle, color-mix(in srgb, var(--gold) 30%, transparent), transparent 65%);
+    inset: -34px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--gold) 36%, transparent), transparent 68%);
     animation-duration: 0.8s;
+  }
+  .clicker.crowd {
+    border-color: color-mix(in srgb, var(--gold) 50%, var(--line));
+    box-shadow: inset 0 0 32px color-mix(in srgb, var(--gold) 12%, transparent);
   }
   .ring {
     position: absolute;
@@ -451,7 +461,10 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    transition: transform 0.08s ease-out;
+    filter: drop-shadow(0 0 calc(var(--hype, 0) * 14px) color-mix(in srgb, var(--accent-2) 55%, transparent));
+    transition:
+      transform 0.08s ease-out,
+      filter 0.2s ease;
     animation: bob 5s ease-in-out infinite;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -473,6 +486,7 @@
     outline-offset: 6px;
   }
   .logo.crowd {
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--gold) 70%, transparent));
     animation: bob 0.6s ease-in-out infinite;
   }
   .floater {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { awake } from './engine/firstRun';
   import { money } from './engine/format';
   import ChoicePanel from './ui/components/ChoicePanel.svelte';
   import Coach from './ui/components/Coach.svelte';
@@ -32,7 +33,8 @@
   // The first Drama Drop brings a one-time explainer, which stays until it is read even if the drop fades.
   let dramaSpotted = $state(false);
   $effect(() => {
-    if (!dramaSpotted && s.drops.active.some((d) => d.kind === 'drama')) dramaSpotted = true;
+    if (!s.settings.onboarded || !awake(s, 'drama')) dramaSpotted = false;
+    else if (!dramaSpotted && s.drops.active.some((d) => d.kind === 'drama')) dramaSpotted = true;
   });
   const dramaIntro = $derived(dramaSpotted && !s.guides[firstKey('drama')]);
 

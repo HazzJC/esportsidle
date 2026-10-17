@@ -3,7 +3,9 @@
   import { TREND_MAP } from '../../data/merch';
   import { OPERATIONS } from '../../data/operations';
   import { ROOMS } from '../../data/decor';
+  import { awake } from '../../engine/firstRun';
   import { fmt, fmtPct, money } from '../../engine/format';
+  import { MERCH_UNLOCK_FANS, isMerchUnlocked } from '../../engine/merch';
   import { sectionOpen } from '../../engine/sections';
   import { roomLevel } from '../../engine/staff';
   import { game } from '../game.svelte';
@@ -44,6 +46,7 @@
   const teams = $derived(Object.values(r.teams).filter((t) => t.active));
   const avgWin = $derived(teams.length ? teams.reduce((n, t) => n + t.winChance, 0) / teams.length : 0);
   const gamesOpen = $derived(GAMES.filter((g) => s.games[g.id]?.unlocked).length);
+  const merchOpen = $derived(isMerchUnlocked(s));
   const merchLines = $derived(Object.values(r.merchLines));
   const onTrend = $derived(merchLines.filter((l) => l.trending).length);
   const trend = $derived(TREND_MAP.get(s.merch.trend));
@@ -81,7 +84,7 @@
     <span class="logo"><OrgLogo name={s.org.name} primary={s.org.primary} secondary={s.org.secondary} size={58} shape={s.org.emblem.shape} mark={s.org.emblem.mark} /></span>
     <div class="who">
       <b class="name">{s.org.name}</b>
-      <span class="sub">{room.name}{#if nextRoom}<span class="dim">{' '}({fmtPct(Math.min(1, s.earnedRun / nextRoom.threshold), false, 0)} to the {nextRoom.name})</span>{/if} · Run {s.prestige.runs + 1}{#if s.prestige.level > 0}{' · Legacy ' + fmt(s.prestige.level)}{/if}</span>
+      <span class="sub">{room.name}{#if nextRoom}<span class="dim">{' '}({fmtPct(Math.min(1, s.earnedRun / nextRoom.threshold), false, 0)} to the {nextRoom.name})</span>{/if}{' · '}<span class="nowrap">Run {s.prestige.runs + 1}</span>{#if s.prestige.level > 0}{' · '}<span class="nowrap">Legacy {fmt(s.prestige.level)}</span>{/if}</span>
     </div>
     <button
       class="income"
@@ -130,7 +133,7 @@
         <span class="tsub">{gamesOpen} {gamesOpen === 1 ? 'team' : 'teams'}{#if teams.length}{' · ' + fmtPct(avgWin, false, 0) + ' avg win'}{/if}</span>
       </span>
     </button>
-    <button class="tile" style="--k:var(--gold)" disabled={!sectionOpen(s, 'studio')} onclick={() => open('studio')}>
+    <button class="tile" style="--k:var(--gold)" disabled={!merchOpen} onclick={() => open('studio')}>
       <span class="ticon"><Icon name="shirt" size={18} /></span>
       <span class="tbody">
         <span class="tlabel">Merch</span>
@@ -139,7 +142,7 @@
           <span class="tsub" class:warn={onTrend < merchLines.length}>{onTrend}/{merchLines.length} lines on {trend?.name ?? 'trend'}</span>
         {:else}
           <b class="dim">Not selling yet</b>
-          <span class="tsub">Launch a product in the Studio</span>
+          <span class="tsub">{merchOpen ? 'Launch a product in the Studio' : awake(s, 'merch') ? `Unlocks at ${fmt(MERCH_UNLOCK_FANS)} fans` : 'Opens later in the quest line'}</span>
         {/if}
       </span>
     </button>
@@ -252,6 +255,9 @@
   .sub {
     font-size: 12px;
     color: var(--muted);
+  }
+  .nowrap {
+    white-space: nowrap;
   }
   .income {
     display: flex;

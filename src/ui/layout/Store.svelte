@@ -1,6 +1,6 @@
 <script lang="ts">
   import { OPERATIONS, type OperationDef } from '../../data/operations';
-  import type { UpgradeDef, UpgradeGroup } from '../../data/upgrades';
+  import { GRIND_NEED, TIER_NEED, type UpgradeDef, type UpgradeGroup } from '../../data/upgrades';
   import { describeEffect } from '../../engine/describe';
   import { fmt, fmtPct, money } from '../../engine/format';
   import { bulkPrice, isOperationRevealed, maxAffordable, sellRefund } from '../../engine/operations';
@@ -108,10 +108,24 @@
     };
   }
 
+  function tierProgress(opId: string, owned: number, buying: number): { pct: number; next: number | null; crosses: boolean } {
+    const needs = opId === 'grinder' ? GRIND_NEED : TIER_NEED;
+    let prev = 0;
+    for (const need of needs) {
+      if (owned < need) {
+        const pct = Math.min(100, Math.max(0, ((owned - prev) / Math.max(1, need - prev)) * 100));
+        return { pct, next: need, crosses: owned + buying >= need };
+      }
+      prev = need;
+    }
+    return { pct: 100, next: null, crosses: false };
+  }
+
   function opTip(op: OperationDef): TipContent {
     const { s, r, m } = game.view;
     const st = s.ops[op.id];
     const share = r.cps > 0 ? r.opCps[op.id] / r.cps : 0;
+    const tp = tierProgress(op.id, st.owned, 0);
     const lines: TipContent['lines'] = [{ text: op.desc, tone: 'muted' }];
     lines.push(`Each ${op.name} produces ${money(r.opUnit[op.id], 1)} per second.`);
     if (st.owned > 0) {
@@ -119,6 +133,9 @@
         `${fmt(st.owned)} ${st.owned === 1 ? op.name : op.plural} producing ${money(r.opCps[op.id], 1)}/s (${fmtPct(share, false, 1)} of income).`,
       );
       lines.push({ text: `${money(st.produced)} produced so far.`, tone: 'muted' });
+      if (tp.next !== null) {
+        lines.push({ text: `Next upgrade unlocks at ${fmt(tp.next)} owned (${fmt(tp.next - st.owned)} more).`, tone: 'muted' });
+      }
     }
     if (op.fansPerSec > 0) {
       lines.push({ text: `Each attracts ${fmt(op.fansPerSec * m.fansMult, 2)} fans per second.`, tone: 'cyan' });
@@ -252,6 +269,7 @@
         {#each shownOps as op (op.id)}
           {#if isOperationRevealed(s, op)}
             {@const info = rowInfo(op)}
+            {@const tp = tierProgress(op.id, s.ops[op.id].owned, mode === 'buy' ? info.n : 0)}
             {#if tutorialOp === op.id}<TutArrow label={s.tutorial.step !== 'done' ? (s.ops[op.id].owned > 0 ? `Buy a ${op.name}` : `Buy your first ${op.name}`) : `Buy Grinders: ${s.ops[op.id].owned}/10`} />{/if}
             <button
               class="op"
@@ -270,7 +288,12 @@
                   {#if info.n !== 1}<span class="qty">×{fmt(info.n)}</span>{/if}
                 </span>
               </span>
-              {#if s.ops[op.id].owned > 0}<span class="op-owned num">{fmt(s.ops[op.id].owned)}</span>{/if}
+              {#if s.ops[op.id].owned > 0}
+                <span class="op-owned num">{fmt(s.ops[op.id].owned)}</span>
+                {#if tp.next !== null}
+                  <span class="op-tier-bar" class:crosses={mode === 'buy' && info.ok && tp.crosses} aria-hidden="true"><i style="width:{tp.pct}%"></i></span>
+                {/if}
+              {/if}
             </button>
           {:else}
             <div class="op mystery">
@@ -279,6 +302,7 @@
                 <span class="op-name">???</span>
                 <span class="op-price num">{money(op.baseCost)}</span>
               </span>
+              <span class="op-tier-bar mystery-bar" aria-hidden="true"><i style="width:{Math.min(100, (s.cash / op.baseCost) * 100)}%"></i></span>
             </div>
           {/if}
         {/each}
@@ -495,6 +519,8 @@
     padding-right: 2px;
   }
   .op {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -510,6 +536,32 @@
       border-color 0.12s,
       transform 0.06s,
       filter 0.12s;
+  }
+  .op-tier-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+  }
+  .op-tier-bar i {
+    display: block;
+    height: 100%;
+    background: color-mix(in srgb, var(--c, var(--accent)) 65%, transparent);
+    transition: width 0.2s ease;
+  }
+  .op-tier-bar.crosses {
+    height: 2.5px;
+  }
+  .op-tier-bar.crosses i {
+    width: 100% !important;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
+  }
+  .op-tier-bar.mystery-bar i {
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
   }
   button.op:hover {
     border-color: var(--c);

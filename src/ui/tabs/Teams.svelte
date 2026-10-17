@@ -570,7 +570,13 @@
           <TutArrow label="Click {gearPlayer.tag} to open their kit" />
         {/if}
         <!-- The gaming floor: one computer per role, with the player sitting at it. -->
-        <div class="floor" style="--cols:{g.teamSize}; --wall:{wallArt}; --floor-a:{floorColours.a}; --floor-b:{floorColours.b}; --skirt:{floorColours.skirt}; --floor-art:{floorArt}">
+        {@const recentMatch = team.history[0] && v.s.time - team.history[0].time < 2.2 ? team.history[0] : null}
+        <div
+          class="floor"
+          class:just-won={recentMatch !== null && recentMatch.win}
+          class:just-lost={recentMatch !== null && !recentMatch.win}
+          style="--cols:{g.teamSize}; --wall:{wallArt}; --floor-a:{floorColours.a}; --floor-b:{floorColours.b}; --skirt:{floorColours.skirt}; --floor-art:{floorArt}"
+        >
           <div class="wall" aria-hidden="true">
             <span class="neon"></span>
           </div>
@@ -608,6 +614,9 @@
                     <Rig player={p} primary={kit.primary} secondary={kit.secondary} gameColor={g.color} status={out ? 'out' : 'playing'} />
                     {#if out}
                       <span class="out-chip"><Icon name={HEALTH_ICON[p.status.kind]} size={11} /> {fmtTime(backIn(p, false))}</span>
+                      {#if restStep && restPlayer?.id === p.id}
+                        <span class="drag-callout">Drag to bench ↓</span>
+                      {/if}
                     {/if}
                     {#if p.retiring}<span class="retiring" title="Retiring after this season"><Icon name="calendar-clock" size={11} /></span>{/if}
                   </button>
@@ -670,6 +679,9 @@
                   class:over={isOver(`swap:${g.id}:${p.id}`) && typeof drag?.from === 'number'}
                   use:tooltip={() => playerTip(p.id, true)}
                 >
+                  {#if out || p.energy < 99.5}
+                    <span class="bench-boost num" title="Recovering {BENCH_RECOVERY_MULT}× faster on the bench">{BENCH_RECOVERY_MULT}×</span>
+                  {/if}
                   <span class="card-face">
                     <Avatar look={p.look} gear={p.gear} primary={kit.primary} secondary={kit.secondary} size={44} mode="bust" tag={p.tag} />
                   </span>
@@ -1444,6 +1456,58 @@
     color: #fff;
     background: color-mix(in srgb, var(--red) 85%, #000);
   }
+  .drag-callout {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    color: #14120a;
+    background: var(--gold);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    animation: drag-bob 1.1s ease-in-out infinite;
+  }
+  @keyframes drag-bob {
+    0%,
+    100% {
+      transform: translate(-50%, 0);
+    }
+    50% {
+      transform: translate(-50%, 3px);
+    }
+  }
+  .floor {
+    transition:
+      border-color 0.35s ease,
+      box-shadow 0.35s ease;
+  }
+  .floor.just-won {
+    border-color: color-mix(in srgb, var(--gold) 65%, var(--gc));
+    box-shadow:
+      inset 0 0 28px color-mix(in srgb, var(--gold) 22%, transparent),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .floor.just-won .neon {
+    background: var(--gold);
+    box-shadow:
+      0 0 12px var(--gold),
+      0 0 28px color-mix(in srgb, var(--gold) 75%, transparent);
+    opacity: 1;
+  }
+  .floor.just-lost {
+    border-color: color-mix(in srgb, var(--red) 55%, #000);
+    box-shadow:
+      inset 0 0 22px color-mix(in srgb, var(--red) 18%, transparent),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
   .retiring {
     position: absolute;
     top: 2px;
@@ -1618,6 +1682,20 @@
   }
   .card.out {
     border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  }
+  .bench-boost {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 14px;
+    color: #0b1c12;
+    background: var(--green);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
   }
   .card.seat {
     justify-content: center;

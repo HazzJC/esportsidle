@@ -47,7 +47,7 @@
       <h2 class="section-title">Sponsors <span class="dim">{s.sponsors.active.length}/{slots} slots</span></h2>
       <p class="muted small">
         Every deal has two parts: a boost that lasts <b>while the contract runs</b>, and a goal that pays a <b>one-off bonus</b> when you hit it.
-        Harder goals come with stronger perks.{#if legacyOpen} Tiers {topTier < SPONSOR_TIERS.length ? `1 to ${topTier} are open; the Global Brand Portfolio legacy node opens up to tier ${SPONSOR_TIERS.length}` : `1 to ${topTier} are open`}.{/if}
+        Harder goals come with stronger perks.{#if legacyOpen}{' '}Tiers {topTier < SPONSOR_TIERS.length ? `1 to ${topTier} are open; the Global Brand Portfolio legacy node opens up to tier ${SPONSOR_TIERS.length}` : `1 to ${topTier} are open`}.{/if}
       </p>
     </div>
     {#if unlocked}

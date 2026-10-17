@@ -229,9 +229,19 @@ class GameStore {
     if (this.pendingAchievements.length > 0 && !this.achievementTimer && this.achievementsCanShow()) {
       this.achievementTimer = setTimeout(() => this.flushAchievements(), ACHIEVEMENT_BATCH_MS);
     }
-    // The tutorial ends on the Teams tab; the quest line it hands over to lives in HQ.
+    // The tutorial moves across columns (clicker -> centre Teams -> Store -> centre HQ); keep the active tab and mobile view aligned as steps advance.
     const step = this.state.tutorial.step;
-    if (this.lastTutorialStep !== null && this.lastTutorialStep !== 'done' && step === 'done' && !this.state.tutorial.skipped) this.tab = 'hq';
+    if (this.lastTutorialStep !== null && this.lastTutorialStep !== step && !this.state.tutorial.skipped) {
+      if (step === 'done') {
+        this.tab = 'hq';
+        this.mobileView = 'center';
+      } else if (step === 'draft' || step === 'match' || step === 'rest') {
+        this.tab = 'teams';
+        this.mobileView = 'center';
+      } else if (step === 'grinder' || step === 'streamer') {
+        this.mobileView = 'store';
+      }
+    }
     this.lastTutorialStep = step;
     // A house move waits its turn rather than landing on top of another card (see `canInterrupt`).
     if (this.pendingHouse !== null && this.houseMove === null && this.canInterrupt()) {
@@ -972,14 +982,33 @@ class GameStore {
   // ---------------------------------------------------------------------------
   // Prestige
   // ---------------------------------------------------------------------------
+  private resetUiTransient(clearAchievements = false): void {
+    this.offlineReport = null;
+    this.selectedPlayer = null;
+    this.marketFilter = null;
+    this.viewingGear = false;
+    this.draggingPlayer = false;
+    this.houseMove = null;
+    this.pendingHouse = null;
+    this.guideOpen = null;
+    this.introOpen = null;
+    this.hintFlash = null;
+    clearTimeout(this.hintTimer);
+    this.hintTimer = undefined;
+    this.lastTutorialStep = null;
+    this.acc = 0;
+    if (clearAchievements) {
+      this.pendingAchievements = [];
+      clearTimeout(this.achievementTimer);
+      this.achievementTimer = undefined;
+    }
+  }
+
   sellOrg(options: SellOptions): boolean {
     const entry = sellOrg(this.state, options);
     if (!entry) return false;
     this.sfx('legacy');
-    this.offlineReport = null;
-    this.selectedPlayer = null;
-    this.marketFilter = null;
-    this.acc = 0;
+    this.resetUiTransient(false);
     refreshUpgradeUnlocks(this.state);
     this.save(false);
     this.refresh();
@@ -1209,9 +1238,10 @@ class GameStore {
       loaded.lastSaved = Date.now();
       loaded.stats.imports++;
       this.state = loaded;
+      this.resetUiTransient(true);
       setNumberFormat(loaded.settings.numberFormat);
+      this.syncMusic();
       refreshUpgradeUnlocks(loaded);
-      this.acc = 0;
       this.save(false);
       this.refresh();
       this.toast({ title: 'Save imported', body: `Welcome back, ${loaded.org.name}.`, icon: 'upload', tone: 'good' });
@@ -1246,8 +1276,8 @@ class GameStore {
     this.state = createNewGame();
     // Display preferences carry over, but a fresh org starts at the founding screen again.
     this.state.settings = { ...settings, onboarded: false };
-    this.offlineReport = null;
-    this.acc = 0;
+    this.resetUiTransient(true);
+    this.toasts = [];
     this.save(false);
     this.refresh();
     this.toast({ title: 'Fresh start', body: 'Your org is back in the garage.', icon: 'house', tone: 'info' });

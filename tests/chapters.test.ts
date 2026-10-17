@@ -20,6 +20,7 @@ import { refreshOffers, signOffer } from '../src/engine/sponsors';
 import { checkHouseMove } from '../src/engine/staff';
 import { startPlayer, unlockGame } from '../src/engine/teams';
 import { fireRandomEvent } from '../src/engine/worldEvents';
+import { buyUpgrade, refreshUpgradeUnlocks, storeUpgrades } from '../src/engine/upgrades';
 import { updateMarket } from '../src/engine/market';
 import type { GameState } from '../src/engine/types';
 import { foundedGame, guidedGame } from './fixtures';
@@ -74,10 +75,20 @@ describe('a guided first run', () => {
     const s = guidedGame(0, 3);
     lineAt(s, 'event_1');
     expect(dramaShare(s, { ...computeMods(s), dramaLevel: 3 })).toBe(0);
+    // Drama upgrades wait until Drama Drops wake, even if the org already has the fans to reveal them.
+    s.fansRun = 100_000;
+    s.cash = 1e10;
+    refreshUpgradeUnlocks(s);
+    expect(storeUpgrades(s).some((u) => u.group === 'drama')).toBe(false);
+    expect(buyUpgrade(s, 'drama_0')).toBe(false);
     // Before the decision quest, nothing that needs an answer can fire.
     s.quests.done.second_team = 0;
     for (let i = 0; i < 30; i++) fireRandomEvent(s, ctxFor(s));
     expect(s.events.pending).toHaveLength(0);
+    s.quests.done.event_1 = 0;
+    s.cash = 1e10;
+    expect(storeUpgrades(s).some((u) => u.id === 'drama_0')).toBe(true);
+    expect(buyUpgrade(s, 'drama_0')).toBe(true);
   });
 
   it('fires a decision, not news, while the decision quest is live', () => {

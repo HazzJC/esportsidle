@@ -8,7 +8,7 @@
     { id: 'store', label: 'Store', icon: 'store' },
   ];
 
-  const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft);
+  const hqWaiting = $derived(game.view.s.quests.active.some((q) => q.ready) || !!game.view.s.draft?.some((d) => game.view.s.cash >= d.price));
 
   /** On a tablet the clicker has its own column, so "Org" and "Manage" both mean the centre view. */
   let tablet = $state(false);
