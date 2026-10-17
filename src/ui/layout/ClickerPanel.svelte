@@ -199,6 +199,17 @@
   <div class="stage" bind:this={stage}>
     <div class="spotlight" class:crowd={!!crowd}></div>
     <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="hype-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--accent)" />
+          <stop offset="100%" stop-color="var(--accent-2)" />
+        </linearGradient>
+        <linearGradient id="crowd-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--gold)" />
+          <stop offset="55%" stop-color="#ff6ec7" />
+          <stop offset="100%" stop-color="var(--gold)" />
+        </linearGradient>
+      </defs>
       <circle class="track" cx="50" cy="50" r="47" pathLength="100" />
       <circle
         class="fill"
@@ -423,8 +434,11 @@
     animation-duration: 0.8s;
   }
   .clicker.crowd {
-    border-color: color-mix(in srgb, var(--gold) 50%, var(--line));
-    box-shadow: inset 0 0 32px color-mix(in srgb, var(--gold) 12%, transparent);
+    border-color: color-mix(in srgb, var(--gold) 55%, var(--accent-2));
+    box-shadow:
+      inset 0 0 34px color-mix(in srgb, var(--gold) 14%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--accent-2) 35%, transparent);
+    animation: crowd-panel 1.6s ease-in-out infinite;
   }
   .ring {
     position: absolute;
@@ -440,14 +454,43 @@
     stroke: rgba(255, 255, 255, 0.07);
   }
   .ring .fill {
-    stroke: var(--accent-2);
+    stroke: url(#hype-ring-grad);
+    stroke-width: calc(3 + var(--hype, 0) * 1.4);
     stroke-linecap: round;
-    filter: drop-shadow(0 0 3px var(--accent-2));
-    transition: stroke-dasharray 0.15s linear;
+    filter: drop-shadow(0 0 calc(3px + var(--hype, 0) * 6px) var(--accent-2));
+    transition:
+      stroke-dasharray 0.15s linear,
+      stroke-width 0.2s ease,
+      filter 0.2s ease;
   }
   .ring .fill.crowd {
-    stroke: var(--gold);
-    filter: drop-shadow(0 0 4px var(--gold));
+    stroke: url(#crowd-ring-grad);
+    stroke-width: 4.5;
+    filter:
+      drop-shadow(0 0 6px var(--gold))
+      drop-shadow(0 0 12px color-mix(in srgb, var(--accent-2) 70%, transparent));
+    animation: crowd-ring 0.9s ease-in-out infinite;
+  }
+  @keyframes crowd-ring {
+    0%,
+    100% {
+      opacity: 0.92;
+    }
+    50% {
+      opacity: 1;
+      filter:
+        drop-shadow(0 0 9px var(--gold))
+        drop-shadow(0 0 16px var(--accent-2));
+    }
+  }
+  @keyframes crowd-panel {
+    0%,
+    100% {
+      border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+    }
+    50% {
+      border-color: color-mix(in srgb, var(--accent-2) 55%, var(--gold));
+    }
   }
   .logo :global(svg) {
     width: min(190px, 76cqw);

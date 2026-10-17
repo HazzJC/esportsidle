@@ -741,6 +741,11 @@
   .seg.chapter-start {
     margin-left: 5px;
   }
+  .seg.chapter-start.live {
+    box-shadow:
+      0 0 0 1.5px var(--c),
+      0 0 14px var(--c);
+  }
   .chapter {
     display: flex;
     align-items: center;

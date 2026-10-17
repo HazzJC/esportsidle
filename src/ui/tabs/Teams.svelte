@@ -1139,6 +1139,18 @@
     font-family: var(--font-ui);
     font-size: 15px;
   }
+  @container team (max-width: 500px) {
+    .league {
+      gap: 8px 12px;
+    }
+    .numbers {
+      gap: 6px 10px;
+      font-size: 12.5px;
+    }
+    .numbers b {
+      font-size: 14px;
+    }
+  }
   .mood {
     display: inline-flex;
     align-items: center;
@@ -1501,12 +1513,39 @@
       0 0 28px color-mix(in srgb, var(--gold) 75%, transparent);
     opacity: 1;
   }
+  .floor.just-won .rig-btn:not(.empty) {
+    animation: rig-win 0.65s cubic-bezier(0.2, 1.4, 0.4, 1);
+  }
   .floor.just-lost {
     border-color: color-mix(in srgb, var(--red) 55%, #000);
     box-shadow:
       inset 0 0 22px color-mix(in srgb, var(--red) 18%, transparent),
       inset 0 -1px 0 rgba(255, 255, 255, 0.04),
       inset 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .floor.just-lost .rig-btn:not(.empty) {
+    animation: rig-loss 0.65s ease-out;
+  }
+  @keyframes rig-win {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    35% {
+      transform: translateY(-4px);
+    }
+    70% {
+      transform: translateY(-1.5px);
+    }
+  }
+  @keyframes rig-loss {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(2.5px);
+    }
   }
   .retiring {
     position: absolute;
